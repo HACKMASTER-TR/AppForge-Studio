@@ -89,7 +89,7 @@ internal data class LinuxRuntimeLayout(
         get() =
             File(
                 File(
-                    baseDirectory,
+                    com.appforge.studio.build.RecoveryPathAnchor.androidPlatformPath(baseDirectory),
                     distribution.id
                 ),
                 architecture.id

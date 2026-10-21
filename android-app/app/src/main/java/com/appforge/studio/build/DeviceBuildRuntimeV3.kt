@@ -187,11 +187,11 @@ internal object DeviceBuildRuntimeV3 {
 
     internal fun runtimeBaseDirectory(
         context: Context
-    ): File =
+    ): File = RecoveryPathAnchor.androidPlatformPath(
         File(
             context.noBackupFilesDir,
             "device-build/runtime-v3"
-        )
+        ))
 
 
     private fun marker(

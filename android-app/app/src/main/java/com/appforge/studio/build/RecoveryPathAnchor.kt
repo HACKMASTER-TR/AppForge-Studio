@@ -7,6 +7,23 @@ import java.nio.file.Files
  * Missing leaves are legal during a rename; existing symlink ancestors never are.
  * This is an app-private namespace check, not a hostile concurrent-filesystem sandbox. */
 internal object RecoveryPathAnchor {
+    /** Only Android's system-owned legacy app-data alias is recognized. Never
+     * canonicalize arbitrary workspace links: those remain rejected by check(). */
+    fun androidPlatformPath(file:File):File {
+        val path=file.absoluteFile.toPath()
+        require(path.normalize()==path) { "Recovery yolu normalize edilmemiş" }
+        val legacy=File("/data/data").toPath()
+        val userZero=File("/data/user/0").toPath()
+        for((alias,expected) in listOf(legacy to userZero,userZero to legacy)) {
+            if(!path.startsWith(alias) || !Files.isSymbolicLink(alias))continue
+            val resolved=alias.parent.resolve(Files.readSymbolicLink(alias)).normalize()
+            require(resolved==expected) { "Android veri takma yolu doğrulanamadı" }
+            val actual=resolved.resolve(alias.relativize(path)).toFile()
+            check(actual) // Includes target ancestors; alias cycles/secondary links are rejected.
+            return actual
+        }
+        return file
+    }
     fun check(file:File) {
         val absolute=file.absoluteFile
         require(absolute.toPath().normalize()==absolute.toPath()) { "Recovery yolu normalize edilmemiş" }
