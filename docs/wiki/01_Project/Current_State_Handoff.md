@@ -92,7 +92,7 @@ Lifecycle: **ACTIVE**
 - Branch: `feat/rust-all-engines-20261021`
 - Base branch: `fix/v7-a01-a05-20261020`
 - Base exact SHA: `b56bf0a56de91e60beb862e10c8632f1e4f10ff3`
-- Manifest-recorded source SHA: `c8b8c2a35b9a89673740ae98c0ee2a5376807bdc`
+- Manifest-recorded source SHA: `5cc68c88355575a52600014ad5885e195ea14855`
 - Parent workstream: none recorded
 
 | Evidence stage | State | Binding / reference or reason |
