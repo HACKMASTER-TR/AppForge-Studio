@@ -598,12 +598,12 @@
     {
       "id": "rust-all-engines-20261021",
       "title": "Rust module and scoped local WASM integration",
-      "scope": "PARTIAL. Pinned toolchain module and prebuilt WASM packaging; native multi-engine adapters NOT_DONE. No device acceptance.",
+      "scope": "PARTIAL. In-app pinned Cargo vendor/cache preparation, isolated offline WASM builds, durable prepared-copy selection and Node output staging implemented. Native multi-engine adapters and physical acceptance remain unverified.",
       "lifecycle": "ACTIVE",
       "branch": "feat/rust-all-engines-20261021",
       "baseBranch": "fix/v7-a01-a05-20261020",
       "baseSha": "b56bf0a56de91e60beb862e10c8632f1e4f10ff3",
-      "sourceSha": "a7588b80fd6c7f702f87f030fc0da9a2dd170d41",
+      "sourceSha": "6431c443cc5265c14705444d46c18b48faf23a5b",
       "stages": {
         "implementation": {
           "state": "UNKNOWN",
@@ -643,11 +643,11 @@
         }
       },
       "blockers": [
-        "Android ARM64 device execution NOT_RUN",
-        "JNI/PyO3/JSI/native Windows/Universal orchestration NOT_DONE",
-        "In-app Cargo build-consent workflow and verified dependency cache preparation not integrated"
+        "Android ARM64/Proroot/FGS/UI physical execution NOT_RUN",
+        "JNI/PyO3/JSI/native Windows/Universal target adapters and device linker acceptance BLOCKED/NOT_DONE",
+        "Cargo workspace/path/git dependencies and ignored-cache/external build inputs are outside this resolver scope"
       ],
-      "nextAction": "Review local evidence; complete blocked ABI adapters and separately authorize physical acceptance."
+      "nextAction": "Review the frozen local source/patch evidence; complete target-specific native ABI adapters only with real linker/runtime evidence. Do not merge/push/release or infer physical acceptance."
     }
   ]
 }

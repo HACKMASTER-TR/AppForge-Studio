@@ -85,14 +85,14 @@ Next action: Review evidence record in isolation and plan guarded integration on
 
 ## rust-all-engines-20261021 — Rust module and scoped local WASM integration
 
-Scope: PARTIAL. Pinned toolchain module and prebuilt WASM packaging; native multi-engine adapters NOT_DONE. No device acceptance.
+Scope: PARTIAL. In-app pinned Cargo vendor/cache preparation, isolated offline WASM builds, durable prepared-copy selection and Node output staging implemented. Native multi-engine adapters and physical acceptance remain unverified.
 
 Lifecycle: **ACTIVE**
 
 - Branch: `feat/rust-all-engines-20261021`
 - Base branch: `fix/v7-a01-a05-20261020`
 - Base exact SHA: `b56bf0a56de91e60beb862e10c8632f1e4f10ff3`
-- Manifest-recorded source SHA: `a7588b80fd6c7f702f87f030fc0da9a2dd170d41`
+- Manifest-recorded source SHA: `6431c443cc5265c14705444d46c18b48faf23a5b`
 - Parent workstream: none recorded
 
 | Evidence stage | State | Binding / reference or reason |
@@ -107,9 +107,9 @@ Lifecycle: **ACTIVE**
 | release | NOT_RUN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
 | deploy | NOT_RUN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
 
-Blockers / references: Android ARM64 device execution NOT_RUN; JNI/PyO3/JSI/native Windows/Universal orchestration NOT_DONE; In-app Cargo build-consent workflow and verified dependency cache preparation not integrated
+Blockers / references: Android ARM64/Proroot/FGS/UI physical execution NOT_RUN; JNI/PyO3/JSI/native Windows/Universal target adapters and device linker acceptance BLOCKED/NOT_DONE; Cargo workspace/path/git dependencies and ignored-cache/external build inputs are outside this resolver scope
 
-Next action: Review local evidence; complete blocked ABI adapters and separately authorize physical acceptance.
+Next action: Review the frozen local source/patch evidence; complete target-specific native ABI adapters only with real linker/runtime evidence. Do not merge/push/release or infer physical acceptance.
 
 ## sb01 — Retired backend introductory-map correction
 

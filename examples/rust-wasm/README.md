@@ -22,3 +22,20 @@ This is an offline artifact-preparation CLI plus a prebuilt-payload packaging
 path, not an automatic in-app Rust build wizard. Android WebView execution and
 Windows Portable runtime acceptance require physical tests (NOT_RUN). JNI,
 PyO3/Chaquopy and JSI adapters are not implemented by this example.
+
+## In-app preparation (local continuation)
+
+For an imported root Cargo + local HTML project, open the modular package screen.
+Install Rust + Cargo (its internal Python prerequisite uses the signed snapshot,
+without Android SDK/Node/JDK). Explicitly approve locked crate downloads. Then
+turn all networks off and separately approve Rust source execution. Select the
+private prepared copy only after its source/binary hashes pass. Original files
+remain unchanged. Completed records are revalidated after reopening; they never
+authorize automatic code/network execution. Legacy source receipt schema 1 must
+be rebuilt into schema 2. Foreign files in the reserved export directory block
+copy cleanup; no recursive deletion is performed.
+
+Node-Web examples retain separate npm preparation after WASM is ready. The app
+stages the verified WASM into the bundler output without injecting JavaScript.
+Cargo workspaces/path/git dependencies and build inputs in ignored caches/external
+locations remain unsupported. Physical Android/Windows acceptance remains NOT_RUN.
