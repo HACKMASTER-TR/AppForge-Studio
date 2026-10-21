@@ -37,7 +37,7 @@ Prepared WASM + source/artifact consistency receipt can be packaged in local HTM
 APK/AAB; JS bindings are authored by the project, never injected. Cargo root
 projects without matching preparation are blocked before silent HTML packaging.
 This scoped root-package detector is not a general monorepo/workspace resolver.
-Native Android JNI/NDK, Node native addon, PyO3/Chaquopy, JSI/Expo, Windows native
+Android Gradle JNI is now implemented for explicit app-module ARM64/API26 projects, with host build/package proof below. Standalone Android NDK orchestration, Node native addon, PyO3/Chaquopy, JSI/Expo, Windows native
 and Universal target orchestration remain NOT_DONE/BLOCKED. Host ctypes is not
 PyO3 acceptance. Node WASM execution is not Android WebView acceptance.
 
@@ -103,3 +103,33 @@ Rebuild clears exactly two hash-verified generated export files only in a new
 private copy, rejecting foreign contents; the original project is unchanged.
 Node projects with prepared WASM retain the separate npm dependency-preparation
 flow. Selecting a prepared copy never transfers download/execution consent.
+
+## Android Gradle JNI continuation
+
+The app-shipped rust-android-target-v1.json pins the official Rust 1.85.1 Android
+ARM64 standard library SHA-256. It is downloaded only for an explicitly selected
+Android Gradle Rust project, with the existing managed downloader and consent.
+The target is installed into a private compiler copy under the disposable project
+workspace, never the active Rust prefix or an ownership-tracked runtime namespace.
+Both runtime and private compiler are fingerprinted across source execution; the
+runtime stage is discarded. No global target READY state is manufactured.
+
+An appforge-rust-android.json declares app module/library/API26. The authored Java
+source owns System.loadLibrary and the JNI declaration; no bridge is injected.
+Two frozen offline Cargo builds produce an ELF64 ARM64 ET_DYN with real defined
+JNI symbols and 16KiB-compatible load segments. Missing or incompatible NDK linker
+is BLOCKED: existing verified SDK/NDK must already provide an executable host
+linker. There is no new automatic NDK installer or unverified ARM64-host promise.
+
+The prepared-copy receipt binds source inputs, native bytes and JNI symbols.
+DeviceBuildEngine stages only into the isolated app/src/main/jniLibs/arm64-v8a,
+refuses foreign conflicts, and verifies exact native payload bytes in requested
+APK/AAB before publication. Gradle must explicitly preserve the library bytes
+with keepDebugSymbols. Real artifact minSdk is independently checked: Android
+package metadata for APK; bounded read-only compiled AAPT2 protobuf for AAB.
+This SDK reader does not relax the pinned HTML template rewrite contract.
+
+Host proof uses official target std, NDK28.2 x86_64 host linker, real Java Activity,
+Cargo offline replay, real AGP APK/AAB and production Kotlin verification.
+Android16 ARM64-host installation/linker execution and device JNI execution remain
+NOT_RUN. No hosted CI, phone upgrade or production acceptance is implied.

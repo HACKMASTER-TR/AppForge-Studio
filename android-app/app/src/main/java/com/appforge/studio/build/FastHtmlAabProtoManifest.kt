@@ -22,6 +22,19 @@ internal object FastHtmlAabProtoManifest {
 
     private data class Field(val id: Int, val wire: Int, val bytes: ByteArray, val raw: ByteArray, val value: Long = -1)
 
+    /** Read-only SDK gate for native payload consumers; does not broaden the
+     * pinned HTML-template rewrite contract. Compiled/raw values must agree. */
+    fun minimumSdkVersion(input:ByteArray):Int {
+        require(input.size in 1..MAX_PROTO);requireWireFraming(input)
+        val root=parse(one(parse(input),1,2).bytes);require(value(root,3)=="manifest")
+        val sdk=child(elements(root),"uses-sdk")
+        val attr=attributes(sdk).single{value(it,1,optional=true)==ANDROID_NS && value(it,2)=="minSdkVersion"}
+        val item=parse(one(attr,6,2).bytes);val primitive=parse(one(item,7,2).bytes)
+        val number=primitive.single();require(number.wire==0 && number.id in setOf(6,7) && number.value in 1..1000)
+        val raw=value(attr,3,optional=true);require(raw.isEmpty() || raw==number.value.toString())
+        return number.value.toInt()
+    }
+
     fun rewrite(input: ByteArray, draft: ProjectDraft, expectedManifestSha256: String = PINNED_MANIFEST_SHA256, selectedPermissions: Set<String>? = null, applicationCategory: Int? = null, rewriteDeepLinks: Boolean = false, mediaService: Boolean? = null, billing: Boolean? = null): ByteArray {
         require(draft.packageName.length <= 255 && draft.packageName.matches(
             Regex("[A-Za-z_][A-Za-z_0-9]*(\\.[A-Za-z_][A-Za-z_0-9]*)+")

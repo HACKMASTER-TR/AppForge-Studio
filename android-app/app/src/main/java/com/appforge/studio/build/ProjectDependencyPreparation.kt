@@ -29,7 +29,7 @@ internal object ProjectDependencyPreparation {
     @Synchronized fun start(context:Context,draft:ProjectDraft,sourceExecutionConsent:Boolean,offlineVerification:Boolean,rustOnly:Boolean=false) {
         check(!busy.value){"Başka proje hazırlığı devam ediyor; yeni işlem/ağ onayı alınmadı."}
         require(sourceExecutionConsent){"Proje build/lifecycle kodunu çalıştırma onayı gerekir."}
-        if(RustProjectPolicy.sourceRoot(draft)!=null && (rustOnly || draft.sourceBuildEngine!="node-web")){startRust(context,draft.copy(),offlineVerification);return}
+        if(RustProjectPolicy.sourceRoot(draft)!=null && (rustOnly || draft.sourceBuildEngine !in setOf("node-web","android-gradle"))){startRust(context,draft.copy(),offlineVerification);return}
         rustProjectFolder.value=null
         DownloadNetwork.configure(context)
         DownloadNetwork.prepareJournal()
@@ -118,6 +118,8 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
     /** Shares this controller, FGS, cancellation and usage lease. No parallel installer.
      * All Android networks must remain absent: Cargo --offline alone cannot constrain build.rs. */
     private fun startRust(context:Context,draft:ProjectDraft,offlineVerification:Boolean) {
+        require(draft.sourceBuildEngine in setOf("webview-static","node-web","android-gradle")){"Bu motor için Rust hazırlık adaptörü yok"}
+        val native=draft.sourceBuildEngine=="android-gradle"
         require(draft.sourceBuildEngine in setOf("webview-static","node-web")){"Bu motorun Rust ABI adaptörü doğrulanmadı."}
         val connectivity=context.getSystemService(ConnectivityManager::class.java)?:error("Ağ durumu doğrulanamadı")
         if(offlineVerification)require(connectivity.allNetworks.isEmpty()){"Rust build.rs ağ erişimi için sandbox yok; bütün ağları kapatın."}
@@ -152,7 +154,8 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                 ProjectDependencyEvidence.copyReviewedSource(draft,source)
                 RustPreparedProjects(storeRoot).clearCopiedExport(workspace)
                 val runtime=File(workspace,"runtime").apply{mkdir()}
-                for(name in listOf("rust-project.py","rust-vendor.py")){context.assets.open("device-build/$name").use{input->File(runtime,name).outputStream().use{input.copyTo(it)}}}
+                val helpers=listOf("rust-project.py","rust-vendor.py","rust-android.py","rust-android-target-v1.json","install-rust-module.py")
+                for(name in helpers){context.assets.open("device-build/$name").use{input->File(runtime,name).outputStream().use{input.copyTo(it)}}}
                 val root=OfflineBuildPackManager.runtimeRootfs(context)?:error("Rust runtime yok")
                 val protected=OfflineBuildPackManager.protectedTools(context)
                 val currentJob=currentCoroutineContext()[Job]!!
@@ -163,6 +166,7 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                     val result=shell.execute(operation,stage!!.root,workspace,AndroidRuntimeTrust.shellEnvironment+command,confirmed=true,timeoutMs=1_800_000L)
                     require(!result.timedOut && result.exitCode==0){"Rust bağımlılık verisi/cache doğrulanamadı (exit ${result.exitCode}). "+com.appforge.studio.terminal.TerminalSecretMasker.redact(result.output.takeLast(1500))}
                 }
+                if(native)trustedTool("/usr/bin/python3.12 -I -S /workspace/runtime/rust-android.py /workspace/source --check-project")
                 phase(ModulePhase.RESOLVING,"Cargo.lock kaynakları çözülüyor; proje kodu çalıştırılmaz.")
                 trustedTool("/usr/bin/python3.12 -I -S /workspace/runtime/rust-vendor.py plan /workspace/source --output /workspace/crate-plan.json")
                 val planFile=File(workspace,"crate-plan.json")
@@ -184,18 +188,34 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                     require(workspace.usableSpace>archive.length()+64L*1024*1024){"Rust cache kopyası için alan yetersiz."}
                     archive.inputStream().use{input->File(stagedCache,"$sha.crate").outputStream().use{input.copyTo(it)}}
                 }
+                if(native) {
+                    val target=org.json.JSONObject(File(runtime,"rust-android-target-v1.json").readText())
+                    require(target.getInt("schema")==1 && target.getString("version")=="1.85.1" && target.getString("target")=="aarch64-linux-android")
+                    val item=target.getJSONObject("artifact");val name=item.getString("file");val sha=item.getString("sha256");val url=item.getString("url")
+                    require(name=="rust-std-1.85.1-aarch64-linux-android.tar.xz" && sha.matches(Regex("[a-f0-9]{64}")) && url=="https://static.rust-lang.org/dist/2025-03-18/$name")
+                    val archive=File(cache,name)
+                    if(!offlineVerification)VerifiedModuleDownload.download(url,sha,archive,OfflineModuleId.RUST,operation,
+                        canceled={!currentJob.isActive || control.request!=DownloadControl.Request.NONE},progress={transfer.value=it.copy(detail="Rust Android ARM64 standard library")},maxBytes=128L*1024*1024)
+                    require(archive.isFile && !java.nio.file.Files.isSymbolicLink(archive.toPath()) && archive.length()<=128L*1024*1024 && VerifiedModuleDownload.sha(archive)==sha){"Android Rust target cache eksik/bozuk; açık indirme onayı gerekir"}
+                    require(workspace.usableSpace>archive.length()+64L*1024*1024)
+                    archive.inputStream().use{input->File(stagedCache,name).outputStream().use{input.copyTo(it)}}
+                }
                 phase(ModulePhase.VERIFYING,"SHA-256 doğrulanan crate arşivleri Cargo vendor biçimine hazırlanıyor; kurulum Hazır değildir.")
                 trustedTool("/usr/bin/python3.12 -I -S /workspace/runtime/rust-vendor.py vendor /workspace/source --cache /workspace/crate-cache --output /workspace/vendor")
                 if(!offlineVerification) {
-                    phase(ModulePhase.PREPARING,"Kilitli Cargo cache hazırlandı; proje kodu çalıştırılmadı. Ağları kapatıp ayrıca WASM derlemesini onaylayın.")
+                    phase(ModulePhase.PREPARING,"Kilitli Cargo cache hazırlandı; proje kodu çalıştırılmadı. Ağları kapatıp ayrıca Rust hedef derlemesini onaylayın.")
                     return@launch
                 }
+                if(native)trustedTool("/usr/bin/python3.12 -I -S /workspace/runtime/rust-android.py --prepare-target --prefix /workspace/rust-android-toolchain --base-prefix /opt/appforge-device/rust-1.85.1 --cache /workspace/crate-cache")
                 val trustedRuntime=RuntimeGenerationStore(stage!!.root).snapshot()
-                val helperHashes=listOf("rust-project.py","rust-vendor.py").associateWith{RustProjectPolicy.digest(File(runtime,it))}
-                phase(ModulePhase.OFFLINE_TEST,"Onaylı Cargo --frozen --offline WASM derlemesi; indirme yapılmaz. Toplam iş miktarı bilinmiyor.")
-                val command="/usr/bin/python3.12 -I -S /workspace/runtime/rust-project.py /workspace/source --target wasm32-unknown-unknown --source-execution-consent --vendor /workspace/vendor"
-                for(step in listOf(command+" --export-wasm",command)) {
+                val compilerSnapshot=if(native)RuntimeGenerationStore(File(workspace,"rust-android-toolchain")).snapshot()else null
+                val helperHashes=helpers.associateWith{RustProjectPolicy.digest(File(runtime,it))}
+                phase(ModulePhase.OFFLINE_TEST,"Onaylı Cargo --frozen --offline hedef derlemesi; indirme yapılmaz. Toplam iş miktarı bilinmiyor.")
+                val command=if(native)"/usr/bin/python3.12 -I -S /workspace/runtime/rust-android.py /workspace/source --prefix /workspace/rust-android-toolchain --source-execution-consent --vendor /workspace/vendor"
+                    else "/usr/bin/python3.12 -I -S /workspace/runtime/rust-project.py /workspace/source --target wasm32-unknown-unknown --source-execution-consent --vendor /workspace/vendor"
+                for(step in listOf(command+(if(native)" --export" else " --export-wasm"),command)) {
                     require(helperHashes.all{(name,sha)->RustProjectPolicy.digest(File(runtime,name))==sha}){"Rust hazırlık doğrulayıcısı değişti"}
+                    if(native)require(compilerSnapshot==RuntimeGenerationStore(File(workspace,"rust-android-toolchain")).snapshot()){"Özel Rust derleyicisi değişti"}
                     RustPreparationIntegrity.requireUnchangedRuntime(trustedRuntime,RuntimeGenerationStore(stage!!.root).snapshot())
                     control.checkpoint();require(!networkSeen.get() && connectivity.allNetworks.isEmpty()){"Ağ açıldı; Rust çıktısı kabul edilmedi."}
                     val result=shell.execute(operation,stage!!.root,workspace,AndroidRuntimeTrust.shellEnvironment+step,confirmed=true,timeoutMs=1_800_000L)
@@ -205,13 +225,14 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                 require(!networkSeen.get() && connectivity.allNetworks.isEmpty()){"Ağ açıldı; Rust hazır kaydı yazılmadı."}
                 RustPreparationIntegrity.requireUnchangedRuntime(trustedRuntime,RuntimeGenerationStore(stage!!.root).snapshot())
                 require(helperHashes.all{(name,sha)->RustProjectPolicy.digest(File(runtime,name))==sha}){"Rust hazırlık doğrulayıcısı değişti"}
+                if(native)require(compilerSnapshot==RuntimeGenerationStore(File(workspace,"rust-android-toolchain")).snapshot()){"Özel Rust derleyicisi değişti"}
                 trustedTool("/usr/bin/python3.12 -I -S /workspace/runtime/rust-vendor.py verify /workspace/source --cache /workspace/crate-cache --output /workspace/vendor")
                 OfflineBuildPackManager.verifyProtectedTools(stage!!.root,protected)
                 require(AndroidRuntimeTrust.ready(stage!!.root)){"Rust hazırlığı runtime güven yapılandırmasını değiştirdi."}
                 // This is intentionally not a runtime-generation commit: source scripts cannot alter active tools/cache.
-                phase(ModulePhase.VERIFYING,"Rust WASM ve kaynak kimliği doğrulanıyor; runtime stage etkinleştirilmeyecek.")
+                phase(ModulePhase.VERIFYING,"Rust hedef çıktısı ve kaynak kimliği doğrulanıyor; runtime stage etkinleştirilmeyecek.")
                 RustPreparedProjects(storeRoot).publish(draft,workspace,plan.fingerprint){currentJob.isActive && control.request==DownloadControl.Request.NONE && !networkSeen.get() && connectivity.allNetworks.isEmpty()}
-                phase(ModulePhase.PREPARING,"WASM özel kopyada hazır. Kopyayı kullanmak için ayrıca seçin; Android WebView kabulü yapılmadı.")
+                phase(ModulePhase.PREPARING,"Rust çıktısı özel kopyada doğrulandı. Kopyayı ayrıca seçin; Android fiziksel çalışma kabulü yapılmadı.")
             }catch(e:CancellationException){phase(ModulePhase.PAUSED,"Rust hazırlığı durdu; yarım çıktı hazır kabul edilmez.");throw e}
             catch(e:Exception){phase(ModulePhase.ERROR,"Rust hazırlığı engellendi: "+(e.message?:"bilinmeyen hata"))}
             finally{if(registered)runCatching{connectivity.unregisterNetworkCallback(callback)};withContext(NonCancellable){try{stage?.close()}finally{permit?.close();busy.value=false;DownloadNetwork.restorePreference()}}}

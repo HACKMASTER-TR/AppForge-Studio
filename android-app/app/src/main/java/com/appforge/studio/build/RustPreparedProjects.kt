@@ -29,8 +29,8 @@ internal class RustPreparedProjects(private val directory:File) {
         require(directory.isDirectory)
         val receipt=File(directory,"artifacts.json");safe(receipt)
         require(receipt.isFile && receipt.length() in 1..16384){"Önceki Rust çıktısı sahipliği doğrulanamadı; özgün dosyalar korunur"}
-        val j=JSONObject(receipt.readText());require(j.getInt("schema") in 1..2 && j.getString("target")=="wasm32-unknown-unknown")
-        val name=j.getString("file");require(name.matches(Regex("""[A-Za-z0-9_-]+\.wasm""")))
+        val j=JSONObject(receipt.readText());require(j.getInt("schema") in 1..2 && j.getString("target") in setOf("wasm32-unknown-unknown","aarch64-linux-android"))
+        val name=j.getString("file");require(if(j.getString("target")=="aarch64-linux-android")name.matches(Regex("""lib[A-Za-z][A-Za-z0-9_]{0,63}\.so"""))else name.matches(Regex("""[A-Za-z0-9_-]+\.wasm""")))
         val artifact=File(directory,name);safe(artifact)
         require(directory.listFiles()!!.map{it.name}.toSet()==setOf("artifacts.json",name)){"Rust çıktı klasöründe yabancı dosya var; kopyada bile silinmedi"}
         require(artifact.isFile && RustProjectPolicy.digest(artifact)==j.getString("sha256")){"Eski Rust çıktısı bozuk; otomatik yenileme reddedildi"}

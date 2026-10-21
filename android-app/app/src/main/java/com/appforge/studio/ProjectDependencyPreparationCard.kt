@@ -14,7 +14,7 @@ import kotlinx.coroutines.*
     val context=LocalContext.current;val scope=rememberCoroutineScope()
     val preparing by ProjectDependencyPreparation.busy.collectAsState()
     var preparedNodeRust by remember(draft){mutableStateOf(false)}
-    LaunchedEffect(draft,preparing){preparedNodeRust=withContext(Dispatchers.IO){RustProjectPolicy.canPrepareNodeDependencies(draft)}}
+    LaunchedEffect(draft,preparing){preparedNodeRust=withContext(Dispatchers.IO){RustProjectPolicy.canPrepareEngineDependencies(draft)}}
     if(RustProjectPolicy.sourceRoot(draft)!=null && !preparedNodeRust){RustProjectPreparationCard(draft,onPrepared);return}
     var plan by remember(draft){mutableStateOf<ProjectDependencyPlan?>(null)}
     var info by remember{mutableStateOf("")};var ready by remember{mutableStateOf(false)}
@@ -67,17 +67,17 @@ OutlinedButton(enabled=!ProjectDependencyPreparation.stopPending.value,onClick={
     fun begin(offline:Boolean){runCatching{ProjectDependencyPreparation.start(context,draft,true,offline,rustOnly=true)}.onFailure{DownloadNetwork.restorePreference();detail=it.message?:"Rust hazırlığı başlamadı"}}
     if(mobileConsent)AlertDialog(onDismissRequest={mobileConsent=false},title={Text("Bu işlem için ağ kullanım onayı")},text={Text("Mobil/ölçümlü bağlantı ve VPN dahil etkin doğrulanmış ağ, yalnız bu işlem için kullanılabilir. Kalan toplam boyut bilinmiyor. Sonraki işlemlerin izni değişmez.")},confirmButton={TextButton(enabled=!busy,onClick={mobileConsent=false;runCatching{DownloadNetwork.allowMobileOnce();begin(false)}.onFailure{DownloadNetwork.restorePreference();detail=it.message?:"Ağ onayı alınamadı"}}){Text("Yalnız bu işleme izin ver")}},dismissButton={TextButton(onClick={mobileConsent=false}){Text("Reddet • Wi-Fi bekle")}})
     if(confirm!=null)AlertDialog(onDismissRequest={confirm=null},title={Text(if(confirm==true)"Rust kaynak kodunu çalıştırma onayı" else "Kilitli Cargo bağımlılıklarını indirme onayı")},text={Column {
-        Text(if(confirm==true)"Cargo build.rs/proc macro kodu çalışabilir. Proot güvenlik sandbox'ı değildir. Yalnız güvendiğiniz kaynağı onaylayın. Bütün ağları kapatın; eksik Cargo cache'inde güvenle durur. Özgün proje yerine ayrı özel kopya hazırlanır." else "Cargo.lock içindeki crates.io arşivleri sabit SHA-256 ile yönetilen indiriciden alınacak. Ağ tercihiniz korunur. Proje kodu bu aşamada çalıştırılmaz. Toplam boyut bilinmiyor; her aktarım gerçek baytlarla izlenir.")
+        Text(if(confirm==true)"Cargo build.rs/proc macro kodu çalışabilir. Proot güvenlik sandbox'ı değildir. Yalnız güvendiğiniz kaynağı onaylayın. Bütün ağları kapatın; eksik Cargo cache'inde güvenle durur. Özgün proje yerine ayrı özel kopya hazırlanır." else "Cargo.lock içindeki crates.io arşivleri ve gerekiyorsa pinli Rust Android hedefi sabit SHA-256 ile yönetilen indiriciden alınacak. Ağ tercihiniz korunur. Proje kodu bu aşamada çalıştırılmaz. Toplam boyut bilinmiyor; her aktarım gerçek baytlarla izlenir.")
         Row{Checkbox(trusted,{trusted=it});Text("Bu kaynak için bu çalıştırmayı açıkça onaylıyorum")}
     }},confirmButton={TextButton(enabled=trusted && !busy,onClick={val offline=confirm!!;confirm=null;if(!offline && DownloadNetwork.policy==DownloadNetworkPolicy.WIFI_PREFERRED && !DownloadNetwork.allowed())mobileConsent=true else begin(offline);trusted=false}){Text("Bu işlemi onayla")}},dismissButton={TextButton(onClick={confirm=null;trusted=false}){Text("Vazgeç")}})
     Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text("Rust projesini hazırla",style=MaterialTheme.typography.titleMedium)
-        Text("Hedef: wasm32-unknown-unknown • Cargo.lock ve doğrulanmış Rust modülü gerekir. Android JNI/PyO3/JSI bu akışta desteklenmez.")
-        if(!moduleReady)Text("Önce Rust + Cargo modülünü kurun. Android SDK/JDK/Gradle gerekmez.")
-        OutlinedButton(enabled=!busy && moduleReady && draft.sourceBuildEngine in setOf("webview-static","node-web"),onClick={trusted=false;confirm=false}){Text("Kilitli Cargo bağımlılıklarını indirmeyi onayla")}
-        Button(enabled=!busy && moduleReady && draft.sourceBuildEngine in setOf("webview-static","node-web"),onClick={trusted=false;confirm=true}){Text("Ağlar kapalıyken Rust WASM hazırla")}
+        Text("Hedef: "+(if(draft.sourceBuildEngine=="android-gradle")"aarch64-linux-android • NDK linker ayrıca gerekir" else "wasm32-unknown-unknown")+" • Cargo.lock ve doğrulanmış Rust modülü gerekir. Android Gradle için açık JNI bildirimiyle ARM64/API26 hedefi kullanılır; PyO3/JSI desteklenmez.")
+        if(!moduleReady)Text("Önce Rust + Cargo modülünü kurun. WASM için SDK/JDK/Gradle gerekmez; Android JNI için doğrulanmış NDK/Android araçları ayrıca gerekir.")
+        OutlinedButton(enabled=!busy && moduleReady && draft.sourceBuildEngine in setOf("webview-static","node-web","android-gradle"),onClick={trusted=false;confirm=false}){Text("Kilitli Cargo bağımlılıklarını indirmeyi onayla")}
+        Button(enabled=!busy && moduleReady && draft.sourceBuildEngine in setOf("webview-static","node-web","android-gradle"),onClick={trusted=false;confirm=true}){Text("Ağlar kapalıyken Rust hedefini hazırla")}
         if(prepared!=null) {
-            Text("Özel kopyada WASM ve kaynak hash'leri doğrulandı. Uygulamada çalışma kabulü ayrıdır.")
+            Text("Özel kopyada Rust çıktısı ve kaynak hash'leri doğrulandı. Uygulamada çalışma kabulü ayrıdır.")
             OutlinedButton(enabled=!busy && onPrepared!=null,onClick={scope.launch {
                 val checked=withContext(Dispatchers.IO){store().restore(draft)}
                 if(checked==null){prepared=null;detail="Kaynak/çıktı değişti; hazırlanmış kopya seçilmedi."}else onPrepared?.invoke(checked)

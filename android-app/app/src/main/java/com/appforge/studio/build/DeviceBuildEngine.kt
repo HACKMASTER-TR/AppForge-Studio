@@ -1789,6 +1789,7 @@ object DeviceBuildEngine {
         require(File(project, "settings.gradle").isFile || File(project, "settings.gradle.kts").isFile) {
             "Android Gradle settings.gradle(.kts) bulunamadı."
         }
+        RustProjectPolicy.stageAndroidJni(draft,project)
         DeviceProjectIcon.install(context, draft, project)
         writeSdkFiles(project)
         val gradleVersion = detectGradleVersion(project)
@@ -2406,6 +2407,7 @@ object DeviceBuildEngine {
             File(context.filesDir, "device-build/artifacts"), state.id, project, sources,
             checkCancelled = { check(!state.cancelled.get()) { "Derleme iptal edildi." } },
             verify = { kind, file ->
+                RustProjectPolicy.verifyAndroidJniPackage(draft,kind,file)
                 if (kind == "apk") {
                     val result = com.android.apksig.ApkVerifier.Builder(file).build().verify()
                     require(result.isVerified && result.signerCertificates.isNotEmpty()) { "APK signature invalid." }
@@ -2415,7 +2417,13 @@ object DeviceBuildEngine {
                     }) { "APK signer identity mismatch." }
                     val info = context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
                     require(info?.packageName == draft.packageName) { "APK package identity mismatch." }
+                    if(RustProjectPolicy.sourceRoot(draft)!=null && draft.sourceBuildEngine=="android-gradle")require((info?.applicationInfo?.minSdkVersion?:0)>=26){"Rust JNI APK manifest minSdk26 gerektirir"}
                 } else {
+                    if(RustProjectPolicy.sourceRoot(draft)!=null && draft.sourceBuildEngine=="android-gradle")java.util.zip.ZipFile(file).use{zip->
+                        val entry=requireNotNull(zip.getEntry("base/manifest/AndroidManifest.xml"));require(entry.size in 1..1_048_576)
+                        val bytes=java.io.ByteArrayOutputStream().also{out->zip.getInputStream(entry).use{input->val buffer=ByteArray(8192);var total=0;while(true){val n=input.read(buffer);if(n<0)break;total+=n;require(total<=1_048_576);out.write(buffer,0,n)}}}.toByteArray()
+                        require(FastHtmlAabProtoManifest.minimumSdkVersion(bytes)>=26){"Rust JNI AAB manifest minSdk26 gerektirir"}
+                    }
                     // JAR verification reads every payload; mere META-INF presence is insufficient.
                     java.util.jar.JarFile(file, true).use { jar ->
                         val entries = jar.entries().asSequence().filter { !it.isDirectory && !it.name.startsWith("META-INF/") }.toList()
