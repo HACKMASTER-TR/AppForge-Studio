@@ -83,7 +83,7 @@ Blockers / references: B05 and V3 are divergent; their integration has not been 
 
 Next action: Review evidence record in isolation and plan guarded integration only after explicit authorization.
 
-## rust-all-engines-20261021 — Rust module, WASM and explicit target-specific native adapters
+## rust-all-engines-20261021 — Rust workspaces, pinned Git, native NDK and authored TurboModule backends
 
 Scope: PARTIAL pending protected platform gates and physical acceptance. Managed WASM/JNI plus PyO3, authored Expo/JSI, Windows EXE/DLL and explicit Universal target orchestration implemented. Exact final local test evidence is external; no old PASS inherited.
 
@@ -92,7 +92,7 @@ Lifecycle: **ACTIVE**
 - Branch: `feat/rust-all-engines-20261021`
 - Base branch: `fix/v7-a01-a05-20261020`
 - Base exact SHA: `b56bf0a56de91e60beb862e10c8632f1e4f10ff3`
-- Manifest-recorded source SHA: `ce5d66812b3e8ddc92dd00efd7194db9f21da07e`
+- Manifest-recorded source SHA: `6a56e80802bbbabfa898b3ced2942c0f126f38cf`
 - Parent workstream: none recorded
 
 | Evidence stage | State | Binding / reference or reason |

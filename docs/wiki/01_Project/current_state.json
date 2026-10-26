@@ -597,13 +597,13 @@
     },
     {
       "id": "rust-all-engines-20261021",
-      "title": "Rust module, WASM and explicit target-specific native adapters",
+      "title": "Rust workspaces, pinned Git, native NDK and authored TurboModule backends",
       "scope": "PARTIAL pending protected platform gates and physical acceptance. Managed WASM/JNI plus PyO3, authored Expo/JSI, Windows EXE/DLL and explicit Universal target orchestration implemented. Exact final local test evidence is external; no old PASS inherited.",
       "lifecycle": "ACTIVE",
       "branch": "feat/rust-all-engines-20261021",
       "baseBranch": "fix/v7-a01-a05-20261020",
       "baseSha": "b56bf0a56de91e60beb862e10c8632f1e4f10ff3",
-      "sourceSha": "ce5d66812b3e8ddc92dd00efd7194db9f21da07e",
+      "sourceSha": "6a56e80802bbbabfa898b3ced2942c0f126f38cf",
       "stages": {
         "implementation": {
           "state": "UNKNOWN",
