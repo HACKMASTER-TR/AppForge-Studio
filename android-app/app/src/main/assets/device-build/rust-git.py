@@ -89,6 +89,13 @@ def validate_tree(tree,allowed):
             for child in value:inspect(child)
     for manifest in layout['packages'].values():inspect(manifest)
 
+def merge_locked_revision(destination,repo,commit,env):
+    if not re.fullmatch('[a-f0-9]{40}',commit):raise ValueError('Unpinned merge revision')
+    # Cargo fetches heads/tags from the private rewritten origin. Use a private
+    # namespaced head so every locked object is reachable, without changing any
+    # upstream branch/tag or writing to the original source repository.
+    subprocess.run(['git','--git-dir='+str(destination),'fetch','--no-tags',str(repo),commit+':refs/heads/appforge-locked/'+commit],env=env,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=120)
+
 def prepare(root,cache,destination,registry_builder,prefix,consent):
     if not consent:raise ValueError('Git metadata preparation requires explicit offline source-metadata consent')
     if destination.exists() or destination.is_symlink():raise ValueError('Fresh Git vendor destination required')
@@ -144,7 +151,7 @@ def prepare(root,cache,destination,registry_builder,prefix,consent):
             url=source(p['source'])[0]
             if url in repositories:
                 # Multiple locked revisions must share one private object store.
-                subprocess.run(['git','--git-dir='+str(repositories[url]),'fetch','--no-tags',str(repo),commit+':refs/appforge/'+commit],env=env,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=120)
+                merge_locked_revision(repositories[url],repo,commit,env)
             else:
                 repositories[url]=repo;mappings.append((url,repo))
         registry=tmp/'registry';registry_builder(root,cache,registry)
@@ -155,6 +162,7 @@ def prepare(root,cache,destination,registry_builder,prefix,consent):
         # Git can fetch only verified local object stores; registry bytes are
         # preverified directory sources. Android caller additionally requires
         # every network absent throughout this separately consented phase.
-        subprocess.run(args,cwd=home,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,check=True,timeout=300)
+        result=subprocess.run(args,cwd=home,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=300)
+        if result.returncode:raise ValueError('Cargo Git metadata preparation failed: '+result.stderr.decode('utf-8','replace')[-4096:])
         if before!=sha(root/'Cargo.lock'):raise ValueError('Cargo.lock changed during Git normalization')
     return dict(schema=1,state='GIT_VENDOR_VERIFIED_NOT_OFFLINE_BUILD_READY')

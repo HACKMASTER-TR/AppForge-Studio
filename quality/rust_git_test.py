@@ -30,4 +30,14 @@ class GitPolicyTests(unittest.TestCase):
   target=self.root/'real';target.write_bytes(b'fixture');(self.root/'dependency.bundle').symlink_to(target);self.pin.pop('url');self.pin['path']='dependency.bundle';self.save();self.assertRaises(ValueError,S['pins'],self.root,self.lock)
  def test_export_ignore_cannot_hide_unsafe_manifest(self):
   tree=self.root/'tree';tree.mkdir();(tree/'Cargo.toml').write_text('[package]\nname="bad"\nversion="0.1.0"\n[dependencies]\nevil={git="https://unreviewed.invalid/repo"}\n');(tree/'.gitattributes').write_text('Cargo.toml export-ignore\n');self.assertRaises(ValueError,S['validate_tree'],tree,set())
+ def test_merged_locked_revision_is_reachable_to_cargo_fetch_heads(self):
+  import subprocess
+  original=self.root/'original';original.mkdir()
+  def git(*args):return subprocess.check_output(['git',*args],cwd=original,stderr=subprocess.DEVNULL,text=True).strip()
+  git('init','-q');f=original/'source';f.write_text('first');git('add','.');git('-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-qm','first')
+  private=self.root/'private.git';git('clone','--bare',str(original),str(private))
+  f.write_text('second');git('add','.');git('-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-qm','second');commit=git('rev-parse','HEAD')
+  S['merge_locked_revision'](private,original,commit,S['environment'](self.root/'home',[]))
+  heads=git('ls-remote','--heads',str(private));self.assertIn(commit+'\trefs/heads/appforge-locked/'+commit,heads)
+  self.assertNotIn('refs/heads/appforge-locked/',git('show-ref'))
 if __name__=='__main__':unittest.main()
