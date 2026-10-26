@@ -22,7 +22,10 @@ internal object VerifiedModuleDownload {
         require(maxRetries in 0..5)
         DownloadNetwork.prepareJournal()
         val requestPolicy=DownloadNetwork.policy
-        val key=target.canonicalPath
+        // Normalize only the verified Android system alias, not arbitrary links.
+        val nativeTarget=RecoveryPathAnchor.androidPlatformPath(target)
+        RecoveryPathAnchor.check(nativeTarget)
+        val key=nativeTarget.canonicalPath
         DownloadCoordinator.claim(key)
         val identity=MessageDigest.getInstance("SHA-256").digest(url.toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
         val report:(ModuleProgress)->Unit={ event ->
@@ -31,15 +34,15 @@ internal object VerifiedModuleDownload {
             progress(event)
         }
         try {
-            var attempt=DownloadCoordinator.bind(operation,expected,target)
+            var attempt=DownloadCoordinator.bind(operation,expected,nativeTarget)
             require(attempt<=maxRetries){"Kalıcı yeniden deneme sınırı doldu; otomatik devam engellendi."}
             report(ModuleProgress(module,operation,ModulePhase.CONNECTING,detail="Sabit kaynaklı dosya kaydı kuyruğa alındı; henüz aktarım tamamlanmadı."))
             while(true) {
                 try {
-                    DownloadNetwork.withPolicy(requestPolicy){transfer(url,expected,target,module,operation,canceled,clock,{address->DownloadNetwork.check(requestPolicy);open(address)},report,availableBytes,maxBytes,requestPolicy)}
+                    DownloadNetwork.withPolicy(requestPolicy){transfer(url,expected,nativeTarget,module,operation,canceled,clock,{address->DownloadNetwork.check(requestPolicy);open(address)},report,availableBytes,maxBytes,requestPolicy)}
                     val last=DownloadCoordinator.snapshot(operation).lastOrNull{it.artifactId==expected && it.sourceIdentity==identity}
                     DownloadCoordinator.observe(DownloadCoordinator.Transfer(expected,expected,identity,
-                        last?.progress?.copy(phase=ModulePhase.PREPARING,bytesDownloaded=target.length(),bytesTotal=target.length())?:ModuleProgress(module,operation,ModulePhase.PREPARING,bytesDownloaded=target.length(),bytesTotal=target.length()),
+                        last?.progress?.copy(phase=ModulePhase.PREPARING,bytesDownloaded=nativeTarget.length(),bytesTotal=nativeTarget.length())?:ModuleProgress(module,operation,ModulePhase.PREPARING,bytesDownloaded=nativeTarget.length(),bytesTotal=nativeTarget.length()),
                         DownloadCoordinator.ResumeCapability.VERIFIED_HTTP_RANGE,verificationStatus="SHA256_VERIFIED"))
                     return
                 }
@@ -62,7 +65,7 @@ internal object VerifiedModuleDownload {
         } catch(e:Exception) {
             val phase=if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else if(e is java.util.concurrent.CancellationException)ModulePhase.PAUSED else ModulePhase.ERROR
             DownloadCoordinator.observe(DownloadCoordinator.Transfer(expected,expected,identity,
-                ModuleProgress(module,operation,phase,bytesDownloaded=File(target.path+".part").takeIf{it.isFile}?.length()?:0,bytesTotal=DownloadCoordinator.snapshot(operation).lastOrNull{it.artifactId==expected}?.progress?.bytesTotal,errorCode=e.javaClass.simpleName),DownloadCoordinator.ResumeCapability.VERIFIED_HTTP_RANGE))
+                ModuleProgress(module,operation,phase,bytesDownloaded=File(nativeTarget.path+".part").takeIf{it.isFile}?.length()?:0,bytesTotal=DownloadCoordinator.snapshot(operation).lastOrNull{it.artifactId==expected}?.progress?.bytesTotal,errorCode=e.javaClass.simpleName),DownloadCoordinator.ResumeCapability.VERIFIED_HTTP_RANGE))
             throw e
         } finally {DownloadCoordinator.release(key)}
     }

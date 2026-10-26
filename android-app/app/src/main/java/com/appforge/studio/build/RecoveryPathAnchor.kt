@@ -9,11 +9,15 @@ import java.nio.file.Files
 internal object RecoveryPathAnchor {
     /** Only Android's system-owned legacy app-data alias is recognized. Never
      * canonicalize arbitrary workspace links: those remain rejected by check(). */
-    fun androidPlatformPath(file:File):File {
+    fun androidPlatformPath(file:File):File =
+        knownPlatformAlias(file,File("/data/data"),File("/data/user/0"))
+
+    /** Narrow known-system-alias normalization. Arbitrary symlinks remain rejected. */
+    internal fun knownPlatformAlias(file:File,legacyRoot:File,userZeroRoot:File):File {
         val path=file.absoluteFile.toPath()
         require(path.normalize()==path) { "Recovery yolu normalize edilmemiş" }
-        val legacy=File("/data/data").toPath()
-        val userZero=File("/data/user/0").toPath()
+        val legacy=legacyRoot.absoluteFile.toPath()
+        val userZero=userZeroRoot.absoluteFile.toPath()
         for((alias,expected) in listOf(legacy to userZero,userZero to legacy)) {
             if(!path.startsWith(alias) || !Files.isSymbolicLink(alias))continue
             val resolved=alias.parent.resolve(Files.readSymbolicLink(alias)).normalize()

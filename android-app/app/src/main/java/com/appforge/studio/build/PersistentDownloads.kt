@@ -27,9 +27,12 @@ internal class PersistentDownloads(private val directory:File,private val roots:
         while(current!=null){require(!Files.isSymbolicLink(current.toPath())){"İndirme kaydı/staging symlink olamaz."};current=current.parentFile}
     }
     fun staging(target:File):String {
-        safe(target)
-        val entry=roots.entries.firstOrNull{target.absoluteFile.toPath().startsWith(it.value.absoluteFile.toPath())}?:error("Özel staging kökü dışında hedef")
-        val rel=entry.value.absoluteFile.toPath().relativize(target.absoluteFile.toPath()).toString()
+        // The journal roots were normalized by DownloadNetwork.prepareJournal.
+        // The target must use the same narrowly trusted Android path namespace.
+        val safeTarget=RecoveryPathAnchor.androidPlatformPath(target)
+        safe(safeTarget)
+        val entry=roots.entries.firstOrNull{safeTarget.absoluteFile.toPath().startsWith(it.value.absoluteFile.toPath())}?:error("Özel staging kökü dışında hedef")
+        val rel=entry.value.absoluteFile.toPath().relativize(safeTarget.absoluteFile.toPath()).toString()
         require(rel.isNotEmpty() && rel.split('/').none{it==".." || it=="." || it.isEmpty()})
         return entry.key+":"+rel
     }
