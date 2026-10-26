@@ -1,0 +1,8 @@
+[package]
+name="git_consumer"
+version="0.1.0"
+edition="2021"
+[lib]
+crate-type=["cdylib"]
+[dependencies]
+locked_git_answer={git="https://example.invalid/locked-git-answer",rev="e0e758f611e6b7bfedfc95a0b613aa29847ce505"}

@@ -8,11 +8,11 @@ def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def input_files(root):
     ignored={'target','node_modules','.git','.gradle','.expo','.next','appforge-rust'}
     files=[];size=0
-    if not (root/'src').is_dir():raise ValueError('Rust src directory missing')
+    if not (root/'src').is_dir() and not isinstance(tomllib.loads((root/'Cargo.toml').read_text()).get('workspace'),dict):raise ValueError('Rust src directory missing')
     def scan_error(error):raise error
     for current,dirs,names in os.walk(root,followlinks=False,onerror=scan_error):
         current=pathlib.Path(current)
-        dirs[:]=[name for name in dirs if name!='.git' and not (current==root and name in ignored)]
+        dirs[:]=[name for name in dirs if name!='.git' and not ((current==root or (current/'Cargo.toml').is_file()) and name in ignored)]
         for name in dirs:
             if (current/name).is_symlink():raise ValueError('Rust source symlink rejected')
         for name in names:
@@ -40,24 +40,30 @@ def validate(root):
     if root.is_symlink() or root.resolve()!=root:raise ValueError('Untrusted Rust project path')
     input_files(root)
     if any((root/name).stat().st_size>2*1024*1024 for name in ['Cargo.toml','Cargo.lock']):raise ValueError('Rust manifest/lock limit')
-    manifest=tomllib.loads((root/'Cargo.toml').read_text());lock=tomllib.loads((root/'Cargo.lock').read_text())
-    if not isinstance(manifest.get('package'),dict) or 'workspace' in manifest or manifest['package'].get('workspace'):
-        raise ValueError('Cargo workspaces require a separate reviewed dependency resolver')
-    def reject_external(value):
-        if isinstance(value,dict):
-            if any(k in value for k in ['path','git','workspace']):raise ValueError('Cargo path/git/workspace dependency requires separate source binding')
-            for child in value.values():reject_external(child)
-        elif isinstance(value,list):
-            for child in value:reject_external(child)
-    for section in ['dependencies','dev-dependencies','build-dependencies','target','patch','replace']:
-        reject_external(manifest.get(section,{}))
-    if manifest.get('lib',{}).get('path','src/lib.rs')!='src/lib.rs' or manifest['package'].get('build','build.rs') not in ('build.rs',False):
-        raise ValueError('Custom Rust source/build path requires separate source binding')
+    namespace={'__name__':'appforge_rust_layout','__file__':str(pathlib.Path(__file__).with_name('rust-layout.py'))}
+    script=pathlib.Path(namespace['__file__']);exec(compile(script.read_bytes(),str(script),'exec'),namespace)
+    layout=namespace['resolve'](root);manifest=layout['manifest'];lock=tomllib.loads((root/'Cargo.lock').read_text())
+    local={(m['package']['name'],m['package']['version']) for m in layout['packages'].values()}
+    for package in lock.get('package',[]):
+        if not package.get('source') and (package.get('name'),package.get('version')) not in local:raise ValueError('Unbound local Cargo package')
     if lock.get('version') not in (3,4):raise ValueError('Unsupported Cargo.lock')
+    git_scope={'__name__':'trusted_git','__file__':str(pathlib.Path(__file__).with_name('rust-git.py'))}
+    exec(compile(pathlib.Path(git_scope['__file__']).read_bytes(),git_scope['__file__'],'exec'),git_scope)
+    git_pins=git_scope['pins'](root,lock);git_sources={p['source'] for p in git_pins}
+    allowed={git_scope['source'](p['source'])[0] for p in git_pins}
+    for m in layout['packages'].values():
+        def check_git(v):
+            if isinstance(v,dict):
+                if 'git' in v and v['git'] not in allowed:raise ValueError('Unpinned Git dependency')
+                for child in v.values():check_git(child)
+            elif isinstance(v,list):
+                for child in v:check_git(child)
+        for section in ('dependencies','build-dependencies','dev-dependencies','target'):check_git(m.get(section,{}))
     for package in lock.get('package',[]):
         source=package.get('source','')
+        if source in git_sources:continue
         if source and (source!='registry+https://github.com/rust-lang/crates.io-index' or len(package.get('checksum',''))!=64 or any(c not in '0123456789abcdef' for c in package.get('checksum',''))):
-            raise ValueError('Only checksum-locked crates.io registry dependencies supported')
+            raise ValueError('Only checksum-locked crates.io or explicit pinned Git bundles supported')
     return manifest
 
 def build(root,target,prefix,source_consent=False,linker=None,vendor=None):
@@ -68,12 +74,18 @@ def build(root,target,prefix,source_consent=False,linker=None,vendor=None):
     if (root/'target').is_symlink() or (root/'target').resolve()!=root/'target':raise ValueError('Unsafe Cargo target directory')
     env=dict(os.environ,PATH=str(prefix/'bin')+os.pathsep+os.environ.get('PATH',''),CARGO_NET_OFFLINE='true',CARGO_TARGET_DIR=str(root/'target'))
     if linker:env['CARGO_TARGET_'+target.upper().replace('-','_')+'_LINKER']=linker
+    layout_scope={'__name__':'appforge_rust_layout','__file__':str(pathlib.Path(__file__).with_name('rust-layout.py'))}
+    exec(compile(pathlib.Path(layout_scope['__file__']).read_bytes(),layout_scope['__file__'],'exec'),layout_scope)
+    selected=layout_scope['resolve'](root)
     before=digest(root/'Cargo.lock');before_inputs=source_digest(root)
-    args=[str(prefix/'bin/cargo'),'build','--frozen','--offline','--release','--target',target,'--message-format=json']
+    args=[str(prefix/'bin/cargo'),'build','--frozen','--offline','--release','--target',target,'--message-format=json','--package',selected['manifest']['package']['name']]
     # Source execution is authorized, NOT claimed sandboxed. Caller supplies reviewed disposable copy.
     if vendor is not None:
         if vendor.is_symlink() or not vendor.is_dir():raise ValueError('Invalid Cargo vendor directory')
         args.extend(['--config','source.crates-io.replace-with="appforge-vendor"','--config','source.appforge-vendor.directory='+json.dumps(str(vendor))])
+    git_scope={'__name__':'trusted_git','__file__':str(pathlib.Path(__file__).with_name('rust-git.py'))}
+    exec(compile(pathlib.Path(git_scope['__file__']).read_bytes(),git_scope['__file__'],'exec'),git_scope)
+    args.extend(git_scope['config'](root,vendor))
     p=subprocess.run(args,cwd=root,env=env,text=True,stdout=subprocess.PIPE)
     if p.returncode:
         # Cargo JSON diagnostics are on stdout; do not discard the actual failure
@@ -92,7 +104,7 @@ def build(root,target,prefix,source_consent=False,linker=None,vendor=None):
         if event.get('reason')!='compiler-artifact':continue
         # Cross builds also emit host proc-macro shared libraries. Only artifacts
         # of the reviewed root manifest can be application outputs.
-        if pathlib.Path(event.get('manifest_path','')).absolute()!=root/'Cargo.toml':continue
+        if pathlib.Path(event.get('manifest_path','')).absolute()!=selected['directory']/'Cargo.toml':continue
         for value in event.get('filenames',[]):
             f=pathlib.Path(value);f=f if f.is_absolute() else root/f
             if f.suffix not in ('.wasm','.so','.exe','.dll'):continue
