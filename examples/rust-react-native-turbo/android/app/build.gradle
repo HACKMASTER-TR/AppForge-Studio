@@ -80,6 +80,7 @@ android {
     namespace "com.example.rustnative"
     defaultConfig {
         applicationId "com.example.rustnative"
+        manifestPlaceholders = [usesCleartextTraffic: "false"]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

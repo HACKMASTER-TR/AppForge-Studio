@@ -156,5 +156,6 @@ test('Standalone RN consumes authored native project and explicit TurboModule re
  const provider=read('examples/rust-react-native-turbo/native/OnLoad.cpp');
  assert.match(provider,/NativeAppForgeRust/);
  assert.match(read('examples/rust-react-native-turbo/android/gradle.properties'),/^newArchEnabled=true$/m);
+ assert.match(read('examples/rust-react-native-turbo/android/app/build.gradle'),/usesCleartextTraffic: "false"/);
  assert.match(read('android-app/app/src/main/java/com/appforge/studio/build/ProjectDependencyEvidence.kt'),/"android-ndk","react-native","universal-cross-platform"/);
 });
