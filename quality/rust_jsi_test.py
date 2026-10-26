@@ -32,4 +32,6 @@ class RustTurboTests(unittest.TestCase):
   shutil.rmtree(self.root);shutil.copytree(ROOT/'examples/rust-react-native-turbo',self.root);self.assertEqual(scope['config'](self.root)['expoSdk'],0);self.assertNotIn('expo',json.loads((self.root/'package.json').read_text())['dependencies'])
  def test_standalone_architecture_flag_cannot_be_ambiguous(self):
   shutil.rmtree(self.root);shutil.copytree(ROOT/'examples/rust-react-native-turbo',self.root);p=self.root/'android/gradle.properties';p.write_text(p.read_text()+'\nnewArchEnabled=false\n');self.assertRaises(ValueError,scope['config'],self.root)
+ def test_standalone_rejects_unprepared_abis_before_build(self):
+  shutil.rmtree(self.root);shutil.copytree(ROOT/'examples/rust-react-native-turbo',self.root);p=self.root/'android/gradle.properties';p.write_text(p.read_text().replace('reactNativeArchitectures=arm64-v8a','reactNativeArchitectures=arm64-v8a,armeabi-v7a'));self.assertRaisesRegex(ValueError,'exactly arm64-v8a',scope['config'],self.root)
 if __name__=='__main__':unittest.main()

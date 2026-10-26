@@ -41,4 +41,15 @@ class RustNativeModuleTest {
    assertEquals("RUST_ANDROID_NDK",File(root,ndk).readText());assertEquals("preserve",File(root,"user-project.txt").readText())
   }finally{base.deleteRecursively()}
  }
+ @Test fun standaloneBindingRejectsUnpreparedAbiBeforeSourceExecution() {
+  val root=Files.createTempDirectory("rust-bare-abi").toFile()
+  try {
+   File(root,"appforge-rust-jsi.json").writeText("""{"schema":2,"library":"appforge_jsi","bridgeLibrary":"appmodules","reactNative":"0.81","expoSdk":0,"minApi":26,"architecture":"turbomodule"}""")
+   File(root,"package.json").writeText("""{"dependencies":{"react-native":"0.81.5"}}""")
+   val props=File(root,"android/gradle.properties");props.parentFile!!.mkdirs();props.writeText("newArchEnabled=true\nreactNativeArchitectures=arm64-v8a\n")
+   assertTrue(RustProjectPolicy.reactNativeBinding(root).turbo)
+   props.appendText("reactNativeArchitectures=armeabi-v7a\n")
+   assertTrue(runCatching{RustProjectPolicy.reactNativeBinding(root)}.isFailure)
+  }finally{root.deleteRecursively()}
+ }
 }

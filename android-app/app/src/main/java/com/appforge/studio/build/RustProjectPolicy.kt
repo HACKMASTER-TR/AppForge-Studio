@@ -146,6 +146,8 @@ internal object RustProjectPolicy {
                 val props=File(root,"android/gradle.properties");RecoveryPathAnchor.check(props);require(props.isFile && props.length() in 1..65536)
                 val flags=Regex("""(?m)^newArchEnabled\s*=\s*(true|false)\s*$""").findAll(props.readText()).map{it.groupValues[1]}.toList()
                 require(flags==listOf(turbo.toString()))
+                val abis=Regex("""(?m)^reactNativeArchitectures\s*=\s*([^\r\n]*)$""").findAll(props.readText()).map{it.groupValues[1].trim()}.toList()
+                require(abis==listOf("arm64-v8a")){"Standalone Rust yalnız arm64-v8a için hazır; başka ABI hedefi/linker hazırlanmadı"}
             }
         }
         return ReactNativeBinding(turbo,bridge,sdk)

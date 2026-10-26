@@ -39,6 +39,8 @@ def config(root):
         if prop.is_symlink() or not prop.is_file() or prop.stat().st_size>65536:raise ValueError('Authored standalone React Native Android project required')
         flags=re.findall(r'^newArchEnabled\s*=\s*(true|false)\s*$',prop.read_text(),re.M)
         if flags!=['true' if turbo else 'false']:raise ValueError('Standalone architecture flag must match Rust binding')
+        abis=re.findall(r'^reactNativeArchitectures\s*=\s*([^\r\n]*)$',prop.read_text(),re.M)
+        if [v.strip() for v in abis]!=['arm64-v8a']:raise ValueError('Standalone Rust requires exactly arm64-v8a; other Rust target/linker payloads are not prepared')
     return j
 
 def prepare(root,prefix,linker,vendor,export):
