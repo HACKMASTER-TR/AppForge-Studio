@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Rust JSI",
+    "slug": "appforge-rust-jsi",
+    "version": "1.0.0",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.example.rustjsi"
+    },
+    "plugins": [
+      "./withRustTurbo.cjs"
+    ]
+  }
+}

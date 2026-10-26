@@ -51,9 +51,9 @@ internal object ProjectDependencyEvidence {
                 }
             }
         }
-        val nativeGradle=engine in setOf("android-gradle","android-ndk","universal-cross-platform")
+        val nativeGradle=engine in setOf("android-gradle","android-ndk","react-native","universal-cross-platform")
         if(nativeGradle) {
-            val roots=if(engine=="universal-cross-platform")manifests.filter{it.name in setOf("settings.gradle","settings.gradle.kts")}.map{it.parentFile}.distinct() else listOf(root)
+            val roots=if(engine=="universal-cross-platform")manifests.filter{it.name in setOf("settings.gradle","settings.gradle.kts")}.map{it.parentFile}.distinct() else if(engine=="react-native")listOf(File(root,"android"))else listOf(root)
             if(roots.isEmpty())blockers.add("Gradle settings kökü bulunamadı.")
             for(project in roots) {
                 val verification=File(project,"gradle/verification-metadata.xml")

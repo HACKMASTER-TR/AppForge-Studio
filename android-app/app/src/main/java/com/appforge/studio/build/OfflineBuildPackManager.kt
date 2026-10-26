@@ -233,7 +233,7 @@ internal object OfflineBuildPackManager {
             progress(ModuleProgress(OfflineModuleId.FAST_HTML,operation,ModulePhase.READY,detail="Gömülü şablonlar doğrulandı; indirme veya SDK yok."))
             return@withLock
         }
-        if(pending.any{it==OfflineModuleId.ANDROID_CORE || it==OfflineModuleId.EXPO_REACT_NATIVE})
+        if(pending.any{it==OfflineModuleId.ANDROID_CORE || it==OfflineModuleId.EXPO_REACT_NATIVE || it==OfflineModuleId.RUST_ANDROID_NDK})
             require(sdkConsent){"Yalnız Android SDK gerektiren modüller için SDK lisansı onayı gerekir."}
         require(hasValidatedInternet(app)){"Kurulum için doğrulanmış internet bağlantısı gerekiyor; mevcut modüller korunur."}
         val minimum=selected.mapNotNull{OfflineModules.spec(it).diskBytes}.sum()
@@ -345,6 +345,7 @@ internal object OfflineBuildPackManager {
                         OfflineModuleId.NODE_WEB -> listOf("install-node-module.sh")
                         OfflineModuleId.PYTHON_ANDROID -> listOf("install-toolchain.sh python-android","prepare-offline-pack.sh python")
                         OfflineModuleId.EXPO_REACT_NATIVE -> listOf("install-toolchain.sh expo")
+                        OfflineModuleId.RUST_ANDROID_NDK -> listOf("install-toolchain.sh rust-native")
                         OfflineModuleId.WINDOWS_NATIVE -> listOf("install-windows-native-toolchain.sh")
                         else -> error("Bilinmeyen modül")
                     }
@@ -352,7 +353,7 @@ internal object OfflineBuildPackManager {
                         DownloadNetwork.requireExternalConsent()
                         control.checkpoint()
                         execute(shell,staged,workspace,id.name.lowercase(),
-                        "APPFORGE_MODULE_REFRESH=${if(OfflineModules.refreshExistingInstallation(id,installedVersion(app,id)!=null))1 else 0} APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_CORE_PREPARED=${if(id in setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE))1 else 0} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 ${if(id==OfflineModuleId.RUST && command.startsWith("install-rust-module.py"))"/usr/bin/python3.12 -I -S" else "/bin/sh"} /workspace/runtime/$command",id,operation,progress,control)
+                        "APPFORGE_MODULE_REFRESH=${if(OfflineModules.refreshExistingInstallation(id,installedVersion(app,id)!=null))1 else 0} APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_CORE_PREPARED=${if(id in setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE,OfflineModuleId.RUST_ANDROID_NDK))1 else 0} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 ${if(id==OfflineModuleId.RUST && command.startsWith("install-rust-module.py"))"/usr/bin/python3.12 -I -S" else "/bin/sh"} /workspace/runtime/$command",id,operation,progress,control)
                     }
                     control.checkpoint()
                     phase(id,ModulePhase.OFFLINE_TEST,"Gerçek dosya/sürüm ve çevrimdışı araç kontrolü yapılıyor.")
@@ -362,6 +363,7 @@ internal object OfflineBuildPackManager {
                         OfflineModuleId.NODE_WEB -> "/opt/appforge-device/node-22.23.3/bin/node --version && /opt/appforge-device/node-22.23.3/bin/node /opt/appforge-device/node-22.23.3/lib/node_modules/npm/bin/npm-cli.js cache verify"
                         OfflineModuleId.PYTHON_ANDROID -> "/usr/bin/python3.12 -c 'import sys; assert sys.version_info[:2] == (3,12)' && APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/prepare-offline-pack.sh python"
                         OfflineModuleId.EXPO_REACT_NATIVE -> "APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/install-toolchain.sh expo"
+                        OfflineModuleId.RUST_ANDROID_NDK -> "APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/install-toolchain.sh rust-native"
                         OfflineModuleId.WINDOWS_NATIVE -> "APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/install-windows-native-toolchain.sh"
                         else -> error("Geçersiz modül")
                     }
@@ -395,6 +397,7 @@ internal object OfflineBuildPackManager {
     }
 
     private fun runtimeProbe(id:OfflineModuleId):String=when(id) {
+        OfflineModuleId.RUST_ANDROID_NDK->"/opt/appforge-device/android-sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --version && /opt/appforge-device/android-sdk/cmake/3.22.1/bin/cmake --version"
         OfflineModuleId.RUST->"/opt/appforge-device/rust-1.85.1/bin/rustc --version && /opt/appforge-device/rust-1.85.1/bin/cargo --version"
         OfflineModuleId.ANDROID_CORE->"/opt/appforge-device/jdk-17/bin/java -version && /opt/appforge-device/android-sdk/build-tools/36.0.0/aapt2 version && JAVA_HOME=/opt/appforge-device/jdk-17 /opt/appforge-device/gradle-9.3.1/bin/gradle --offline --version"
         OfflineModuleId.NODE_WEB->"/opt/appforge-device/node-22.23.3/bin/node --version"
@@ -405,8 +408,9 @@ internal object OfflineBuildPackManager {
     }
 
     private val witnesses=mapOf(
+        OfflineModuleId.RUST_ANDROID_NDK to listOf("opt/appforge-device/android-sdk/ndk/27.1.12297006/source.properties","opt/appforge-device/android-sdk/cmake/3.22.1/bin/cmake","opt/appforge-device/.rust-android-ndk-ready"),
         OfflineModuleId.ANDROID_CORE to listOf("opt/appforge-device/android-sdk/platforms/android-37.0/android.jar","opt/appforge-device/android-sdk/build-tools/36.0.0/aapt2","opt/appforge-device/jdk-17/bin/java","opt/appforge-device/jdk-17/bin/javac","opt/appforge-device/gradle-9.3.1/lib/gradle-launcher-9.3.1.jar"),
-        OfflineModuleId.RUST to listOf("usr/bin/python3.12","opt/appforge-device/rust-1.85.1/bin/rustc","opt/appforge-device/rust-1.85.1/bin/cargo","opt/appforge-device/rust-1.85.1/.offline-probe.json"),
+        OfflineModuleId.RUST to listOf("usr/bin/git","usr/bin/python3.12","opt/appforge-device/rust-1.85.1/bin/rustc","opt/appforge-device/rust-1.85.1/bin/cargo","opt/appforge-device/rust-1.85.1/.offline-probe.json"),
         OfflineModuleId.NODE_WEB to listOf("opt/appforge-device/node-22.23.3/bin/node","opt/appforge-device/node-22.23.3/lib/node_modules/npm/bin/npm-cli.js"),
         OfflineModuleId.PYTHON_ANDROID to listOf("usr/bin/python3.12"),
         OfflineModuleId.EXPO_REACT_NATIVE to listOf("opt/appforge-device/expo-sdk-36/platforms/android-36/android.jar","opt/appforge-device/node-22.23.3/bin/node","opt/appforge-device/android-sdk/cmake/3.22.1/bin/cmake","opt/appforge-device/android-sdk/ndk/27.1.12297006/source.properties"),
@@ -418,6 +422,7 @@ internal object OfflineBuildPackManager {
     }
     private fun recipeDigest(context:Context,id:OfflineModuleId):String {
         val names=when(id) {
+            OfflineModuleId.RUST_ANDROID_NDK->listOf("install-toolchain.sh","rust-android.py","rust-layout.py","rust-project.py")
             OfflineModuleId.RUST->listOf("install-rust-module.py","install-rust-prerequisites.sh","rust-toolchain-v1.json")
             OfflineModuleId.NODE_WEB->listOf("install-node-module.sh")
             OfflineModuleId.WINDOWS_NATIVE->listOf("install-windows-native-toolchain.sh")
@@ -438,7 +443,7 @@ internal object OfflineBuildPackManager {
         val root=runtimeRootfs(context)?:return@runCatching false
         val f=receipt(root,id);require(f.isFile && f.length()<=16384 && !java.nio.file.Files.isSymbolicLink(f.toPath()))
         val j=org.json.JSONObject(f.readText())
-        j.optString("version")!=OfflineModules.spec(id).version || j.optString("recipe")!=recipeDigest(context,id)
+        j.optString("version")!=OfflineModules.spec(id).version || !ModuleRecipeCompatibility.accepts(id,j.optString("recipe"),recipeDigest(context,id))
     }.getOrDefault(false)
     private fun receipt(root:File,id:OfflineModuleId)=File(root,"opt/appforge-device/modules-v3/${id.name}.json")
     private fun writeAttestation(context:Context,root:File,id:OfflineModuleId) {
@@ -453,8 +458,8 @@ internal object OfflineBuildPackManager {
     private fun recordMatches(context:Context,root:File,id:OfflineModuleId):Boolean = runCatching {
         val record=receipt(root,id);require(record.isFile && record.length()<=16384 && !java.nio.file.Files.isSymbolicLink(record.toPath()))
         val json=org.json.JSONObject(record.readText());val files=json.getJSONObject("files")
-        json.getInt("revision")==3 && json.optString("recipe")==recipeDigest(context,id) && json.getString("version")==OfflineModules.spec(id).version && files.length()==witnesses.getValue(id).size &&
-            witnesses.getValue(id).all{path->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==files.optString(path)} && ModuleOwnershipStore(root).verifyNamespace(id) && AptModuleLocks.inspect(root,id).let{it.transactions>0 || id !in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST)}
+        json.getInt("revision")==3 && ModuleRecipeCompatibility.accepts(id,json.optString("recipe"),recipeDigest(context,id)) && json.getString("version")==OfflineModules.spec(id).version && files.length()==witnesses.getValue(id).size &&
+            witnesses.getValue(id).all{path->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==files.optString(path)} && ModuleOwnershipStore(root).verifyNamespace(id) && AptModuleLocks.inspect(root,id).let{it.transactions>0 || id !in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST,OfflineModuleId.RUST_ANDROID_NDK)}
     }.getOrDefault(false)
     fun recoverPending(context:Context) {
         if(File(context.noBackupFilesDir,"offline-build-pack/.portable-lifecycle.json").exists())

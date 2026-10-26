@@ -69,7 +69,7 @@ internal object RustProjectPolicy {
         draft.importedFolder?.let(::File)?.takeIf { File(it,"Cargo.toml").isFile } else null
     fun canPrepareNodeDependencies(draft:ProjectDraft):Boolean = sourceRoot(draft)!=null && draft.sourceBuildEngine=="node-web" &&
         runCatching{requirePackageable(draft);true}.getOrDefault(false)
-    fun canPrepareEngineDependencies(draft:ProjectDraft):Boolean = hasRust(draft) && draft.sourceBuildEngine in setOf("node-web","android-gradle","python-android","expo","react-native","universal-cross-platform") &&
+    fun canPrepareEngineDependencies(draft:ProjectDraft):Boolean = hasRust(draft) && draft.sourceBuildEngine in setOf("node-web","android-gradle","android-ndk","python-android","expo","react-native","universal-cross-platform") &&
         runCatching{requirePackageable(draft);true}.getOrDefault(false)
     fun digest(file:File):String=MessageDigest.getInstance("SHA-256").run {
         file.inputStream().use { input -> val bytes=ByteArray(65536);while(true){val n=input.read(bytes);if(n<0)break;update(bytes,0,n)} }
@@ -78,7 +78,7 @@ internal object RustProjectPolicy {
     fun sourceDigest(root:File):String {
         val files=mutableListOf<File>();var bytes=0L
         val ignored=setOf("target","node_modules",".git",".gradle",".expo",".next","appforge-rust")
-        require(File(root,"src").isDirectory || !File(root,"Cargo.toml").exists() && File(root,"appforge.universal.json").isFile){"Rust src dizini eksik"}
+        require(File(root,"src").isDirectory || File(root,"appforge-rust-project.json").isFile || !File(root,"Cargo.toml").exists() && File(root,"appforge.universal.json").isFile){"Rust src dizini eksik"}
         root.walkTopDown().onFail{_,error->throw error}.onEnter { directory ->
             val include=directory==root || directory.name!=".git" && !((directory.parentFile==root || File(directory.parentFile,"Cargo.toml").isFile) && directory.name in ignored)
             if(include)require(!Files.isSymbolicLink(directory.toPath())){"Rust kaynak symlink içeremez"}
@@ -124,17 +124,44 @@ internal object RustProjectPolicy {
         requireExportDirectory(wasm)
         // Receipt is source/artifact consistency only. Runtime JS bindings and device acceptance are separate.
     }
+    data class ReactNativeBinding(val turbo:Boolean,val bridge:String,val expoSdk:Int)
+    fun reactNativeBinding(root:File):ReactNativeBinding {
+        val file=File(root,"appforge-rust-jsi.json");RecoveryPathAnchor.check(file);require(file.isFile && file.length() in 1..4096)
+        val c=JSONObject(file.readText());val schema=c.getInt("schema")
+        require(schema in 1..2 && c.getString("library")=="appforge_jsi" && c.getString("reactNative")=="0.81" && c.getInt("minApi")==26)
+        val architecture=if(schema==1)"legacy"else c.getString("architecture")
+        require(architecture in setOf("legacy","turbomodule"))
+        val turbo=architecture=="turbomodule";val bridge=if(turbo)"appmodules"else "appforge_rust_jsi"
+        require(c.getString("bridgeLibrary")==bridge)
+        val sdk=c.getInt("expoSdk");require(sdk in setOf(0,54) && (schema!=1 || sdk==54))
+        if(schema==2) {
+            val packageFile=File(root,"package.json");RecoveryPathAnchor.check(packageFile);require(packageFile.isFile && packageFile.length() in 1..1024L*1024)
+            val deps=JSONObject(packageFile.readText()).getJSONObject("dependencies")
+            require(deps.getString("react-native").matches(Regex("""0\.81\.[0-9]+""")))
+            if(sdk==54) {
+                require(deps.getString("expo").matches(Regex("""54\.[0-9]+\.[0-9]+""")))
+                val app=File(root,"app.json");RecoveryPathAnchor.check(app);require(app.isFile && app.length() in 1..1024L*1024)
+                require(JSONObject(app.readText()).getJSONObject("expo").getBoolean("newArchEnabled")==turbo)
+            }else {
+                val props=File(root,"android/gradle.properties");RecoveryPathAnchor.check(props);require(props.isFile && props.length() in 1..65536)
+                val flags=Regex("""(?m)^newArchEnabled\s*=\s*(true|false)\s*$""").findAll(props.readText()).map{it.groupValues[1]}.toList()
+                require(flags==listOf(turbo.toString()))
+            }
+        }
+        return ReactNativeBinding(turbo,bridge,sdk)
+    }
     fun requireReactNativeJsi(draft:ProjectDraft):File {
         require(draft.minSdk>=26 && DeviceBuildCapabilities.requestedOutputs(draft.buildOutput).all{it in setOf(DeviceArtifactKind.APK,DeviceArtifactKind.AAB)})
         val root=requireNotNull(sourceRoot(draft));val config=File(root,"appforge-rust-jsi.json");RecoveryPathAnchor.check(config)
         require(config.isFile && config.length() in 1..4096)
-        val c=JSONObject(config.readText())
-        require(c.getInt("schema")==1 && c.getString("library")=="appforge_jsi" && c.getString("bridgeLibrary")=="appforge_rust_jsi" && c.getString("reactNative")=="0.81" && c.getInt("expoSdk")==54 && c.getInt("minApi")==26)
-        for(name in listOf("RustJsi.cpp","RustJsiModule.java","RustJsiPackage.java","CMakeLists.txt")) {
+        val binding=reactNativeBinding(root)
+        require(draft.sourceBuildEngine!="expo" || binding.expoSdk==54)
+        val names=if(binding.turbo)listOf("RustTurboModule.cpp","RustTurboModule.h","OnLoad.cpp","CMakeLists.txt")else listOf("RustJsi.cpp","RustJsiModule.java","RustJsiPackage.java","CMakeLists.txt")
+        for(name in names) {
             val file=File(root,"native/$name");RecoveryPathAnchor.check(file);require(file.isFile && file.length() in 1..128L*1024){"Kaynak tarafından açıkça yazılmış JSI köprüsü eksik"}
         }
         val receipt=File(root,"appforge-rust/artifacts.json");RecoveryPathAnchor.check(receipt);require(receipt.isFile && receipt.length() in 1..16384)
-        val j=JSONObject(receipt.readText());require(j.getInt("schema")==2 && j.getString("target")=="aarch64-linux-android" && j.getString("integration")=="react-native-jsi" && j.getInt("minApi")==26 && j.getString("file")=="libappforge_jsi.so" && j.getString("sourceSha256")==sourceDigest(root))
+        val j=JSONObject(receipt.readText());require(j.getInt("schema")==2 && j.getString("target")=="aarch64-linux-android" && j.getString("integration")== (if(binding.turbo)"react-native-turbomodule"else "react-native-jsi") && j.getInt("minApi")==26 && j.getString("file")=="libappforge_jsi.so" && j.getString("sourceSha256")==sourceDigest(root))
         val file=File(receipt.parentFile,"libappforge_jsi.so");RecoveryPathAnchor.check(file)
         require(digest(file)==j.getString("sha256") && "appforge_jsi_answer" in androidDynamicExports(file) && androidDynamicLibraries(file).first=="libappforge_jsi.so"){"Rust JSI kaynak/ELF/export/SHA-256 uyuşmuyor"}
         requireExportDirectory(file)
@@ -151,9 +178,9 @@ internal object RustProjectPolicy {
     }
     fun verifyJsiPackage(draft:ProjectDraft,kind:String,file:File) {
         if(sourceRoot(draft)==null || draft.sourceBuildEngine !in setOf("expo","react-native"))return
-        val source=requireReactNativeJsi(draft);val prefix=(if(kind=="aab")"base/" else "")+"lib/arm64-v8a/"
+        val source=requireReactNativeJsi(draft);val binding=reactNativeBinding(requireNotNull(sourceRoot(draft)));val prefix=(if(kind=="aab")"base/" else "")+"lib/arm64-v8a/"
         java.util.zip.ZipFile(file).use { zip ->
-            for(name in listOf(source.name,"libappforge_rust_jsi.so")) {
+            for(name in listOf(source.name,"lib${binding.bridge}.so")) {
                 val entries=zip.entries().asSequence().filter{it.name==prefix+name}.toList()
                 require(entries.size==1 && entries.single().size in 64..64L*1024*1024){"APK/AAB Rust/JSI bridge eksik veya çift"}
                 val parent=file.absoluteFile.parentFile;RecoveryPathAnchor.check(parent)
@@ -163,9 +190,9 @@ internal object RustProjectPolicy {
                     zip.getInputStream(entries.single()).use{input->temp.outputStream().use{output->val b=ByteArray(65536);var size=0L;while(true){val n=input.read(b);if(n<0)break;size+=n;require(size<=64L*1024*1024);output.write(b,0,n)};require(size==entries.single().size)}}
                     if(name==source.name)require(digest(temp)==digest(source))
                     else {
-                        require("Java_com_appforge_rustjsi_RustJsiModule_installNative" in androidJniExports(temp)){"Gerçek JNI→JSI kurulum export'u yok"}
+                        require((if(binding.turbo)"JNI_OnLoad"else "Java_com_appforge_rustjsi_RustJsiModule_installNative") in androidJniExports(temp)){"Gerçek JNI→JSI kurulum export'u yok"}
                         val dependencies=androidDynamicLibraries(temp).second
-                        require(dependencies.containsAll(setOf("libappforge_jsi.so","libjsi.so"))){"JSI köprüsü gerçek Rust/React Native kütüphanelerine bağlanmadı"}
+                        require(dependencies.containsAll(if(binding.turbo)setOf("libappforge_jsi.so","libreactnative.so")else setOf("libappforge_jsi.so","libjsi.so"))){"JSI köprüsü gerçek Rust/React Native kütüphanelerine bağlanmadı"}
                     }
                 }finally{Files.deleteIfExists(temp.toPath())}
             }

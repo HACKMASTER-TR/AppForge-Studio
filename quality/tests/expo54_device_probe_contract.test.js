@@ -803,7 +803,7 @@ test(
 );
 
 test(
-  "Expo 54 probe disables native architecture risks before Gradle",
+  "Expo 54 defaults to legacy architecture and keeps Hermes runtime without host AOT",
   () => {
     assert.match(
       expo,
@@ -822,13 +822,16 @@ test(
 
     assert.match(
       expo,
-      /hermesEnabled[\s\S]{0,100}false/
+      /set_prop_native\s*\\\n\s*hermesEnabled\s*\\\n\s*true/
     );
 
     assert.match(
       expo,
       /reactNativeArchitectures[\s\S]{0,100}arm64-v8a/
     );
+    assert.match(expo, /rust-react-native.py.*--check-project/);
+    assert.match(expo, /APPFORGE_RUST_TURBO:-0/);
+    assert.match(expo, /APPFORGE_EXPO_HERMES_HOST_AOT=SKIPPED/);
   }
 );
 
@@ -905,7 +908,7 @@ test(
 
     assert.match(
       expo,
-      /newArchEnabled=false/
+      /APPFORGE_RUST_NEW_ARCH=false/
     );
 
     assert.match(

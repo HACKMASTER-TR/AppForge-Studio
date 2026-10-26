@@ -13,6 +13,7 @@ internal class ModuleOwnershipStore(private val root:File) {
             OfflineModuleId.RUST->listOf("opt/appforge-device/rust-1.85.1/","usr/bin/python3","usr/lib/python3.12/","usr/lib/python3/dist-packages/")
             OfflineModuleId.NODE_WEB->listOf("opt/appforge-device/node-22.23.3/")
             OfflineModuleId.ANDROID_CORE->listOf("opt/appforge-device/android-sdk/platforms/android-37.0/","opt/appforge-device/android-sdk/build-tools/36.0.0/","opt/appforge-device/android-sdk/cmdline-tools/","opt/appforge-device/jdk-17/","opt/appforge-device/gradle-9.3.1/","opt/appforge-device/gradle-8.14.3/")
+            OfflineModuleId.RUST_ANDROID_NDK->listOf("opt/appforge-device/android-sdk/ndk/27.1.12297006/","opt/appforge-device/android-sdk/cmake/3.22.1/","opt/appforge-device/.rust-android-ndk-ready","usr/lib/llvm-18/")
             OfflineModuleId.EXPO_REACT_NATIVE->listOf("opt/appforge-device/android-sdk/ndk/27.1.12297006/","opt/appforge-device/android-sdk/cmake/3.22.1/","opt/appforge-device/android-sdk/platforms/android-36/","usr/lib/llvm-18/")
             OfflineModuleId.PYTHON_ANDROID->listOf("usr/lib/python3.12/","usr/lib/python3/dist-packages/")
             OfflineModuleId.WINDOWS_NATIVE->listOf("usr/x86_64-w64-mingw32/","usr/lib/gcc/x86_64-w64-mingw32/","usr/bin/x86_64-w64-mingw32-")
@@ -211,8 +212,9 @@ internal class ModuleOwnershipStore(private val root:File) {
             require(privatePath || alias){"Ortak APT/rootfs dosyası bağımsız kaldırılamaz: $key"}
             for(other in path(root,control).listFiles().orEmpty().filter{it.extension=="json" && it.name!=id.name+".json"}) {
                 require(!Files.isSymbolicLink(other.toPath()) && other.length()<=16L*1024*1024)
-                val claims=JSONObject(other.readText()).getJSONObject("changes")
-                require(!claims.has(key)){"Başka modül aynı dosyayı kullanıyor: $key"}
+                val otherRecord=JSONObject(other.readText());val claims=otherRecord.getJSONObject("changes")
+                val otherId=OfflineModuleId.valueOf(otherRecord.getString("module"))
+                require(!namespace(otherId,key) && !claims.has(key)){"Başka modül aynı dosyayı kullanıyor: $key"}
             }
         }
         null

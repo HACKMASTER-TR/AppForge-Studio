@@ -11,8 +11,10 @@ JAVA_HOME="$ROOT/jdk-17"
 NODE_VERSION="22.23.3"
 NODE_HOME="$ROOT/node-$NODE_VERSION"
 ENGINE="${1:-webview-static}"
+if [ "$ENGINE" = rust-native ];then READY="$ROOT/.rust-android-ndk-ready";fi
 if [ -z "${APPFORGE_MODULE_ID:-}" ];then
  if [ "$ENGINE" = python-android ];then APPFORGE_MODULE_ID=PYTHON_ANDROID
+ elif [ "$ENGINE" = rust-native ];then APPFORGE_MODULE_ID=RUST_ANDROID_NDK
  elif [ "$ENGINE" = expo ];then APPFORGE_MODULE_ID=EXPO_REACT_NATIVE
  else APPFORGE_MODULE_ID=ANDROID_CORE;fi
  export APPFORGE_MODULE_ID
@@ -116,6 +118,11 @@ if [ -f "$READY" ] \
    && [ -x "$ROOT/gradle-9.3.1/bin/gradle" ] \
    && [ -x "$JAVA_HOME/bin/java" ] \
    && [ -x "$JAVA_HOME/bin/javac" ] \
+   && { [ "$ENGINE" != rust-native ] || {
+        [ -f "$SDK/ndk/27.1.12297006/source.properties" ] &&
+        [ -x "$SDK/cmake/3.22.1/bin/cmake" ] &&
+        /usr/bin/python3.12 -I -S /workspace/runtime/rust-android.py --probe-linker --sdk "$SDK";
+      }; } \
    && { [ "$ENGINE" != "node-web" ] || {
         command -v node >/dev/null 2>&1 &&
         command -v npm >/dev/null 2>&1;
@@ -280,7 +287,7 @@ apt-get install -y --no-install-recommends \
   fontconfig libfreetype6
 fi
 
-if [ "$ENGINE" = "expo" ]; then
+if [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ]; then
   case "$HOST_ARCH" in
     aarch64|arm64)
       apt-get install -y --no-install-recommends \
@@ -462,7 +469,7 @@ ensure_gradle() {
 # while delegating execution to verified ARM64 Ubuntu CMake and Ninja.
 #
 ensure_expo_arm64_cmake_host() {
-  [ "$ENGINE" = "expo" ] || return 0
+  { [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ]; } || return 0
 
   case "$HOST_ARCH" in
     aarch64|arm64)
@@ -541,7 +548,7 @@ EOF
 # before AppForge has installed the ARM64 compatibility wrappers.
 #
 ensure_expo_arm64_ndk_host() {
-  [ "$ENGINE" = "expo" ] || return 0
+  { [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ]; } || return 0
 
   case "$HOST_ARCH" in
     aarch64|arm64)
@@ -936,7 +943,7 @@ ensure_android_commandline_tools() {
 
 # Official x86_64 host payloads. ARM64 continues to use its verified Ubuntu host adapters.
 ensure_expo_x64_host() {
-  [ "$ENGINE" = expo ] || return 0
+  { [ "$ENGINE" = expo ] || [ "$ENGINE" = rust-native ]; } || return 0
   case "$HOST_ARCH" in x86_64|amd64) ;; *) return 0 ;; esac
   ndk_zip="$ROOT/cache/android-ndk-r27b-linux.zip"
   download_sha256 "https://dl.google.com/android/repository/android-ndk-r27b-linux.zip" "33e16af1a6bbabe12cad54b2117085c07eab7e4fa67cdd831805f0e94fd826c1" "$ndk_zip"
@@ -962,7 +969,7 @@ ensure_expo_x64_host() {
 # stable android-36 plus the already verified toolchain components.
 #
 ensure_expo_sdk36_view() {
-  [ "$ENGINE" = "expo" ] || return 0
+  { [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ]; } || return 0
 
   EXPO_SDK="$ROOT/expo-sdk-36"
   EXPO_SDK_STAGE="$ROOT/expo-sdk-36-stage-$$"
@@ -1183,7 +1190,7 @@ EOF
 fi
 
 if [ "$REUSE_ANDROID_CORE" = 1 ]; then
-  case "$ENGINE" in python-android|expo) ;; *) echo 'Core reuse is only valid for child modules'; exit 55;;esac
+  case "$ENGINE" in python-android|expo|rust-native) ;; *) echo 'Core reuse is only valid for child modules'; exit 55;;esac
   test -x "$JAVA_HOME/bin/java" && test -x "$JAVA_HOME/bin/javac"
   test -x "$ROOT/gradle-9.3.1/bin/gradle" && test -x "$ROOT/gradle-8.14.3/bin/gradle"
   test -s "$SDK/platforms/android-37.0/android.jar"
@@ -1310,6 +1317,8 @@ fi
 
 if [ "$ENGINE" = "expo" ]; then
   ensure_node_22
+fi
+if [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ];then
   ensure_expo_arm64_cmake_host
 fi
 
@@ -1318,9 +1327,11 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 accept_android_sdk_license
 
-if [ "$ENGINE" = "expo" ]; then
+if [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ];then
   ensure_expo_arm64_ndk_host
   ensure_expo_x64_host
+fi
+if [ "$ENGINE" = "expo" ];then
   ensure_expo_sdk36_view
 fi
 
@@ -1428,6 +1439,9 @@ case "$ENGINE" in
     ;;
 esac
 
+if [ "$ENGINE" = rust-native ];then
+ /usr/bin/python3.12 -I -S /workspace/runtime/rust-android.py --probe-linker --sdk "$SDK"
+fi
 touch "$READY"
 rm -rf "$ROOT/platform-unpack" "$ROOT/buildtools-official" "$ROOT/buildtools-arm64"
 echo "APPFORGE_DEVICE_TOOLCHAIN_READY"

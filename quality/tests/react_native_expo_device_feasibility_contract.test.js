@@ -30,7 +30,11 @@ test("Expo uses normal READY gate and standalone React Native stays blocked", ()
   assert.doesNotMatch(engine, /BuildConfig\.DEBUG[\s\S]{0,220}sourceEngine == "expo"/);
   assert.match(engine, /sourceEngine == "expo"[\s\S]{0,220}draft\.sourceBuildReady/);
   assert.match(engine, /"expo"\s*->\s*buildExpoProject/);
-  assert.doesNotMatch(engine, /"react-native"\s*->/);
+  // A guarded backend now exists; the public capability gate is still empty.
+  assert.match(engine, /"react-native"\s*->\s*buildReactNativeRustProject/);
+  assert.match(engine, /require\(RustProjectPolicy.sourceRoot\(draft\)!=null\)/);
+  const caps = capabilities;
+  assert.match(caps, /"react-native"[\s\S]{0,260}readyOutputs\s*=\s*emptySet\(\)/);
 });
 
 test("Unified Agent keeps canonical Expo engine naming", () => {

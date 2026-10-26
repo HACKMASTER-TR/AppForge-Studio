@@ -126,3 +126,35 @@ test('Expo Rust requires authored registration, reviewed runtime family and expl
  assert.match(policy,/androidDynamicLibraries\(file\).first=="libappforge_jsi.so"/);
  assert.match(policy,/libappforge_jsi.so","libjsi.so/);
 });
+
+test('Cargo workspace resolver binds members, inherited fields and reviewed local paths',()=>{
+ const r=spawnSync('python3',['-B','quality/rust_workspace_test.py'],{cwd:base,encoding:'utf8'});
+ assert.equal(r.status,0,r.stdout+r.stderr);
+ const prep=read('android-app/app/src/main/java/com/appforge/studio/build/ProjectDependencyPreparation.kt');
+ assert.match(prep,/"rust-layout.py"/);
+});
+test('Git bundles require pinned objects, consent and file-only Git transport',()=>{
+ const r=spawnSync('python3',['-B','quality/rust_git_test.py'],{cwd:base,encoding:'utf8'});
+ assert.equal(r.status,0,r.stdout+r.stderr);
+ const prep=read('android-app/app/src/main/java/com/appforge/studio/build/ProjectDependencyPreparation.kt');
+ assert.match(prep,/gitMetadata && !offlineVerification/);
+ assert.match(prep,/--offline-metadata-consent/);
+});
+
+test('Rust native module probes its real linker without Node or Expo installation',()=>{
+ const script=read('android-app/app/src/main/assets/device-build/install-toolchain.sh');
+ assert.match(script,/ENGINE.*rust-native/);assert.match(script,/rust-android.py --probe-linker --sdk/);
+ const module=read('android-app/app/src/main/java/com/appforge/studio/build/OfflineModulePlan.kt');
+ assert.match(module,/RUST_ANDROID_NDK.*setOf\(OfflineModuleId.ANDROID_CORE,OfflineModuleId.RUST\)/);
+ const manager=read('android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt');
+ assert.match(manager,/ModuleRecipeCompatibility.accepts/);
+ assert.match(manager,/ModuleOwnershipStore\(root\).verifyNamespace\(id\)/);
+});
+test('Standalone RN consumes authored native project and explicit TurboModule registration',()=>{
+ const script=read('android-app/app/src/main/assets/device-build/prepare-rn-rust.sh');
+ assert.match(script,/ci --offline/);assert.doesNotMatch(script,/expo\/bin\/cli/);
+ const provider=read('examples/rust-react-native-turbo/native/OnLoad.cpp');
+ assert.match(provider,/NativeAppForgeRust/);
+ assert.match(read('examples/rust-react-native-turbo/android/gradle.properties'),/^newArchEnabled=true$/m);
+ assert.match(read('android-app/app/src/main/java/com/appforge/studio/build/ProjectDependencyEvidence.kt'),/"android-ndk","react-native","universal-cross-platform"/);
+});

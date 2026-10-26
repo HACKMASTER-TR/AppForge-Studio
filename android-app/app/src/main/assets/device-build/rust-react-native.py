@@ -14,20 +14,35 @@ def config(root):
     p=root/'appforge-rust-jsi.json'
     if p.is_symlink() or not p.is_file() or p.stat().st_size>4096:raise ValueError('Explicit Rust JSI binding required')
     j=json.loads(p.read_text())
-    if j!={'schema':1,'library':'appforge_jsi','bridgeLibrary':'appforge_rust_jsi','reactNative':'0.81','expoSdk':54,'minApi':26}:raise ValueError('Only declared RN0.81 Expo54 ARM64/API26 JSI binding supported')
+    schema=j.get('schema');turbo=j.get('architecture')=='turbomodule' if schema==2 else False
+    expected={'schema':schema,'library':'appforge_jsi','bridgeLibrary':'appmodules' if turbo else 'appforge_rust_jsi','reactNative':'0.81','expoSdk':j.get('expoSdk'),'minApi':26}
+    if schema==2:expected['architecture']=j.get('architecture')
+    if schema not in (1,2) or j!=expected or j['expoSdk'] not in (0,54) or schema==1 and j['expoSdk']!=54 or schema==2 and j['architecture'] not in ('legacy','turbomodule'):raise ValueError('Explicit reviewed RN0.81 architecture binding required')
     trusted('rust-project.py')['validate'](root)
-    for name in ['RustJsi.cpp','RustJsiModule.java','RustJsiPackage.java','CMakeLists.txt']:
+    names=['RustTurboModule.cpp','RustTurboModule.h','OnLoad.cpp','CMakeLists.txt'] if turbo else ['RustJsi.cpp','RustJsiModule.java','RustJsiPackage.java','CMakeLists.txt']
+    for name in names:
         p=root/'native'/name
         if p.is_symlink() or not p.is_file() or not 1<=p.stat().st_size<=128*1024:raise ValueError('Authored native JSI bridge/registration missing')
-    package=json.loads((root/'package.json').read_text());deps=package.get('dependencies',{})
+    package_file=root/'package.json'
+    if not package_file.is_file() or package_file.stat().st_size>1024*1024:raise ValueError('Package manifest bound')
+    package=json.loads(package_file.read_text());deps=package.get('dependencies',{})
     import re
-    if not re.fullmatch(r'0\.81\.\d+',deps.get('react-native','')) or not re.fullmatch(r'54\.\d+\.\d+',deps.get('expo','')):raise ValueError('Exact reviewed React Native/Expo family required')
-    app=json.loads((root/'app.json').read_text()).get('expo',{})
-    if app.get('newArchEnabled') is not False:raise ValueError('Bridgeless JSI registration not implemented; explicit legacy bridge required')
+    if not re.fullmatch(r'0\.81\.\d+',deps.get('react-native','')):raise ValueError('Exact reviewed React Native family required')
+    if j['expoSdk']==54:
+        if not re.fullmatch(r'54\.\d+\.\d+',deps.get('expo','')):raise ValueError('Exact reviewed Expo family required')
+        app_file=root/'app.json'
+        if not app_file.is_file() or app_file.stat().st_size>1024*1024:raise ValueError('Expo app manifest bound')
+        app=json.loads(app_file.read_text()).get('expo',{})
+        if app.get('newArchEnabled') is not turbo:raise ValueError('Architecture flag must match explicit Rust binding')
+    else:
+        prop=root/'android/gradle.properties'
+        if prop.is_symlink() or not prop.is_file() or prop.stat().st_size>65536:raise ValueError('Authored standalone React Native Android project required')
+        flags=re.findall(r'^newArchEnabled\s*=\s*(true|false)\s*$',prop.read_text(),re.M)
+        if flags!=['true' if turbo else 'false']:raise ValueError('Standalone architecture flag must match Rust binding')
     return j
 
 def prepare(root,prefix,linker,vendor,export):
-    config(root);builder=trusted('rust-project.py');android=trusted('rust-android.py')
+    binding=config(root);builder=trusted('rust-project.py');android=trusted('rust-android.py')
     os.environ['RUSTFLAGS']='-C link-arg=-Wl,-z,max-page-size=16384 -C link-arg=-Wl,-z,common-page-size=16384 -C link-arg=-Wl,-soname,libappforge_jsi.so'
     result=builder['build'](root,'aarch64-linux-android',prefix,True,linker,vendor)
     if len(result['artifacts'])!=1 or pathlib.Path(result['artifacts'][0]['path']).name!='libappforge_jsi.so':raise ValueError('Exactly the declared Rust JSI payload required')
@@ -37,7 +52,7 @@ def prepare(root,prefix,linker,vendor,export):
         dest=root/'appforge-rust'
         if dest.exists() or dest.is_symlink():raise ValueError('Previous/foreign export preserved; fresh private copy required')
         dest.mkdir();shutil.copyfile(artifact,dest/artifact.name)
-        receipt=dict(schema=2,target='aarch64-linux-android',integration='react-native-jsi',minApi=26,sourceSha256=builder['source_digest'](root),file=artifact.name,sha256=builder['digest'](artifact))
+        receipt=dict(schema=2,target='aarch64-linux-android',integration=('react-native-turbomodule' if binding.get('architecture')=='turbomodule' else 'react-native-jsi'),minApi=26,sourceSha256=builder['source_digest'](root),file=artifact.name,sha256=builder['digest'](artifact))
         with (dest/'artifacts.json').open('w') as f:json.dump(receipt,f);f.flush();os.fsync(f.fileno())
     return result
 

@@ -2,12 +2,13 @@ package com.appforge.studio.build
 
 import com.appforge.studio.model.ProjectDraft
 
-internal enum class OfflineModuleId { FAST_HTML, LINUX_RUNTIME, ANDROID_CORE, NODE_WEB, PYTHON_ANDROID, EXPO_REACT_NATIVE, WINDOWS_PORTABLE, WINDOWS_NATIVE, RUST }
+internal enum class OfflineModuleId { FAST_HTML, LINUX_RUNTIME, ANDROID_CORE, NODE_WEB, PYTHON_ANDROID, EXPO_REACT_NATIVE, WINDOWS_PORTABLE, WINDOWS_NATIVE, RUST, RUST_ANDROID_NDK }
 internal data class OfflineModuleSpec(val id: OfflineModuleId,val title: String,val version: String,val dependencies:Set<OfflineModuleId>,val source: String,val downloadBytes:Long?=null,val diskBytes:Long?=null)
 internal data class OfflineModulePlan(val modules:List<OfflineModuleId>,val error:String?=null)
 internal object OfflineModules {
     val all=listOf(
-        OfflineModuleSpec(OfflineModuleId.RUST,"Rust + Cargo","1.85.1 • host/WASM std • dahili Python 3.12",setOf(OfflineModuleId.LINUX_RUNTIME),"static.rust-lang.org / SHA-256 + imzalı Ubuntu snapshot 20261018T000000Z"),
+        OfflineModuleSpec(OfflineModuleId.RUST_ANDROID_NDK,"Rust Android NDK + CMake","NDK 27.1.12297006 / CMake SDK-path 3.22.1 • ARM64 Ubuntu host",setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.RUST),"Google SHA-256 / signed Ubuntu snapshot; no Node or Expo runtime"),
+        OfflineModuleSpec(OfflineModuleId.RUST,"Rust + Cargo","1.85.1 • host/WASM std • dahili Python 3.12 / Git",setOf(OfflineModuleId.LINUX_RUNTIME),"static.rust-lang.org / SHA-256 + imzalı Ubuntu snapshot 20261018T000000Z"),
         OfflineModuleSpec(OfflineModuleId.FAST_HTML,"Fast HTML","CI APK/AAB 26/37",emptySet(),"Gömülü ve SHA-256 doğrulanan şablonlar",0,0),
         OfflineModuleSpec(OfflineModuleId.LINUX_RUNTIME,"Linux derleme ortamı","Device Build Runtime V3",emptySet(),"LinuxRuntimeManifestRegistry / doğrulanmış Ubuntu"),
         OfflineModuleSpec(OfflineModuleId.ANDROID_CORE,"Android SDK + JDK + Gradle","API 37.0 / Build Tools 36 / JDK 17.0.20.1 / Gradle 9.3.1 + 8.14.3",setOf(OfflineModuleId.LINUX_RUNTIME),"Google / Adoptium / services.gradle.org"),
@@ -31,10 +32,10 @@ internal object OfflineModules {
                 val modules=linkedSetOf(OfflineModuleId.RUST)
                 when(d.sourceBuildEngine) {
                     "windows-native"->modules.add(OfflineModuleId.WINDOWS_NATIVE)
-                    "android-gradle","android-ndk"->modules.add(OfflineModuleId.ANDROID_CORE)
-                    "python-android"->modules.add(OfflineModuleId.PYTHON_ANDROID)
+                    "android-gradle","android-ndk"->modules.add(OfflineModuleId.RUST_ANDROID_NDK)
+                    "python-android"->{modules.add(OfflineModuleId.PYTHON_ANDROID);modules.add(OfflineModuleId.RUST_ANDROID_NDK)}
                     "expo","react-native"->modules.add(OfflineModuleId.EXPO_REACT_NATIVE)
-                    "universal-cross-platform"->runCatching { val outputs=DeviceBuildCapabilities.requestedOutputs(d.buildOutput);if(outputs.any{it in setOf(DeviceArtifactKind.APK,DeviceArtifactKind.AAB)})modules.add(OfflineModuleId.ANDROID_CORE);if(DeviceArtifactKind.WINDOWS_EXE in outputs)modules.add(OfflineModuleId.WINDOWS_PORTABLE) }
+                    "universal-cross-platform"->runCatching { val outputs=DeviceBuildCapabilities.requestedOutputs(d.buildOutput);if(outputs.any{it in setOf(DeviceArtifactKind.APK,DeviceArtifactKind.AAB)}){modules.add(OfflineModuleId.ANDROID_CORE);if(RustProjectPolicy.preparationProjects(d).any{it.second.sourceBuildEngine in setOf("android-gradle","android-ndk","python-android")})modules.add(OfflineModuleId.RUST_ANDROID_NDK)};if(DeviceArtifactKind.WINDOWS_EXE in outputs)modules.add(OfflineModuleId.WINDOWS_PORTABLE) }
                 }
                 return OfflineModulePlan(resolve(modules),"Rust hazırlığı doğrulanmadı: "+(e.message?:"bozuk kayıt"))
             }
@@ -44,8 +45,10 @@ internal object OfflineModules {
         val outputs=runCatching{DeviceBuildCapabilities.requestedOutputs(d.buildOutput)}.getOrElse{return OfflineModulePlan(emptyList(),"Desteklenmeyen çıktı; kurulum gereksinimi değildir.")}
         if(FastHtmlApkPolicy.isCandidate(d))return OfflineModulePlan(listOf(OfflineModuleId.FAST_HTML))
         val wanted=linkedSetOf<OfflineModuleId>()
+        if(RustProjectPolicy.hasRust(d) && d.sourceBuildEngine in setOf("android-gradle","android-ndk","python-android"))wanted.add(OfflineModuleId.RUST_ANDROID_NDK)
         val android=outputs.any{it==DeviceArtifactKind.APK||it==DeviceArtifactKind.AAB}
         val engine=d.sourceBuildEngine.trim().lowercase().ifBlank{"webview-static"}
+        if(android && engine=="universal-cross-platform" && RustProjectPolicy.preparationProjects(d).any{it.second.sourceBuildEngine in setOf("android-gradle","android-ndk","python-android")})wanted.add(OfflineModuleId.RUST_ANDROID_NDK)
         if(android) {
             if(engine !in setOf("webview-static","node-web","android-gradle","python-android","expo","react-native","android-ndk","universal-cross-platform"))
                 return OfflineModulePlan(emptyList(),"Bu kaynak motoru desteklenmiyor; paket eksikliği değildir: $engine")

@@ -152,7 +152,7 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                 phase(ModulePhase.PREPARING,"Rust kaynağı ayrı özel kopyaya alınıyor; özgün kaynak korunur.")
                 ProjectDependencyEvidence.copyReviewedSource(draft,source)
                 val runtime=File(workspace,"runtime").apply{mkdir()}
-                val helpers=listOf("rust-project.py","rust-vendor.py","rust-android.py","rust-android-target-v1.json","rust-windows.py","rust-windows-target-v1.json","rust-python.py","rust-python-target-v1.json","rust-react-native.py","install-rust-module.py")
+                val helpers=listOf("rust-project.py","rust-layout.py","rust-git.py","rust-vendor.py","rust-android.py","rust-android-target-v1.json","rust-windows.py","rust-windows-target-v1.json","rust-python.py","rust-python-target-v1.json","rust-react-native.py","install-rust-module.py")
                 for(name in helpers){context.assets.open("device-build/$name").use{input->File(runtime,name).outputStream().use{input.copyTo(it)}}}
                 val root=OfflineBuildPackManager.runtimeRootfs(context)?:error("Rust runtime yok")
                 val protected=OfflineBuildPackManager.protectedTools(context)
@@ -190,14 +190,33 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                 for(index in 0 until crates.length()) {
                     control.checkpoint();currentCoroutineContext().ensureActive()
                     val item=crates.getJSONObject(index);val name=item.getString("name");val version=item.getString("version");val sha=item.getString("sha256")
-                    require(name.matches(Regex("[A-Za-z0-9_-]{1,64}")) && version.length<=100 && version.matches(Regex("""[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?""")) && sha.matches(Regex("[a-f0-9]{64}")))
-                    val url="https://static.crates.io/crates/$name/$name-$version.crate";require(item.getString("url")==url)
-                    val archive=File(cache,"$sha.crate")
+                    require(name.matches(Regex("[A-Za-z0-9_-]{1,64}")) && version.length<=100 && (if(item.optString("kind")=="git-bundle")version.matches(Regex("[a-f0-9]{40}"))else version.matches(Regex("""[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?"""))) && sha.matches(Regex("[a-f0-9]{64}")))
+                    val gitBundle=item.optString("kind")=="git-bundle"
+                    val localGit=gitBundle && item.has("localPath")
+                    val url=if(localGit)"" else if(gitBundle)item.getString("url")else "https://static.crates.io/crates/$name/$name-$version.crate"
+                    if(gitBundle && !localGit){val uri=java.net.URI(url);require(uri.scheme=="https" && !uri.host.isNullOrBlank() && uri.rawUserInfo==null && uri.rawQuery==null && uri.rawFragment==null && uri.port in setOf(-1,443));require(version.matches(Regex("[a-f0-9]{40}")))}
+                    if(!localGit)require(item.getString("url")==url)
+                    val extension=if(gitBundle)"bundle" else "crate"
+                    val archive=File(cache,"$sha.$extension")
+                    RecoveryPathAnchor.check(archive)
+                    if(localGit && !archive.exists()) {
+                        val path=item.getString("localPath");require(path.length<=512 && !path.startsWith('/') && !path.contains('\\') && path.split('/').none{it.isBlank() || it in setOf(".","..","target",".git","node_modules","appforge-rust")})
+                        val bundled=File(source,path);RecoveryPathAnchor.check(bundled)
+                        require(bundled.isFile && bundled.canonicalFile.toPath().startsWith(source.canonicalFile.toPath()) && bundled.length()<=256L*1024*1024 && VerifiedModuleDownload.sha(bundled)==sha){"Yerel Git bundle hash/yol doğrulaması başarısız"}
+                        require(cache.usableSpace>bundled.length()+64L*1024*1024)
+                        phase(ModulePhase.VERIFYING,"Yerel pinli Git bundle cache'e doğrulanıyor; ağ kullanılmaz.")
+                        val temporary=File.createTempFile(".rust-git-",".partial",cache)
+                        try {
+                            bundled.inputStream().use{input->java.io.FileOutputStream(temporary).use{output->val buffer=ByteArray(65536);while(true){currentJob.ensureActive();control.checkpoint();val n=input.read(buffer);if(n<0)break;output.write(buffer,0,n)};output.fd.sync()}}
+                            require(VerifiedModuleDownload.sha(temporary)==sha)
+                            java.nio.file.Files.move(temporary.toPath(),archive.toPath(),java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+                        }finally{temporary.delete()}
+                    }
                     if(!offlineVerification)VerifiedModuleDownload.download(url,sha,archive,OfflineModuleId.RUST,operation,
-                        canceled={!currentJob.isActive || control.request!=DownloadControl.Request.NONE},progress={transfer.value=it.copy(detail="Cargo $name $version • "+it.detail)},maxBytes=64L*1024*1024)
-                    require(archive.isFile && !java.nio.file.Files.isSymbolicLink(archive.toPath()) && archive.length()<=64L*1024*1024 && VerifiedModuleDownload.sha(archive)==sha){"Cargo cache eksik/bozuk: $name $version. Önce kilitli bağımlılıkları ayrı onayla indirin."}
+                        canceled={!currentJob.isActive || control.request!=DownloadControl.Request.NONE},progress={transfer.value=it.copy(detail="Cargo $name $version • "+it.detail)},maxBytes=(if(gitBundle)256L else 64L)*1024*1024)
+                    require(archive.isFile && !java.nio.file.Files.isSymbolicLink(archive.toPath()) && archive.length()<=(if(gitBundle)256L else 64L)*1024*1024 && VerifiedModuleDownload.sha(archive)==sha){"Cargo cache eksik/bozuk: $name $version. Önce kilitli bağımlılıkları ayrı onayla indirin."}
                     require(workspace.usableSpace>archive.length()+64L*1024*1024){"Rust cache kopyası için alan yetersiz."}
-                    archive.inputStream().use{input->File(stagedCache,"$sha.crate").outputStream().use{input.copyTo(it)}}
+                    archive.inputStream().use{input->File(stagedCache,"$sha.$extension").outputStream().use{input.copyTo(it)}}
                 }
                 if(native) {
                     val target=org.json.JSONObject(File(runtime,if(windows)"rust-windows-target-v1.json" else "rust-android-target-v1.json").readText())
@@ -205,6 +224,7 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                     val item=target.getJSONObject("artifact");val name=item.getString("file");val sha=item.getString("sha256");val url=item.getString("url")
                     require(name=="rust-std-1.85.1-$targetId.tar.xz" && sha.matches(Regex("[a-f0-9]{64}")) && url=="https://static.rust-lang.org/dist/2025-03-18/$name")
                     val archive=File(cache,name)
+                    RecoveryPathAnchor.check(archive)
                     if(!offlineVerification)VerifiedModuleDownload.download(url,sha,archive,OfflineModuleId.RUST,operation,
                         canceled={!currentJob.isActive || control.request!=DownloadControl.Request.NONE},progress={transfer.value=it.copy(detail="Rust $targetId standard library")},maxBytes=128L*1024*1024)
                     require(archive.isFile && !java.nio.file.Files.isSymbolicLink(archive.toPath()) && archive.length()<=128L*1024*1024 && VerifiedModuleDownload.sha(archive)==sha){"Rust $targetId target cache eksik/bozuk; açık indirme onayı gerekir"}
@@ -217,6 +237,7 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                     val item=pin.getJSONObject("artifact");val name=item.getString("file");val sha=item.getString("sha256");val url=item.getString("url")
                     require(name=="target-3.12.12-0-arm64-v8a.zip" && url=="https://repo.maven.apache.org/maven2/com/chaquo/python/target/3.12.12-0/$name" && sha.matches(Regex("[a-f0-9]{64}")))
                     val archive=File(cache,name)
+                    RecoveryPathAnchor.check(archive)
                     if(!offlineVerification)VerifiedModuleDownload.download(url,sha,archive,OfflineModuleId.RUST,operation,
                         canceled={!currentJob.isActive || control.request!=DownloadControl.Request.NONE},progress={transfer.value=it.copy(detail="Chaquopy Python3.12 ARM64 link runtime")},maxBytes=32L*1024*1024)
                     require(archive.isFile && !java.nio.file.Files.isSymbolicLink(archive.toPath()) && archive.length()<=32L*1024*1024 && VerifiedModuleDownload.sha(archive)==sha){"Pinli Python hedefi eksik/bozuk; ayrı indirme onayı gerekir"}
@@ -224,7 +245,9 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                     archive.inputStream().use{input->File(stagedCache,name).outputStream().use{input.copyTo(it)}}
                 }
                 phase(ModulePhase.VERIFYING,"SHA-256 doğrulanan crate arşivleri Cargo vendor biçimine hazırlanıyor; kurulum Hazır değildir.")
-                trustedTool("/usr/bin/python3.12 -I -S /workspace/runtime/rust-vendor.py vendor $projectArgument --cache /workspace/crate-cache --output /workspace/vendor-$targetIndex")
+                val gitMetadata=(0 until crates.length()).any{crates.getJSONObject(it).optString("kind")=="git-bundle"}
+                if(gitMetadata && !offlineVerification){phase(ModulePhase.PREPARING,"Pinli Git bundle cache hazır; Git/Cargo metadata işlemi yalnız ayrı çevrimdışı onaydan sonra çalışır.");continue}
+                trustedTool("/usr/bin/python3.12 -I -S /workspace/runtime/rust-vendor.py vendor $projectArgument --cache /workspace/crate-cache --output /workspace/vendor-$targetIndex"+(if(offlineVerification)" --offline-metadata-consent" else ""))
                 if(!offlineVerification) {
                     phase(ModulePhase.PREPARING,"Kilitli Cargo cache hazırlandı; proje kodu çalıştırılmadı. Ağları kapatıp ayrıca Rust hedef derlemesini onaylayın.")
                     continue
@@ -249,7 +272,7 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                 RustPreparationIntegrity.requireUnchangedRuntime(trustedRuntime,RuntimeGenerationStore(stage!!.root).snapshot())
                 require(helperHashes.all{(name,sha)->RustProjectPolicy.digest(File(runtime,name))==sha}){"Rust hazırlık doğrulayıcısı değişti"}
                 if(native)require(compilerSnapshot==RuntimeGenerationStore(File(workspace,compilerName)).snapshot()){"Özel Rust derleyicisi değişti"}
-                trustedTool("/usr/bin/python3.12 -I -S /workspace/runtime/rust-vendor.py verify $projectArgument --cache /workspace/crate-cache --output /workspace/vendor-$targetIndex")
+                trustedTool("/usr/bin/python3.12 -I -S /workspace/runtime/rust-vendor.py verify $projectArgument --cache /workspace/crate-cache --output /workspace/vendor-$targetIndex"+(if(offlineVerification)" --offline-metadata-consent" else ""))
                 OfflineBuildPackManager.verifyProtectedTools(stage!!.root,protected)
                 require(AndroidRuntimeTrust.ready(stage!!.root)){"Rust hazırlığı runtime güven yapılandırmasını değiştirdi."}
                 }

@@ -90,7 +90,7 @@ as_configure() {
  else mv "$as_store/sources.list.tmp" "$as_store/sources.list";fi
  [ -z "$(find "$as_store" -type l -print -quit)" ] || { as_fail "managed snapshot contains symlink";return 60; }
  as_owner=${APPFORGE_MODULE_ID:-}
- case "$as_owner" in ANDROID_CORE|NODE_WEB|PYTHON_ANDROID|EXPO_REACT_NATIVE|WINDOWS_NATIVE|LINUX_RUNTIME) ;; *) as_fail 'module identity required';return 60;;esac
+ case "$as_owner" in ANDROID_CORE|NODE_WEB|PYTHON_ANDROID|EXPO_REACT_NATIVE|RUST_ANDROID_NDK|WINDOWS_NATIVE|LINUX_RUNTIME) ;; *) as_fail 'module identity required';return 60;;esac
  as_safe_dir "/opt/appforge-device/apt-locks-v5/$as_owner/snapshot-v1" || return 60
  as_safe_dir "/opt/appforge-device/apt-locks-v5/$as_owner/archives" || return 60
  [ -z "$(find "/opt/appforge-device/apt-locks-v5/$as_owner" -type l -print -quit)" ] || return 60
@@ -125,7 +125,10 @@ as_verify_lock() {
  done < "$1/packages.tsv"
 }
 as_catalog_allows() {
- awk -F '\t' -v m="$as_owner" -v a="$as_arch" -v h="$1" -v s="$2" -v u="$3" '$1==m && $2==a && $6==h && $7==s && $8==u{ok=1}END{exit !ok}' /workspace/runtime/apt-module-packages-v1.tsv
+ # Rust's standalone NDK is a narrow consumer of the unchanged reviewed NDK catalog.
+ as_catalog_owner=$as_owner
+ [ "$as_owner" != RUST_ANDROID_NDK ] || as_catalog_owner=EXPO_REACT_NATIVE
+ awk -F '\t' -v m="$as_catalog_owner" -v a="$as_arch" -v h="$1" -v s="$2" -v u="$3" '$1==m && $2==a && $6==h && $7==s && $8==u{ok=1}END{exit !ok}' /workspace/runtime/apt-module-packages-v1.tsv
 }
 as_cache_archive() {
  # Shared content-addressed objects are never removed by a module operation.

@@ -127,14 +127,35 @@ def install_target(prefix,cache,base=None,target='aarch64-linux-android'):
     target_dir=pathlib.Path(result)
     if not target_dir.resolve().is_relative_to(prefix) or not list(target_dir.glob('libstd-*.rlib')):raise ValueError('Native target not installed')
 
+def probe_linker(path):
+    # Fixed app-authored C probe, not source-project code. It must link against
+    # the real API26 sysroot and emit a 16KiB-aligned ARM64 shared library.
+    with tempfile.TemporaryDirectory(prefix='appforge-ndk-probe-') as name:
+        work=pathlib.Path(name);source=work/'probe.c';result=work/'probe.so'
+        source.write_text('#include <unistd.h>\nint appforge_ndk_probe(void) { return (int)getpid(); }\n')
+        p=subprocess.run([str(path),'--target=aarch64-linux-android26','-shared','-fPIC','-Wl,-z,max-page-size=16384','-Wl,-z,common-page-size=16384',str(source),'-o',str(result)],capture_output=True,timeout=120)
+        if p.returncode or not result.is_file() or 'appforge_ndk_probe' not in defined_exports(result):raise ValueError('NDK host cannot link a real ARM64/API26/16KiB library')
+        return dict(target='aarch64-linux-android',minApi=26,elfSha256=sha(result),hostExecution=True,targetExecution=False)
+
 def discover_linker(sdk):
-    # Use an already verified toolchain; no SDK download or arbitrary project linker.
+    # Existing signed/pinned module installer owns this SDK. Do not use project
+    # linker paths, PATH fallback, or assume an x86 executable runs on ARM64.
+    import platform,re
+    host=platform.machine().lower()
+    if host not in ('aarch64','arm64','x86_64','amd64'):raise ValueError('Unsupported Rust NDK host architecture')
+    layouts=['linux-aarch64','linux-x86_64'] if host in ('aarch64','arm64') else ['linux-x86_64']
     ndks=sdk/'ndk'
-    for version in sorted(ndks.iterdir() if ndks.is_dir() else [],reverse=True):
-        path=version/'toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang'
-        if path.is_file() and os.access(path,os.X_OK):
-            subprocess.run([str(path),'--version'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-            return str(path)
+    versions=sorted(ndks.iterdir() if ndks.is_dir() else [],key=lambda p:p.name,reverse=True)
+    for version in versions:
+        if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,3}',version.name):continue
+        for layout in layouts:
+            path=version/'toolchains/llvm/prebuilt'/layout/'bin/aarch64-linux-android26-clang'
+            if path.is_file() and os.access(path,os.X_OK):
+                try:
+                    subprocess.run([str(path),'--version'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=30)
+                    probe_linker(path)
+                    return str(path)
+                except (OSError,ValueError,subprocess.SubprocessError):continue
     raise ValueError('Verified Android ARM64 API26 NDK linker missing or incompatible with Linux host; no fallback')
 
 def prepare(root,prefix,linker,vendor,export):
@@ -154,9 +175,11 @@ def prepare(root,prefix,linker,vendor,export):
     return result
 
 if __name__=='__main__':
-    ap=argparse.ArgumentParser();ap.add_argument('project',nargs='?');ap.add_argument('--prefix',default='/opt/appforge-device/rust-1.85.1');ap.add_argument('--cache');ap.add_argument('--base-prefix');ap.add_argument('--prepare-target',action='store_true');ap.add_argument('--check-project',action='store_true');ap.add_argument('--linker');ap.add_argument('--sdk',default='/opt/appforge-device/android-sdk');ap.add_argument('--vendor');ap.add_argument('--export',action='store_true');ap.add_argument('--source-execution-consent',action='store_true');a=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('project',nargs='?');ap.add_argument('--prefix',default='/opt/appforge-device/rust-1.85.1');ap.add_argument('--cache');ap.add_argument('--probe-linker',action='store_true');ap.add_argument('--base-prefix');ap.add_argument('--prepare-target',action='store_true');ap.add_argument('--check-project',action='store_true');ap.add_argument('--linker');ap.add_argument('--sdk',default='/opt/appforge-device/android-sdk');ap.add_argument('--vendor');ap.add_argument('--export',action='store_true');ap.add_argument('--source-execution-consent',action='store_true');a=ap.parse_args()
     prefix=pathlib.Path(a.prefix).absolute()
-    if a.prepare_target:install_target(prefix,pathlib.Path(a.cache),pathlib.Path(a.base_prefix).absolute() if a.base_prefix else None);print('ANDROID_RUST_TARGET_STAGED_NOT_READY')
+    if a.probe_linker:
+        linker=discover_linker(pathlib.Path(a.sdk));print(json.dumps(dict(linker=linker,**probe_linker(linker))))
+    elif a.prepare_target:install_target(prefix,pathlib.Path(a.cache),pathlib.Path(a.base_prefix).absolute() if a.base_prefix else None);print('ANDROID_RUST_TARGET_STAGED_NOT_READY')
     elif a.check_project:
         root=pathlib.Path(a.project).absolute();trusted('rust-project.py')['validate'](root);config(root);print('EXPLICIT_JNI_PROJECT_VALIDATED_NO_CODE_EXECUTION')
     else:

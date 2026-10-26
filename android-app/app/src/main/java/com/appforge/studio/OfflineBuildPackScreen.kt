@@ -257,6 +257,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                     ModuleCompactHeader(module.title, installed, expanded) { expanded=!expanded }
                     if(expanded)Text(module.version)
                     Text(when(module.id){
+                        OfflineModuleId.RUST_ANDROID_NDK->"Rust Android hedefleri için NDK/CMake; Node veya Expo kurulmaz"
                         OfflineModuleId.RUST->"Rust + Cargo, Linux host ve WASM; uygulama entegrasyonları ayrı kabul gerektirir"
                         OfflineModuleId.FAST_HTML->"Yerel HTML/HTTPS için gömülü Android şablonları"
                         OfflineModuleId.LINUX_RUNTIME->"Normal motorların ortak, projelerden ayrı Linux ortamı"

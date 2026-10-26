@@ -6,6 +6,12 @@ if [ -f /workspace/runtime/module-download-telemetry.sh ]; then . /workspace/run
 ROOT="/opt/appforge-device"
 NODE_HOME="$ROOT/node-22.23.3"
 SOURCE="/workspace/source"
+APPFORGE_RUST_NEW_ARCH=false
+if [ "${APPFORGE_RUST_TURBO:-0}" = 1 ];then
+ /usr/bin/python3.12 -I -S /workspace/runtime/rust-react-native.py "$SOURCE" --check-project
+ APPFORGE_RUST_NEW_ARCH=true
+fi
+export APPFORGE_RUST_NEW_ARCH
 CACHE="$ROOT/npm-cache-expo54-v1"
 NPM_CLI="$NODE_HOME/lib/node_modules/npm/bin/npm-cli.js"
 
@@ -101,7 +107,11 @@ const app =
   );
 
 app.expo = app.expo || {};
-app.expo.newArchEnabled = false;
+if (process.env.APPFORGE_RUST_NEW_ARCH === "true") {
+  app.expo.newArchEnabled = true;
+} else {
+  app.expo.newArchEnabled = false;
+}
 
 fs.writeFileSync(
   path,
@@ -2709,9 +2719,13 @@ set_prop_native() {
   rm -f "$tmp"
 }
 
-set_prop_native \
+if [ "$APPFORGE_RUST_NEW_ARCH" = true ];then
+ set_prop_native newArchEnabled true
+else
+ set_prop_native \
   newArchEnabled \
   false
+fi
 
 set_prop_native \
   hermesEnabled \
@@ -2721,7 +2735,7 @@ set_prop_native \
   reactNativeArchitectures \
   arm64-v8a
 
-grep -q '^newArchEnabled=false$' \
+grep -q "^newArchEnabled=$APPFORGE_RUST_NEW_ARCH$" \
   "$PREBUILD/android/gradle.properties"
 
 grep -q '^hermesEnabled=true$' \
@@ -2836,7 +2850,7 @@ test -f android/gradle.properties
 test -f android/app/build.gradle
 test -f android/settings.gradle
 
-grep -q '^newArchEnabled=false$' \
+grep -q "^newArchEnabled=$APPFORGE_RUST_NEW_ARCH$" \
   android/gradle.properties
 
 grep -q '^hermesEnabled=true$' \
@@ -3986,6 +4000,6 @@ echo "APPFORGE_EXPO_NATIVE_CXX_STAGING=PASS"
 rm -rf "$SOURCE/android/.gradle"
 
 echo "APPFORGE_EXPO54_PREBUILD=PASS"
-echo "APPFORGE_EXPO_NEW_ARCH=DISABLED"
-echo "APPFORGE_EXPO_HERMES=DISABLED"
+if [ "$APPFORGE_RUST_NEW_ARCH" = true ];then echo "APPFORGE_EXPO_NEW_ARCH=ENABLED_RUST_TURBOMODULE";else echo "APPFORGE_EXPO_NEW_ARCH=DISABLED";fi
+echo "APPFORGE_EXPO_HERMES=RUNTIME_ENABLED_HOST_AOT_SKIPPED"
 echo "APPFORGE_EXPO_ABI=arm64-v8a"

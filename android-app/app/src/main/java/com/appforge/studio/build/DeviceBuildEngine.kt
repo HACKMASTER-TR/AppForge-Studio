@@ -544,6 +544,8 @@ object DeviceBuildEngine {
                 "android-gradle" -> buildAndroidProject(context, draft, workspace, rootfs, shell, state)
                 // Keeps the existing experimental NDK capability gate; no READY promotion.
                 "android-ndk" -> buildAndroidProject(context, draft, workspace, rootfs, shell, state)
+                "react-native" -> buildReactNativeRustProject(context, draft, workspace, rootfs, shell, state)
+
                 "expo" -> buildExpoProject(context, draft, workspace, rootfs, shell, state)
                 "python-android" -> buildPythonProject(context, draft, workspace, rootfs, shell, state)
                 "windows-native" -> buildWindowsNative(context, draft, workspace, rootfs, shell, state)
@@ -1816,6 +1818,21 @@ object DeviceBuildEngine {
         buildGradleProject(context, draft, project, workspace, rootfs, shell, state, gradleVersion)
     }
 
+    /** Explicit authored standalone RN Android consumer. Public capability gates
+     * remain separate; this backend never silently runs Expo prebuild. */
+    private fun buildReactNativeRustProject(context:Context,draft:ProjectDraft,workspace:File,rootfs:File,shell:LinuxShellEngine,state:JobState) {
+        require(RustProjectPolicy.sourceRoot(draft)!=null){"Standalone React Native Rust kaynağı gerekli"}
+        RustProjectPolicy.requireReactNativeJsi(draft)
+        val project=File(workspace,"source/android");RecoveryPathAnchor.check(project)
+        require(File(project,"settings.gradle").isFile || File(project,"settings.gradle.kts").isFile){"Kaynak tarafından hazırlanmış Android Gradle projesi gerekli; Expo prebuild'e geçilmedi"}
+        require(File(project,"app/build.gradle").isFile || File(project,"app/build.gradle.kts").isFile)
+        runShellBlocking(shell,rootfs,workspace,state,"APPFORGE_DEVICE_OFFLINE=${if(state.offline)1 else 0} /bin/sh /workspace/runtime/prepare-rn-rust.sh","react-native-rust-bundle")
+        RustProjectPolicy.stageReactNativeJsi(draft,project)
+        writeSdkFiles(project,sdkRoot="/opt/appforge-device/expo-sdk-36")
+        state.logs.add("React Native Rust • açık Android kaynak projesi • otomatik Expo prebuild yok")
+        buildGradleProject(context,draft,project,workspace,rootfs,shell,state,detectGradleVersion(project),nodeRequired=true,variantOverride="AppforgeAcceptance")
+    }
+
     private fun buildExpoProject(
         context: Context,
         draft: ProjectDraft,
@@ -1836,6 +1853,7 @@ object DeviceBuildEngine {
             state = state,
             command =
                 "APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} " +
+                    "APPFORGE_RUST_TURBO=${if(RustProjectPolicy.sourceRoot(draft)!=null && RustProjectPolicy.reactNativeBinding(requireNotNull(RustProjectPolicy.sourceRoot(draft))).turbo)1 else 0} " +
                     "/bin/sh /workspace/runtime/build-expo.sh",
             suffix = "expo-prebuild"
         )
