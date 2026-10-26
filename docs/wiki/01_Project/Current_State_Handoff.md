@@ -107,7 +107,7 @@ Lifecycle: **ACTIVE**
 | release | NOT_RUN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
 | deploy | NOT_RUN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
 
-Blockers / references: Android ARM64/PRoot/FGS/UI and JNI/PyO3/JSI physical execution NOT_RUN; Standalone NDK/React Native engine physical gates remain BLOCKED; ARM64-host cross-linker availability must be established; Cargo workspace/path/git dependencies and external build inputs remain outside this bounded resolver; Windows physical execution and Android CreateDocument DLL export NOT_RUN
+Blockers / references: Android ARM64/PRoot/FGS/UI and JNI/PyO3/TurboModule physical execution NOT_RUN; Standalone NDK/React Native public physical gates remain BLOCKED; new authored backends are not device acceptance; Alternate Cargo registries, patch/replace and paths outside reviewed source remain unsupported; Windows physical execution and Android CreateDocument DLL export NOT_RUN
 
 Next action: Finish exact-source local tests and inspect the verified patch/evidence; perform separately authorized physical tests. No push, merge, CI, release or phone installation.
 

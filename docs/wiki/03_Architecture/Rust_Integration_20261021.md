@@ -3,10 +3,14 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-10-21
-updated: 2026-10-21
-last_verified: 2026-10-21
+updated: 2026-10-26
+last_verified: 2026-10-26
 confidence: medium
 source_files:
+  - "android-app/app/src/main/assets/device-build/rust-layout.py"
+  - "android-app/app/src/main/assets/device-build/rust-git.py"
+  - "android-app/app/src/main/java/com/appforge/studio/build/ModuleRecipeCompatibility.kt"
+  - "android-app/app/src/main/assets/device-build/prepare-rn-rust.sh"
   - "android-app/app/src/main/java/com/appforge/studio/build/RustProjectPolicy.kt"
   - "android-app/app/src/main/assets/device-build/install-rust-module.py"
   - "android-app/app/src/main/assets/device-build/rust-project.py"
@@ -196,3 +200,39 @@ export files are rejected, not silently removed. Known-gated standalone NDK and
 React Native engines remain blocked until their platform acceptance is established.
 Detailed exact-source tests, genuine failed attempts and NOT_RUN cases live in
 RUST-IMPLEMENTATION-REPORT.md and the accompanying source/evidence delivery.
+
+## Code completion continuation (2026-10-26)
+
+The bounded resolver now supports an explicit selected Cargo workspace member,
+workspace-inherited package/dependency fields and local path dependencies entirely
+inside the reviewed root. Git dependencies require exact Cargo.lock commits and
+SHA-256-pinned bundles. Bundles are either local reviewed project files or
+separately approved HTTPS transfers. Git networking and hooks are disabled;
+Cargo's directory-source normalization runs separately with offline metadata
+consent. Project build execution retains its separate consent. External paths,
+alternate registries, patch/replace sources and unpinned Git remain rejected.
+
+An independent RUST_ANDROID_NDK module reuses Android Core, Rust and the frozen
+NDK/APT installation paths without Node or Expo installation. A fixed, app-authored
+ARM64 API26 shared-library cross-link probe validates linker execution and 16KiB
+ELF alignment before its readiness marker. Old immutable catalog bytes and
+snapshot identity remain unchanged. Explicit prior recipe hashes are accepted
+only for unchanged non-Rust modules, with the existing exact version, witness
+hash, ownership and APT validation still mandatory. Shared NDK namespace users
+protect unchanged shared files during module removal.
+
+RN0.81 now has an authored standalone Android backend and opt-in schema2 pure C++
+TurboModule registration for standalone RN and Expo54. Legacy schema1 behavior
+remains supported. Expo defaults to legacy unless the explicit Rust binding and
+architecture flags pass validation. Hermes runtime stays enabled; host AOT stays
+skipped. TurboModule package validation checks the actual appmodules ELF,
+JNI_OnLoad and DT_NEEDED links to Rust/libreactnative. Cross-compilation/package
+proof does not establish JavaScript execution on an Android device. Public
+standalone NDK/RN physical acceptance gates remain closed; the authored backend
+must never silently fall back to Expo generation or another engine.
+
+The temporary host environment was restarted after the first successful
+TurboModule APK/AAB/offline build. Its raw logs persist, but ephemeral artifacts
+require regeneration and independent package guards before new acceptance.
+Final exact-source outcomes and remaining limitations belong to the new report,
+not inherited earlier PASS counts.
