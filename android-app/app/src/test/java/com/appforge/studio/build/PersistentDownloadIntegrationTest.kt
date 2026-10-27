@@ -35,16 +35,15 @@ class PersistentDownloadIntegrationTest {
             assertEquals(2,DownloadCoordinator.bind("persistent-two",sha,target))
             VerifiedModuleDownload.download("https://fixture.example/artifact",sha,target,OfflineModuleId.NODE_WEB,"persistent-two",open={connection(payload.copyOfRange(4,10),206,"bytes 4-9/10")})
             assertArrayEquals(payload,target.readBytes())
-            val complete=reopened.read().first{it.operationId=="persistent-two"}
-            assertEquals(DownloadState.COMPLETED,complete.downloadState);assertEquals(2,complete.retryCount)
-            assertEquals(10L,complete.downloadedBytes)
+            // V8.4 closes SHA-256-complete transfer metadata immediately.
+            // The real verified archive remains available for the installer.
+            assertEquals(sha,VerifiedModuleDownload.sha(target))
+            assertTrue(reopened.read().isEmpty())
             val tree=reopened.operationGraph().read()
-            val node=tree.single{it.operationId==PersistentOperationGraph.artifactNodeId(complete)}
-            assertEquals(complete.parentOperationId,node.parentOperationId)
-            assertEquals(10L,node.verifiedBytes)
-            assertTrue(tree.single{it.operationId==node.parentOperationId}.operationState!=DownloadState.COMPLETED)
+            assertFalse(tree.any{it.stage==OperationStage.ARTIFACT_DOWNLOAD && it.artifactId==sha})
+            assertFalse(tree.any{it.historyClosed}) // Download completion alone cannot grant module READY.
             assertFalse(File(target.path+".part.identity").exists())
-            assertTrue(reopened.recover().all{it.downloadState!=DownloadState.COMPLETED}) // source pin must be re-authorized, not journal-only READY
+            assertTrue(reopened.recover().isEmpty()) // No history-only install authorization after reopen.
         }finally{journalField.set(DownloadCoordinator,previous);DownloadCoordinator.records.value=oldRows;DownloadCoordinator.operations.value=oldTree;dir.deleteRecursively()}
     }
 }
