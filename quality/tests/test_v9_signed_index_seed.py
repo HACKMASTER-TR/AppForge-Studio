@@ -26,6 +26,34 @@ class IndexSeedTests(unittest.TestCase):
         x, zipped = task(b'Package: abc\n')
         self.assertEqual(v9.bounded_unxz(zipped,x['size']), b'Package: abc\n')
 
+    def test_concatenated_signed_xz_streams(self):
+        a, b = b'first\n' * 4000, b'second\n' * 3000
+        content = lzma.compress(a) + lzma.compress(b)
+        self.assertEqual(v9.bounded_unxz(content, len(a) + len(b)), a + b)
+
+    def test_signed_xz_four_byte_stream_padding(self):
+        a, b = b'alpha', b'beta'
+        content = lzma.compress(a) + b'\x00' * 4 + lzma.compress(b) + b'\x00' * 8
+        self.assertEqual(v9.bounded_unxz(content, len(a) + len(b)), a + b)
+
+    def test_signed_xz_nonstream_tail_rejected(self):
+        content = lzma.compress(b'a') + b'INJECTED'
+        with self.assertRaisesRegex(ValueError, 'trailing'):
+            v9.bounded_unxz(content, 1)
+
+    def test_xz_invalid_padding_rejected(self):
+        content = lzma.compress(b'a') + b'\x00' * 3
+        with self.assertRaisesRegex(ValueError, 'padding'):
+            v9.bounded_unxz(content, 1)
+
+    def test_concatenated_xz_over_64kb_input(self):
+        import random
+        first = random.Random(20261027).randbytes(90000)
+        second = b'tail\n' * 500
+        content = lzma.compress(first) + lzma.compress(second)
+        self.assertGreater(len(content), 65536)
+        self.assertEqual(v9.bounded_unxz(content, len(first) + len(second)), first + second)
+
     def test_truncated_xz_rejected(self):
         x, zipped = task()
         with self.assertRaisesRegex(ValueError, 'XZ'):

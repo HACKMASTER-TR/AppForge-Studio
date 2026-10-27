@@ -63,29 +63,43 @@ def existing(store, task):
 
 
 def bounded_unxz(payload, expected_size):
+    """Bounded decoder supporting valid concatenated XZ streams and XZ padding.
+
+    Every input byte is part of a complete XZ stream or valid 4-byte-multiple
+    stream padding. The caller additionally verifies the whole compressed file
+    against the signed Release SHA256 before invoking this decoder.
+    """
     signed.require(0 < len(payload) <= MAX_COMPRESSED_BYTES, 'compressed size out of bounds')
     signed.require(0 <= expected_size <= signed.MAX_PACKAGES_BYTES, 'uncompressed size out of bounds')
-    d = lzma.LZMADecompressor(format=lzma.FORMAT_XZ)
-    blocks, size = [], 0
+    blocks, produced, streams = [], 0, 0
+    remaining = payload
+    magic = bytes.fromhex('fd377a585a00')
     try:
-        for start in range(0, len(payload), 65536):
-            signed.require(not d.eof, 'trailing bytes after XZ stream')
-            data = payload[start:start + 65536]
+        while remaining:
+            signed.require(streams < 64, 'XZ stream count exceeded')
+            signed.require(remaining.startswith(magic), 'trailing non-XZ bytes')
+            streams += 1
+            decoder = lzma.LZMADecompressor(format=lzma.FORMAT_XZ, memlimit=256 * 1024 * 1024)
+            data = remaining
             while True:
-                chunk = d.decompress(data, max_length=min(1048576, expected_size - size + 1))
-                size += len(chunk)
-                signed.require(size <= expected_size, 'XZ decompression size exceeded signed index length')
-                blocks.append(chunk)
-                signed.require(not d.unused_data, 'trailing bytes after XZ stream')
-                if d.eof or d.needs_input:
+                part = decoder.decompress(data, max_length=min(1048576, expected_size - produced + 1))
+                produced += len(part)
+                signed.require(produced <= expected_size, 'XZ decompression size exceeded signed index length')
+                blocks.append(part)
+                if decoder.eof:
                     break
+                signed.require(not decoder.needs_input, 'truncated XZ stream')
                 data = b''
-        signed.require(d.eof, 'truncated XZ stream')
+            remaining = decoder.unused_data
+            if remaining:
+                padding = len(remaining) - len(remaining.lstrip(b'\x00'))
+                signed.require(padding % 4 == 0, 'invalid XZ stream padding')
+                remaining = remaining[padding:]
+        signed.require(streams > 0, 'missing XZ stream')
     except (lzma.LZMAError, EOFError) as exc:
         raise ValueError('BLOCKED: invalid XZ stream') from exc
-    signed.require(size == expected_size, 'uncompressed signed length mismatch')
+    signed.require(produced == expected_size, 'uncompressed signed length mismatch')
     return b''.join(blocks)
-
 
 
 
