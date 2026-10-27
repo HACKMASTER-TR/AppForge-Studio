@@ -72,7 +72,9 @@ def build(root,target,prefix,source_consent=False,linker=None,vendor=None):
     if target not in TARGETS:raise ValueError('Unsupported Rust target')
     if target!='wasm32-unknown-unknown' and (not linker or not pathlib.Path(linker).is_file()):raise ValueError('Verified target linker required')
     if (root/'target').is_symlink() or (root/'target').resolve()!=root/'target':raise ValueError('Unsafe Cargo target directory')
-    env=dict(os.environ,PATH=str(prefix/'bin')+os.pathsep+os.environ.get('PATH',''),CARGO_NET_OFFLINE='true',CARGO_TARGET_DIR=str(root/'target'))
+    # Keep the actual project builder consistent with the verified Rust probe.
+    # Cargo's child compiler must be resolved to this pinned toolchain.
+    env=dict(os.environ,PATH=str(prefix/'bin')+os.pathsep+os.environ.get('PATH',''),CARGO_NET_OFFLINE='true',CARGO_TARGET_DIR=str(root/'target'),RUSTC=str(prefix/'bin/rustc'))
     if linker:env['CARGO_TARGET_'+target.upper().replace('-','_')+'_LINKER']=linker
     layout_scope={'__name__':'appforge_rust_layout','__file__':str(pathlib.Path(__file__).with_name('rust-layout.py'))}
     exec(compile(pathlib.Path(layout_scope['__file__']).read_bytes(),layout_scope['__file__'],'exec'),layout_scope)

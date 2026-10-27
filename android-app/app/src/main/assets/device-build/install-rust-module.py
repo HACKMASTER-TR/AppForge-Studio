@@ -29,7 +29,12 @@ def probe(prefix,host):
         root=pathlib.Path(work);(root/'src').mkdir()
         (root/'Cargo.toml').write_text('[package]\nname="appforge_probe"\nversion="0.1.0"\nedition="2021"\n[lib]\ncrate-type=["cdylib"]\n')
         (root/'src/lib.rs').write_text('#[no_mangle] pub extern "C" fn appforge_add(a:i32,b:i32)->i32 {a+b}\n')
-        env=dict(os.environ,PATH=str(prefix/'bin')+os.pathsep+os.environ.get('PATH',''),CARGO_HOME=str(root/'cargo-home'),CARGO_NET_OFFLINE='true')
+        # Cargo spawns its own rustc process. Under Android's isolated Linux
+        # launcher the Rust compiler must be pinned to an absolute path:
+        # relying on PATH produced `rustc -vV` ENOENT on a real ARM64 device.
+        verbose=subprocess.check_output([str(rustc),'-vV'],text=True)
+        if not verbose.startswith('rustc '+VERSION+' '): raise ValueError('Rust verbose compiler probe mismatch')
+        env=dict(os.environ,PATH=str(prefix/'bin')+os.pathsep+os.environ.get('PATH',''),CARGO_HOME=str(root/'cargo-home'),CARGO_NET_OFFLINE='true',RUSTC=str(rustc))
         subprocess.run([str(cargo),'generate-lockfile','--offline'],cwd=root,env=env,check=True)
         command=[str(cargo),'build','--frozen','--offline','--release','--target','wasm32-unknown-unknown']
         for _ in range(2): subprocess.run(command,cwd=root,env=env,check=True)
