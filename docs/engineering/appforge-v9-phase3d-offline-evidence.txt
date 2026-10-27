@@ -1,0 +1,31 @@
+APPFORGE STUDIO V9 — PHASE 3D OFFLINE AUDIT EVIDENCE V1
+
+PURPOSE
+Produces a deterministic offline audit JSON for the 2026-10-18 pinned
+Ubuntu APT snapshot already present in AppForge V9 Termux local mirror.
+
+TRUST MODEL
+- Requires 218/218 original CAS objects including 214 unique DEBs and 4 InRelease.
+- Requires GPGV and exact pre-pinned Ubuntu 2018 fingerprint on all 4 suites.
+- Requires 32 signed Packages index entries (4 suites x 4 components x 2 arches)
+  verified against the authenticated Release SHA256 table.
+- Requires catalog package identity closure for ARM64 (139) and AMD64 (94).
+- Requires checked content size and SHA256 for every DISTINCT CAS object.
+- Cross-checks all 218 original objects with existing R2 DRY-RUN plan.
+- Does NOT create any AppForge Ed25519 release signature. This audit JSON
+  must NOT be treated as an authorization to distribute.
+- Does NOT upload R2, enable Worker, change Android client/APK or GitHub.
+
+OUTPUT
+$HOME/appforge-v9-phase3d-evidence/
+  appforge-v9-phase3d-audit-manifest.json
+  SHA256SUMS
+
+Both files use exclusive-create or byte-identical reuse; never silently overwrite.
+Existing divergent output is a hard block. The output is not a signed release.
+
+RECOMMENDED NEXT PHASE
+Independent release signing trust / key lifecycle and rotation, immutable R2
+object staging with signed upload receipt and read-back check, manifest index
+routing and mobile client negative tests. Explicit approval before any network
+writes or public distribution.
