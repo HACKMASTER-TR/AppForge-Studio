@@ -181,7 +181,13 @@ OPTS
  if [ "$as_mode" = update ];then
   if [ -f "$as_store/indexes.sha256" ];then as_verify_indices || { as_fail 'cached signed metadata corrupted';return 60; };rm -f /workspace/apt-phase.json;return 0;fi
   as_phase DOWNLOADING "İmzalı Ubuntu snapshot indeksleri indiriliyor." || return 60
-  appforge_apt_get_legacy "$@" || return $?
+  # Retry transient APT index transport failures only. All original signed
+  # InRelease hashes, snapshot timestamp and APT error-mode stay pinned.
+  # APT's internal retry count is bounded: initial request + two retries.
+  if ! appforge_apt_get_legacy "$@" -o Acquire::Retries=2 -o Acquire::https::Timeout=20 -o Acquire::http::Timeout=20;then
+   as_fail 'snapshot index acquisition failed; fixed repository, cached packages and signed pins unchanged; HTTP 503 requires upstream recovery'
+   return 60
+  fi
   as_phase VERIFYING "InRelease imzası ve Packages SHA-256 doğrulanıyor." || return 60
   (cd "$as_store/lists" && find . -maxdepth 1 -type f ! -name lock -printf '%P\n' | LC_ALL=C sort | while IFS= read -r as_file;do sha256sum "$as_file";done) > "$as_store/indexes.sha256.part"
   mv "$as_store/indexes.sha256.part" "$as_store/indexes.sha256"
