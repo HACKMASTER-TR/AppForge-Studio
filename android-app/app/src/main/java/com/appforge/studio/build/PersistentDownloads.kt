@@ -30,6 +30,22 @@ internal class PersistentDownloads(private val directory:File,private val roots:
                 row.verifiedPartialBytes==0L && row.downloadedBytes==0L
         }
     }
+    /** Recheck the physical partial before migrating a checkpoint to another
+     * attempt. A journal byte count alone can never authorize resumption. */
+    @Synchronized fun verifiedPrefixFor(r:ArtifactDownloadRecord):Long {
+        if(r.stagingIdentity==null || r.expectedSha256==null)return 0L
+        val target=resolve(r.stagingIdentity)
+        val part=File(target.path+".part")
+        val seal=File(part.path+".sha256")
+        val source=File(part.path+".identity")
+        listOf(part,seal,source).forEach(::safe)
+        if(!part.isFile || part.length()<=0L || part.length()>2L*1024*1024*1024)return 0L
+        if(r.expectedBytes!=null && part.length()>r.expectedBytes)return 0L
+        if(!source.isFile || source.length()>200L ||
+            source.readText()!=r.sourceIdentityHash+"\n"+r.expectedSha256)return 0L
+        if(!seal.isFile || seal.length()!=64L || seal.readText()!=VerifiedModuleDownload.sha(part))return 0L
+        return part.length()
+    }
     fun operationGraph()=PersistentOperationGraph(File(directory,"operations.json"))
     private fun safe(path:File) {
         var current:File?=path.absoluteFile

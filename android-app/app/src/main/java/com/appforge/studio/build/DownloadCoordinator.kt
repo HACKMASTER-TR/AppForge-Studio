@@ -87,6 +87,7 @@ internal object DownloadCoordinator {
             }
         }
         saveGraph(rows)
+        if(event.phase==ModulePhase.READY)closeModuleHistory(event.moduleId)
     }
     private val operationParents=mutableMapOf<String,String>()
     @Synchronized fun adoptArtifacts(childOperation:String,parentOperation:String,module:OfflineModuleId) {
@@ -119,8 +120,20 @@ internal object DownloadCoordinator {
     private val targets=mutableMapOf<String,String>()
     @Synchronized fun configure(store:PersistentDownloads) {
         if(journal!=null)return
-        val recovered=store.recover();val tree=store.operationGraph().recover(recovered)
-        records.value=recovered;operations.value=tree;journal=store
+        val recovered=store.recover()
+        val compact=DownloadHistoryV84.compactRecovered(recovered)
+        val graphStore=store.operationGraph()
+        if(compact.size<recovered.size) {
+            val keepKeys=compact.map{it.operationId+":"+it.artifactId}.toSet()
+            val removed=recovered.filterNot{it.operationId+":"+it.artifactId in keepKeys}
+            val previous=graphStore.read()
+            val reduced=PersistentOperationGraph.compactAfterRestart(previous,removed,compact)
+            // Graph first, then journal: a crash is repaired from original rows.
+            graphStore.save(reduced)
+            store.save(compact)
+        }
+        val tree=graphStore.recover(compact)
+        records.value=compact;operations.value=tree;journal=store
     }
     @Synchronized fun bind(operation:String,artifact:String,target:java.io.File):Int {
         journal?.let{targets[operation+":"+artifact]=it.staging(target)}
@@ -166,6 +179,19 @@ internal object DownloadCoordinator {
         }
         return removed
     }
+    /** Remove historical checkpoints only after driver-level READY. */
+    @Synchronized private fun closeModuleHistory(module:OfflineModuleId) {
+        val store=journal?:return
+        val original=records.value
+        val retained=DownloadHistoryV84.afterReady(original,module)
+        if(retained.size==original.size)return
+        val graph=operations.value
+        val reduced=PersistentOperationGraph.compactAfterJournalChange(graph,original.filterNot{it in retained},retained)
+        store.operationGraph().save(reduced)
+        store.save(retained)
+        operations.value=reduced
+        records.value=retained
+    }
     @Synchronized fun cancelRecord(operation:String,artifact:String) {
         check(active.isEmpty()){"Aktif aktarımda uygulama kontrolünü kullanın."}
         val rows=records.value.map{if(it.operationId==operation && it.artifactId==artifact)it.copy(downloadState=DownloadState.CANCELLED,updatedAt=System.currentTimeMillis())else it}
@@ -198,9 +224,34 @@ internal object DownloadCoordinator {
         // External observers have no pinned source identity; journal them as observation-only records.
         val completedBytes=if(value.verificationStatus=="SHA256_VERIFIED" && bound!=null)p.bytesTotal?:old?.expectedBytes?:p.bytesDownloaded else p.bytesDownloaded
         val row=ArtifactDownloadRecord(p.operationId,p.moduleId,artifact,value.artifactVersion.takeIf{it.matches(Regex("[A-Za-z0-9._+-]{1,100}"))}?:"observed",source,if(bound!=null)artifact else null,p.bytesTotal?:old?.expectedBytes,if(value.verificationStatus=="SHA256_VERIFIED")completedBytes else minOf(old?.verifiedPartialBytes?:0,p.bytesDownloaded),state,value.resumeCapability,DownloadNetwork.policy,retryCounts[p.operationId+":"+artifact]?:old?.retryCount?:0,old?.createdAt?:now,now,if(value.verificationStatus=="SHA256_VERIFIED")"SHA256_VERIFIED" else "UNVERIFIED",bound,OperationDiagnostics.persistentError(p.errorCode),PersistentOperationGraph.moduleId(operationParents[p.operationId+":"+p.moduleId.name]?:p.operationId,p.moduleId),completedBytes)
-        val rows=records.value.filterNot{it.operationId==row.operationId && it.artifactId==row.artifactId}.toMutableList()
-        if(rows.size>=128){val removable=rows.indexOfFirst{it.downloadState in setOf(DownloadState.COMPLETED,DownloadState.CANCELLED,DownloadState.FAILED)};check(removable>=0){"İndirme geçmişi dolu"};rows.removeAt(removable)}
-        rows.add(row);store.save(rows);records.value=rows;syncArtifact(row);persistedAt=now
+        // An operation id identifies an attempt, not a different archive.
+        // On hand-off between attempts, accept old progress only after rehashing
+        // the actual .part and its pinned SHA/source sidecars.
+        val previous=records.value.firstOrNull{it.operationId!=row.operationId && DownloadHistoryV84.sameArtifact(it,row)}
+        val checkpoint=if(previous!=null)store.verifiedPrefixFor(previous) else 0L
+        val inherited=if(checkpoint>0 && p.phase in setOf(ModulePhase.CONNECTING,ModulePhase.RESOLVING,ModulePhase.STORAGE_CHECK))
+            row.copy(verifiedPartialBytes=checkpoint,downloadedBytes=maxOf(row.downloadedBytes,checkpoint),
+                verificationState="PREFIX_VERIFIED") else row
+        val before=records.value
+        val rows=DownloadHistoryV84.upsert(before,inherited)
+        val previousKeys=rows.map{it.operationId+":"+it.artifactId}.toSet()
+        val obsolete=before.filterNot{it.operationId+":"+it.artifactId in previousKeys}
+        if(obsolete.isNotEmpty()) {
+            val graph=operations.value
+            val reduced=PersistentOperationGraph.compactAfterJournalChange(graph,obsolete,rows)
+            // Crash before the artifact write is reconciled from the old journal.
+            store.operationGraph().save(reduced)
+            try { store.save(rows) } catch(e:Exception) {
+                runCatching{store.operationGraph().save(graph)}
+                throw e
+            }
+            operations.value=reduced
+        } else if(rows!=before) store.save(rows)
+        records.value=rows
+        // Completed files leave the transfer journal immediately; their cached
+        // content is independently SHA-256 verified by the installer on reuse.
+        if(rows.any{it.operationId==inherited.operationId && it.artifactId==inherited.artifactId})syncArtifact(inherited)
+        persistedAt=now
     }
     private val observedAt=mutableMapOf<String,Long>()
     private val transfers=linkedMapOf<String,Transfer>()

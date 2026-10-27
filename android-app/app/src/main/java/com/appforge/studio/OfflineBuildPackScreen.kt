@@ -159,6 +159,7 @@ internal object ModuleInstallOperations {
     var availableUpdates by remember{mutableStateOf<Set<OfflineModuleId>>(emptySet())}
     var confirmPrune by remember{mutableStateOf(false)}
     var confirmHistoryCleanup by remember{mutableStateOf(false)}
+    var historyDetails by rememberSaveable { mutableStateOf(false) }
     var pruneBytes by remember{mutableStateOf<Long?>(null)}
     var pruneReason by remember{mutableStateOf<String?>(null)}
     var installedVersions by remember{mutableStateOf<Map<OfflineModuleId,String?>>(emptyMap())}
@@ -248,7 +249,23 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                     Text("Eski kayıtları bırak • dosyaları koru")
                 }
             }}}
-            if(section=="history")items(artifacts.takeLast(32).reversed(),key={"artifact-"+it.operationId+it.artifactId}){record->
+            if(section=="history")item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text("Güncel indirmeler — modül başına tek durum",style=MaterialTheme.typography.titleMedium)
+                Text("Görünen durum bir kurulum/READY kanıtı değildir. Her paketin doğrulanmış kaldığı yer arka planda ayrıca korunur.")
+                val modules=artifacts.groupBy{it.moduleId}
+                if(modules.isEmpty())Text("Bekleyen indirme kaydı yok.")
+                OfflineModules.all.filter{it.id in modules}.forEach{spec->
+                    val rows=modules.getValue(spec.id)
+                    val latest=rows.maxByOrNull{it.updatedAt}!!
+                    val verified=rows.sumOf{it.verifiedPartialBytes}
+                    Text("${spec.title} • ${rows.size} bekleyen paket • son durum: ${latest.downloadState}")
+                    Text("Doğrulanmış paket kontrol noktaları: ${verified/1024/1024} MiB (paketler arasında toplam yüzde hesaplanmaz)")
+                }
+                TextButton(onClick={historyDetails=!historyDetails}) {
+                    Text(if(historyDetails)"Paket ayrıntılarını gizle" else "Paket ayrıntılarını göster")
+                }
+            }}}
+            if(section=="history" && historyDetails)items(artifacts.takeLast(32).reversed(),key={"artifact-"+it.operationId+it.artifactId}){record->
                 Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                     Text(OfflineModules.spec(record.moduleId).title,style=MaterialTheme.typography.titleMedium)
                     Text("Dosya: ${record.artifactId.take(16)} • ${record.downloadState}")
@@ -344,7 +361,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
             item { Text("Toplam işlem: "+if(busy)"devam ediyor; kurulum iş miktarı ölçülemediği için toplam yüzde yok" else "bekliyor / son modül durumlarını inceleyin") }
             item { Text("Kullanıcının başlattığı kurulum Android veri aktarımı servisiyle izlenir. Android zaman sınırı veya süreç ölümü işlemi durdurabilir. Yeniden açınca kayıt geri yüklenir; devam için onay gerekir, dosyalar yeniden doğrulanır.") }
             if(journalError.isNotBlank())item{Text(journalError)}
-            if(section=="history" && history.isNotEmpty())item{Column {Text("Son işlem kayıtları (hazır olma kanıtı değildir)");history.takeLast(8).forEach{Text(it)}}}
+            if(section=="diagnostics" && history.isNotEmpty())item{Column {Text("Son işlem kayıtları (hazır olma kanıtı değildir)");history.takeLast(8).forEach{Text(it)}}}
             if(detail.isNotBlank())item{Text(detail)}
             if(firstRun)item{Button(onClick={onFirstRunComplete?.invoke(true)}){Text("Araç indirmeden devam et")}}
         }

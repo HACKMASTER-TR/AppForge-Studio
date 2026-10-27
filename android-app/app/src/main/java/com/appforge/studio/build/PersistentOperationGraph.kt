@@ -55,6 +55,45 @@ internal class PersistentOperationGraph(private val file:File,private val availa
                     (node.operationId in abandonedArtifactIds && node.parentOperationId !in completedRoots)
             }
         }
+        /** Reconcile history compaction without leaving graph children orphaned.
+         * A non-closed root with no retained artifacts is discarded only if
+         * already terminal/recovery; active installation stages survive. */
+        /** No installer is running during configure(). Prior attempt roots
+         * with no retained archive may be removed, even if interrupted while
+         * DOWNLOADING. Closed historical roots still survive. */
+        internal fun compactAfterRestart(
+            nodes:List<DownloadOperationNode>, removed:List<ArtifactDownloadRecord>,
+            retained:List<ArtifactDownloadRecord>
+        ):List<DownloadOperationNode> {
+            if(removed.isEmpty())return nodes
+            fun parent(r:ArtifactDownloadRecord)=r.parentOperationId?:moduleId(r.operationId,r.moduleId)
+            val kept=retained.map(::parent).toSet()
+            val old=removed.map(::parent).toSet()
+            val orphanRoots=nodes.filter {it.parentOperationId==null && it.operationId in old &&
+                it.operationId !in kept && !it.historyClosed}.map{it.operationId}.toSet()
+            val childIds=removed.map(::artifactNodeId).toSet()
+            return nodes.filterNot { it.operationId in orphanRoots || it.parentOperationId in orphanRoots ||
+                (it.operationId in childIds && nodes.none{root->root.operationId==it.parentOperationId && root.historyClosed}) }
+        }
+        internal fun compactAfterJournalChange(
+            nodes:List<DownloadOperationNode>, removed:List<ArtifactDownloadRecord>,
+            retained:List<ArtifactDownloadRecord>
+        ):List<DownloadOperationNode> {
+            if(removed.isEmpty())return nodes
+            fun parent(r:ArtifactDownloadRecord)=r.parentOperationId?:moduleId(r.operationId,r.moduleId)
+            val keptParents=retained.map(::parent).toSet()
+            val oldParents=removed.map(::parent).toSet()
+            val inactive=setOf(DownloadState.COMPLETED,DownloadState.CANCELLED,DownloadState.FAILED,DownloadState.RECOVERY_REQUIRED)
+            val removableRoots=nodes.filter{ it.parentOperationId==null && it.operationId in oldParents &&
+                it.operationId !in keptParents && !it.historyClosed && it.operationState in inactive
+            }.map{it.operationId}.toSet()
+            val goneIds=removed.map(::artifactNodeId).toSet()
+            return nodes.filterNot {node ->
+                node.operationId in removableRoots || node.parentOperationId in removableRoots ||
+                    (node.operationId in goneIds &&
+                        nodes.none{it.operationId==node.parentOperationId && it.historyClosed})
+            }
+        }
         fun pruneRetained(rows:List<DownloadOperationNode>,maxNodes:Int=512):List<DownloadOperationNode> {
             require(maxNodes in 1..512)
             if(rows.size<=maxNodes)return rows
