@@ -74,7 +74,7 @@ def read_release_fields(payload):
             sha, raw_size, name = fields
             require(bool(SHA.fullmatch(sha)) and raw_size.isdecimal(), 'malformed signed hash')
             size = int(raw_size)
-            require(size > 0 and size <= MAX_PACKAGES_BYTES, 'signed index size limit')
+            require(0 <= size <= (1 << 63) - 1, 'malformed Release file size')
             require(name not in hashes, 'duplicate signed index')
             hashes[name] = (sha, size)
             continue
