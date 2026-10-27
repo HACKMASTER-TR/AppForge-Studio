@@ -1,0 +1,65 @@
+APPFORGE STUDIO V9 — PHASE 3F STAGE 1 / OFFLINE ANTI-ROLLBACK POLICY
+============================================================================
+Scope: offline prototype for monotonic TRUST STATE TRANSITIONS.
+Status: NOT a production Android anti-rollback solution.
+
+CURRENT PINNED BASELINE
+- Phase 3D canonical audit evidence SHA256:
+  b2341fb22a758774f5cf07c22792539d15342fd931b40f29848db097a9abf439
+- Snapshot: 20261018T000000Z
+- 214 DEBs, 4 InRelease, 32 signed Packages, 248 unique CAS objects.
+- Phase 3E Ed25519 signature verifier must run BEFORE a transition is derived.
+
+POLICY
+1. Initial trust anchor must come from outside untrusted release metadata.
+2. Bootstrap requires root version 1 with exactly the pinned root key.
+3. Existing previous-state bytes require an independently trusted SHA256
+   checkpoint. Merely reading a hash next to an attacker-modifiable state file
+   is NOT sufficient.
+4. Release sequence never decreases. The same sequence may be replayed only
+   with byte-identical root and release metadata.
+5. Root version never decreases or skips ahead. Changing root key requires
+   a root-version increase and Phase 3E proof from old and new root keys.
+6. Same root version cannot change its key, threshold, or other root metadata.
+7. Root rotation requires a newer release sequence.
+8. Evidence digest and snapshot are immutable in this prototype.
+9. R2, public distribution, Android client remain disabled unconditionally.
+10. This tool does not write persistent trust state or private keys.
+
+LIMITATIONS / REQUIRED FOLLOW-UP
+- This does NOT persist rollback floors between Android app restarts.
+- Android needs a safely provisioned immutable public-key trust anchor and
+  a trustworthy high-water checkpoint. Atomic file writes alone cannot protect
+  against malicious deletion or filesystem snapshot rollback.
+- Android Keystore does not inherently provide a generic monotonic counter
+  across all devices. Hardware-backed rollback-resistant capabilities vary.
+  Without sufficient hardware support, use an independently authenticated
+  server witness and explicit offline policy; do not claim universal offline
+  anti-rollback guarantees.
+- Still no production signing keys, no signed AppForge release, no R2 upload,
+  no Android client integration, no changes to GitHub main / phone APK.
+- 29 tests are policy tests with a simple TEST ADAPTER. Existing Phase 3E's
+  26 separate OpenSSL tests cover real Ed25519 cryptography. The planned
+  integration between the two still needs end-to-end tests.
+
+LOCAL TESTS
+python3 -B -m unittest discover -s <extracted-folder> -p 'test_v9_phase3f_policy.py' -v
+
+REAL EVIDENCE HASH INSPECTION (READ-ONLY)
+python3 -B <extracted-folder>/appforge_v9_phase3f_policy.py inspect-evidence \
+  --evidence "$HOME/appforge-v9-phase3d-evidence/appforge-v9-phase3d-audit-manifest.json"
+
+EXPECTED REAL OUTPUT
+PHASE3D_EVIDENCE_PIN=PASS
+PRODUCTION_ROOT_KEY=NOT_PRESENT
+PERSISTENT_ROLLBACK_STATE=NOT_IMPLEMENTED
+R2_UPLOAD=NO
+ANDROID_CLIENT_ENABLED=NO
+MAIN_MODIFIED=NO
+ALL_ENGINES_READY=false
+
+STAGE 2 ONLY AFTER ACCEPTANCE
+Integrate the trust-state policy into V9 development branch and CI; add
+end-to-end signed root/release fixtures, test state persistence and recovery,
+and separately design Android secure storage / trusted high-water service.
+Do not enable release distribution until those stages independently pass.
