@@ -21,6 +21,15 @@ internal data class ArtifactDownloadRecord(
 /** Private bounded journal. Records never authorize installation or contain executable source URLs. */
 internal class PersistentDownloads(private val directory:File,private val roots:Map<String,File>,private val availableBytes:(File)->Long={it.usableSpace}) {
     private val file=File(directory,"artifacts.json")
+    companion object {
+        /** Explicitly user-abandoned recovery entries whose bytes have not been
+         * validated for resumption. This only filters journal metadata; caches,
+         * projects and partial archives are never touched. */
+        internal fun retainAfterUserCleanup(rows:List<ArtifactDownloadRecord>):List<ArtifactDownloadRecord> = rows.filterNot { row ->
+            row.downloadState==DownloadState.RECOVERY_REQUIRED && row.verificationState=="RECHECK_REQUIRED" &&
+                row.verifiedPartialBytes==0L && row.downloadedBytes==0L
+        }
+    }
     fun operationGraph()=PersistentOperationGraph(File(directory,"operations.json"))
     private fun safe(path:File) {
         var current:File?=path.absoluteFile

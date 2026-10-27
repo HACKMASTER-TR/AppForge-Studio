@@ -139,6 +139,33 @@ internal object DownloadCoordinator {
         journal?.save(rows);records.value=rows
         rows.filter{it.operationId==operation && it.artifactId==artifact}.forEach{if(journal!=null)syncArtifact(it)}
     }
+    /** Explicit UI action only. Existing verified partial progress is preserved;
+     * no download files, signing identities or user projects are touched. */
+    @Synchronized fun releaseUnverifiedRecoveryHistory():Int {
+        check(active.isEmpty()){ "Aktif aktarım varken geçmiş temizlenemez." }
+        val store=journal?:error("İndirme günlüğü başlatılmadı.")
+        val old=records.value
+        val retained=PersistentDownloads.retainAfterUserCleanup(old)
+        val removed=old.size-retained.size
+        if(removed>0){
+            val abandoned=old.filterNot { it in retained }
+            val previousTree=operations.value
+            val retainedTree=PersistentOperationGraph.retainAfterUserCleanup(previousTree,abandoned,retained)
+            val graphStore=store.operationGraph()
+            // Store the reduced graph first. A crash here is repaired from the
+            // unmodified artifact journal on startup; no READY state is granted.
+            graphStore.save(retainedTree)
+            try {
+                store.save(retained)
+            } catch(error:Exception) {
+                runCatching { graphStore.save(previousTree) }
+                throw error
+            }
+            records.value=retained
+            operations.value=retainedTree
+        }
+        return removed
+    }
     @Synchronized fun cancelRecord(operation:String,artifact:String) {
         check(active.isEmpty()){"Aktif aktarımda uygulama kontrolünü kullanın."}
         val rows=records.value.map{if(it.operationId==operation && it.artifactId==artifact)it.copy(downloadState=DownloadState.CANCELLED,updatedAt=System.currentTimeMillis())else it}

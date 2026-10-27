@@ -30,6 +30,31 @@ internal class PersistentOperationGraph(private val file:File,private val availa
         fun moduleId(operation:String,module:OfflineModuleId)=id("module",OperationDiagnostics.correlation(operation),module.name)
         fun artifactNodeId(r:ArtifactDownloadRecord)=id("artifact",r.operationId,r.artifactId)
         /** Evicts complete terminal root subtrees oldest-first while preserving active and RECOVERY_REQUIRED trees. */
+        /** Compact the observational graph for records the user explicitly
+         * abandons. Preserve completed historical roots, all retained artifact
+         * nodes, and their module parents. Only empty RECOVERY_REQUIRED roots
+         * can lose their recovery subtree. No installation trust is granted. */
+        internal fun retainAfterUserCleanup(
+            nodes:List<DownloadOperationNode>,
+            abandoned:List<ArtifactDownloadRecord>,
+            retained:List<ArtifactDownloadRecord>
+        ):List<DownloadOperationNode> {
+            if(abandoned.isEmpty())return nodes
+            fun parent(r:ArtifactDownloadRecord)=r.parentOperationId?:moduleId(r.operationId,r.moduleId)
+            val retainedParents=retained.map(::parent).toSet()
+            val abandonedParents=abandoned.map(::parent).toSet()
+            val recoveredRoots=nodes.filter { node ->
+                node.parentOperationId==null && node.operationId in abandonedParents &&
+                    node.operationId !in retainedParents && !node.historyClosed &&
+                    node.operationState==DownloadState.RECOVERY_REQUIRED
+            }.map { it.operationId }.toSet()
+            val completedRoots=nodes.filter { it.parentOperationId==null && it.historyClosed }.map { it.operationId }.toSet()
+            val abandonedArtifactIds=abandoned.map(::artifactNodeId).toSet()
+            return nodes.filterNot { node ->
+                node.operationId in recoveredRoots || node.parentOperationId in recoveredRoots ||
+                    (node.operationId in abandonedArtifactIds && node.parentOperationId !in completedRoots)
+            }
+        }
         fun pruneRetained(rows:List<DownloadOperationNode>,maxNodes:Int=512):List<DownloadOperationNode> {
             require(maxNodes in 1..512)
             if(rows.size<=maxNodes)return rows

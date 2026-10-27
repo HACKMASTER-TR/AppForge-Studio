@@ -158,6 +158,7 @@ internal object ModuleInstallOperations {
     var detail by remember { mutableStateOf("") }
     var availableUpdates by remember{mutableStateOf<Set<OfflineModuleId>>(emptySet())}
     var confirmPrune by remember{mutableStateOf(false)}
+    var confirmHistoryCleanup by remember{mutableStateOf(false)}
     var pruneBytes by remember{mutableStateOf<Long?>(null)}
     var pruneReason by remember{mutableStateOf<String?>(null)}
     var installedVersions by remember{mutableStateOf<Map<OfflineModuleId,String?>>(emptyMap())}
@@ -194,6 +195,22 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
             dismissButton={TextButton(onClick={pendingLifecycle=null}){Text("Vazgeç")}})
     }
     if(confirmPrune)AlertDialog(onDismissRequest={confirmPrune=false},title={Text("Kullanılmayan eski sürümleri temizle")},text={Text("Aktif ortam, en son geri alma sürümü ve modül sahiplik kayıtlarının kullandığı snapshot'lar korunur. Daha eski geri alma geçmişi kısalabilir. Yalnız hash envanteri doğrulanan özel snapshot kopyaları silinir; kullanıcı projeleri silinmez.")},confirmButton={TextButton(enabled=!busy,onClick={confirmPrune=false;scope.launch{detail=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.pruneUnusedSnapshots(context)}.fold({"${it/1024/1024} MiB eski snapshot temizlendi."},{"Temizleme engellendi: ${it.message}"})}}}){Text("Onayla ve temizle")}},dismissButton={TextButton(onClick={confirmPrune=false}){Text("Vazgeç")}})
+    if(confirmHistoryCleanup)AlertDialog(
+        onDismissRequest={confirmHistoryCleanup=false},
+        title={Text("Eski indirme kayıtlarını bırak")},
+        text={Text("Yalnız kurtarma gerektiren ve doğrulanmış kısmi baytı olmayan eski geçmiş kayıtları kaldırılır. İndirilen dosyalar, paket önbelleği ve kullanıcı projeleri silinmez. Bu kayıtlar üzerinden devam etme bilgisi kaybolur; sonraki kurulum yeniden açık onay ister.")},
+        confirmButton={TextButton(enabled=!busy && !preparing && !stopPending,onClick={
+            confirmHistoryCleanup=false
+            scope.launch {
+                detail=withContext(Dispatchers.IO) {
+                    runCatching { DownloadCoordinator.releaseUnverifiedRecoveryHistory() }
+                        .fold({"Geçmişten $it doğrulanmamış kayıt bırakıldı. Paket dosyaları korunuyor."},
+                              {"İndirme geçmişi temizliği engellendi: ${it.message}"})
+                }
+            }
+        }){Text("Kayıtları bırak • dosyaları koru")}},
+        dismissButton={TextButton(onClick={confirmHistoryCleanup=false}){Text("Vazgeç")}}
+    )
     if(chosen!=null) {
         val id=chosen!!;val missing=OfflineModules.resolve(setOf(id)).filter{ready[it]!=true}
         val needsSdk=OfflineModuleId.ANDROID_CORE in missing || OfflineModuleId.EXPO_REACT_NATIVE in missing
@@ -221,6 +238,15 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                     }
                 }
                 Text("APT/npm/Gradle/pip/sdkmanager: kısıtlı ağda BLOCKED. Çevrimdışı bayrağı, alt süreç soketlerini engelleyen bir izolasyon değildir.")
+            }}}
+            if(section=="history")item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text("İndirme geçmişi: ${artifacts.size}/128 kayıt")
+                val eligible=PersistentDownloads.retainAfterUserCleanup(artifacts)
+                val count=artifacts.size-eligible.size
+                Text("Güvenli olarak bırakılabilecek doğrulanmamış kurtarma kaydı: $count")
+                Button(enabled=!busy && !preparing && !stopPending && count>0,onClick={confirmHistoryCleanup=true}) {
+                    Text("Eski kayıtları bırak • dosyaları koru")
+                }
             }}}
             if(section=="history")items(artifacts.takeLast(32).reversed(),key={"artifact-"+it.operationId+it.artifactId}){record->
                 Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {

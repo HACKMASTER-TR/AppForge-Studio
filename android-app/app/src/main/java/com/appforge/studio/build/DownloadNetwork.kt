@@ -25,7 +25,12 @@ internal object DownloadNetworkRules {
 internal object DownloadNetwork {
     class PolicyBlocked:java.util.concurrent.CancellationException("Ağ politikası bağlantıyı engelledi; Wi-Fi veya açık mobil veri onayı bekleniyor.")
     @Volatile private var context:Context?=null
-    @Volatile private var preference=DownloadNetworkPolicy.WIFI_PREFERRED
+    @Volatile private var preference=DownloadNetworkPolicy.ALLOW_ANY
+    /** New installs accept validated Wi-Fi or cellular; valid saved choices win.
+     * Corrupt persisted policy fails closed to the previous restricted default. */
+    internal fun initialPolicy(saved:String?):DownloadNetworkPolicy =
+        if(saved==null)DownloadNetworkPolicy.ALLOW_ANY
+        else runCatching{DownloadNetworkPolicy.valueOf(saved)}.getOrDefault(DownloadNetworkPolicy.WIFI_PREFERRED)
     private class Consent { @Volatile var active=true }
     private val consent=ThreadLocal<Consent?>()
     private val pendingConsent=java.util.concurrent.atomic.AtomicBoolean(false)
@@ -46,7 +51,7 @@ internal object DownloadNetwork {
     }
     fun release(connection:HttpURLConnection){connections.remove(connection)}
     private var callback:ConnectivityManager.NetworkCallback?=null
-    @Synchronized fun configure(app:Context){if(context!=null)return;context=app.applicationContext;preference=runCatching{DownloadNetworkPolicy.valueOf(app.getSharedPreferences("download-v5",0).getString("policy",DownloadNetworkPolicy.WIFI_PREFERRED.name)?:DownloadNetworkPolicy.WIFI_PREFERRED.name)}.getOrDefault(DownloadNetworkPolicy.WIFI_PREFERRED)
+    @Synchronized fun configure(app:Context){if(context!=null)return;context=app.applicationContext;preference=initialPolicy(app.getSharedPreferences("download-v5",0).getString("policy",null))
         val cm=app.getSystemService(ConnectivityManager::class.java)
         if(cm!=null) {
             val observer=object:ConnectivityManager.NetworkCallback(){
