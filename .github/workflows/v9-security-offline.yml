@@ -1,0 +1,52 @@
+name: V9 Offline Security Only (No Android or Production)
+
+on:
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - 'quality/tests/test_v9_*.py'
+      - 'quality/tools/appforge_phase3*.py'
+      - 'quality/tools/appforge_v9_final_release_gate.py'
+      - 'cloudflare/package-distribution/**'
+      - '.github/workflows/v9-security-offline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v9-security-only-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run all V9 security tests with no skips
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v openssl
+          command -v gpg
+          command -v python3
+          command -v node
+          export PYTHONWARNINGS=error::ResourceWarning
+          python3 -B -m unittest discover -s quality/tests -p 'test_v9_*.py' -v 2>&1 | tee "$RUNNER_TEMP/v9-python.log"
+          if grep -Eqi 'skipped=[1-9]|\.\.\. skipped |ResourceWarning' "$RUNNER_TEMP/v9-python.log"; then
+            echo 'V9_SECURITY_CI=BLOCKED: skipped/resource warning'; exit 1
+          fi
+          node --test cloudflare/package-distribution/worker.test.mjs
+          echo 'V9_OFFLINE_CI=PASS'
+          echo 'V9_PRODUCTION_READINESS=BLOCKED'
+          echo 'R2_UPLOAD=NO'
+          echo 'PUBLIC_DISTRIBUTION=DISABLED'
+          echo 'ANDROID_CLIENT_ENABLED=NO'
+          echo 'ALL_ENGINES_READY=false'
