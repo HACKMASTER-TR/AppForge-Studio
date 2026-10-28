@@ -1,0 +1,35 @@
+# Offline only. No Cloudflare auth or deployment, no Android artifact.
+name: V9 Device Authentication Offline Tests
+on:
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - 'cloudflare/v9-witness/device-auth/**'
+      - 'android-app/app/src/main/java/com/appforge/studio/security/V9DeviceProofWire.kt'
+      - 'android-app/app/src/main/java/com/appforge/studio/security/V9WitnessDeviceProof.kt'
+      - '.github/workflows/v9-device-auth-offline.yml'
+permissions:
+  contents: read
+jobs:
+  device-proof-offline:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run P-256 challenge verification and replay attack tests
+        run: |
+          set -euo pipefail
+          node --test --test-reporter=tap cloudflare/v9-witness/device-auth/protocol.test.mjs
+          echo 'V9_DEVICE_PROOF_OFFLINE=PASS'
+          echo 'CLOUDFLARE_DEPLOYED=NO'
+          echo 'ANDROID_APK_BUILD=NO'
+          echo 'PUBLIC_WITNESS_API=DISABLED'
