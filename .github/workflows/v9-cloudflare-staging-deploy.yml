@@ -1,0 +1,124 @@
+# Manual add to development branch only. One-shot isolated staging creation.
+# Requires existing CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN Actions secrets.
+name: V9 Cloudflare Isolated Staging - One Shot
+on:
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - '.github/workflows/v9-cloudflare-staging-deploy.yml'
+permissions:
+  contents: read
+concurrency:
+  group: appforge-v9-isolated-staging-creation
+  cancel-in-progress: false
+jobs:
+  create-isolated-disabled-worker:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - name: Checkout exact development commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Lock source commit, branch, diff, and disabled configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          test "$GITHUB_REPOSITORY" = 'HACKMASTER-TR/AppForge-Studio'
+          test "$GITHUB_REF" = 'refs/heads/feat/v9-global-package-distribution-20261027'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD^)" = '7ea2154e6ce5227ba770d22e90c7963a2cfcc0f9'
+          test "$(git diff-tree --no-commit-id --name-only -r HEAD)" = '.github/workflows/v9-cloudflare-staging-deploy.yml'
+          python3 quality/tools/appforge_v9_cloudflare_staging_preflight.py --repo .
+          python3 - <<'PY'
+          from pathlib import Path
+          import tomllib
+          p=Path('cloudflare/v9-witness/wrangler.staging.toml')
+          c=tomllib.loads(p.read_text())
+          assert c['name']=='appforge-v9-witness-isolated-staging'
+          assert c['main']=='worker.mjs'
+          assert c['workers_dev'] is False and c['preview_urls'] is False
+          assert c['vars']['V9_STAGING_WITNESS_MODE']=='DISABLED'
+          assert 'route' not in c and 'routes' not in c
+          assert 'r2_buckets' not in c and 'd1_databases' not in c
+          assert len(c['durable_objects']['bindings'])==1
+          assert c['durable_objects']['bindings'][0] == {'name':'V9_STAGING_WITNESS','class_name':'V9StagingWitness'}
+          assert c['migrations']==[{'tag':'v1','new_sqlite_classes':['V9StagingWitness']}]
+          print('EXACT_STAGING_TARGET_AND_CONFIG=PASS')
+          PY
+          echo 'SOURCE_AND_DIFF=PASS'
+      - name: Verify credentials and Worker name availability without writing
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          python3 - <<'PY'
+          import json, os, re, urllib.request, urllib.error
+          account=os.environ.get('CLOUDFLARE_ACCOUNT_ID','')
+          token=os.environ.get('CLOUDFLARE_API_TOKEN','')
+          if not re.fullmatch(r'[a-fA-F0-9]{32}',account) or not token:
+              raise SystemExit('STOP: CLOUDFLARE_ACCOUNT_ID_OR_API_TOKEN_MISSING')
+          path='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers/scripts'
+          request=urllib.request.Request(path,method='GET',headers={
+              'Authorization':'Bearer '+token,'Accept':'application/json',
+              'User-Agent':'AppForge-V9-Isolated-Staging-Preflight/1.0'})
+          try:
+              with urllib.request.urlopen(request,timeout=25) as response:
+                  body=response.read(2*1024*1024)
+          except urllib.error.HTTPError as exc:
+              raise SystemExit('STOP: CLOUDFLARE_API_HTTP_'+str(exc.code)) from None
+          except (urllib.error.URLError,TimeoutError):
+              raise SystemExit('STOP: CLOUDFLARE_API_NETWORK_ERROR') from None
+          try: result=json.loads(body)
+          except (ValueError,UnicodeError):
+              raise SystemExit('STOP: CLOUDFLARE_API_INVALID_JSON') from None
+          if result.get('success') is not True or not isinstance(result.get('result'),list):
+              raise SystemExit('STOP: CLOUDFLARE_READ_PERMISSION_OR_RESULT_INVALID')
+          # An incomplete list must never imply that a target name is unused.
+          info = result.get('result_info')
+          if isinstance(info, dict):
+              pages = info.get('total_pages')
+              total = info.get('total_count')
+              if (isinstance(pages, int) and pages > 1) or (isinstance(total, int) and total > len(result['result'])):
+                  raise SystemExit('STOP: WORKER_LIST_INCOMPLETE')
+          name='appforge-v9-witness-isolated-staging'
+          if any(isinstance(s,dict) and s.get('id')==name for s in result['result']):
+              raise SystemExit('STOP: TARGET_ALREADY_EXISTS_DO_NOT_OVERWRITE')
+          print('CF_ACCOUNT_WORKER_LIST=PASS')
+          print('ISOLATED_TARGET_UNOCCUPIED=PASS')
+          print('NO_CLOUDFLARE_WRITES_YET=PASS')
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Recheck witness security tests and build only
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test cloudflare/v9-witness/witness.test.mjs
+          npx --yes wrangler@4.153.0 deploy --dry-run --config cloudflare/v9-witness/wrangler.staging.toml --outdir "$RUNNER_TEMP/v9-cf-bundle"
+          test -d "$RUNNER_TEMP/v9-cf-bundle"
+          echo 'STAGING_DRY_RUN=PASS'
+      - name: Create only the disabled isolated V9 Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          npx --yes wrangler@4.153.0 deploy --config cloudflare/v9-witness/wrangler.staging.toml
+          echo 'V9_ISOLATED_STAGING_DEPLOY_REQUEST=COMPLETED'
+          echo 'PUBLIC_HTTP=DISABLED'
+          echo 'WITNESS_RUNTIME=DISABLED'
+          echo 'MAIN=UNCHANGED'
+          echo 'ANDROID_APK=UNCHANGED'
+          echo 'PLAY_PRODUCTION=UNCHANGED'
+          echo 'V9_PRODUCTION_READINESS=BLOCKED'
