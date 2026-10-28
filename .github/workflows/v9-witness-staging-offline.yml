@@ -1,0 +1,36 @@
+name: V9 Witness Staging Offline Tests (Never Deploy)
+
+on:
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - 'cloudflare/v9-witness/**'
+      - '.github/workflows/v9-witness-staging-offline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  staging-witness-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run Ed25519 and rollback-safety tests without deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test cloudflare/v9-witness/witness.test.mjs
+          echo 'V9_WITNESS_OFFLINE_TESTS=PASS'
+          echo 'V9_CLOUDFLARE_DEPLOYED=NO'
+          echo 'PUBLIC_WITNESS_API=DISABLED'
+          echo 'ANDROID_CLIENT_ENABLED=NO'
+          echo 'V9_PRODUCTION_READINESS=BLOCKED'
+          echo 'ALL_ENGINES_READY=false'

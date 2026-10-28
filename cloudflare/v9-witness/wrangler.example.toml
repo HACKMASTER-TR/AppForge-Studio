@@ -1,0 +1,16 @@
+# NOT a deploy command, production template, or authorization to enable.
+name = "appforge-v9-witness-staging-disabled"
+main = "worker.mjs"
+compatibility_date = "2026-10-18"
+workers_dev = false
+# No routes, no R2 bindings and no private signer. This example is inaccessible by HTTP.
+[vars]
+V9_STAGING_WITNESS_MODE = "DISABLED"
+
+[[durable_objects.bindings]]
+name = "V9_STAGING_WITNESS"
+class_name = "V9StagingWitness"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["V9StagingWitness"]
