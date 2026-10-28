@@ -30,6 +30,8 @@ jobs:
           set -euo pipefail
           node --test --test-reporter=tap cloudflare/v9-witness/device-auth/protocol.test.mjs
           node --test --test-reporter=tap cloudflare/v9-witness/device-auth/registry.test.mjs
+          node --test --test-reporter=tap cloudflare/v9-witness/device-auth/admin-oidc.test.mjs
+          echo 'V9_ADMIN_OIDC_OFFLINE=PASS'
           echo 'V9_ENROLLMENT_REGISTRY_OFFLINE=PASS'
           echo 'V9_DEVICE_PROOF_OFFLINE=PASS'
           echo 'CLOUDFLARE_DEPLOYED=NO'
