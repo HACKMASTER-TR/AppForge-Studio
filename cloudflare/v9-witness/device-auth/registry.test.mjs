@@ -1,0 +1,55 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {generateKeyPairSync,createHash,sign as nodeSign,randomBytes} from 'node:crypto';
+import {V9DeviceEnrollmentRegistry,adminPermitMessage} from './registry.mjs';
+import {V9DeviceChallengeStore} from './challenges.mjs';
+import {proofMessage} from './protocol.mjs';
+
+const b64=b=>Buffer.from(b).toString('base64url');
+const sha=b=>createHash('sha256').update(b).digest('hex');
+const hex=()=>randomBytes(16).toString('hex');
+const key=()=>{const p=generateKeyPairSync('ec',{namedCurve:'prime256v1'});const spki=p.publicKey.export({type:'spki',format:'der'});return {p,spki,deviceId:sha(spki)};};
+const admin=()=>{const p=generateKeyPairSync('ed25519');const spki=p.publicKey.export({type:'spki',format:'der'});return {p,spki,pin:sha(spki)};};
+const memory=()=>{const db=new Map();return {kv:{get(k){return structuredClone(db.get(k));},put(k,v){db.set(k,structuredClone(v));}},transactionSync(fn){return fn();}}};
+const env=()=>{const s=memory(),a=admin();let now=1_800_000_000_000;
+ const ctor=()=>new V9DeviceEnrollmentRegistry(s,{adminSpkiDer:new Uint8Array(a.spki),adminSpkiPin:a.pin,clock:()=>now});
+ return {s,a,ctor,now:()=>now,advance:n=>{now+=n;}};
+};
+const proof=(k,c)=>{const p={schema:1,operation:'enroll',deviceId:k.deviceId,challengeId:c.challengeId,nonce:c.nonce,spkiB64Url:b64(k.spki)};
+ return {...p,signatureDerB64Url:b64(nodeSign('sha256',Buffer.from(proofMessage(p)),k.p.privateKey))};};
+const permit=(a,e,deviceId,requestId,action='approve',options={})=>{
+ const now=e.now();const payload={schema:1,action,deviceId,requestId,expectedRevision:action==='revoke'?1:0,
+   decisionId:hex(),adminId:'a'.repeat(64),issuedAt:now-100,expiresAt:now+60_000,...options};
+ return {payload,sigB64Url:b64(nodeSign(null,Buffer.from(adminPermitMessage(payload)),a.p.privateKey))};
+};
+const request=async(e,k=key())=>{const r=e.ctor(),c=await r.issueEnrollmentChallenge({spkiB64Url:b64(k.spki)});const q=await r.requestEnrollment(proof(k,c));return {r,k,c,q};};
+const active=async()=>{const e=env(),z=await request(e);await z.r.applyAdminPermit(permit(e.a,e,z.k.deviceId,z.q.requestId));return {e,...z};};
+const fail=async fn=>assert.rejects(fn,/BLOCKED:/);
+
+test('unsigned device cannot self-enroll: starts pending only',async()=>{const e=env(),z=await request(e);assert.equal(z.q.status,'pending');assert.equal(e.s.kv.get('v9-auth:registered:'+z.k.deviceId),undefined);});
+test('enrollment challenge uses server-owned id and distinct nonce',async()=>{const e=env(),r=e.ctor(),k=key(),c=await r.issueEnrollmentChallenge({spkiB64Url:b64(k.spki)});assert.equal(c.deviceId,k.deviceId);assert.match(c.challengeId,/^[a-f0-9]{32}$/);assert.notEqual(c.nonce,c.challengeId);});
+test('malformed P-256 public key denied',async()=>{const e=env();await fail(()=>e.ctor().issueEnrollmentChallenge({spkiB64Url:b64(randomBytes(90))}));});
+test('a second unexpired challenge cannot replace the first',async()=>{const e=env(),r=e.ctor(),k=key();await r.issueEnrollmentChallenge({spkiB64Url:b64(k.spki)});await fail(()=>r.issueEnrollmentChallenge({spkiB64Url:b64(k.spki)}));});
+test('expired enrollment challenge may renew; expired proof rejected',async()=>{const e=env(),r=e.ctor(),k=key(),c=await r.issueEnrollmentChallenge({spkiB64Url:b64(k.spki)});e.advance(90_001);await fail(()=>r.requestEnrollment(proof(k,c)));assert.notEqual((await r.issueEnrollmentChallenge({spkiB64Url:b64(k.spki)})).nonce,c.nonce);});
+test('forged enrollment signature rejected',async()=>{const e=env(),r=e.ctor(),k=key(),other=key(),c=await r.issueEnrollmentChallenge({spkiB64Url:b64(k.spki)});const bad=proof(k,c);bad.signatureDerB64Url=proof(other,{...c,deviceId:other.deviceId}).signatureDerB64Url;await fail(()=>r.requestEnrollment(bad));assert.equal(r.snapshot({deviceId:k.deviceId}),null);});
+test('enrollment proof bound to its nonce and challenge ID',async()=>{const e=env(),r=e.ctor(),k=key(),c=await r.issueEnrollmentChallenge({spkiB64Url:b64(k.spki)});await fail(()=>r.requestEnrollment({...proof(k,c),nonce:hex()}));await fail(()=>r.requestEnrollment({...proof(k,c),challengeId:hex()}));});
+test('concurrent enrollment proof: exactly one pending request',async()=>{const e=env(),r=e.ctor(),k=key(),c=await r.issueEnrollmentChallenge({spkiB64Url:b64(k.spki)}),p=proof(k,c);const out=await Promise.allSettled([r.requestEnrollment(p),r.requestEnrollment(p)]);assert.equal(out.filter(z=>z.status==='fulfilled').length,1);});
+test('once pending, another enrollment challenge denied',async()=>{const e=env(),z=await request(e);await fail(()=>z.r.issueEnrollmentChallenge({spkiB64Url:b64(z.k.spki)}));});
+test('fixture-signed admin approval activates Stage5A registry',async()=>{const {e,k,r,q}=await active();const reg=e.s.kv.get('v9-auth:registered:'+k.deviceId);assert.equal(reg.status,'active');assert.equal(r.snapshot({deviceId:k.deviceId}).revision,1);assert.equal(q.status,'pending');});
+test('untrusted admin signature cannot approve',async()=>{const e=env(),z=await request(e),attacker=admin();await fail(()=>z.r.applyAdminPermit(permit(attacker,e,z.k.deviceId,z.q.requestId)));assert.equal(z.r.snapshot({deviceId:z.k.deviceId}).status,'pending');});
+test('unauthenticated isAdmin flag cannot bypass signed permit',async()=>{const e=env(),z=await request(e);await fail(()=>z.r.applyAdminPermit({isAdmin:true,payload:{action:'approve'}}));});
+test('wrong pinned admin key digest fails closed',async()=>{const e=env(),z=await request(e),r=new V9DeviceEnrollmentRegistry(e.s,{adminSpkiDer:new Uint8Array(e.a.spki),adminSpkiPin:'f'.repeat(64),clock:e.now});await fail(()=>r.applyAdminPermit(permit(e.a,e,z.k.deviceId,z.q.requestId)));});
+test('modified signed decision action rejected',async()=>{const e=env(),z=await request(e);const p=permit(e.a,e,z.k.deviceId,z.q.requestId);p.payload.action='revoke';await fail(()=>z.r.applyAdminPermit(p));});
+test('cross-device signed approval is rejected',async()=>{const e=env(),a=await request(e),b=await request(e);await fail(()=>b.r.applyAdminPermit(permit(e.a,e,b.k.deviceId,a.q.requestId)));});
+test('expired and future admin permits rejected',async()=>{const e=env(),z=await request(e);const past=permit(e.a,e,z.k.deviceId,z.q.requestId,'approve',{issuedAt:e.now()-130_000,expiresAt:e.now()-1});await fail(()=>z.r.applyAdminPermit(past));const future=permit(e.a,e,z.k.deviceId,z.q.requestId,'approve',{issuedAt:e.now()+20_000,expiresAt:e.now()+21_000});await fail(()=>z.r.applyAdminPermit(future));});
+test('concurrent conflicting approvals: one winner',async()=>{const e=env(),z=await request(e);const a=permit(e.a,e,z.k.deviceId,z.q.requestId),b=permit(e.a,e,z.k.deviceId,z.q.requestId);const r=await Promise.allSettled([z.r.applyAdminPermit(a),z.r.applyAdminPermit(b)]);assert.equal(r.filter(x=>x.status==='fulfilled').length,1);});
+test('same admin permit cannot be replayed',async()=>{const e=env(),z=await request(e),p=permit(e.a,e,z.k.deviceId,z.q.requestId);await z.r.applyAdminPermit(p);await fail(()=>z.r.applyAdminPermit(p));});
+test('rejection is terminal and blocks same-key re-enrollment',async()=>{const e=env(),z=await request(e);const r=await z.r.applyAdminPermit(permit(e.a,e,z.k.deviceId,z.q.requestId,'reject'));assert.equal(r.status,'rejected');await fail(()=>z.r.issueEnrollmentChallenge({spkiB64Url:b64(z.k.spki)}));await fail(()=>z.r.applyAdminPermit(permit(e.a,e,z.k.deviceId,z.q.requestId)));});
+test('only active registered device may obtain Stage5A challenges',async()=>{const e=env(),z=await request(e);const challengeStore=new V9DeviceChallengeStore(e.s,{clock:e.now});assert.throws(()=>challengeStore.issue({deviceId:z.k.deviceId,operation:'receipt'}),/BLOCKED:/);await z.r.applyAdminPermit(permit(e.a,e,z.k.deviceId,z.q.requestId));assert.equal(challengeStore.issue({deviceId:z.k.deviceId,operation:'receipt'}).deviceId,z.k.deviceId);});
+test('revoke active device disables Stage5A challenge issuance',async()=>{const {e,k,r,q}=await active();const out=await r.applyAdminPermit(permit(e.a,e,k.deviceId,q.requestId,'revoke'));assert.equal(out.status,'revoked');assert.equal(e.s.kv.get('v9-auth:registered:'+k.deviceId).status,'revoked');assert.throws(()=>new V9DeviceChallengeStore(e.s,{clock:e.now}).issue({deviceId:k.deviceId,operation:'receipt'}),/BLOCKED:/);});
+test('revoke invalidates challenge already issued before revocation',async()=>{const {e,k,r,q}=await active(),store=new V9DeviceChallengeStore(e.s,{clock:e.now});const ch=store.issue({deviceId:k.deviceId,operation:'receipt'});await r.applyAdminPermit(permit(e.a,e,k.deviceId,q.requestId,'revoke'));const p={schema:1,operation:'receipt',deviceId:k.deviceId,challengeId:ch.challengeId,nonce:ch.nonce,spkiB64Url:b64(k.spki)};p.signatureDerB64Url=b64(nodeSign('sha256',Buffer.from(proofMessage(p)),k.p.privateKey));await fail(()=>store.verifyAndConsume(p));});
+test('revoked device cannot be reactivated with old approval',async()=>{const {e,k,r,q}=await active();await r.applyAdminPermit(permit(e.a,e,k.deviceId,q.requestId,'revoke'));await fail(()=>r.applyAdminPermit(permit(e.a,e,k.deviceId,q.requestId,'approve')));await fail(()=>r.issueEnrollmentChallenge({spkiB64Url:b64(k.spki)}));});
+test('revocation without previous approval rejected',async()=>{const e=env(),z=await request(e);await fail(()=>z.r.applyAdminPermit(permit(e.a,e,z.k.deviceId,z.q.requestId,'revoke',{expectedRevision:0})));});
+test('state survives registry recreation, terminal state retained',async()=>{const {e,k,r,q}=await active();await r.applyAdminPermit(permit(e.a,e,k.deviceId,q.requestId,'revoke'));const reopened=e.ctor();assert.equal(reopened.snapshot({deviceId:k.deviceId}).status,'revoked');assert.equal(e.s.kv.get('v9-auth:registered:'+k.deviceId).status,'revoked');});
+test('no public fetch, admin minting, self-approval or raw registration API',()=>{assert.equal(typeof V9DeviceEnrollmentRegistry.prototype.fetch,'undefined');assert.equal(typeof V9DeviceEnrollmentRegistry.prototype.mintPermit,'undefined');assert.equal(typeof V9DeviceEnrollmentRegistry.prototype.approve,'undefined');assert.equal(typeof V9DeviceEnrollmentRegistry.prototype.register,'undefined');});
+test('Stage5A challenge store still refuses enroll operation',async()=>{const {e,k}=await active();assert.throws(()=>new V9DeviceChallengeStore(e.s,{clock:e.now}).issue({deviceId:k.deviceId,operation:'enroll'}),/BLOCKED:/);});

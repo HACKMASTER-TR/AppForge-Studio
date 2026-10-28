@@ -9,7 +9,7 @@ internal object V9DeviceProofWire {
     private const val DOMAIN = "APPFORGE-V9-DEVICE-PROOF\u0000"
     private val HEX32 = Regex("^[0-9a-f]{32}$")
     private val HEX64 = Regex("^[0-9a-f]{64}$")
-    private val OPERATIONS = setOf("receipt", "prepare", "finalize", "abort")
+    private val OPERATIONS = setOf("enroll", "receipt", "prepare", "finalize", "abort")
 
     fun deviceId(spki: ByteArray): String {
         require(spki.isNotEmpty()) { "V9 public key missing" }

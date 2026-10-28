@@ -15,7 +15,7 @@ export class V9DeviceChallengeStore {
   // service may write registration state after physical/out-of-band approval.
   issue({deviceId,operation}) {
     demand(typeof deviceId==='string'&&ID.test(deviceId),'device id');
-    demand(OPERATIONS.includes(operation),'operation');
+    demand(OPERATIONS.includes(operation) && operation!=='enroll','operation');
     const now=this.clock();demand(Number.isSafeInteger(now)&&now>0,'clock');
     const challengeId=this.random(),nonce=this.random();
     demand(HEX32.test(challengeId)&&HEX32.test(nonce)&&challengeId!==nonce,'random challenge');

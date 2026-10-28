@@ -5,7 +5,7 @@ const enc = new TextEncoder();
 const HEX32 = /^[0-9a-f]{32}$/;
 const HEX64 = /^[0-9a-f]{64}$/;
 const B64URL = /^[A-Za-z0-9_-]+$/;
-export const OPERATIONS = Object.freeze(['receipt','prepare','finalize','abort']);
+export const OPERATIONS = Object.freeze(['enroll','receipt','prepare','finalize','abort']);
 export function demand(ok, reason) { if (!ok) throw new Error('BLOCKED: '+reason); }
 export function exact(value, names, label) {
   demand(value && typeof value === 'object' && !Array.isArray(value) &&
