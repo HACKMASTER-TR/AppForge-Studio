@@ -1,0 +1,155 @@
+name: V9 Live Durable Object Acceptance (Disposable, No Public Route)
+on:
+  push:
+    branches: [feat/v9-global-package-distribution-20261027]
+    paths:
+      - '.github/workflows/v9-live-do-acceptance.yml'
+permissions:
+  contents: read
+concurrency:
+  group: v9-live-do-isolated-once
+  cancel-in-progress: false
+jobs:
+  live-do-smoke:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      WRANGLER_SEND_METRICS: 'false'
+      PROBE_NAME: appforge-v9-do-live-probe-20261028
+      PROBE_CONFIG: cloudflare/v9-witness/live-probe/wrangler.toml
+    steps:
+      - name: Checkout exact V9 development commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Exact one-shot source and safety audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD^)" = '1bef80de30c8fe3413410a59ddd2a1b5f9175885'
+          python3 - <<'PY'
+          import pathlib, subprocess, tomllib
+          expected={
+              '.github/workflows/v9-live-do-acceptance.yml',
+              'cloudflare/v9-witness/live-probe/core.mjs',
+              'cloudflare/v9-witness/live-probe/entry.mjs',
+              'cloudflare/v9-witness/live-probe/core.test.mjs',
+              'cloudflare/v9-witness/live-probe/wrangler.toml',
+              'docs/engineering/appforge-v9-live-do-acceptance.md',
+          }
+          actual=set(subprocess.check_output(['git','diff-tree','--no-commit-id','--name-only','-r','HEAD'],text=True).splitlines())
+          if expected!=actual: raise SystemExit('BLOCKED: unexpected commit file scope')
+          c=tomllib.loads(pathlib.Path('cloudflare/v9-witness/live-probe/wrangler.toml').read_text())
+          assert c['name']=='appforge-v9-do-live-probe-20261028'
+          assert c['workers_dev'] is False and c['preview_urls'] is False
+          assert 'routes' not in c and 'route' not in c
+          assert c['main']=='entry.mjs'
+          assert c['vars']=={'V9_PROBE_MODE':'LIVE_ACCEPTANCE_ONLY'}
+          assert c['triggers']=={'crons':['* * * * *']}
+          assert c['durable_objects']['bindings']==[{'name':'V9_LIVE_PROBE','class_name':'V9LiveProbeDO'}]
+          assert c['migrations']==[{'tag':'v1','new_sqlite_classes':['V9LiveProbeDO']}]
+          print('EXACT_FILE_SCOPE_AND_PRIVATE_PROBE=PASS')
+          PY
+          python3 quality/tools/appforge_v9_cloudflare_staging_preflight.py --repo .
+          test "$(git status --porcelain)" = ''
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Recheck signed witness and disposable probe tests
+        run: |
+          set -euo pipefail
+          node --test cloudflare/v9-witness/witness.test.mjs
+          node --test cloudflare/v9-witness/live-probe/core.test.mjs
+          npx --yes wrangler@4.153.0 deploy --dry-run --config "$PROBE_CONFIG" --outdir "$RUNNER_TEMP/v9-do-live-bundle"
+          echo 'LIVE_PROBE_BUNDLE=PASS'
+      - name: Single-use live DO acceptance; delete disposable Worker at exit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          test -n "$CLOUDFLARE_API_TOKEN"
+          [[ "$CLOUDFLARE_ACCOUNT_ID" =~ ^[0-9a-fA-F]{32}$ ]]
+          export PROBE_NAME CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.error
+          aid=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
+          req=urllib.request.Request('https://api.cloudflare.com/client/v4/accounts/'+aid+'/workers/scripts',headers={'Authorization':'Bearer '+token,'Accept':'application/json'},method='GET')
+          try:
+              with urllib.request.urlopen(req,timeout=25) as r: data=json.load(r)
+          except urllib.error.HTTPError as e: raise SystemExit('STOP: Cloudflare list HTTP '+str(e.code)) from None
+          if data.get('success') is not True or not isinstance(data.get('result'),list):
+              raise SystemExit('STOP: unreadable Worker list')
+          items=data['result']; info=data.get('result_info') or {}
+          if info.get('total_pages',1)>1 or info.get('total_count',len(items))>len(items):
+              raise SystemExit('STOP: partial Worker list')
+          ids={s.get('id') for s in items if isinstance(s,dict)}
+          if 'appforge-v9-witness-isolated-staging' not in ids:
+              raise SystemExit('STOP: expected isolated V9 Worker missing')
+          if os.environ['PROBE_NAME'] in ids:
+              raise SystemExit('STOP: disposable probe already exists')
+          print('EXISTING_WITNESS_UNTOUCHED=PASS')
+          print('PROBE_NAME_AVAILABLE=PASS')
+          PY
+          # The only DELETE is for the unique Worker created by this exact job.
+          OWN_PROBE=0
+          TAIL_PID=''
+          cleanup() {
+            local original_status=$?
+            set +e
+            if [ -n "$TAIL_PID" ]; then kill "$TAIL_PID" 2>/dev/null || true; wait "$TAIL_PID" 2>/dev/null || true; fi
+            if [ "$OWN_PROBE" = '1' ]; then
+              STATUS=$(curl --silent --show-error --max-time 40 -o "$RUNNER_TEMP/probe-delete-result.json" -w '%{http_code}' -X DELETE \
+                -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$PROBE_NAME")
+              if [ "$STATUS" = '200' ] || [ "$STATUS" = '204' ]; then
+                echo 'DISPOSABLE_WORKER_DELETED=PASS'
+              else
+                echo "DISPOSABLE_WORKER_DELETE=FAILED_HTTP_$STATUS"
+                original_status=1
+              fi
+            fi
+            exit "$original_status"
+          }
+          trap cleanup EXIT
+          npx --yes wrangler@4.153.0 deploy --config "$PROBE_CONFIG"
+          OWN_PROBE=1
+          echo 'LIVE_PROBE_CREATED=PASS'
+          echo 'PUBLIC_ROUTES=NONE'
+          echo 'ORIGINAL_WITNESS=NOT_MODIFIED'
+          # Tail only the disposable Worker. No token or signer private key logged.
+          npx --yes wrangler@4.153.0 tail "$PROBE_NAME" --format json > "$RUNNER_TEMP/v9-live-do-tail.log" 2>&1 &
+          TAIL_PID=$!
+          sleep 8
+          if ! kill -0 "$TAIL_PID" 2>/dev/null; then
+            echo 'LIVE_TAIL=FAILED_TO_START'; exit 1
+          fi
+          FOUND=0
+          for _ in $(seq 1 75); do
+            if grep -q 'V9_LIVE_DO_ACCEPTANCE=PASS;CAS=PASS;RESTART=PASS;PERSISTENCE=PASS;REPLAY=PASS;GENERATION=2' "$RUNNER_TEMP/v9-live-do-tail.log"; then
+              FOUND=1; break
+            fi
+            if ! kill -0 "$TAIL_PID" 2>/dev/null; then
+              echo 'LIVE_TAIL=STOPPED_UNEXPECTEDLY'; break
+            fi
+            sleep 15
+          done
+          if [ "$FOUND" != '1' ]; then
+            echo 'LIVE_DO_PROBE=NOT_VERIFIED';
+            grep -E 'V9_LIVE_DO_(INIT|RESET_REQUEST|ACCEPTANCE)|\[ERROR\]|Error' "$RUNNER_TEMP/v9-live-do-tail.log" | tail -20 || true
+            exit 1
+          fi
+          echo 'V9_LIVE_DO_ACCEPTANCE=PASS'
+          echo 'LIVE_SQLITE_DURABILITY=PASS'
+          echo 'LIVE_RESTART=PASS'
+          echo 'LIVE_CAS=PASS'
+          echo 'LIVE_SIGNED_REPLAY_REJECTION=PASS'
+          echo 'PUBLIC_WITNESS_API=DISABLED'
+          echo 'PRODUCTION_READINESS=BLOCKED'
