@@ -1,0 +1,18 @@
+# V9 DISABLED isolated Cloudflare staging: manual deployment only.
+# NEVER share this name with another Cloudflare application.
+name = "appforge-v9-witness-isolated-staging"
+main = "worker.mjs"
+compatibility_date = "2026-10-27"
+workers_dev = false
+preview_urls = false
+
+[vars]
+V9_STAGING_WITNESS_MODE = "DISABLED"
+
+[[durable_objects.bindings]]
+name = "V9_STAGING_WITNESS"
+class_name = "V9StagingWitness"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["V9StagingWitness"]
