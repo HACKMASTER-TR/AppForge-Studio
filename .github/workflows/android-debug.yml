@@ -80,7 +80,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for pattern in test_v9_package_mirror.py test_v9_r2_plan.py test_v9_signed_closure.py test_v9_signed_index_seed.py test_v9_resumable_deb.py test_v9_phase3d_audit.py test_v9_phase3e_verify.py test_v9_phase3f_policy.py test_v9_phase3g_e2e.py test_v9_phase3h_recovery_model.py test_v9_phase3h_signed_bridge.py test_v9_phase3h_witness_receipt.py test_v9_phase3h_filedisk.py; do
+          for pattern in test_v9_package_mirror.py test_v9_r2_plan.py test_v9_signed_closure.py test_v9_signed_index_seed.py test_v9_resumable_deb.py test_v9_phase3d_audit.py test_v9_phase3e_verify.py test_v9_phase3f_policy.py test_v9_phase3g_e2e.py test_v9_phase3h_recovery_model.py test_v9_phase3h_signed_bridge.py test_v9_phase3h_witness_receipt.py test_v9_phase3h_filedisk.py test_v9_phase3h_stage4_sqlite_model.py; do
             log=$(mktemp)
             python3 -m unittest discover -s quality/tests -p "$pattern" -v 2>&1 | tee "$log"
             if grep -Eq 'skipped=[1-9]|\.\.\. skipped ' "$log"; then
