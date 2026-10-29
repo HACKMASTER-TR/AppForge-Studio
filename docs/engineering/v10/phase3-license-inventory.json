@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "scope": "Supplement to upstream license inventory; no approval or recursive closure claimed",
+  "scanner_archives": [
+    {
+      "id": "gitleaks",
+      "version": "v8.30.1",
+      "archive_sha256": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
+      "archive_notice_files": [
+        {
+          "path": "LICENSE",
+          "sha256": "e3884b252b3bfc045e55be43a34d1e80da070bc6f804ac95bf4660e97d62ebc6",
+          "bytes": 1069
+        }
+      ],
+      "dependency_module_records": 66,
+      "module_licenses": "NOASSERTION",
+      "distribution_approved": false,
+      "execution_approved": false,
+      "blocker": "Each embedded module needs version-specific license and notice review; archive LICENSE is insufficient. Provenance signature/attestation review remains open."
+    },
+    {
+      "id": "syft",
+      "version": "v1.55.0",
+      "archive_sha256": "bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d",
+      "archive_notice_files": [
+        {
+          "path": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "bytes": 11357
+        }
+      ],
+      "dependency_module_records": 294,
+      "module_licenses": "NOASSERTION",
+      "distribution_approved": false,
+      "execution_approved": false,
+      "blocker": "Each embedded module needs version-specific license and notice review; archive LICENSE is insufficient. Provenance signature/attestation review remains open."
+    }
+  ],
+  "other_candidates": "Existing upstream license observations in integrations.json remain unchanged; no new distribution approval."
+}

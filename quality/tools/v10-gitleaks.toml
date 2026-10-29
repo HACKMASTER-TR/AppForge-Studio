@@ -1,0 +1,70 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "V10 reviewed false positive 1"
+condition = "AND"
+regexTarget = "match"
+targetRules = ["generic-api-key"]
+paths = ['''(?:^|/)android-app/app/src/main/java/com/appforge/studio/build/DownloadCoordinator\.kt$''']
+regexes = ['''(?s)^key=childOperation\+"$''']
+
+[[allowlists]]
+description = "V10 reviewed false positive 2"
+condition = "AND"
+regexTarget = "match"
+targetRules = ["generic-api-key"]
+paths = ['''(?:^|/)android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest\.kt$''']
+regexes = ['''(?s)^secret", "ghp_123456789012345678901234"$''']
+
+[[allowlists]]
+description = "V10 reviewed false positive 3"
+condition = "AND"
+regexTarget = "match"
+targetRules = ["generic-api-key"]
+paths = ['''(?:^|/)android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest\.kt$''']
+regexes = ['''(?s)^GITHUB_TOKEN=ghp_1234567890abcdefghijklmnop $''']
+
+[[allowlists]]
+description = "V10 reviewed false positive 4"
+condition = "AND"
+regexTarget = "match"
+targetRules = ["generic-api-key"]
+paths = ['''(?:^|/)android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPtyCopyCaptureTest\.kt$''']
+regexes = ['''(?s)^token = "0123456789abcdef0123456789abcdef"$''']
+
+[[allowlists]]
+description = "V10 reviewed false positive 5"
+condition = "AND"
+regexTarget = "match"
+targetRules = ["generic-api-key"]
+paths = ['''(?:^|/)android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPtyCopyCaptureTest\.kt$''']
+regexes = ['''(?s)^tokenTwo = "fedcba9876543210fedcba9876543210"$''']
+
+[[allowlists]]
+description = "V10 reviewed false positive 6"
+condition = "AND"
+regexTarget = "match"
+targetRules = ["private-key"]
+paths = ['''(?:^|/)cloudflare/control-plane/src/google_service_account_oauth\.mjs$''']
+regexes = ['''(?s)^-----BEGIN PRIVATE KEY-----/g,
+        ''
+      \)
+      \.replace\(
+        /-----END PRIVATE KEY-----$''']
+
+[[allowlists]]
+description = "V10 reviewed false positive 7"
+condition = "AND"
+regexTarget = "match"
+targetRules = ["generic-api-key"]
+paths = ['''(?:^|/)quality/tests/fast_web_535_v151_android_stage_diag_contract\.test\.js$''']
+regexes = ['''(?s)^PKCS12_PRIVATE_KEY','PKCS12_CERTIFICATE'$''']
+
+[[allowlists]]
+description = "V10 reviewed false positive 8"
+condition = "AND"
+regexTarget = "match"
+targetRules = ["generic-api-key"]
+paths = ['''(?:^|/)quality/tests/terminal_pty_autocopy_v3_test\.py$''']
+regexes = ['''(?s)^token='0123456789abcdef0123456789abcdef'$''']

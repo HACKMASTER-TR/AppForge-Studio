@@ -1,0 +1,26 @@
+{
+  "branch": "feat/v10-oss-unified-20261028",
+  "head": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+  "push_locked": true,
+  "protected_paths_diff_exit": 0,
+  "protected_paths": [
+    "windows-host/package.json",
+    "windows-host/package-lock.json",
+    "android-app/build.gradle.kts",
+    "android-app/app/build.gradle.kts",
+    "android-app/settings.gradle.kts",
+    ".github/workflows/android-play-release.yml"
+  ],
+  "tracked_quality_tools_or_distribution_or_control_plane_changes": [],
+  "staged_diff_exit": 0,
+  "hooks": {
+    "pre-commit": {
+      "sha256": "20104ab9d22701f2dc915019e47c631ffc6fa948ef97af329678cd41c796f081",
+      "matches_continuation": true
+    },
+    "pre-push": {
+      "sha256": "8a84299361a06b295b099490f8bf6c922c036e94041e1a17c89b0ae0d1f6ebe2",
+      "matches_continuation": true
+    }
+  }
+}

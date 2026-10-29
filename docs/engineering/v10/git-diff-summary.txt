@@ -1,0 +1,37 @@
+Uncommitted tracked modifications and nonignored untracked files relative to afb3ad9209bcce8b84773d8873d037b15b4d804d
+.github/workflows/appforge-stability-gate.yml
+V10_OSS_INTEGRATION_REPORT.md
+android-app/app/src/main/assets/device-build/build-metrics.init.gradle
+android-app/app/src/main/assets/second_brain_snapshot.json
+android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt
+android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt
+android-app/app/src/main/java/com/appforge/studio/build/OfflineToolCatalog.kt
+android-app/app/src/test/java/com/appforge/studio/build/OfflineToolCatalogTest.kt
+docs/engineering/appforge-v10-unified-oss-integration.md
+docs/engineering/v10/android-cache-manifest.json
+docs/engineering/v10/ci-action-evidence.json
+docs/engineering/v10/continuation-safety.json
+docs/engineering/v10/continuation-upstream-audit.json
+docs/engineering/v10/continuation-verification.json
+docs/engineering/v10/first-pass-report.md
+docs/engineering/v10/git-diff-summary.txt
+docs/engineering/v10/integrations.initial.json
+docs/engineering/v10/integrations.json
+docs/engineering/v10/sora-maven-evidence.json
+docs/engineering/v10/upstream-evidence.json
+docs/engineering/v10/verification.json
+docs/wiki/03_Architecture/V10_OSS_Integration.md
+docs/wiki/Index.md
+quality/tests/test_v10_oss_gate.py
+quality/tests/v10_build_telemetry_runtime.test.js
+quality/tests/v10_offline_catalog_runtime.test.js
+quality/tests/v10_oss_gate_runtime.test.js
+quality/tools/appforge_v10_oss_gate.py
+quality/tools/v10-oss-pins.json
+
+ .github/workflows/appforge-stability-gate.yml         | 19 +++++++++++++++++++
+ .../app/src/main/assets/second_brain_snapshot.json    | 10 +++++-----
+ .../com/appforge/studio/build/DeviceBuildEngine.kt    |  2 ++
+ .../appforge/studio/build/OfflineBuildPackManager.kt  |  7 +++++++
+ docs/wiki/Index.md                                    |  2 ++
+ 5 files changed, 35 insertions(+), 5 deletions(-)

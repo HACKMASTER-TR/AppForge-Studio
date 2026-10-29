@@ -1,0 +1,1519 @@
+{
+  "scope": "Observed bytes resolved by Gradle from existing configured repositories; not recursive license clearance or dependency verification metadata. No SDK/NDK downloaded.",
+  "files": [
+    {
+      "path": "androidx.databinding/databinding-common/9.1.1/2be3530b78477835e69dce953b17adc1dbc5c6fa/databinding-common-9.1.1.jar",
+      "sha256": "66cab82639dac0f6c2433464c093b074d608c4bb887ec38a9b8bc4ac98126732",
+      "bytes": 16827
+    },
+    {
+      "path": "androidx.databinding/databinding-common/9.1.1/b754fdf2842a069b998477ccd391e28b132130ec/databinding-common-9.1.1.pom",
+      "sha256": "8ff9b574a47b165430a630d98c22e61fbce5b60d38fef46cc17e6f6cb7cded4d",
+      "bytes": 931
+    },
+    {
+      "path": "androidx.databinding/databinding-compiler-common/9.1.1/80b8443b46aaf87d7f689f81de3b3dafcaf08eda/databinding-compiler-common-9.1.1.jar",
+      "sha256": "70d1c06f8b6334524c3da0c80d99bc63ae8be4c66180713f7dc9ed969849d563",
+      "bytes": 835822
+    },
+    {
+      "path": "androidx.databinding/databinding-compiler-common/9.1.1/ef118b60b6a99256c9d485985923b40356abf36c/databinding-compiler-common-9.1.1.pom",
+      "sha256": "2946c02f576ba9d80e35d9e3974f9d912a7358cff50c09ef6c2b89a861c0a7b0",
+      "bytes": 3034
+    },
+    {
+      "path": "com.android/signflinger/9.1.1/7c41f72626807e344b3bd6ba06a75cd6c4c9d118/signflinger-9.1.1.jar",
+      "sha256": "bde5760f4ae032cf02851b3725e22ac391fc55792826c0258c9361378672692c",
+      "bytes": 15337
+    },
+    {
+      "path": "com.android/signflinger/9.1.1/a3f29bc68ced339225af4969ba3e049f8149bb5c/signflinger-9.1.1.pom",
+      "sha256": "e3bd6d65aeb7b8928f5364b4040ac6f26bfc127287d9726c94eab29357820214",
+      "bytes": 1437
+    },
+    {
+      "path": "com.android/zipflinger/9.1.1/8f244c1f655b3d3bdfce9da3ba0da33774e474b3/zipflinger-9.1.1.jar",
+      "sha256": "d2ad6ddec6da2ae142a8fe3af2f2529f3fbf77852e2db7ff261ad7b924b119fa",
+      "bytes": 67038
+    },
+    {
+      "path": "com.android/zipflinger/9.1.1/90d673be698280b528c2d0371faaba9f84958243/zipflinger-9.1.1.pom",
+      "sha256": "3cfb11f9dd74aa038df43bce2414d64da8f7d95ab1c7e5712804c61238e7cda6",
+      "bytes": 1110
+    },
+    {
+      "path": "com.android.application/com.android.application.gradle.plugin/9.1.1/50067f16f5d280af66cbf3049d67da3a9ce59af6/com.android.application.gradle.plugin-9.1.1.pom",
+      "sha256": "1564e923e29929f6a7583188c3778296c3d7510b10a5b791b3cddbed046b9edd",
+      "bytes": 1328
+    },
+    {
+      "path": "com.android.databinding/baseLibrary/9.1.1/232b05011378bbb9638e3bcfe5270c8c81773100/baseLibrary-9.1.1.pom",
+      "sha256": "8c64d244ac88655e1b3c2fbbc0e6b0404af08c45e0806773ac98f3dc57a850f2",
+      "bytes": 923
+    },
+    {
+      "path": "com.android.databinding/baseLibrary/9.1.1/7e7399239e52d4069896277615e005add7ae8e5a/baseLibrary-9.1.1.jar",
+      "sha256": "794113709dab21b06c262b3795e73cb708fbacae61715f34361e1af6237a1870",
+      "bytes": 16749
+    },
+    {
+      "path": "com.android.library/com.android.library.gradle.plugin/9.1.1/a2dd54a2274be2d20c9bfcd66b0dd11eb8a10539/com.android.library.gradle.plugin-9.1.1.pom",
+      "sha256": "f679ab408fc9a285005fe1616ba050d76ce00f5a72cfa3f1423f41638c4c82a0",
+      "bytes": 1320
+    },
+    {
+      "path": "com.android.tools/annotations/32.1.1/69da138dc66de370aafd7361de557882b643c99c/annotations-32.1.1.pom",
+      "sha256": "9494cec38c05cdee38d8aacd20ee02b22952af7b1b21bf2c8187069c3a04f481",
+      "bytes": 822
+    },
+    {
+      "path": "com.android.tools/annotations/32.1.1/a9a04a78f42fdb0276a0fc7fd538890f856a9753/annotations-32.1.1.jar",
+      "sha256": "3b4bb9620c17d19e5bd91ac1988080553573b4c3b739fdd92416f42f2daf3e78",
+      "bytes": 10680
+    },
+    {
+      "path": "com.android.tools/common/32.1.1/297da66f7541a2e4fc49b09b217a554065942f1a/common-32.1.1.pom",
+      "sha256": "24dd35f5f41e0c5afd10ed989fac73ce876d9c5088f878ae8a956352e7d0ac0b",
+      "bytes": 1664
+    },
+    {
+      "path": "com.android.tools/common/32.1.1/72b9c53485916fdae12db9ee3c3f91ad685753e3/common-32.1.1.jar",
+      "sha256": "d13d75672501dc73687999346fe21092c544d3398f4e5d28ae2ff9b2c253311d",
+      "bytes": 595534
+    },
+    {
+      "path": "com.android.tools/dvlib/32.1.1/8012e87a475af92edb191e17e12889f9472ccaf1/dvlib-32.1.1.pom",
+      "sha256": "723c631235f033d6fb6aa59996f00357469f57cc29b2f5d7973fd58ab62aeec3",
+      "bytes": 1110
+    },
+    {
+      "path": "com.android.tools/dvlib/32.1.1/cea1f0aae3cf00529cb43b337c09f541eef2f0f8/dvlib-32.1.1.jar",
+      "sha256": "8abf798174efbf6bc282ee5c7791182e73712ccf98de053f8a8a7fb9a36b8542",
+      "bytes": 68121
+    },
+    {
+      "path": "com.android.tools/repository/32.1.1/1946b4ae4216110bd048b1b299dd5f6c107f3669/repository-32.1.1.jar",
+      "sha256": "ef3691e582cd8f9901502b679bb8f709a095cecb44b64fffdcb266a03df6b690",
+      "bytes": 267516
+    },
+    {
+      "path": "com.android.tools/repository/32.1.1/245800d806cbb3e94b73eef71a265ab3e6671c79/repository-32.1.1.pom",
+      "sha256": "4a1fb7d974ff655f87d4d2d6620663ba63c2a2e7b81c1aca35461a9d8d9fd373",
+      "bytes": 2248
+    },
+    {
+      "path": "com.android.tools/sdk-common/32.1.1/8fa16c78a72aef93c6f4e2470a6a8c1f3d400645/sdk-common-32.1.1.pom",
+      "sha256": "732a30f14a044880f0bafe8d1e5cf391d38b78d39657bdde0cab7e6ff0acf4b1",
+      "bytes": 4063
+    },
+    {
+      "path": "com.android.tools/sdk-common/32.1.1/9017aafcc7e479a405874b2ded53965c59bfdade/sdk-common-32.1.1.jar",
+      "sha256": "0a0513fac4388e0ff2d61a92b5b3ffb435f97fcce4b557a4455f3e217d012b32",
+      "bytes": 1806017
+    },
+    {
+      "path": "com.android.tools/sdklib/32.1.1/42db9712f281ea425f7f1354573a124a14673a6c/sdklib-32.1.1.jar",
+      "sha256": "99924e2f3e78070429da20e40050779e564db6efc00bee03841574dbc7475c5e",
+      "bytes": 1795950
+    },
+    {
+      "path": "com.android.tools/sdklib/32.1.1/96032cb09c03e05ed515b0ec9de59afda72168e4/sdklib-32.1.1.pom",
+      "sha256": "756ab2f074f91527a57e4e22c6acaef4214b2c6c6074b983246098e730956693",
+      "bytes": 2575
+    },
+    {
+      "path": "com.android.tools.analytics-library/crash/32.1.1/83657cd3f57e8aa956b8cd923f5d327e7343653c/crash-32.1.1.jar",
+      "sha256": "1589c55563c8f595858cb478708d9d3043969c18b784170bb0fbdfffdb44c7bc",
+      "bytes": 14886
+    },
+    {
+      "path": "com.android.tools.analytics-library/crash/32.1.1/ada01b8cf8933f3404c45991fd325d9be8f2a44a/crash-32.1.1.pom",
+      "sha256": "ddeda22287d7eddf5a36d7259833ce0bfee97d0fecf10e9a417d7013b3184776",
+      "bytes": 1873
+    },
+    {
+      "path": "com.android.tools.analytics-library/protos/32.1.1/2a30675b2f4f4a60f78ce88d8df3dc1badea4ee5/protos-32.1.1.jar",
+      "sha256": "b2fa8773cfba157b70f76685227ad465db5ce2e2d4ba61b12444e42ba4ee2da1",
+      "bytes": 10110081
+    },
+    {
+      "path": "com.android.tools.analytics-library/protos/32.1.1/a04adab94359ef3a5b2d28ebc011a2d1766a0970/protos-32.1.1.pom",
+      "sha256": "d7fb9ba1b2b7a75f5151df57689f12b6765c7ab324fcc249ab69caa229a3f1e6",
+      "bytes": 1139
+    },
+    {
+      "path": "com.android.tools.analytics-library/shared/32.1.1/811521378b609de94064cc9f8faec20ed9446f64/shared-32.1.1.pom",
+      "sha256": "6179f0846880f4dbadef31ef53a5cd3e03dcc4f7aa98e6982539c129db35cc34",
+      "bytes": 2237
+    },
+    {
+      "path": "com.android.tools.analytics-library/shared/32.1.1/deb3250fed3b6371488062f10e0fe37596e53702/shared-32.1.1.jar",
+      "sha256": "d82051937b390056af6dadc242923e2cd7794bdee217d276501f8aee151af446",
+      "bytes": 128420
+    },
+    {
+      "path": "com.android.tools.analytics-library/tracker/32.1.1/53704dd455c94f83ffc107620af3cd9616d58eee/tracker-32.1.1.jar",
+      "sha256": "73617eee0208d1256736165c68c557f8e2be6c08de7e3056c2d1e74a66eedfd1",
+      "bytes": 61152
+    },
+    {
+      "path": "com.android.tools.analytics-library/tracker/32.1.1/5f862197fd23f13e58c9e6bc2378f13d4be8bed/tracker-32.1.1.pom",
+      "sha256": "c90ae10e07d867bb966b793f6d42afcf960230911c84207461df220e56dfd45a",
+      "bytes": 2246
+    },
+    {
+      "path": "com.android.tools.build/aapt2-proto/9.1.1-14792394/8987b18085dc05516cf878ff71f8a223ebd481ef/aapt2-proto-9.1.1-14792394.module",
+      "sha256": "573fa611c742d74d4e8faa098a847195e59b80ac711780a64d9980ab13f61a14",
+      "bytes": 3768
+    },
+    {
+      "path": "com.android.tools.build/aapt2-proto/9.1.1-14792394/acf00ea97102064130c6fce33ed18eef59bc692e/aapt2-proto-9.1.1-14792394.jar",
+      "sha256": "2335bab7fd8269ee98d3843410c4a5553d31dd71f9a22f49b21a676d3139c882",
+      "bytes": 721157
+    },
+    {
+      "path": "com.android.tools.build/aapt2-proto/9.1.1-14792394/d5dca9542bc20d14f31e252c83943da49579e2e8/aapt2-proto-9.1.1-14792394.pom",
+      "sha256": "f42cd6be532c828baa8d111c7bacd6144e439455596286be852be79ac3e1b7c6",
+      "bytes": 1685
+    },
+    {
+      "path": "com.android.tools.build/aaptcompiler/9.1.1/20a60fe4ce3797ff197febf9c3aa2375ff8337d6/aaptcompiler-9.1.1.jar",
+      "sha256": "05a74fd429ff802c42309a54fba9a4397bd3385793260f4bcb1fc7ad43ebba7f",
+      "bytes": 493982
+    },
+    {
+      "path": "com.android.tools.build/aaptcompiler/9.1.1/29271b7cf8c8f2d4205d95867881a9a3c877ffe6/aaptcompiler-9.1.1.module",
+      "sha256": "d15b798c9ec1e615f11498ae24a1e8935a1f05b749d647fc5f56aff862a5f167",
+      "bytes": 4751
+    },
+    {
+      "path": "com.android.tools.build/aaptcompiler/9.1.1/da614bb5ddfe5a2c5cf9e7fe5d1ca709f4b0dc9c/aaptcompiler-9.1.1.pom",
+      "sha256": "626f576ca843b81c1cade94f85dde0d3483716397ce76632cc75e829305c253f",
+      "bytes": 2610
+    },
+    {
+      "path": "com.android.tools.build/apksig/9.1.1/2881101f6a9d0baf6a341926ef0ff08c98a5d13b/apksig-9.1.1.jar",
+      "sha256": "562cd0a88890960d2ece48e116c61f12872222f1dcc306890799382bc019b201",
+      "bytes": 506620
+    },
+    {
+      "path": "com.android.tools.build/apksig/9.1.1/a0827d42d41d5f024c04e1388a91eb0c9112b7b6/apksig-9.1.1.pom",
+      "sha256": "eb16c35b80015d73d88b6acfca1d1ee09b8509574cd16bedf3beceb05622d7dd",
+      "bytes": 932
+    },
+    {
+      "path": "com.android.tools.build/apkzlib/9.1.1/2459d89adb853481ba745f570a49704abea49b1c/apkzlib-9.1.1.pom",
+      "sha256": "da7832ca1758f02b4b3b7c5a5b1ba122ee38ddbaa2a60c36710df94ab4d363a6",
+      "bytes": 1847
+    },
+    {
+      "path": "com.android.tools.build/apkzlib/9.1.1/797a964d8f011d631816a3b7dbc92e58c3f76936/apkzlib-9.1.1.jar",
+      "sha256": "dd9c4a5f8df807e6e23a11f61722e35335275e6dd92df10ecee4b42074a93f84",
+      "bytes": 209197
+    },
+    {
+      "path": "com.android.tools.build/builder/9.1.1/3cad5f9c854c191434d4a63a152dea08f6f1643e/builder-9.1.1.module",
+      "sha256": "caa2a2a10e7ab2763a5cd0031ea21c42aedef76fd315ed6129c62c30d4b45d51",
+      "bytes": 8009
+    },
+    {
+      "path": "com.android.tools.build/builder/9.1.1/57e67b61f4a5ff7b095ccb06cfb0a9c859789b37/builder-9.1.1.jar",
+      "sha256": "58b9067413a9e18e5ad85e46b5ec72f24a106458372d403b035a673007f03242",
+      "bytes": 15839058
+    },
+    {
+      "path": "com.android.tools.build/builder/9.1.1/852295a68e29ef83159d7681e3d8836bc6574d08/builder-9.1.1.pom",
+      "sha256": "adc01806c16410a9418bf50631c97c54807240811a033c0d93e831f9a993e6c4",
+      "bytes": 5306
+    },
+    {
+      "path": "com.android.tools.build/builder-model/9.1.1/8765efcb06c56a53264e943c2005f5127aeab13d/builder-model-9.1.1.pom",
+      "sha256": "e48f4e6ed8de83fa444dc46325d1322c1b25bb6781b8666ab0120a102fa9c3a5",
+      "bytes": 1840
+    },
+    {
+      "path": "com.android.tools.build/builder-model/9.1.1/9d07189efe20d9a8980cdb01555010a238bffb4/builder-model-9.1.1.module",
+      "sha256": "f555638f86d46a0b0d972a404788219ed53ddc3ee75c0e6bd1411fa1fda085ce",
+      "bytes": 4083
+    },
+    {
+      "path": "com.android.tools.build/builder-model/9.1.1/ed6b387bb957316ca678ad6886107ad38ba048d3/builder-model-9.1.1.jar",
+      "sha256": "a8e6a292aa144b863c4c1814790448c121ebb05bbcdaba09bbf21ed4bcf231d0",
+      "bytes": 139515
+    },
+    {
+      "path": "com.android.tools.build/builder-test-api/9.1.1/69687e8dd47d878b64acb679ce3d1025ee7109bc/builder-test-api-9.1.1.module",
+      "sha256": "180ca2537b17d0f1cb4919fcb3b76d6f36e3920961375c63cdf471bb5e9a7213",
+      "bytes": 4208
+    },
+    {
+      "path": "com.android.tools.build/builder-test-api/9.1.1/aae6925bc1ffc230b107f96f8bc1936c52e1d02b/builder-test-api-9.1.1.pom",
+      "sha256": "dcc0c663388e5ff606228e33d1933d682de200fbd08ca494b7311cd46d37744f",
+      "bytes": 2223
+    },
+    {
+      "path": "com.android.tools.build/builder-test-api/9.1.1/b03fcc8d7b76ffbbf3a39253ec65796620e83c3/builder-test-api-9.1.1.jar",
+      "sha256": "b29491ec6d11a8012989fdbb548f16c664fbdd93b3399f13e670aee82419f0fc",
+      "bytes": 15329
+    },
+    {
+      "path": "com.android.tools.build/bundletool/1.18.3/84193ff22d1ed358f3c87bd47b530503f6327891/bundletool-1.18.3.pom",
+      "sha256": "fa674b39b96cae98015f3850f366cfeb00fe6c7aea2d90b20c017b90e0996dae",
+      "bytes": 2673
+    },
+    {
+      "path": "com.android.tools.build/bundletool/1.18.3/8d7bee8e57a4158a872ed99190a60a498c2adc8d/bundletool-1.18.3.jar",
+      "sha256": "ccad18514fd97db010856b2bbed40f481f8ba9349368c97ae54d72e3567d0171",
+      "bytes": 13371507
+    },
+    {
+      "path": "com.android.tools.build/gradle/9.1.1/62a383bdbf49b6fb5d4c63b0b2caf8798fd74328/gradle-9.1.1.jar",
+      "sha256": "15faaba5c8ddf63e8d5972c98d9de691678d542fa5eca40e9b7e87e5e8e83e64",
+      "bytes": 12672006
+    },
+    {
+      "path": "com.android.tools.build/gradle/9.1.1/8d451cb41bca50c34d04ebbb119f1203fb8e1e5d/gradle-9.1.1.module",
+      "sha256": "023a8f014a16676b1c5f7697247dc4b8c71bf3d79f3a10548fde75310b1ce5c8",
+      "bytes": 11102
+    },
+    {
+      "path": "com.android.tools.build/gradle/9.1.1/900889e6e406c2e232a0044d0afefd663f134302/gradle-9.1.1.pom",
+      "sha256": "34392afbb8f56c73dd3b52ee6a778918e3a10bdbac9e16115a19a536db8d8e46",
+      "bytes": 9034
+    },
+    {
+      "path": "com.android.tools.build/gradle-api/9.1.1/651d9f70f055d86c669c71a37a3c819a1b91c652/gradle-api-9.1.1.pom",
+      "sha256": "5c4f564fa95d2069f3714f0674bb9aa02c70a952faa8511a8fa14e233bb6f0c6",
+      "bytes": 2770
+    },
+    {
+      "path": "com.android.tools.build/gradle-api/9.1.1/ce46c783b8825967c44a05d0d12d5d48397fb3b5/gradle-api-9.1.1.module",
+      "sha256": "55e6318e198d5a8dc18b026970be0b090140ce2aa8d28f3feb9906b908fb4ea4",
+      "bytes": 5424
+    },
+    {
+      "path": "com.android.tools.build/gradle-api/9.1.1/f8498feda114ca0f77d8cab04d2004d2d5d0f1f3/gradle-api-9.1.1.jar",
+      "sha256": "780020a00766ffb09d47f597773f5679d6cc5eebe2650b9ea14045a7e4441b91",
+      "bytes": 389201
+    },
+    {
+      "path": "com.android.tools.build/gradle-common-api/9.1.1/4962e669b41474147b34d639a25158aa7d287ac4/gradle-common-api-9.1.1.pom",
+      "sha256": "e6a9e5540d6d84b514884790a43a87f3c73d335bb71269af3a91254c970d78b9",
+      "bytes": 2106
+    },
+    {
+      "path": "com.android.tools.build/gradle-common-api/9.1.1/5ce5ce7fe164c868bb34d6f9f21cb4fc6e4f8bab/gradle-common-api-9.1.1.module",
+      "sha256": "d87573fbdce3e150c28080bc05c55cbed8c2b0272ddfdfeb3276d53a5ca22820",
+      "bytes": 4720
+    },
+    {
+      "path": "com.android.tools.build/gradle-common-api/9.1.1/d6ec5d6f63bba959468581ca1b0eacb8f7b2054f/gradle-common-api-9.1.1.jar",
+      "sha256": "fbc8e90c270cfcab9cb4de6e948180870435971201f487c0355d589c64b1fb36",
+      "bytes": 10974
+    },
+    {
+      "path": "com.android.tools.build/gradle-settings-api/9.1.1/1ec7e89fab3ddac711beac393327717d866bd838/gradle-settings-api-9.1.1.jar",
+      "sha256": "7b1cb2709737656e21e50d2e1b64258a0f2f1c5c49710c521a83e8c9163f2b63",
+      "bytes": 10057
+    },
+    {
+      "path": "com.android.tools.build/gradle-settings-api/9.1.1/39af37014913bf278629c9e5a3f924eeaf263fd7/gradle-settings-api-9.1.1.pom",
+      "sha256": "c39f36e5c4a291d92c81999ba57a08dc1a489b999cf4c5accc4ccc2d52d5fe14",
+      "bytes": 1883
+    },
+    {
+      "path": "com.android.tools.build/gradle-settings-api/9.1.1/a72b3636e4cd4c45a06ab0e2077beae2c2e7ce09/gradle-settings-api-9.1.1.module",
+      "sha256": "2678a10d26162027cacd32c698bd3a372d592d76649f4d21db43b64b1f9a7e7a",
+      "bytes": 4348
+    },
+    {
+      "path": "com.android.tools.build/manifest-merger/32.1.1/2ecea8b229b3051f74a6e63b59a23c7520bfc51a/manifest-merger-32.1.1.jar",
+      "sha256": "d47df6c863a89c5b33a1ca2227e2e68697dfa886937ef1494729762992cc4b0b",
+      "bytes": 267399
+    },
+    {
+      "path": "com.android.tools.build/manifest-merger/32.1.1/6b45c0ec4cdbe598f813a660c58c043687671bd9/manifest-merger-32.1.1.module",
+      "sha256": "fc13365814138bb0c964cef37266cb43c11fb3c121f5e8ceb09492e41837cb3b",
+      "bytes": 4587
+    },
+    {
+      "path": "com.android.tools.build/manifest-merger/32.1.1/939a2790a14804fec31441a0bccf58b7e4a619f4/manifest-merger-32.1.1.pom",
+      "sha256": "c43719b0176ea47759df19e56ba0a820690001928697b2a2f9a36795446bba4c",
+      "bytes": 2383
+    },
+    {
+      "path": "com.android.tools.build.jetifier/jetifier-core/1.0.0-beta10/6e621022a9c95af12a7004d6b55805bbd1126837/jetifier-core-1.0.0-beta10.jar",
+      "sha256": "26abb4a13927d9062169c504c9e94fe80e9ae3a4f7b5ab8875ab007536a91f5e",
+      "bytes": 128988
+    },
+    {
+      "path": "com.android.tools.build.jetifier/jetifier-core/1.0.0-beta10/a05601d691cb5b3175469dad16d7b507e122161f/jetifier-core-1.0.0-beta10.pom",
+      "sha256": "5c9d42e6b7e35d4d8d02e0a322cf26693b3ec3642b107c8f0be5a721d45a0c6d",
+      "bytes": 1943
+    },
+    {
+      "path": "com.android.tools.build.jetifier/jetifier-core/1.0.0-beta10/df2cc641b26756fd3daf9dd8f69ff81a886b2610/jetifier-core-1.0.0-beta10.module",
+      "sha256": "f0917589a42d276163f10040ab5842e91883dcbdb1d48bfd1f1fcaa72c1ca7b7",
+      "bytes": 3734
+    },
+    {
+      "path": "com.android.tools.build.jetifier/jetifier-processor/1.0.0-beta10/946c39eb0c052ff4f60a8939648a8b99af20d604/jetifier-processor-1.0.0-beta10.jar",
+      "sha256": "c5067a7b928237a1271a5e9cb5710e9f80b4973293945bc51e3a4c864ea4bfed",
+      "bytes": 175068
+    },
+    {
+      "path": "com.android.tools.build.jetifier/jetifier-processor/1.0.0-beta10/e2bc65203be6634db858f565b4318d5eb2798e64/jetifier-processor-1.0.0-beta10.module",
+      "sha256": "36c25576b19993df360170528cc62b7246c37776d6158154a67cdf8fc2d58e13",
+      "bytes": 5041
+    },
+    {
+      "path": "com.android.tools.build.jetifier/jetifier-processor/1.0.0-beta10/ef909fba0e8e31b04e88b96ac2a01b46c395c9f/jetifier-processor-1.0.0-beta10.pom",
+      "sha256": "33b17f396989404a49174748569bc8edf4e39a62a42a35ce93dca5c0e4ba0842",
+      "bytes": 2666
+    },
+    {
+      "path": "com.android.tools.ddms/ddmlib/32.1.1/211040abe332e20845a8481d334c1c61bba8f8ac/ddmlib-32.1.1.pom",
+      "sha256": "9d075280b217c57161016fa7bed25d0879fa23512fa25f9fa0e4dafaed689751",
+      "bytes": 1637
+    },
+    {
+      "path": "com.android.tools.ddms/ddmlib/32.1.1/fe5e01368a40464ab41671e55fe6a5ca28251fc9/ddmlib-32.1.1.jar",
+      "sha256": "0db6316457073eaa41422a106737672559e7ce0e703427ee09bf99459e007b7f",
+      "bytes": 683153
+    },
+    {
+      "path": "com.android.tools.layoutlib/layoutlib-api/32.1.1/c7eadb653e5f2f0001e33653df917c78f386191d/layoutlib-api-32.1.1.pom",
+      "sha256": "f7c3f48bfcb05e520f2b3bcfd90ddc8e188095e176eb69cb30bbfd14e53fb2c0",
+      "bytes": 1670
+    },
+    {
+      "path": "com.android.tools.layoutlib/layoutlib-api/32.1.1/e7c5f003e971c745a123e85b5aeb4a2120f1bf10/layoutlib-api-32.1.1.jar",
+      "sha256": "1b37af4dc07dda96ecddae553a97d3053402db2c4b420ab937ab41c4e2597f51",
+      "bytes": 122402
+    },
+    {
+      "path": "com.android.tools.lint/lint-model/32.1.1/462841df127ea45c4937e2defaa099a792aeef98/lint-model-32.1.1.jar",
+      "sha256": "f211988e110edcbc02818343b015fdc98e83871d4a9969ef225047cb2d21e1d0",
+      "bytes": 175158
+    },
+    {
+      "path": "com.android.tools.lint/lint-model/32.1.1/b4d7633e74a24d6f6c9a02289065e864ddc57a94/lint-model-32.1.1.pom",
+      "sha256": "f1ca5ceb2f113ed0001315733842edb182b0324bc3bb630dc89036f00e8337e6",
+      "bytes": 2184
+    },
+    {
+      "path": "com.android.tools.lint/lint-typedef-remover/32.1.1/33f5d5dd14dd3c4525aa8dff70f7653f317136d1/lint-typedef-remover-32.1.1.jar",
+      "sha256": "0710eba41387b5d9fbdaaf061e52cb9a56e40cdda5a01db37d1497fee019aa78",
+      "bytes": 9554
+    },
+    {
+      "path": "com.android.tools.lint/lint-typedef-remover/32.1.1/7a30c19d33d08e6c15806b9081a17c8ccccb759d/lint-typedef-remover-32.1.1.pom",
+      "sha256": "19d5adc9a5c77db9bcb2285ac696d989991966be70503cb496051ed52454d9b3",
+      "bytes": 1491
+    },
+    {
+      "path": "com.android.tools.utp/gradle-work-action-api/32.1.1/1810bff597e0241902c264f492b888aaa2430b18/gradle-work-action-api-32.1.1.pom",
+      "sha256": "5afb0cacc515aded16da404b6a4531b4f64a836817c9a95129e30782f1f4f15a",
+      "bytes": 1733
+    },
+    {
+      "path": "com.android.tools.utp/gradle-work-action-api/32.1.1/4ef3814639d522a54834890c9099292784100d3d/gradle-work-action-api-32.1.1.module",
+      "sha256": "44de2c348b4c52693b79c1141ee6f41635786e9cc2be097732d93fb4b53fb408",
+      "bytes": 4201
+    },
+    {
+      "path": "com.android.tools.utp/gradle-work-action-api/32.1.1/b462ea25a15aa4d95b1f7f626e44e3e397942ab/gradle-work-action-api-32.1.1.jar",
+      "sha256": "f2a06a10b038f20d24f39f8b2ab94a5939b7a480fa5b1de7f9cd0502b15882b0",
+      "bytes": 32084
+    },
+    {
+      "path": "com.google.auto/auto-parent/6/f29db646babbca0049636b6724613035bbcedff/auto-parent-6.pom",
+      "sha256": "05f740c6648165db00cf618dd56c200c4725e358e6d54f5853e0bec15734ea0a",
+      "bytes": 6307
+    },
+    {
+      "path": "com.google.auto.value/auto-value-annotations/1.6.2/ae1ff98291be961d9e1b14eb26bedaf0b5ac9d15/auto-value-annotations-1.6.2.pom",
+      "sha256": "1c76cd462fc96e7aa96dc70ce82f0d54063d6df16db35c9c7d9cc0d1a99d3fff",
+      "bytes": 2505
+    },
+    {
+      "path": "com.google.auto.value/auto-value-annotations/1.6.2/ed193d86e0af90cc2342aedbe73c5d86b03fa09b/auto-value-annotations-1.6.2.jar",
+      "sha256": "b48b04ddba40e8ac33bf036f06fc43995fc5084bd94bdaace807ce27d3bea3fb",
+      "bytes": 5889
+    },
+    {
+      "path": "com.google.auto.value/auto-value-parent/1.6.2/5eb0685cabce285064a62a7b9c6c256343a58285/auto-value-parent-1.6.2.pom",
+      "sha256": "27b640c82179f5cff62009c0b72033d9bc60f60e9902a66802274b7fe37fc81c",
+      "bytes": 1689
+    },
+    {
+      "path": "com.google.code.findbugs/jsr305/3.0.2/25ea2e8b0c338a877313bd4672d3fe056ea78f0d/jsr305-3.0.2.jar",
+      "sha256": "766ad2a0783f2687962c8ad74ceecc38a28b9f72a2d085ee438b7813e928d0c7",
+      "bytes": 19936
+    },
+    {
+      "path": "com.google.code.findbugs/jsr305/3.0.2/8d93cdf4d84d7e1de736df607945c6df0730a10f/jsr305-3.0.2.pom",
+      "sha256": "19889dbdf1b254b2601a5ee645b8147a974644882297684c798afe5d63d78dfe",
+      "bytes": 4286
+    },
+    {
+      "path": "com.google.code.gson/gson/2.11.0/527175ca6d81050b53bdd4c457a6d6e017626b0e/gson-2.11.0.jar",
+      "sha256": "57928d6e5a6edeb2abd3770a8f95ba44dce45f3b23b7a9dc2b309c581552a78b",
+      "bytes": 298435
+    },
+    {
+      "path": "com.google.code.gson/gson/2.11.0/55796dd7cc329027df79e96c4e6631e3c02c93c5/gson-2.11.0.pom",
+      "sha256": "c0e547bea998888e6e25c5886a90e762272bc88b5275343dd2c05ded6ca2e360",
+      "bytes": 11821
+    },
+    {
+      "path": "com.google.code.gson/gson-parent/2.11.0/b32d3bc5c89c852efe4c176df6c3fdeccbe150ef/gson-parent-2.11.0.pom",
+      "sha256": "8acb1f3b72a6f026916ac0735bad9aab0293d527edb7b365327def13a9367b7a",
+      "bytes": 26017
+    },
+    {
+      "path": "com.google.crypto.tink/tink/1.7.0/668b57f109d32349b2870448f06ae6f202713edc/tink-1.7.0.jar",
+      "sha256": "88970a456a08ba4c66b01b23e5846ca1095cc14e54cb48363e5d2e15a1307308",
+      "bytes": 1814861
+    },
+    {
+      "path": "com.google.crypto.tink/tink/1.7.0/a8cba5b72a24f8adbd86d4e3172c01337ed0d4e0/tink-1.7.0.pom",
+      "sha256": "2aee3523715f8f2cd10b2603c8d19e561ac758310b7e2c9853946d2c5e7b4bf7",
+      "bytes": 3336
+    },
+    {
+      "path": "com.google.dagger/dagger/2.28.3/10d83810ef9e19714116ed518896c90c6606d633/dagger-2.28.3.jar",
+      "sha256": "f1dd23f8ae34a8e91366723991ead0d6499d1a3e9163ce550c200b02d76a872b",
+      "bytes": 34413
+    },
+    {
+      "path": "com.google.dagger/dagger/2.28.3/6a11b6b6db0c740dbd150e11f54c6f219fdc2891/dagger-2.28.3.pom",
+      "sha256": "265ba959a8e13c3a06133f04b539169c1018daffd4d33f53c453ab4cb386f570",
+      "bytes": 2320
+    },
+    {
+      "path": "com.google.errorprone/error_prone_annotations/2.18.0/6d7bbfd3d7567e4c18e981a675ecda707e8a2db1/error_prone_annotations-2.18.0.pom",
+      "sha256": "920135797dcca5917b5a5c017642a58d340a4cd1bcd12f56f892a5663bd7bddc",
+      "bytes": 2159
+    },
+    {
+      "path": "com.google.errorprone/error_prone_annotations/2.27.0/85103026aa50b0e4efafee8f486e3ecd9ebfde31/error_prone_annotations-2.27.0.pom",
+      "sha256": "4ca5a35d61235e16549ac346d1e34551cdf0fe27e84aa57e03cbeb255ea4e5da",
+      "bytes": 4252
+    },
+    {
+      "path": "com.google.errorprone/error_prone_annotations/2.28.0/59fc00087ce372de42e394d2c789295dff2d19f0/error_prone_annotations-2.28.0.jar",
+      "sha256": "f3fc8a3a0a4020706a373b00e7f57c2512dd26d1f83d28c7d38768f8682b231e",
+      "bytes": 19370
+    },
+    {
+      "path": "com.google.errorprone/error_prone_annotations/2.28.0/6ab92cea437b733e5ef832e575cbf50fa8aebfad/error_prone_annotations-2.28.0.pom",
+      "sha256": "0ce909f13a568148476e5ee200f380f98c75ba08971aaf15db295eb77598ef3a",
+      "bytes": 4252
+    },
+    {
+      "path": "com.google.errorprone/error_prone_annotations/2.3.1/19c878e6870c8382864dcc459de1c6bfe7f36e54/error_prone_annotations-2.3.1.pom",
+      "sha256": "3edce6b711ba368efe16b9b7aacb0214fbd648414cb9b965953a2e7ed89a819a",
+      "bytes": 1784
+    },
+    {
+      "path": "com.google.errorprone/error_prone_parent/2.18.0/b1779a677965027cd2a3de91e61a80102086bb30/error_prone_parent-2.18.0.pom",
+      "sha256": "47f22e99c7bf466391def16f8377985e5d3ba6f5bbcf65853644805513e15fad",
+      "bytes": 11080
+    },
+    {
+      "path": "com.google.errorprone/error_prone_parent/2.27.0/336f77abf2668b10cae4ab136ea0c8258875de00/error_prone_parent-2.27.0.pom",
+      "sha256": "fa81829d049559df6927f9c9a6fd6bbd09f8b50e6d4736ae72c8300b6c3d7654",
+      "bytes": 13124
+    },
+    {
+      "path": "com.google.errorprone/error_prone_parent/2.28.0/5f307de93ba6c82a0ca99404c1ab927f68c7038a/error_prone_parent-2.28.0.pom",
+      "sha256": "accefdbb5416cef5fcd2ddc37db4f1fcb34a2193cc1a55dfe5970a131b3e7683",
+      "bytes": 13124
+    },
+    {
+      "path": "com.google.errorprone/error_prone_parent/2.3.1/a32c199defa0dcf9c42a32c26fec4d1fbb408e58/error_prone_parent-2.3.1.pom",
+      "sha256": "767525d9a81129cd081968382980336327be4162b1e2251a182911daa733c123",
+      "bytes": 4952
+    },
+    {
+      "path": "com.google.flatbuffers/flatbuffers-java/1.12.0/8201cc7b511177a37071249e891f2f2fea4b32e9/flatbuffers-java-1.12.0.jar",
+      "sha256": "3f8c088b4dd04a9858721f2e162508c94db0dd86f961e306ee63ef2eda871bf7",
+      "bytes": 64873
+    },
+    {
+      "path": "com.google.flatbuffers/flatbuffers-java/1.12.0/f93bdcc0b38ffbec623e6610e0cddacae758cb54/flatbuffers-java-1.12.0.pom",
+      "sha256": "cb226baf546260770f21e8152a6aa88ba15230d739f750df480f2a668d43e0eb",
+      "bytes": 4568
+    },
+    {
+      "path": "com.google.guava/failureaccess/1.0.2/2df7ebe307b885a222be352d3bffd5fcf0428ad4/failureaccess-1.0.2.pom",
+      "sha256": "19ebc6f4bdb4edbb3d07b6ee994f846b54ef295582a9b5634719ffa9f31d03b2",
+      "bytes": 3339
+    },
+    {
+      "path": "com.google.guava/failureaccess/1.0.2/c4a06a64e650562f30b7bf9aaec1bfed43aca12b/failureaccess-1.0.2.jar",
+      "sha256": "8a8f81cf9b359e3f6dfa691a1e776985c061ef2f223c9b2c80753e1b458e8064",
+      "bytes": 4740
+    },
+    {
+      "path": "com.google.guava/guava/33.3.1-jre/5a5628b34628748abcb73144a909ddbea2265ed9/guava-33.3.1-jre.pom",
+      "sha256": "313b67fc13eb3b0634eda715a1229971f5de9b8188bc280762815b83a275f193",
+      "bytes": 9304
+    },
+    {
+      "path": "com.google.guava/guava/33.3.1-jre/852f8b363da0111e819460021ca693cacca3e8db/guava-33.3.1-jre.jar",
+      "sha256": "4bf0e2c5af8e4525c96e8fde17a4f7307f97f8478f11c4c8e35a0e3298ae4e90",
+      "bytes": 3079289
+    },
+    {
+      "path": "com.google.guava/guava/33.3.1-jre/c99293bbf166d01849489fc6f94a101f79072aa7/guava-33.3.1-jre.module",
+      "sha256": "41858c84753fd96a6b7c51122fccef39558c91cc08264e08506bcf20e0e63733",
+      "bytes": 7839
+    },
+    {
+      "path": "com.google.guava/guava-parent/26.0-android/a2c0df489614352b7e8e503e274bd1dee5c42a64/guava-parent-26.0-android.pom",
+      "sha256": "f8698ab46ca996ce889c1afc8ca4f25eb8ac6b034dc898d4583742360016cc04",
+      "bytes": 10180
+    },
+    {
+      "path": "com.google.guava/guava-parent/33.3.1-jre/94729a0ed1dc35f623edd13afa6c1c2fe9a15d7c/guava-parent-33.3.1-jre.pom",
+      "sha256": "55441db27e8869dfefe053059bdf478bdc7e95585642bf391f0023345fd56287",
+      "bytes": 20206
+    },
+    {
+      "path": "com.google.guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/1b77ba79f9b2b7dfd4e15ea7bb0d568d5eb9cb8d/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.pom",
+      "sha256": "18d4b1db26153d4e55079ce1f76bb1fe05cdb862ef9954a88cbcc4ff38b8679b",
+      "bytes": 2278
+    },
+    {
+      "path": "com.google.guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/b421526c5f297295adef1c886e5246c39d4ac629/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar",
+      "sha256": "b372a037d4230aa57fbeffdef30fd6123f9c0c2db85d0aced00c91b974f33f99",
+      "bytes": 2199
+    },
+    {
+      "path": "com.google.j2objc/j2objc-annotations/2.8/c8daacea97066c6826844e2175ec89857e598122/j2objc-annotations-2.8.pom",
+      "sha256": "37f87798b18385113c918bfa9e1276fe50735ef8fa849b5800c519d54dbf11f8",
+      "bytes": 2921
+    },
+    {
+      "path": "com.google.j2objc/j2objc-annotations/3.0.0/45cbaa9d129a696907d1e5bc56c707b6a0043181/j2objc-annotations-3.0.0.pom",
+      "sha256": "23b3d039e168ad89dd114698e6dd7be383f4a2c577b8877d82c73a6515e74a17",
+      "bytes": 5057
+    },
+    {
+      "path": "com.google.j2objc/j2objc-annotations/3.0.0/7399e65dd7e9ff3404f4535b2f017093bdb134c7/j2objc-annotations-3.0.0.jar",
+      "sha256": "88241573467ddca44ffd4d74aa04c2bbfd11bf7c17e0c342c94c9de7a70a7c64",
+      "bytes": 12467
+    },
+    {
+      "path": "com.google.jimfs/jimfs/1.1/380866e1e495f899631b6e1d437e4b0a69e4faa3/jimfs-1.1.pom",
+      "sha256": "efa86e5cd922f17b472fdfcae57234d8d4ac3e148b6250737dfce454af7a7a44",
+      "bytes": 4147
+    },
+    {
+      "path": "com.google.jimfs/jimfs/1.1/8fbd0579dc68aba6186935cc1bee21d2f3e7ec1c/jimfs-1.1.jar",
+      "sha256": "c4828e28d7c0a930af9387510b3bada7daa5c04d7c25a75c7b8b081f1c257ddd",
+      "bytes": 206691
+    },
+    {
+      "path": "com.google.jimfs/jimfs-parent/1.1/2283f99a6aa73205190a20cfd35078e9f7d6cec9/jimfs-parent-1.1.pom",
+      "sha256": "c71555751e57e0ef912870e8ac9625ae782502a6a5b9c19ccf83b2a97d8b26bd",
+      "bytes": 7282
+    },
+    {
+      "path": "com.google.protobuf/protobuf-bom/3.25.5/1da93689fa589dc4dc5dce60844b47d28105842c/protobuf-bom-3.25.5.pom",
+      "sha256": "080e2984173238b50e064c226afffbb1b0233520295c790a7fd3d6ae4593f063",
+      "bytes": 3728
+    },
+    {
+      "path": "com.google.protobuf/protobuf-java/3.25.5/2c4a0bfc6a807df9b919b366d15f4904b3bd0170/protobuf-java-3.25.5.pom",
+      "sha256": "e752032157a7a39be9be3786684075452a46cd586b2865abd33e707568a4c8af",
+      "bytes": 1554
+    },
+    {
+      "path": "com.google.protobuf/protobuf-java/3.25.5/5ae5c9ec39930ae9b5a61b32b93288818ec05ec1/protobuf-java-3.25.5.jar",
+      "sha256": "8540247fad9e06baefa8fb45eb313802d019f485f14300e0f9d6b556ed88e753",
+      "bytes": 1875414
+    },
+    {
+      "path": "com.google.protobuf/protobuf-java-util/3.25.5/2fd002f689dead93bf55c1a0b023ba67fe7155be/protobuf-java-util-3.25.5.pom",
+      "sha256": "a09d190eaa6a79616bc5f4b5404e94b0cab559803a98c8a090c4099962f41f92",
+      "bytes": 2456
+    },
+    {
+      "path": "com.google.protobuf/protobuf-java-util/3.25.5/38cc5ce479603e36466feda2a9f1dfdb2210ef00/protobuf-java-util-3.25.5.jar",
+      "sha256": "dacc58b2c3d2fa8d4bddc1acb881e78d6cf7c137dd78bc1d67f6aca732436a8d",
+      "bytes": 73140
+    },
+    {
+      "path": "com.google.protobuf/protobuf-parent/3.25.5/fefa8b2e68e227b4b32f795d4206c70558eb07ef/protobuf-parent-3.25.5.pom",
+      "sha256": "64cc0e3ad6e85f5aec8f9dcf9341d1379e9525364ff53e23e16d8d5824673ef7",
+      "bytes": 9028
+    },
+    {
+      "path": "com.googlecode.juniversalchardet/juniversalchardet/1.0.3/be6da8320adedafc712d645ddaaad00357b55408/juniversalchardet-1.0.3.pom",
+      "sha256": "7846399b35c7cd642a9b3a000c3e2d62d04eb37a4547b6933cc8b18bcc2f086b",
+      "bytes": 1463
+    },
+    {
+      "path": "com.googlecode.juniversalchardet/juniversalchardet/1.0.3/cd49678784c46aa8789c060538e0154013bb421b/juniversalchardet-1.0.3.jar",
+      "sha256": "757bfe906193b8b651e79dc26cd67d6b55d0770a2cdfb0381591504f779d4a76",
+      "bytes": 220813
+    },
+    {
+      "path": "com.squareup/javapoet/1.13.0/17b682b96d0d2abfdd92f6a99fbab40dd4f4d360/javapoet-1.13.0.pom",
+      "sha256": "54a34fa8502a46bc90efdb49262600591fa80bf9a34f5a4c798311aec16ca977",
+      "bytes": 4849
+    },
+    {
+      "path": "com.squareup/javapoet/1.13.0/d6562d385049f35eb50403fa86bb11cce76b866a/javapoet-1.13.0.jar",
+      "sha256": "4c7517e848a71b36d069d12bb3bf46a70fd4cda3105d822b0ed2e19c00b69291",
+      "bytes": 106068
+    },
+    {
+      "path": "com.squareup/javawriter/2.5.0/81241ff7078ef14f42ea2a8995fa09c096256e6b/javawriter-2.5.0.jar",
+      "sha256": "fcfb09fb0ea0aa97d3cfe7ea792398081348e468f126b3603cb3803f240197f0",
+      "bytes": 12781
+    },
+    {
+      "path": "com.squareup/javawriter/2.5.0/d932f2476f65ecd95dcd6fd8c568b3f466f6a482/javawriter-2.5.0.pom",
+      "sha256": "e1abd7f1116cf5e0c59947693e2189208ec94296b2a3394c959e3511d399a7b0",
+      "bytes": 2881
+    },
+    {
+      "path": "com.sun.activation/all/1.2.1/efca912f55f71e63ab2eb82552519b66dd123f98/all-1.2.1.pom",
+      "sha256": "360883bf64486ecef161b8f282f6503536dd1a670d53a0a871c8fb20170e6795",
+      "bytes": 18095
+    },
+    {
+      "path": "com.sun.istack/istack-commons/3.0.8/3835dae3b9e529039b70bce883a1c7438713c295/istack-commons-3.0.8.pom",
+      "sha256": "a0f0517e8512f0fbcc7b8295c12f6566a3d0c2d86d655639dc662ef8c0c7ebe5",
+      "bytes": 18639
+    },
+    {
+      "path": "com.sun.istack/istack-commons-runtime/3.0.8/d6a97364045aa6b99bf2d3c566a3f98599c2d296/istack-commons-runtime-3.0.8.jar",
+      "sha256": "4ffabb06be454a05e4398e20c77fa2b6308d4b88dfbef7ca30a76b5b7d5505ef",
+      "bytes": 27156
+    },
+    {
+      "path": "com.sun.istack/istack-commons-runtime/3.0.8/fd5dfcff9a1f1e7e4371c6a998b74ee0e52bdc4a/istack-commons-runtime-3.0.8.pom",
+      "sha256": "c2e014d34cb84ed287d064986c45c305a4124228a7337eccf6c421d14d708f1c",
+      "bytes": 3555
+    },
+    {
+      "path": "com.sun.xml.bind/jaxb-bom-ext/2.3.2/7a92d12e31a67bae498f840c8f7c334a4fee0fbb/jaxb-bom-ext-2.3.2.pom",
+      "sha256": "1a7dec2b27e7e055744cdb8cf1b90def4fd473acd1b804eff098139358959bd7",
+      "bytes": 3144
+    },
+    {
+      "path": "com.sun.xml.bind.mvn/jaxb-parent/2.3.2/5d96ada92105844d8a2eedfb63bf782a712cc0a/jaxb-parent-2.3.2.pom",
+      "sha256": "20dd6dc34ab7549ac40da1d82e92222ec4347ad0ec0cb118ef6c5703bed53a18",
+      "bytes": 29746
+    },
+    {
+      "path": "com.sun.xml.bind.mvn/jaxb-runtime-parent/2.3.2/b9916bbbf37042807a649a2a7fcb6b97e193c28a/jaxb-runtime-parent-2.3.2.pom",
+      "sha256": "b24f8d51f184a68bc1b86d48c0e3cfefeb21a44ede1c5f7303c58ae0488533ec",
+      "bytes": 1133
+    },
+    {
+      "path": "com.sun.xml.bind.mvn/jaxb-txw-parent/2.3.2/1f872b3cb7c49c35501651aab063659a9775f06a/jaxb-txw-parent-2.3.2.pom",
+      "sha256": "b55d3efa9b158f483a30e92c78ccb600f93314733d089eba9b74436f01b314a4",
+      "bytes": 1144
+    },
+    {
+      "path": "com.sun.xml.fastinfoset/FastInfoset/1.2.16/4eb6a0adad553bf759ffe86927df6f3b848c8bea/FastInfoset-1.2.16.jar",
+      "sha256": "056f3a1e144409f21ed16afc26805f58e9a21f3fce1543c42d400719d250c511",
+      "bytes": 317195
+    },
+    {
+      "path": "com.sun.xml.fastinfoset/FastInfoset/1.2.16/e4d2eed02e0e0a9f4c892e6d43bdf3dfdc1fa2ee/FastInfoset-1.2.16.pom",
+      "sha256": "e147d258ab6e6691f70599a952400e6e6c7558f8c9c028dbe1be23178308e830",
+      "bytes": 5262
+    },
+    {
+      "path": "com.sun.xml.fastinfoset/fastinfoset-project/1.2.16/86113f7ee9a5d995429bf75294b57b31f0a17d29/fastinfoset-project-1.2.16.pom",
+      "sha256": "90582425adc1f40b41362dafb95173931225acaa5e79620d5e6bd52f646292ba",
+      "bytes": 15176
+    },
+    {
+      "path": "commons-codec/commons-codec/1.17.1/973638b7149d333563584137ebf13a691bb60579/commons-codec-1.17.1.jar",
+      "sha256": "f9f6cb103f2ddc3c99a9d80ada2ae7bf0685111fd6bffccb72033d1da4e6ff23",
+      "bytes": 372687
+    },
+    {
+      "path": "commons-codec/commons-codec/1.17.1/d187e2d50ab520895df0dcb9d88980ffea50bfa3/commons-codec-1.17.1.pom",
+      "sha256": "7fa0db4d8150daf932958b8aea89ee24abb4d18e2316a5de535278fc131512a0",
+      "bytes": 17776
+    },
+    {
+      "path": "commons-io/commons-io/2.16.1/377d592e740dc77124e0901291dbfaa6810a200e/commons-io-2.16.1.jar",
+      "sha256": "f41f7baacd716896447ace9758621f62c1c6b0a91d89acee488da26fc477c84f",
+      "bytes": 508826
+    },
+    {
+      "path": "commons-io/commons-io/2.16.1/553d6f69e338060a231755afe0ebf99d14b45da6/commons-io-2.16.1.pom",
+      "sha256": "5777d292251c7895c04a4c57015683ec3b353a12486c9b3e7178e9b0b3c38fff",
+      "bytes": 19623
+    },
+    {
+      "path": "commons-logging/commons-logging/1.2/4bfc12adfe4842bf07b657f0369c4cb522955686/commons-logging-1.2.jar",
+      "sha256": "daddea1ea0be0f56978ab3006b8ac92834afeefbd9b7e4e6316fca57df0fa636",
+      "bytes": 61829
+    },
+    {
+      "path": "commons-logging/commons-logging/1.2/75c03ba4b01932842a996ef8d3fc1ab61ddeac2/commons-logging-1.2.pom",
+      "sha256": "c91ab5aa570d86f6fd07cc158ec6bc2c50080402972ee9179fe24100739fbb20",
+      "bytes": 19206
+    },
+    {
+      "path": "jakarta.activation/jakarta.activation-api/1.2.1/562a587face36ec7eff2db7f2fc95425c6602bc1/jakarta.activation-api-1.2.1.jar",
+      "sha256": "8b0a0f52fa8b05c5431921a063ed866efaa41dadf2e3a7ee3e1961f2b0d9645b",
+      "bytes": 44399
+    },
+    {
+      "path": "jakarta.activation/jakarta.activation-api/1.2.1/b9c1b2502949970360efe8d75ec5268d87d38a82/jakarta.activation-api-1.2.1.pom",
+      "sha256": "42585cb07dda7f23aa04eb5e0940061944a246a67ad3d16942fbe569ff03cd31",
+      "bytes": 4572
+    },
+    {
+      "path": "jakarta.xml.bind/jakarta.xml.bind-api/2.3.2/6142021e7186bf29f5f7639b968cfe250ce086dd/jakarta.xml.bind-api-2.3.2.pom",
+      "sha256": "b537b388dbab4cc0690b9d2fb0c74124d672531734567acf6e53130eab131ad6",
+      "bytes": 15997
+    },
+    {
+      "path": "jakarta.xml.bind/jakarta.xml.bind-api/2.3.2/8d49996a4338670764d7ca4b85a1c4ccf7fe665d/jakarta.xml.bind-api-2.3.2.jar",
+      "sha256": "69156304079bdeed9fc0ae3b39389f19b3cc4ba4443bc80508995394ead742ea",
+      "bytes": 115498
+    },
+    {
+      "path": "jakarta.xml.bind/jakarta.xml.bind-api-parent/2.3.2/7be72e8345e33f747d5d813e313abd8df25f259e/jakarta.xml.bind-api-parent-2.3.2.pom",
+      "sha256": "15a55b7d537c9f9970aead28d2af97c059f65ff6102f76bbd29f1247dd8a6dfb",
+      "bytes": 7659
+    },
+    {
+      "path": "javax.inject/javax.inject/1/6975da39a7040257bd51d21a231b76c915872d38/javax.inject-1.jar",
+      "sha256": "91c77044a50c481636c32d916fd89c9118a72195390452c81065080f957de7ff",
+      "bytes": 2497
+    },
+    {
+      "path": "javax.inject/javax.inject/1/b8e00a8a0deb0ebef447570e37ff8146ccd92cbe/javax.inject-1.pom",
+      "sha256": "943e12b100627804638fa285805a0ab788a680266531e650921ebfe4621a8bfa",
+      "bytes": 612
+    },
+    {
+      "path": "net.java.dev.jna/jna/5.6.0/330f2244e9030119ab3030fc3fededc86713d9cc/jna-5.6.0.jar",
+      "sha256": "5557e235a8aa2f9766d5dc609d67948f2a8832c2d796cea9ef1d6cbe0b3b7eaf",
+      "bytes": 1509440
+    },
+    {
+      "path": "net.java.dev.jna/jna/5.6.0/e542808a6326ec0302c0b09011cb4363e1ece380/jna-5.6.0.pom",
+      "sha256": "5fe81b0255978f24616d37b10608b79498a5f3073e1d9b2038d8736a831f2608",
+      "bytes": 1580
+    },
+    {
+      "path": "net.java.dev.jna/jna-platform/5.6.0/d18424ffb8bbfd036d71bcaab9b546858f2ef986/jna-platform-5.6.0.jar",
+      "sha256": "9ecea8bf2b1b39963939d18b70464eef60c508fed8820f9dcaba0c35518eabf7",
+      "bytes": 2735878
+    },
+    {
+      "path": "net.java.dev.jna/jna-platform/5.6.0/f86d5b088d311a7dee895e06cb2a08ccada7cbde/jna-platform-5.6.0.pom",
+      "sha256": "1beb35cb4184e6c906a7e32eaebd852dd3da0a263962e99134ab945832394e28",
+      "bytes": 1800
+    },
+    {
+      "path": "net.sf.jopt-simple/jopt-simple/4.9/ea3cd0a93e4e8adc1cdadd544c9168bc5aa985a8/jopt-simple-4.9.pom",
+      "sha256": "7af7e2d8b24b4798f04c2b7da24c9fbd1b7557b4e017c2054481565916079092",
+      "bytes": 13963
+    },
+    {
+      "path": "net.sf.jopt-simple/jopt-simple/4.9/ee9e9eaa0a35360dcfeac129ff4923215fd65904/jopt-simple-4.9.jar",
+      "sha256": "26c5856e954b5f864db76f13b86919b59c6eecf9fd930b96baa8884626baf2f5",
+      "bytes": 66469
+    },
+    {
+      "path": "net.sf.kxml/kxml2/2.3.0/8efa75f9cdc57687076b2125b1a098e6f42e737d/kxml2-2.3.0.pom",
+      "sha256": "31ce606f4e9518936299bb0d27c978fa61e185fd1de7c9874fe959a53e34a685",
+      "bytes": 1490
+    },
+    {
+      "path": "net.sf.kxml/kxml2/2.3.0/ccbc77a5fd907ef863c29f3596c6f54ffa4e9442/kxml2-2.3.0.jar",
+      "sha256": "f264dd9f79a1fde10ce5ecc53221eff24be4c9331c830b7d52f2f08a7b633de2",
+      "bytes": 43858
+    },
+    {
+      "path": "org.apache/apache/13/15aff1faaec4963617f07dbe8e603f0adabc3a12/apache-13.pom",
+      "sha256": "ff513db0361fd41237bef4784968bc15aae478d4ec0a9496f811072ccaf3841d",
+      "bytes": 13974
+    },
+    {
+      "path": "org.apache/apache/18/bd408bbea3840f2c7f914b29403e39a90f84fd5f/apache-18.pom",
+      "sha256": "7831307285fd475bbc36b20ae38e7882f11c3153b1d5930f852d44eda8f33c17",
+      "bytes": 15667
+    },
+    {
+      "path": "org.apache/apache/21/649b700a1b2b4a1d87e7ae8e3f47bfe101b2a4a5/apache-21.pom",
+      "sha256": "af10c108da014f17cafac7b52b2b4b5a3a1c18265fa2af97a325d9143537b380",
+      "bytes": 17107
+    },
+    {
+      "path": "org.apache/apache/31/9009cbdad2b69835f2df9265794c8ab50cf4dce1/apache-31.pom",
+      "sha256": "555d0c9eaa69c042aff924927b9381e8f8174136d355eead445224452e6291cc",
+      "bytes": 23531
+    },
+    {
+      "path": "org.apache/apache/32/2e08f841a6fbc946452701faaf5e39a17ac97ef3/apache-32.pom",
+      "sha256": "cfd872c0ec27f53ae68f43dbc0fecded8add773079a53afbd390e407b42ce72f",
+      "bytes": 24184
+    },
+    {
+      "path": "org.apache/apache/33/f7b7b5a9e84395f17d7e6a136e5bfc4b9973566d/apache-33.pom",
+      "sha256": "d78bd8524c5f8380a190a6525686629a95dfe512df21111383a6d8c0923a4415",
+      "bytes": 24184
+    },
+    {
+      "path": "org.apache.commons/commons-compress/1.27.1/19c6bd08bc56d18cfcde1abebec11fbd3d9bcfba/commons-compress-1.27.1.pom",
+      "sha256": "df8cc1a8387d4ce842363b7209fdc6d35df9763839fd3fcab558a0f83f9d841c",
+      "bytes": 23045
+    },
+    {
+      "path": "org.apache.commons/commons-compress/1.27.1/a19151084758e2fbb6b41eddaa88e7b8ff4e6599/commons-compress-1.27.1.jar",
+      "sha256": "293d80f54b536b74095dcd7ea3cf0a29bbfc3402519281332495f4420d370d16",
+      "bytes": 1087319
+    },
+    {
+      "path": "org.apache.commons/commons-lang3/3.16.0/3eb54effe40946dfb06dc5cd6c7ce4116cd51ea4/commons-lang3-3.16.0.jar",
+      "sha256": "08709dd74d602b705ce4017d26544210056a4ba583d5b20c09373406fe7a00f8",
+      "bytes": 674238
+    },
+    {
+      "path": "org.apache.commons/commons-lang3/3.16.0/48213bd4b10e67ea9a51e5fd5383f3cb0d473271/commons-lang3-3.16.0.pom",
+      "sha256": "e280383956c2e72c1deb3a307b3b75f05ee43649b7d43f0215f7b6c7b15eea2c",
+      "bytes": 31259
+    },
+    {
+      "path": "org.apache.commons/commons-parent/34/1f6be162a806d8343e3cd238dd728558532473a5/commons-parent-34.pom",
+      "sha256": "3a2e69d06d641d1f3b293126dc9e2e4ea6563bf8c36c87e0ab6fa4292d04b79c",
+      "bytes": 55943
+    },
+    {
+      "path": "org.apache.commons/commons-parent/69/6ebeacd37818d945d96c06b44af10e050d2ef7c4/commons-parent-69.pom",
+      "sha256": "d50da9c39bdca823d618d1b4a03b73f196497fcb8616fd0da727c8623592a9bb",
+      "bytes": 77006
+    },
+    {
+      "path": "org.apache.commons/commons-parent/71/91d35791f5037779fb320d054ed09cb14925dc32/commons-parent-71.pom",
+      "sha256": "95b7be70f316ae4ca22f6fbdd08de2182e87cd874a650de7c3d3386a747a82a3",
+      "bytes": 77771
+    },
+    {
+      "path": "org.apache.commons/commons-parent/72/cdfbaff82e756be4cb74d3f09b8fbf8f6b06c79d/commons-parent-72.pom",
+      "sha256": "4345debfc767b1aeac68abdd72fc67d18b521d4b390372a11b63ff0c586b2320",
+      "bytes": 77942
+    },
+    {
+      "path": "org.apache.httpcomponents/httpclient/4.5.14/1194890e6f56ec29177673f2f12d0b8e627dec98/httpclient-4.5.14.jar",
+      "sha256": "c8bc7e1c51a6d4ce72f40d2ebbabf1c4b68bfe76e732104b04381b493478e9d6",
+      "bytes": 785639
+    },
+    {
+      "path": "org.apache.httpcomponents/httpclient/4.5.14/f62c6a311407cc4b47d0ea9eec6cf97ed25b8cee/httpclient-4.5.14.pom",
+      "sha256": "f18355af4cf80a8a4ef04ebd742a47e90a7eaf080c725b2095dbc4fc5dbdefb7",
+      "bytes": 6623
+    },
+    {
+      "path": "org.apache.httpcomponents/httpcomponents-client/4.5.14/e36b5c26d9012cce0ba214e06462596585475217/httpcomponents-client-4.5.14.pom",
+      "sha256": "5bad1de4f101447659f89d089868ccbad64a68cc503d2d65410b51f6904aa061",
+      "bytes": 15277
+    },
+    {
+      "path": "org.apache.httpcomponents/httpcomponents-client/4.5.6/135a0a91d1ad2909b08196580ef2c363932bb87e/httpcomponents-client-4.5.6.pom",
+      "sha256": "b042b41f2391edb00d35f7f4e509aed2123648c1d246ce58d0f7b905c9fe1f73",
+      "bytes": 15489
+    },
+    {
+      "path": "org.apache.httpcomponents/httpcomponents-core/4.4.16/e0cbfde0384168cdd90e2633c1f101416d799090/httpcomponents-core-4.4.16.pom",
+      "sha256": "f2d75a2c2d423ad18539bf21656d56f88a4091944a662fcaf159d5ae283db7f7",
+      "bytes": 11949
+    },
+    {
+      "path": "org.apache.httpcomponents/httpcomponents-parent/10/1ba3c5940f24525444492ae12b6a1015df8a477b/httpcomponents-parent-10.pom",
+      "sha256": "caaf967d94afb21753f36082c6086206bd1f48825ff596932cceba72b65d39fa",
+      "bytes": 33654
+    },
+    {
+      "path": "org.apache.httpcomponents/httpcomponents-parent/11/3ee7a841cc49326e8681089ea7ad6a3b81b88581/httpcomponents-parent-11.pom",
+      "sha256": "a901f87b115c55070c7ee43efff63e20e7b02d30af2443ae292bf1f4e532d3aa",
+      "bytes": 34695
+    },
+    {
+      "path": "org.apache.httpcomponents/httpcore/4.4.16/51cf043c87253c9f58b539c9f7e44c8894223850/httpcore-4.4.16.jar",
+      "sha256": "6c9b3dd142a09dc468e23ad39aad6f75a0f2b85125104469f026e52a474e464f",
+      "bytes": 327891
+    },
+    {
+      "path": "org.apache.httpcomponents/httpcore/4.4.16/fdcd45abd94151f990a359e1d367e325cfb50286/httpcore-4.4.16.pom",
+      "sha256": "3cbad849b35dacfe6cec31adada2c623c026c3261141b0d26eec7e399c6cd7fa",
+      "bytes": 4967
+    },
+    {
+      "path": "org.apache.httpcomponents/httpmime/4.5.6/164343da11db817e81e24e0d9869527e069850c9/httpmime-4.5.6.jar",
+      "sha256": "0b2b1102c18d3c7e05a77214b9b7501a6f6056174ae5604e0e256776eda7553e",
+      "bytes": 41794
+    },
+    {
+      "path": "org.apache.httpcomponents/httpmime/4.5.6/b9dcad423fba1978379049cf0cf3cf535c667af7/httpmime-4.5.6.pom",
+      "sha256": "dfbfd6ffe2a784ca9817c46365aa7f8a578320b805bde39d6f55a0b09d8aa8ca",
+      "bytes": 5236
+    },
+    {
+      "path": "org.bitbucket.b_c/jose4j/0.9.5/dfea5de0f47c10dbfafb02d5d28edd8b44a45907/jose4j-0.9.5.pom",
+      "sha256": "bad024180a1b469cbd94e5f2db12841bcac5443d9545607f673cfde677c1d872",
+      "bytes": 8856
+    },
+    {
+      "path": "org.bitbucket.b_c/jose4j/0.9.5/e4ca26802488e6f16e24558d74ac8775a955fdd3/jose4j-0.9.5.jar",
+      "sha256": "808fb3166f3e67dad9811c331029ab1681242fd52b735bc3f33f281167fcc72e",
+      "bytes": 298683
+    },
+    {
+      "path": "org.bouncycastle/bcpkix-jdk18on/1.79/7693cec3b8779b74b35466dcaeeaac7409872954/bcpkix-jdk18on-1.79.jar",
+      "sha256": "3639a24ddf9ba4b7eba0659b44770e91eba816421888e571f285aadefe532cd6",
+      "bytes": 1134345
+    },
+    {
+      "path": "org.bouncycastle/bcpkix-jdk18on/1.79/783d463a7227fea427268e34fb60d98475c64f19/bcpkix-jdk18on-1.79.pom",
+      "sha256": "35e49f4134de2ac326c3a50a25762cbb4db56f3802fa3f730cc85b653ad0987b",
+      "bytes": 1641
+    },
+    {
+      "path": "org.bouncycastle/bcprov-jdk18on/1.79/460bea0d2ddd8860efd4e7c3c7d8add1d749e940/bcprov-jdk18on-1.79.pom",
+      "sha256": "d8f1a06b149d746e9d98de54e2f7aa9b2eb613fb35ca67d8ae396ceaac661ee4",
+      "bytes": 1141
+    },
+    {
+      "path": "org.bouncycastle/bcprov-jdk18on/1.79/4d8e2732bcee15f1db93df266c3f5b70ce5cac21/bcprov-jdk18on-1.79.jar",
+      "sha256": "0d81ecc3124536b539bce9aa3fe9621b7f84c9cee371b635a5b31c78b79ab1da",
+      "bytes": 8575537
+    },
+    {
+      "path": "org.bouncycastle/bcutil-jdk18on/1.79/ecfc5aef97cc7676ea0de5c53c407b9f533f0ad5/bcutil-jdk18on-1.79.jar",
+      "sha256": "c70b88ada58938cbc2f005d40329054078bcfa1149e6ffc03e9242eb6ab21836",
+      "bytes": 705999
+    },
+    {
+      "path": "org.bouncycastle/bcutil-jdk18on/1.79/fcfc0f7305fbf2a4a1a1207887e8e1d230e9210d/bcutil-jdk18on-1.79.pom",
+      "sha256": "e24c1fb4cf1605405a6988e9e4d6e4b2e1f4393fc73a89a9452ae625ee311d02",
+      "bytes": 1320
+    },
+    {
+      "path": "org.checkerframework/checker-qual/2.5.8/5eb0c9262e891ee4dfa3410b9be611e47c79779f/checker-qual-2.5.8.pom",
+      "sha256": "33ac6a0f1341ae96647c7d4465f4aa3d24fe97d2697bcee2ceae6fc8b5ef2c3c",
+      "bytes": 2398
+    },
+    {
+      "path": "org.checkerframework/checker-qual/3.43.0/3020cf05cf20a5f6e2137e59291be76cd1252b83/checker-qual-3.43.0.module",
+      "sha256": "f8163327245ab8625532948c72a930548cd97f34d6c3fe860fa6aec5a34d79b4",
+      "bytes": 3498
+    },
+    {
+      "path": "org.checkerframework/checker-qual/3.43.0/48ad8955d64547b84ef581361c29c030e56430cb/checker-qual-3.43.0.pom",
+      "sha256": "9313bf53b3efd8aaca266eea8b96e307976b65c0b16510cc6f02319fbaebed43",
+      "bytes": 2096
+    },
+    {
+      "path": "org.checkerframework/checker-qual/3.43.0/9425eee39e56b116d2b998b7c2cebcbd11a3c98b/checker-qual-3.43.0.jar",
+      "sha256": "3fbc2e98f05854c3df16df9abaa955b91b15b3ecac33623208ed6424640ef0f6",
+      "bytes": 231525
+    },
+    {
+      "path": "org.eclipse.ee4j/project/1.0.2/5730bedee1faaeeb62b0afc4ed1c4571f87a8eb4/project-1.0.2.pom",
+      "sha256": "7495a07a797e88e43c3bc1a87421bd8b1fc55e32291fa18e4e32d8031ddc873f",
+      "bytes": 11603
+    },
+    {
+      "path": "org.eclipse.ee4j/project/1.0.5/d391c5ed15d8fb1dadba9c5d1017006d56c50332/project-1.0.5.pom",
+      "sha256": "916b4794d8d8220a59a3fdf6a64dbe794aeb23395e888b81ae36a9b5a2c591a6",
+      "bytes": 13168
+    },
+    {
+      "path": "org.glassfish.jaxb/jaxb-bom/2.3.2/c7cd28b5d3871feba8cebf6d4587043fb0d6fd0a/jaxb-bom-2.3.2.pom",
+      "sha256": "a1018bb54678ed9f5acb2f7a4084e385ff510201f4e9dbf5f75dc6a675f66be7",
+      "bytes": 8018
+    },
+    {
+      "path": "org.glassfish.jaxb/jaxb-runtime/2.3.2/5528bc882ea499a09d720b42af11785c4fc6be2a/jaxb-runtime-2.3.2.jar",
+      "sha256": "e6e0a1e89fb6ff786279e6a0082d5cef52dc2ebe67053d041800737652b4fd1b",
+      "bytes": 1013367
+    },
+    {
+      "path": "org.glassfish.jaxb/jaxb-runtime/2.3.2/f46a0f023205138c366f0b0c9316f8663bb32a4f/jaxb-runtime-2.3.2.pom",
+      "sha256": "9448a5ad7fa68a6083dfbe4f42c8c83e082b9202a105401fc68e944c26548b34",
+      "bytes": 5573
+    },
+    {
+      "path": "org.glassfish.jaxb/txw2/2.3.2/22d24b523eb02a955e8bfa7af6572207a3490482/txw2-2.3.2.pom",
+      "sha256": "a79dd002fb038183ff286a2635be2e68c103b87e0e64717d8d44bfd017fd33ea",
+      "bytes": 2766
+    },
+    {
+      "path": "org.glassfish.jaxb/txw2/2.3.2/ce5be7da2e442c25ec14c766cb60cb802741727b/txw2-2.3.2.jar",
+      "sha256": "4a6a9f483388d461b81aa9a28c685b8b74c0597993bf1884b04eddbca95f48fe",
+      "bytes": 72080
+    },
+    {
+      "path": "org.jdom/jdom2/2.0.6/11e250d112bc9f2a0e1a595a5f6ecd2802af2691/jdom2-2.0.6.pom",
+      "sha256": "47b23a79fe336b741b82434c6e049d68165256e405e75c10921fd72fa8a65d8d",
+      "bytes": 4598
+    },
+    {
+      "path": "org.jdom/jdom2/2.0.6/6f14738ec2e9dd0011e343717fa624a10f8aab64/jdom2-2.0.6.jar",
+      "sha256": "1345f11ba606d15603d6740551a8c21947c0215640770ec67271fe78bea97cf5",
+      "bytes": 304924
+    },
+    {
+      "path": "org.jetbrains/annotations/13.0/919f0dfe192fb4e063e7dacadee7f8bb9a2672a9/annotations-13.0.jar",
+      "sha256": "ace2a10dc8e2d5fd34925ecac03e4988b2c0f851650c94b8cef49ba1bd111478",
+      "bytes": 17536
+    },
+    {
+      "path": "org.jetbrains/annotations/13.0/fa7d3d07cc80547e2d15bf4839d3267c637c642f/annotations-13.0.pom",
+      "sha256": "965aeb2bedff369819bdde1bf7a0b3b89b8247dd69c88b86375d76163bb8c397",
+      "bytes": 4930
+    },
+    {
+      "path": "org.jetbrains.kotlin/compose-compiler-gradle-plugin/2.4.10/380183bbebcd293bd84e8738d012bc3b0403408c/compose-compiler-gradle-plugin-2.4.10-gradle813.jar",
+      "sha256": "b82f5647d81d3ac9688f63d45192472a82c69936618e6bba1cd2b0fdfa861533",
+      "bytes": 104681
+    },
+    {
+      "path": "org.jetbrains.kotlin/compose-compiler-gradle-plugin/2.4.10/66f0bc3d591886eec36010d0557d5e1bdf931eec/compose-compiler-gradle-plugin-2.4.10.module",
+      "sha256": "7b1f9ab002360479618ee09aa6c7005a0282c39e705e561250f3586a82837296",
+      "bytes": 92982
+    },
+    {
+      "path": "org.jetbrains.kotlin/compose-compiler-gradle-plugin/2.4.10/99d13d40826d33068f7f8852227aa1b4cff289d4/compose-compiler-gradle-plugin-2.4.10.pom",
+      "sha256": "c90ad507f2da1cab594a3ed9fe43cb65eb8aebecbaf2ec560e4ce8f6de950e6d",
+      "bytes": 4080
+    },
+    {
+      "path": "org.jetbrains.kotlin/fus-statistics-gradle-plugin/2.4.10/93b8a0e3bb82aea715f3912747f988c4859077d8/fus-statistics-gradle-plugin-2.4.10.pom",
+      "sha256": "0a27e8d3d42c4e730904e4350bd4a94e052b0b5381397507cfd5552257bbb294",
+      "bytes": 2650
+    },
+    {
+      "path": "org.jetbrains.kotlin/fus-statistics-gradle-plugin/2.4.10/9d2373587d4c591036e79e877b6b5f0a105a052d/fus-statistics-gradle-plugin-2.4.10-gradle813.jar",
+      "sha256": "d312eb7d69a8d5ac5377c712546665c9b94a63ca8fc9cdd315431f10672e8091",
+      "bytes": 86423
+    },
+    {
+      "path": "org.jetbrains.kotlin/fus-statistics-gradle-plugin/2.4.10/b28a69bc349275c53b9f1e7c675c6c1f4d8ff4a9/fus-statistics-gradle-plugin-2.4.10.module",
+      "sha256": "8ed5af5c6da4a233cad89f0bedacfccfd3ef0e19396a020bb974e2fedbe23e97",
+      "bytes": 56745
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-build-statistics/2.4.10/3e16cd72908cbc218f6b2124a4bdaa26d885de6b/kotlin-build-statistics-2.4.10.jar",
+      "sha256": "ba2748b67fb7b24ee1401eecfee32eb67dd055c85a59a5742188f795477a11cc",
+      "bytes": 246358
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-build-statistics/2.4.10/e75a2fe6813b12db8387c0dac2d708983f5700a3/kotlin-build-statistics-2.4.10.pom",
+      "sha256": "01cc32ad3b11274444939d06424cbf43a3e207e877683d1c851196ca19088ac1",
+      "bytes": 1552
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-build-tools-api/2.4.10/c88fe54d8d8c568de500b26fd459853c7202de39/kotlin-build-tools-api-2.4.10.jar",
+      "sha256": "3953d283e7710c990672e403a87df393d9726a9bf3e172194ebb5c33e062fcb0",
+      "bytes": 310932
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-build-tools-api/2.4.10/cc4fb8db9bcb6669c9aa255ad6d555a24177dca6/kotlin-build-tools-api-2.4.10.pom",
+      "sha256": "78242a9440f92400eaf3df8d2108ad706f669a53125845a7d31d3df7c4de4439",
+      "bytes": 1137
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-compiler-runner/2.4.10/975972259d4ff3cf97029981d60fafb2c46963e1/kotlin-compiler-runner-2.4.10.pom",
+      "sha256": "180738762c8941c4e30d7174a92071955bd869587332d785e61391167c82bc5a",
+      "bytes": 1924
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-compiler-runner/2.4.10/db761b9c5e0a67bcea290bc7e0700a7075af97de/kotlin-compiler-runner-2.4.10.jar",
+      "sha256": "9e869d66504572852f421bcb1625c0d564c2b3c8cecbf6cd5fef7e7f33e0013e",
+      "bytes": 20377
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-daemon-client/2.4.10/4756338ae282b06610de9d091b1672de19de654f/kotlin-daemon-client-2.4.10.pom",
+      "sha256": "f6de9e3a0e89add8e043fa76866d9a2ff10fb87963b1396377bbb00c229fde6e",
+      "bytes": 1353
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-daemon-client/2.4.10/8c3aa7a03a90240de365985d93bc8ed39163f852/kotlin-daemon-client-2.4.10.jar",
+      "sha256": "a3d1a5854fd92766de1ca37ff003a822d3da2039902008384dd1f7375f3d5cf9",
+      "bytes": 251407
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin/2.2.10/ac80ea5e4634d6cfa0affddfa0be8ae4bb9270f5/kotlin-gradle-plugin-2.2.10.module",
+      "sha256": "d0aa54915c5b57407a3c1740b0c530cf9657bf587d6d1018b79a8fa67f6a8821",
+      "bytes": 169250
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin/2.2.10/b7f13cfcd49cdf8ad62d055aca4db62202da0994/kotlin-gradle-plugin-2.2.10.pom",
+      "sha256": "2efac5be4709583777b2505ea2603ba8e1d7bcf9fa633f2ed7054d6511b1c4a5",
+      "bytes": 13055
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin/2.4.10/54e85b6639aa6819abc9985612e470576540e8ec/kotlin-gradle-plugin-2.4.10-gradle813.jar",
+      "sha256": "13e22c869df3972db9496b47bf2815fbcfb61e0439f96cbd8d6aeb912b481375",
+      "bytes": 26714711
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin/2.4.10/79255a9441d6a2b132717436350a4974da94b3d8/kotlin-gradle-plugin-2.4.10.module",
+      "sha256": "0e7713d84605da0bee038b578f31795882ccd721220a79cc36736ac9af9cb412",
+      "bytes": 143988
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin/2.4.10/8c7c04cb8716d1ec764722553d2fd0143a00755a/kotlin-gradle-plugin-2.4.10.pom",
+      "sha256": "5bf8f2602e7ad4c7875f2a74f07360c4163e4803e0733edc8b69f20d10495a0b",
+      "bytes": 10837
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin-annotations/2.4.10/1da414d44f2e4734f353ccac598c87f4b42d3199/kotlin-gradle-plugin-annotations-2.4.10.pom",
+      "sha256": "44fc5a0a711c92df16f00d3575d0f2c4a264f43ab2f588e455b3c6043124fd53",
+      "bytes": 1492
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin-annotations/2.4.10/d7e21334dd356764357f26dd1044975cb63e820f/kotlin-gradle-plugin-annotations-2.4.10.jar",
+      "sha256": "15c3b98f18c874b9ac5be2565f3724b3eaf6c6cf57dc784d73516a22a9e470cf",
+      "bytes": 4693
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin-api/2.4.10/3d92bd89fe4e122ea3e5f17555c976f9ba5b2490/kotlin-gradle-plugin-api-2.4.10.pom",
+      "sha256": "de7353d739d6b1c6c7d0a9f02abb172ffcc425b130b38c567d3766d69bef9bae",
+      "bytes": 6411
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin-api/2.4.10/57abfa0230a1ffc31556110bff4b946b55967ba3/kotlin-gradle-plugin-api-2.4.10-gradle813.jar",
+      "sha256": "74c4e4f7d037e850bab666db12c90a49e065d9495fd2dfdaa7bc39dd963083d6",
+      "bytes": 275012
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin-api/2.4.10/68b56ed156a8d353e3c72d0be3155ebd4eca3013/kotlin-gradle-plugin-api-2.4.10.module",
+      "sha256": "ade28e1831b222e161e00c120d5c9d56f9d4fe3b0aabed9e54912d71ab6ee8cb",
+      "bytes": 128271
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin-idea/2.4.10/2cded41d708e578c7580ef4a896bfe840f384e19/kotlin-gradle-plugin-idea-2.4.10.pom",
+      "sha256": "960ef083626a7466ea160796b940047aa3bdb6bdb9f7cbd0d5b8b74ea370e661",
+      "bytes": 2610
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin-idea/2.4.10/905431b905fbd7c516de862a1179d7ab5fae3955/kotlin-gradle-plugin-idea-2.4.10.jar",
+      "sha256": "086734484c7edf19a620ab1a617d097c40e03bc52602e77840ea5ebd6380e514",
+      "bytes": 94633
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin-idea/2.4.10/eb376295ec8e870625cd062673de8001285b9e35/kotlin-gradle-plugin-idea-2.4.10.module",
+      "sha256": "7e883fbfe9d2c9ced4a8fa99217a8dd413bb14a7ea932edbbda35d5e91a5119a",
+      "bytes": 7553
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin-idea-proto/2.4.10/330c5449d284aa00b3f18592ebffe887bc3196b4/kotlin-gradle-plugin-idea-proto-2.4.10.pom",
+      "sha256": "074ee0dd408de542a8e4b726daad829dc33a9e56ddb4f43a00eb9b9f67aff17f",
+      "bytes": 1591
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugin-idea-proto/2.4.10/e3b327b851ffdd00917458e4e4240f349e04c234/kotlin-gradle-plugin-idea-proto-2.4.10.jar",
+      "sha256": "355ac566ff74d74d230f7cb6d55e2ed50158b4c28fc186fc8d8268e8fe9868f4",
+      "bytes": 2692454
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugins-bom/2.2.10/16a998c7353b3ed44556c057d5db34dc3037bf69/kotlin-gradle-plugins-bom-2.2.10.module",
+      "sha256": "e4b7dd0b5570aa7ae6597d1f479bcea94e78e12735fa86f80afa95e7014efed6",
+      "bytes": 6691
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugins-bom/2.2.10/54be3a1514c0ee6aca25846f8af27b22f6c5488c/kotlin-gradle-plugins-bom-2.2.10.pom",
+      "sha256": "c0a5a21a4e6eec4d8bb6a2c491fac42f35ab9f08dd2af6bedb085715ac805296",
+      "bytes": 4623
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugins-bom/2.4.10/adc7159ec6aea58e6a9c68d5c038448e61f5e2d7/kotlin-gradle-plugins-bom-2.4.10.module",
+      "sha256": "48eb4756284d1d7ea24639d22861f15ff0cb685a15331a6c6a3674ff44baf029",
+      "bytes": 6700
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-gradle-plugins-bom/2.4.10/f0b4611d84e4cf6e51d49f09be0c9f4eaf984fe/kotlin-gradle-plugins-bom-2.4.10.pom",
+      "sha256": "733fccda03ae34773e7b5c85d0e278c897df283370059cb39825f7c0381e49b6",
+      "bytes": 4606
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-klib-commonizer-api/2.4.10/3339c9ce1b5f60fed1048142d9c71c7181662641/kotlin-klib-commonizer-api-2.4.10.jar",
+      "sha256": "971bb968b4af10932bcc18f3395721ee48cc166597b50926731aeeff334086da",
+      "bytes": 73986
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-klib-commonizer-api/2.4.10/961a255733afec52e2191c5c962c86d06fc90962/kotlin-klib-commonizer-api-2.4.10.pom",
+      "sha256": "139b3ce8d655807eb68a45798f04329760b2106669ab332d2ac108843d758b29",
+      "bytes": 1572
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-native-utils/2.4.10/bffacb89e237e3ae556e66d18e77e120b361aa59/kotlin-native-utils-2.4.10.pom",
+      "sha256": "9b91e38cfc84eaa34183140192c307ddc68f4a4c6035f554c4c22e15f33916c7",
+      "bytes": 1866
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-native-utils/2.4.10/ffa1a46704f3172c99f23fd024965ebb24055ab6/kotlin-native-utils-2.4.10.jar",
+      "sha256": "76ec55f967dc8f57481a27b3e7868cc97cb32964d6d285517aef310c3d754a44",
+      "bytes": 400244
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-reflect/2.3.21/6acc55c52691ce3fd41b20a0472f3513106521a5/kotlin-reflect-2.3.21.jar",
+      "sha256": "33e37d9dfa86c7a29ab34e975b5f4a1287b458878611051f3485652220c1a2cb",
+      "bytes": 3633922
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-reflect/2.3.21/96bad1aeebe6535972675257dc45f8c16bd9b504/kotlin-reflect-2.3.21.pom",
+      "sha256": "7e3c2fe5cf3494a9b47525580c38c35c43d6e3682e6a0b2f565954e19a72d639",
+      "bytes": 1351
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-stdlib/2.3.21/59339ed4e799172a6709b3e0439254282ccaec7a/kotlin-stdlib-2.3.21.pom",
+      "sha256": "3e0b48daa14dc73f8029d8d9e15ed32940377caf7b915510f88d33219b350186",
+      "bytes": 2301
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-stdlib/2.3.21/a2ee2c4e220fee522f0451b723bab2a43f3481a7/kotlin-stdlib-2.3.21.jar",
+      "sha256": "6f64eac736db9434dd6925b4a518b9d1d17177652320c37916cf9ba3ce7d7d7a",
+      "bytes": 1804721
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-stdlib/2.3.21/acffe2fbd185fd287175a8399042ccf59d57c007/kotlin-stdlib-2.3.21.module",
+      "sha256": "7b4ea4b2242bb177a4b4abb63c3f3d857331d40d35865e36fcc3db666ec10174",
+      "bytes": 12430
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-stdlib-jdk7/2.2.10/18cc96ae090a71726822631e1808c7d329faab5d/kotlin-stdlib-jdk7-2.2.10.jar",
+      "sha256": "cf95eccc6cc784dff479dee0b8834f3584b93292cc5d91972e82f5d7b9e13e3b",
+      "bytes": 945
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-stdlib-jdk7/2.2.10/7ac7f0119f2bcb321a91d04aca06a5d2543dfeb9/kotlin-stdlib-jdk7-2.2.10.pom",
+      "sha256": "be494907e0e19c78bb821154afa1776d5ad7a058b4ab30090f74354b0e1338de",
+      "bytes": 1389
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-stdlib-jdk8/2.2.10/80cc9a776a058eeda7053731350bc41af8858a5a/kotlin-stdlib-jdk8-2.2.10.jar",
+      "sha256": "8974bfdd08b1d81843fe8d11f0729ab6e5b3c1f88d671ebe0c006358129ce149",
+      "bytes": 951
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-stdlib-jdk8/2.2.10/d0c9ff52a6d37b825f30b566d15bd39feaaf1424/kotlin-stdlib-jdk8-2.2.10.pom",
+      "sha256": "2569cf5a980724f140157501db36dffab919cd0d443d2e14b5a35a2f96f84fac",
+      "bytes": 1581
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-tooling-core/2.4.10/573c9ea7f15a579d6dff312f585f5121532b3e5e/kotlin-tooling-core-2.4.10.pom",
+      "sha256": "590248328a863d8f000ef063ac0ee8b4483f52d3e22fa51ca243ce7f6a78c75c",
+      "bytes": 1128
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-tooling-core/2.4.10/75970f5a2a9cb4d25557965bbec0a7ccd55bfbcf/kotlin-tooling-core-2.4.10.jar",
+      "sha256": "59ea305372e3a2b7417764dcfecf645066a0d9b1792ab40afd15c1cc8535b58a",
+      "bytes": 89051
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-util-io/2.4.10/22c395cc2a2833b5dd1aa368155c491b8a04be6d/kotlin-util-io-2.4.10.jar",
+      "sha256": "06a9a0f89884c1c1a86baa96260238d927fb027077ba67bb5d2958af6fd776d7",
+      "bytes": 60087
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-util-io/2.4.10/fcec9d50c6df3ac5007ab71dcba2145d26d0f483/kotlin-util-io-2.4.10.pom",
+      "sha256": "3c9ca43ebff84366e7ff28742b7475553619c5f0f8acc2d7a979a6f4b437c81a",
+      "bytes": 1335
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-util-klib/2.4.10/2509939073ae84a9d095e5f0737cea8cb6941fa2/kotlin-util-klib-2.4.10.pom",
+      "sha256": "631dbfefce3aefea1de3573d8dc1e54919be9af88c142505d3352127d84abb84",
+      "bytes": 1542
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-util-klib/2.4.10/4c70cfc757d717d056b9cec24932506677bb0f52/kotlin-util-klib-2.4.10.jar",
+      "sha256": "408d3bd16e0f513ac2f4f04a78871701924836081c2cc774aa2b3f739278e430",
+      "bytes": 733995
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-util-klib-metadata/2.4.10/5d0b35631780153637205c66a75aa61c3fa2adc8/kotlin-util-klib-metadata-2.4.10.jar",
+      "sha256": "f9b0cc33542c53d83004ab4aeff6f6515d509d26e14e78f420eeae2a459f4927",
+      "bytes": 100244
+    },
+    {
+      "path": "org.jetbrains.kotlin/kotlin-util-klib-metadata/2.4.10/c0bfa1f32c04696129acd0ca28fab750b58f8dfa/kotlin-util-klib-metadata-2.4.10.pom",
+      "sha256": "606f70d8788a23f9b017039107d005248d0887481f0815e6284ba9a6933a7b7b",
+      "bytes": 1759
+    },
+    {
+      "path": "org.jetbrains.kotlin.plugin.compose/org.jetbrains.kotlin.plugin.compose.gradle.plugin/2.4.10/2f844b5593baf0a5b57361a703887a60465d2e32/org.jetbrains.kotlin.plugin.compose.gradle.plugin-2.4.10.pom",
+      "sha256": "a34cd5d78df696fd0f9c29a37c2ff700df7c2095117afdfe0c47c41b215a2f4c",
+      "bytes": 1434
+    },
+    {
+      "path": "org.jetbrains.kotlinx/kotlinx-coroutines-bom/1.9.0/11a86a1aa2fb0ecb72e865e4e0b421be56eb30fb/kotlinx-coroutines-bom-1.9.0.pom",
+      "sha256": "bea5511e9001f2c593ab5080df131b219ab5e2085cc5979ce583eacd4946fd78",
+      "bytes": 4291
+    },
+    {
+      "path": "org.jetbrains.kotlinx/kotlinx-coroutines-core/1.9.0/3bdff39bfd164fa139252fdcf98c5a5122f7aa9d/kotlinx-coroutines-core-1.9.0.module",
+      "sha256": "ad534034a953b4e12cbeeb874c66adf8b1ca14df15fe0d2e6547aa34e86dfeca",
+      "bytes": 45570
+    },
+    {
+      "path": "org.jetbrains.kotlinx/kotlinx-coroutines-core/1.9.0/d3fdd34e883e3a68fb4c10f33ab3abc4d66bdb28/kotlinx-coroutines-core-1.9.0.pom",
+      "sha256": "770f2793d05e2b027b9c799938ec1d2d4ef141ce5819c780c32c3995cadb0a47",
+      "bytes": 2057
+    },
+    {
+      "path": "org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm/1.9.0/253c11ec9fcf1ba2abc04263404ae403e4560e76/kotlinx-coroutines-core-jvm-1.9.0.module",
+      "sha256": "b321a899e40d3ce345707aa2cfda9983ad0dcc69fea74a9b8bf906a16c1cf8a9",
+      "bytes": 4438
+    },
+    {
+      "path": "org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm/1.9.0/9beade4c1c1569e4f36cbd2c37e02e3e41502601/kotlinx-coroutines-core-jvm-1.9.0.jar",
+      "sha256": "ad89c2892235e670f222d819cb3d81188143cb19a05b59df9889ae4269f5c70a",
+      "bytes": 1463587
+    },
+    {
+      "path": "org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm/1.9.0/f3febcf3224434beeb65f4d19de553b6b9db6fd/kotlinx-coroutines-core-jvm-1.9.0.pom",
+      "sha256": "19c4889941b3aa098bd57cc64f02f9adacc654d571a12a956de4b5bb148c6499",
+      "bytes": 2195
+    },
+    {
+      "path": "org.junit/junit-bom/5.10.2/b25ed98a5bd08cdda60e569cf22822a760e76019/junit-bom-5.10.2.pom",
+      "sha256": "169dd904a4b0f6520cffe658cc62292bfe9f3c14a989fa92120724cde43a9968",
+      "bytes": 5649
+    },
+    {
+      "path": "org.junit/junit-bom/5.10.2/ce536748a853ae6ac09e7815fce0678a96cff778/junit-bom-5.10.2.module",
+      "sha256": "de23b114b3e4119a8fe6eb17bed5a3852816698bace67071579d6d927ebb080a",
+      "bytes": 6995
+    },
+    {
+      "path": "org.junit/junit-bom/5.11.0-M2/4546561225def9f7f99c7c1abc3828dec51aad2a/junit-bom-5.11.0-M2.module",
+      "sha256": "86477abcf490d6ca059aa9973cb108d22a506f49d1a5569bb32cc6cbf43c2cce",
+      "bytes": 7104
+    },
+    {
+      "path": "org.junit/junit-bom/5.11.0-M2/6c517cddae7893aba5bf9f051c44860a4fc18211/junit-bom-5.11.0-M2.pom",
+      "sha256": "4a3ffc4a4edcfec2cb5d619922706a9407161798571939f854dfda73e4e17cc8",
+      "bytes": 5706
+    },
+    {
+      "path": "org.jvnet.staxex/stax-ex/1.8.1/78011e483a21102fb4858f3e8f269a677e50aa23/stax-ex-1.8.1.jar",
+      "sha256": "20522549056e9e50aa35ef0b445a2e47a53d06be0b0a9467d704e2483ffb049a",
+      "bytes": 38099
+    },
+    {
+      "path": "org.jvnet.staxex/stax-ex/1.8.1/93132b1ebaf1c419ad3d2216924af39c68f43b51/stax-ex-1.8.1.pom",
+      "sha256": "8fc84f36ce6da6ce8c893b6538199a7f69a69a0706d9b17a3ee6a3a09452eed6",
+      "bytes": 15152
+    },
+    {
+      "path": "org.ow2/ow2/1.5.1/bda66fa5f1b68fa7d2de3d569bdc8508b2af82d4/ow2-1.5.1.pom",
+      "sha256": "321ddbb7ee6fe4f53dea6b4cd6db74154d6bfa42391c1f763b361b9f485acf05",
+      "bytes": 11290
+    },
+    {
+      "path": "org.ow2.asm/asm/9.9/6be75cdd226790754abd862eca949e7b8d1f98a3/asm-9.9.pom",
+      "sha256": "cf861ef1e745d57154af79ae14df340ed5341e5dcd0157cefcd2eb7f1aa05c57",
+      "bytes": 2370
+    },
+    {
+      "path": "org.ow2.asm/asm/9.9/c29635c8a7afa03d74b33c1884df8abb2b3f3dcc/asm-9.9.jar",
+      "sha256": "03d99a74ad1ee5c71334ef67437f4ef4fe3488caa7c96d8645abc73c8e2017d4",
+      "bytes": 126122
+    },
+    {
+      "path": "org.ow2.asm/asm-analysis/9.9/904d037a3b4f4d72ea24f220a35143588351c48f/asm-analysis-9.9.pom",
+      "sha256": "909f24a710c728e0e5d643ec0b4834a63cb3d30022100d583d5dd6a26e35cda6",
+      "bytes": 2621
+    },
+    {
+      "path": "org.ow2.asm/asm-analysis/9.9/bf4fa6e66638851c1cd22c2caea0c3ee5d5f437/asm-analysis-9.9.jar",
+      "sha256": "6a15d28e8bd29ba4fd5bca4baf9b50e8fba2d7b51fbf78cfa0c875a7214c678b",
+      "bytes": 35149
+    },
+    {
+      "path": "org.ow2.asm/asm-commons/9.9/db9165a3bf908ded6b08612d583a15d1d0c7bda0/asm-commons-9.9.jar",
+      "sha256": "db2f6f26150bbe7c126606b4a1151836bcc22a1e05a423b3585698bece995ff8",
+      "bytes": 74348
+    },
+    {
+      "path": "org.ow2.asm/asm-commons/9.9/ddc3d39d810a7ab2b48838dc409160d50973d8cd/asm-commons-9.9.pom",
+      "sha256": "18a5d3ef1377e7544b3ca3210f261396b987f6010ef591d3872adae63119ee43",
+      "bytes": 2788
+    },
+    {
+      "path": "org.ow2.asm/asm-tree/9.9/aa8617df7e8a81ab44fd42d09c55c57c01da9521/asm-tree-9.9.pom",
+      "sha256": "d01788ed8e6e8e24acaf6cb4a7bdcc2733416252faa00232959e3e2e9df1bf44",
+      "bytes": 2592
+    },
+    {
+      "path": "org.ow2.asm/asm-tree/9.9/f8de6eead6d24dd0f45bd065bbe112b2cda6ea21/asm-tree-9.9.jar",
+      "sha256": "42178f3775c9c63f9e5e1446747d29b4eca4d91bd6e75e5c43cfa372a47d38c6",
+      "bytes": 51947
+    },
+    {
+      "path": "org.ow2.asm/asm-util/9.9/42fdfc0508b43807c8078d6e82ecff2ce2112ae8/asm-util-9.9.jar",
+      "sha256": "3842e13cfe324ee9ab7cdc4914be9943541ead397c17e26daf0b8a755bede717",
+      "bytes": 94565
+    },
+    {
+      "path": "org.ow2.asm/asm-util/9.9/c04c21f71b58649ba15eee7e8b6aae28f6427996/asm-util-9.9.pom",
+      "sha256": "a98593fda1c53a9e70d7660f416720e308d24db8e1c456fa17e76ba78d272b6b",
+      "bytes": 2938
+    },
+    {
+      "path": "org.slf4j/slf4j-api/1.7.30/2013960e5ee7f712d8fa6f2e618a6ff2e8d98a9/slf4j-api-1.7.30.pom",
+      "sha256": "7e0747751e9b67e19dcb5206f04ea22cc03d250c422426402eadd03513f2c314",
+      "bytes": 3835
+    },
+    {
+      "path": "org.slf4j/slf4j-api/1.7.30/b5a4b6d16ab13e34a88fae84c35cd5d68cac922c/slf4j-api-1.7.30.jar",
+      "sha256": "cdba07964d1bb40a0761485c6b1e8c2f8fd9eb1d19c53928ac0d7f9510105c57",
+      "bytes": 41472
+    },
+    {
+      "path": "org.slf4j/slf4j-parent/1.7.30/d3cf0e0cdb58d3c6f8a08c21e55894422fd725b9/slf4j-parent-1.7.30.pom",
+      "sha256": "11647956e48a0c5bfb3ac33f6da7e83f341002b6857efd335a505b687be34b75",
+      "bytes": 13806
+    },
+    {
+      "path": "org.sonatype.oss/oss-parent/7/46b8a785b60a2767095b8611613b58577e96d4c9/oss-parent-7.pom",
+      "sha256": "b51f8867c92b6a722499557fc3a1fdea77bdf9ef574722fe90ce436a29559454",
+      "bytes": 4824
+    },
+    {
+      "path": "org.sonatype.oss/oss-parent/9/e5cdc4d23b86d79c436f16fed20853284e868f65/oss-parent-9.pom",
+      "sha256": "fb40265f982548212ff82e362e59732b2187ec6f0d80182885c14ef1f982827a",
+      "bytes": 6569
+    },
+    {
+      "path": "org.tensorflow/tensorflow-lite-metadata/0.2.0/3d4eeba9903312a3ddf95937897f99db183be6c8/tensorflow-lite-metadata-0.2.0.pom",
+      "sha256": "0fe31326e83b7622cbcd9c75d467b291f01ffe3cc6e3e76651ac05a1c1c7a360",
+      "bytes": 1988
+    },
+    {
+      "path": "org.tensorflow/tensorflow-lite-metadata/0.2.0/7dbe8f75ae5c0ef7093c43c3ac8b560bbc7ea4b6/tensorflow-lite-metadata-0.2.0.jar",
+      "sha256": "e9f18b8a41f017e9033cb0ed85c8a2ba2307292cdfe25eae365923e7a31d2a70",
+      "bytes": 379748
+    }
+  ],
+  "agp_jar_verification": {
+    "version": "9.1.1",
+    "sha256": "15faaba5c8ddf63e8d5972c98d9de691678d542fa5eca40e9b7e87e5e8e83e64",
+    "published_sha1_url": "https://dl.google.com/dl/android/maven2/com/android/tools/build/gradle/9.1.1/gradle-9.1.1.jar.sha1",
+    "published_sha1": "62a383bdbf49b6fb5d4c63b0b2caf8798fd74328",
+    "observed_sha1": "62a383bdbf49b6fb5d4c63b0b2caf8798fd74328",
+    "matches": true,
+    "limitation": "Published SHA-1 is consistency evidence, not a modern signature or independent SHA-256 attestation."
+  }
+}

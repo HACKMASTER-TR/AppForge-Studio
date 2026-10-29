@@ -1,0 +1,984 @@
+{
+  "overall": "PARTIAL",
+  "safety": {
+    "branch": "feat/v10-oss-unified-20261028",
+    "head": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+    "push_locked": true,
+    "protected_paths": [
+      "windows-host/package.json",
+      "windows-host/package-lock.json",
+      "android-app/build.gradle.kts",
+      "android-app/app/build.gradle.kts",
+      "android-app/settings.gradle.kts",
+      ".github/workflows/android-play-release.yml"
+    ],
+    "protected_paths_diff_exit": 0,
+    "hooks": {
+      "pre-commit": {
+        "sha256": "20104ab9d22701f2dc915019e47c631ffc6fa948ef97af329678cd41c796f081",
+        "matches_phase3": true
+      },
+      "pre-push": {
+        "sha256": "8a84299361a06b295b099490f8bf6c922c036e94041e1a17c89b0ae0d1f6ebe2",
+        "matches_phase3": true
+      }
+    },
+    "staged_diff_exit": 0,
+    "preserved_source_snapshot_differences_before_report_update": [],
+    "final_changed_existing_files_against_scanned_snapshot": [
+      "V10_OSS_INTEGRATION_REPORT.md"
+    ],
+    "phase4_added_files": [
+      "docs/engineering/v10/phase4-security-report.md",
+      "docs/engineering/v10/phase4-security-evidence.json"
+    ]
+  },
+  "artifacts": [
+    {
+      "tool": "gitleaks",
+      "version": "v8.30.1",
+      "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_arm64.tar.gz",
+      "sha256": "e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080",
+      "checksums_url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt",
+      "checksums_sha256": "061476c21adaf5441516f96f185c1a4706a83cd6329b9b38762271b3d4a52fae",
+      "elf_machine": 183,
+      "license": "MIT",
+      "archive_license_sha256": "e3884b252b3bfc045e55be43a34d1e80da070bc6f804ac95bf4660e97d62ebc6",
+      "attestation": "not cryptographically verified; HTTPS upstream checksum consistency only"
+    },
+    {
+      "tool": "syft",
+      "version": "v1.55.0",
+      "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_arm64.tar.gz",
+      "sha256": "929bd163db2d7cd2255d3bcb8967208079813d7b46b0c952f7b794d8e2c7d304",
+      "checksums_url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_checksums.txt",
+      "checksums_sha256": "aba5ac8ee870bb93fd3b2058471ffe7e57492ba673b5e0bcbfca92006c2f4dc7",
+      "elf_machine": 183,
+      "license": "Apache-2.0",
+      "archive_license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "attestation": "not cryptographically verified; HTTPS upstream checksum consistency only",
+      "available_attestation": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_checksums.txt.sigstore.json"
+    }
+  ],
+  "records": [
+    {
+      "stage": "gitleaks-version",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+        "--version"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/gitleaks-version.log",
+      "log_sha256": "2c70800bf3ee514f15ea718e5c73d94444bed7f84cb80a8384c16e2288479921"
+    },
+    {
+      "stage": "syft-version",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/syft-bin/syft",
+        "--version"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/syft-version.log",
+      "log_sha256": "d43c8d739d5927cd11919a39afb535053393d415826d79ffa65fb580e8a3e9f6"
+    },
+    {
+      "stage": "gitleaks-fixture",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+        "dir",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/secret-fixture",
+        "--config",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks.toml",
+        "--redact=100",
+        "--exit-code=42",
+        "--no-banner",
+        "--report-format=json",
+        "--report-path",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-fixture.json"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/gitleaks-fixture.log",
+      "log_sha256": "7a6c629285483c558a6083e239db625e9eb00d57833cf1fc2d188c197852efd2"
+    },
+    {
+      "stage": "gitleaks-version",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+        "--version"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/gitleaks-version-retry.log",
+      "log_sha256": "2c70800bf3ee514f15ea718e5c73d94444bed7f84cb80a8384c16e2288479921"
+    },
+    {
+      "stage": "syft-version",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/syft-bin/syft",
+        "--version"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/syft-version-retry.log",
+      "log_sha256": "d43c8d739d5927cd11919a39afb535053393d415826d79ffa65fb580e8a3e9f6"
+    },
+    {
+      "stage": "gitleaks-fixture",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+        "dir",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/secret-fixture",
+        "--config",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks.toml",
+        "--redact=100",
+        "--exit-code=42",
+        "--no-banner",
+        "--report-format=json",
+        "--report-path",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-fixture-retry.json"
+      ],
+      "cwd": ".",
+      "exit": 42,
+      "log": ".appforge/tmp/v10/phase4/gitleaks-fixture-retry.log",
+      "log_sha256": "96d4648d29caa413819ce790289446d7fda2e0c3fe7f445c1ac7b970c75c4217"
+    },
+    {
+      "stage": "gitleaks-version",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+        "--version"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/gitleaks-version-retry2.log",
+      "log_sha256": "2c70800bf3ee514f15ea718e5c73d94444bed7f84cb80a8384c16e2288479921"
+    },
+    {
+      "stage": "syft-version",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/syft-bin/syft",
+        "--version"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/syft-version-retry2.log",
+      "log_sha256": "d43c8d739d5927cd11919a39afb535053393d415826d79ffa65fb580e8a3e9f6"
+    },
+    {
+      "stage": "gitleaks-fixture",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+        "dir",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/secret-fixture",
+        "--config",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks.toml",
+        "--redact=100",
+        "--exit-code=42",
+        "--no-banner",
+        "--report-format=json",
+        "--report-path",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-fixture-retry2.json"
+      ],
+      "cwd": ".",
+      "exit": 42,
+      "log": ".appforge/tmp/v10/phase4/gitleaks-fixture-retry2.log",
+      "log_sha256": "606421a09babdeece83ebedda148ee89cdd72d4c3c39420ff072198de7f9acb4"
+    },
+    {
+      "stage": "gitleaks-workspace",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+        "dir",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/source",
+        "--config",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks.toml",
+        "--redact=100",
+        "--exit-code=42",
+        "--no-banner",
+        "--report-format=json",
+        "--report-path",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-workspace-retry2.json"
+      ],
+      "cwd": ".",
+      "exit": 42,
+      "log": ".appforge/tmp/v10/phase4/gitleaks-workspace-retry2.log",
+      "log_sha256": "a408e9cfdbcd1973dfe288f8af97ad7151827574e73c990b44a7b9df2c36ffda"
+    },
+    {
+      "stage": "syft-fixture",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/syft-bin/syft",
+        "scan",
+        "dir:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/package-fixture",
+        "-o",
+        "cyclonedx-json=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/fixture.cdx.json"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/syft-fixture-retry2.log",
+      "log_sha256": "d099d170723bfedbe19305be6d7c33f292791663a2291826925ae43c74ba9fdc"
+    },
+    {
+      "stage": "v10-python",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v10_oss_gate.py"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/v10-python-retry2.log",
+      "log_sha256": "ccde0597ea933a76b46a2563b0ef1e20d3beb2118a37bb31c669effc2f525a65",
+      "counts": {
+        "tests": 14,
+        "pass": 14,
+        "fail": 0
+      }
+    },
+    {
+      "stage": "quality-proot",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/bin/bash",
+        "-c",
+        "cd /data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo && /data/data/com.termux/files/usr/bin/node --test quality/tests/*.test.js"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/quality-proot-retry2.log",
+      "log_sha256": "26d9617d9f667b4dd70f9877014a9803145c5cc5b359fb0738c1f3d38eb84b9d",
+      "counts": {
+        "tests": 1151,
+        "pass": 1151,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "stage": "v9",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v9_*.py"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/v9-retry2.log",
+      "log_sha256": "883827040b922b4db828f4e806a65989fd36abc5191eea2dfde1aac2fa9c279b",
+      "counts": {
+        "tests": 440,
+        "pass": 440,
+        "fail": 0
+      }
+    },
+    {
+      "stage": "stability",
+      "command": [
+        "sh",
+        "scripts/appforge-stability-gate",
+        "ci"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/stability-retry2.log",
+      "log_sha256": "75a8c3dafabbffac1eb2d20639b845259e3ded0f3993728abe4751f9eb749ef6"
+    },
+    {
+      "stage": "wiki",
+      "command": [
+        "node",
+        "scripts/wiki-audit.mjs",
+        "--changed-source-check"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/wiki-retry2.log",
+      "log_sha256": "3731c055ba4349e7d513b0b99081758fdc4c0ea5f2a3e57295aa4e13af9ad4a3"
+    },
+    {
+      "stage": "snapshot",
+      "command": [
+        "python3",
+        "scripts/generate-second-brain-snapshot.py",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/snapshot-retry2.log",
+      "log_sha256": "9f481277e08b063da0a3a054965683367316937f819ba701f6a321e30f8898c8"
+    },
+    {
+      "stage": "diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/diff-retry2.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "stage": "gitleaks-gate",
+      "command": [
+        "python3",
+        "quality/tools/appforge_v10_oss_gate.py",
+        "gitleaks",
+        "--cache",
+        ".appforge/tmp/v10/phase4"
+      ],
+      "exit": 3,
+      "log": ".appforge/tmp/v10/phase4/gitleaks-gate.log",
+      "log_sha256": "66a0f8a39639b84699d5d768bf3ebe0cad164f22c71094bca47f5a495f8b39ef"
+    },
+    {
+      "stage": "syft-gate",
+      "command": [
+        "python3",
+        "quality/tools/appforge_v10_oss_gate.py",
+        "syft",
+        "--cache",
+        ".appforge/tmp/v10/phase4",
+        "--output",
+        ".appforge/tmp/v10/phase4/gate.cdx.json"
+      ],
+      "exit": 3,
+      "log": ".appforge/tmp/v10/phase4/syft-gate.log",
+      "log_sha256": "b2e206dc1a09c0880306c8d733aca6ad41a35cf67dc19f8fb0ae488b1a475944"
+    },
+    {
+      "stage": "osv-gate",
+      "command": [
+        "python3",
+        "quality/tools/appforge_v10_oss_gate.py",
+        "osv-scanner",
+        "--cache",
+        ".appforge/tmp/v10/phase4",
+        "--offline"
+      ],
+      "exit": 3,
+      "log": ".appforge/tmp/v10/phase4/osv-gate.log",
+      "log_sha256": "1e7b0689c60198b8bf4aa763ba44f03f959bf01f40b8ed21c86b7bf107575385"
+    },
+    {
+      "stage": "schema",
+      "command": [
+        "node",
+        ".appforge/tmp/v10/phase4/validate.cjs"
+      ],
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/schema.log",
+      "log_sha256": "bd230d805a10b62eabf77938e6d83806a013ef4b0a10fbae091253a16f2bc92f"
+    },
+    {
+      "stage": "secret-hygiene",
+      "command": [
+        "python3",
+        "scripts/secret-hygiene-guard.py"
+      ],
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/secret-hygiene.log",
+      "log_sha256": "f7cd2200c25b37c0f238592db552fe142f456fd91d80af6d090b809a5bf3d951"
+    },
+    {
+      "stage": "architecture-final",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--",
+        "/bin/sh",
+        "-c",
+        "uname -m; dpkg --print-architecture; getconf GNU_LIBC_VERSION; /bin/true"
+      ],
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/architecture-final.log",
+      "log_sha256": "d8eace9a8f5d60d035a227103f7933a65a723ab80510db11cd6907c61e1163d9"
+    },
+    {
+      "stage": "network-namespace-final",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--",
+        "/bin/sh",
+        "-c",
+        "readlink /proc/self/ns/net; unshare -n /bin/sh -c \"readlink /proc/self/ns/net; cat /proc/net/route\""
+      ],
+      "exit": 1,
+      "log": ".appforge/tmp/v10/phase4/network-namespace-final.log",
+      "log_sha256": "b3d3a6981f143ca794ef1bdc04f781cd700c031b71d9c0cb8e9c5a51d0cb542e"
+    },
+    {
+      "stage": "snapshot-final",
+      "command": [
+        "python3",
+        "scripts/generate-second-brain-snapshot.py",
+        "--check"
+      ],
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/snapshot-final.log",
+      "log_sha256": "9f481277e08b063da0a3a054965683367316937f819ba701f6a321e30f8898c8"
+    },
+    {
+      "stage": "wiki-final",
+      "command": [
+        "node",
+        "scripts/wiki-audit.mjs",
+        "--changed-source-check"
+      ],
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/wiki-final.log",
+      "log_sha256": "3731c055ba4349e7d513b0b99081758fdc4c0ea5f2a3e57295aa4e13af9ad4a3"
+    },
+    {
+      "stage": "secret-hygiene-final",
+      "command": [
+        "python3",
+        "scripts/secret-hygiene-guard.py"
+      ],
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/secret-hygiene-final.log",
+      "log_sha256": "f7cd2200c25b37c0f238592db552fe142f456fd91d80af6d090b809a5bf3d951"
+    },
+    {
+      "stage": "diff-final",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0,
+      "log": ".appforge/tmp/v10/phase4/diff-final.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "schemas": [
+    {
+      "file": "v17-bom-1.7.schema.json",
+      "sha256": "df472ef4aaf593904c479293723a1a5c191d6672715c93b3c0b5c318f3914221",
+      "url": "https://raw.githubusercontent.com/CycloneDX/specification/1.7/schema/bom-1.7.schema.json"
+    },
+    {
+      "file": "v17-cryptography-defs.schema.json",
+      "sha256": "018ea7f78b5208ec647cfd10f669cc9c26aba6aceb79c4da7f9c0ef4c99b60de",
+      "url": "https://raw.githubusercontent.com/CycloneDX/specification/1.7/schema/cryptography-defs.schema.json"
+    },
+    {
+      "file": "v17-jsf-0.82.schema.json",
+      "sha256": "8bae002c25e723db7ee1f26afde680ae1a2b1a8f6b4b4b0fd65dc3becb090aae",
+      "url": "https://raw.githubusercontent.com/CycloneDX/specification/1.7/schema/jsf-0.82.schema.json"
+    },
+    {
+      "file": "v17-spdx.schema.json",
+      "sha256": "54a6288292bc6c90b0d3952f5f939f17436fa76704ffe68a46e5b78539c7cc1b",
+      "url": "https://raw.githubusercontent.com/CycloneDX/specification/1.7/schema/spdx.schema.json"
+    }
+  ],
+  "retained_failures": [
+    "Initial dummy fixture scan exit 0; expected finding assertion failed.",
+    "Initial working-tree snapshot blocked LOCAL_DATA_IN_SOURCE_SET before scanner invocation.",
+    "Schema validator first module-resolution attempt exit 1; next missing cryptography reference exit 1; final structural validation exit 0."
+  ],
+  "scope": {
+    "gitleaks_files": 1302,
+    "gitleaks_bytes": 13743701,
+    "gitleaks_findings": 8,
+    "gitleaks_exit": 42,
+    "synthetic_gitleaks_findings": 1,
+    "synthetic_gitleaks_exit": 42,
+    "syft_components": 3,
+    "syft_exit": 0,
+    "syft_schema": "CycloneDX 1.7 structural, format annotations disabled",
+    "osv": "BLOCKED; no scanner execution or reviewed pinned DB; network namespace unchanged"
+  },
+  "gitleaks_triage": {
+    "status": "PASS",
+    "source_findings": 8,
+    "confirmed_false_positives": 8,
+    "unresolved_findings": 0,
+    "classifications": [
+      {
+        "id": 1,
+        "rule": "generic-api-key",
+        "file": "android-app/app/src/main/java/com/appforge/studio/build/DownloadCoordinator.kt",
+        "line": 96,
+        "end_line": 96,
+        "classification": "CONFIRMED_FALSE_POSITIVE",
+        "reason": "Local operation/module map key computed from variables; no credential literal."
+      },
+      {
+        "id": 2,
+        "rule": "generic-api-key",
+        "file": "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt",
+        "line": 16,
+        "end_line": 16,
+        "classification": "CONFIRMED_FALSE_POSITIVE",
+        "reason": "Synthetic sequential provider-shaped text used only to assert sensitive context exclusion."
+      },
+      {
+        "id": 3,
+        "rule": "generic-api-key",
+        "file": "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt",
+        "line": 96,
+        "end_line": 96,
+        "classification": "CONFIRMED_FALSE_POSITIVE",
+        "reason": "Synthetic alphabet/sequential strings used only to assert terminal secret masking."
+      },
+      {
+        "id": 4,
+        "rule": "generic-api-key",
+        "file": "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPtyCopyCaptureTest.kt",
+        "line": 9,
+        "end_line": 9,
+        "classification": "CONFIRMED_FALSE_POSITIVE",
+        "reason": "Deterministic repeated hex PTY frame delimiter used by local parser tests."
+      },
+      {
+        "id": 5,
+        "rule": "generic-api-key",
+        "file": "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPtyCopyCaptureTest.kt",
+        "line": 75,
+        "end_line": 75,
+        "classification": "CONFIRMED_FALSE_POSITIVE",
+        "reason": "Reverse sequential repeated hex delimiter distinguishes a second local PTY parser session."
+      },
+      {
+        "id": 6,
+        "rule": "private-key",
+        "file": "cloudflare/control-plane/src/google_service_account_oauth.mjs",
+        "line": 59,
+        "end_line": 63,
+        "classification": "CONFIRMED_FALSE_POSITIVE",
+        "reason": "Regex delimiters removed before decoding externally supplied PEM; no key body is embedded."
+      },
+      {
+        "id": 7,
+        "rule": "generic-api-key",
+        "file": "quality/tests/fast_web_535_v151_android_stage_diag_contract.test.js",
+        "line": 10,
+        "end_line": 10,
+        "classification": "CONFIRMED_FALSE_POSITIVE",
+        "reason": "Array of diagnostic stage names asserted against source text; no credentials."
+      },
+      {
+        "id": 8,
+        "rule": "generic-api-key",
+        "file": "quality/tests/terminal_pty_autocopy_v3_test.py",
+        "line": 87,
+        "end_line": 87,
+        "classification": "CONFIRMED_FALSE_POSITIVE",
+        "reason": "Deterministic repeated hex PTY frame delimiter constructed for a local shell capture test."
+      }
+    ],
+    "fixture": {
+      "separate": true,
+      "rule": "github-pat",
+      "exit": 42,
+      "findings": 1
+    },
+    "real_scanner_exit": 0,
+    "remaining_source_findings": 0,
+    "negative_controls": {
+      "exit": 42,
+      "required_rules": [
+        "generic-api-key",
+        "private-key"
+      ],
+      "all_reviewed_files_and_unrelated_path_detected": true,
+      "path_count": 8,
+      "findings": 18
+    },
+    "records": [
+      {
+        "stage": "workspace",
+        "command": [
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+          "--",
+          "/usr/bin/env",
+          "GOMAXPROCS=2",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+          "dir",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/triage/source",
+          "--config",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10-gitleaks.toml",
+          "--redact=100",
+          "--exit-code=42",
+          "--no-banner",
+          "--report-format=json",
+          "--report-path",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/triage/workspace.json"
+        ],
+        "exit": 0,
+        "log_sha256": "d4ff7e19b1ff231ad730c14cf836e9f05a30c8464d8d56cb11876bc747500dfc"
+      },
+      {
+        "stage": "positive-fixture",
+        "command": [
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+          "--",
+          "/usr/bin/env",
+          "GOMAXPROCS=2",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+          "dir",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/secret-fixture",
+          "--config",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10-gitleaks.toml",
+          "--redact=100",
+          "--exit-code=42",
+          "--no-banner",
+          "--report-format=json",
+          "--report-path",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/triage/positive-fixture.json"
+        ],
+        "exit": 42,
+        "log_sha256": "79a91a8731bc72747741c94956668cf42aa6d445ccf7c45ccdffad3d9f094b0b"
+      },
+      {
+        "stage": "generate-key",
+        "command": [
+          "openssl",
+          "genpkey",
+          "-algorithm",
+          "RSA",
+          "-pkeyopt",
+          "rsa_keygen_bits:2048",
+          "-out",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/triage/negative/generated.pem"
+        ],
+        "exit": 0,
+        "log_sha256": "ac25cf8e50d49d798b9178968189f9af18b95c79c5557003f590468ce746ebc8"
+      },
+      {
+        "stage": "negative-controls",
+        "command": [
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+          "--",
+          "/usr/bin/env",
+          "GOMAXPROCS=2",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+          "dir",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/triage/negative",
+          "--config",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10-gitleaks.toml",
+          "--redact=100",
+          "--exit-code=42",
+          "--no-banner",
+          "--report-format=json",
+          "--report-path",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/triage/negative-controls.json"
+        ],
+        "exit": 42,
+        "log_sha256": "5d24ff597a5c075486841d18778d82c5419e482f72e8dc8575d353a3f2a645a6"
+      },
+      {
+        "stage": "v10-python",
+        "command": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "quality/tests",
+          "-p",
+          "test_v10_oss_gate.py"
+        ],
+        "exit": 0,
+        "log_sha256": "c5389f0cb32a80ff45c90f24fc3fbf1bc6b9a5617cab52b463e77c761b2a7e4d"
+      },
+      {
+        "stage": "v10-js",
+        "command": [
+          "node",
+          "--test",
+          "quality/tests/v10_oss_gate_runtime.test.js",
+          "quality/tests/v10_host_verification_contract.test.js"
+        ],
+        "exit": 0,
+        "log_sha256": "8bb08fb536e9d3edb89605593a8362574642c23d72273f03c79d265eb22af499"
+      },
+      {
+        "stage": "secret-hygiene",
+        "command": [
+          "python3",
+          "scripts/secret-hygiene-guard.py"
+        ],
+        "exit": 0,
+        "log_sha256": "f7cd2200c25b37c0f238592db552fe142f456fd91d80af6d090b809a5bf3d951"
+      },
+      {
+        "stage": "diff-check",
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exit": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "coverage": {
+      "included_files": 1306,
+      "source_sha256": "f45805cf8709dce613258143dcd237e9211d9cc0b617837f31158dbf1640987c",
+      "source_files": 1306,
+      "source_bytes": 13804291,
+      "scope": "nonignored-repository-working-tree",
+      "limitations": [
+        "not Git history",
+        "not external user projects",
+        "not compiled APK/EXE contents",
+        "not dependency vulnerability clearance"
+      ]
+    },
+    "production_gate": "BLOCKED: license closure unchanged",
+    "test_retry": "Initial standalone invocation used a relative binary path inaccessible to the launcher; retained failure, rerun with absolute verified binary.",
+    "preserved_existing_changes": true,
+    "standalone_real_scanner_test": {
+      "exit": 0,
+      "positive_fixture": "DETECTED",
+      "negative_paths": 8,
+      "both_rules_each_path": true
+    },
+    "changed_existing_files": [
+      "docs/engineering/v10/phase4-security-evidence.json",
+      "docs/engineering/v10/phase4-security-report.md",
+      "quality/tools/appforge_v10_oss_gate.py"
+    ]
+  }
+}

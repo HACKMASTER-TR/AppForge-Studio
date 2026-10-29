@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "base_head": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+  "branch": "feat/v10-oss-unified-20261028",
+  "overall": "PARTIAL",
+  "worktree": "uncommitted; previous changes preserved",
+  "environment": "Ubuntu PRoot uses existing Termux Node/JDK/Gradle; curl bound at /usr/bin/curl, real Ubuntu APT, workspace-owned Linux /tmp. Not native Linux toolchain acceptance.",
+  "records": [
+    {
+      "stage": "v9",
+      "command": "python3 -m unittest discover -s quality/tests -p \"test_v9_*.py\"",
+      "exit_code": 0,
+      "seconds": 34.5,
+      "log_sha256": "d89caf829d49df033a2414af21349a03225cf1f9bd9d40d98a3334001abfad46",
+      "counts": {
+        "tests": 440,
+        "pass": 440,
+        "fail": 0
+      }
+    },
+    {
+      "stage": "windows",
+      "command": "npm --prefix windows-host test",
+      "exit_code": 0,
+      "seconds": 3.0,
+      "log_sha256": "f2c154941d950b8d43b6be6e0ed3386ef490e980964d291829c5ea9bc921bdda",
+      "counts": {
+        "tests": 7,
+        "pass": 7,
+        "fail": 0
+      }
+    },
+    {
+      "stage": "android_unit",
+      "command": "gradle -p android-app :app:testDebugUnitTest --offline --no-daemon --gradle-user-home \"$PWD/.appforge/tmp/v10/continuation/network-gradle-cache\"",
+      "exit_code": 1,
+      "seconds": 19.3,
+      "log_sha256": "0e12410ef3ee949064b3e134858bba25fb514680aa18c48a76a64aeae647ab47"
+    },
+    {
+      "stage": "android_debug",
+      "command": "gradle -p android-app :app:assembleDebug --offline --no-daemon --gradle-user-home \"$PWD/.appforge/tmp/v10/continuation/network-gradle-cache\"",
+      "exit_code": 1,
+      "seconds": 12.98,
+      "log_sha256": "41e5598537dcfc27ed4549040e5861c199be1507490e26dcddfbb2a2dfa86667"
+    },
+    {
+      "stage": "gitleaks",
+      "command": "python3 quality/tools/appforge_v10_oss_gate.py gitleaks --cache .appforge/tmp/v10/empty-cache",
+      "exit_code": 2,
+      "seconds": 0.47,
+      "log_sha256": "a3ba4e70e0ea8748aa8a5244fff89b6d8c6f88538598fbe8d015cfa708d8f65b"
+    },
+    {
+      "stage": "syft",
+      "command": "python3 quality/tools/appforge_v10_oss_gate.py syft --cache .appforge/tmp/v10/empty-cache",
+      "exit_code": 2,
+      "seconds": 0.37,
+      "log_sha256": "62f07688875966c5cac249c1621a3b18d1a11cfc2109e5fd66babf449bceece4"
+    },
+    {
+      "stage": "osv",
+      "command": "python3 quality/tools/appforge_v10_oss_gate.py osv-scanner --cache .appforge/tmp/v10/empty-cache --offline",
+      "exit_code": 3,
+      "seconds": 0.42,
+      "log_sha256": "1e7b0689c60198b8bf4aa763ba44f03f959bf01f40b8ed21c86b7bf107575385"
+    },
+    {
+      "stage": "quality_termux",
+      "command": "npm --prefix quality test",
+      "exit_code": 1,
+      "seconds": 105.47,
+      "log_sha256": "56de559db37af1059bbeae6fe24c56e40224011c053da8166a5bae44a9f66dd0",
+      "counts": {
+        "tests": 1151,
+        "pass": 1148,
+        "fail": 3,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "stage": "quality_proot",
+      "command": "proot-distro login ubuntu --bind \"$PWD:$PWD\" --bind \"$PWD/.appforge/tmp/v10/phase3/linux-tmp:/tmp\" --bind \"$PREFIX/bin/curl:/usr/bin/curl\" -- /bin/bash -c 'cd /data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo && export TMPDIR=/tmp JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin && /data/data/com.termux/files/usr/bin/node --test quality/tests/*.test.js'",
+      "exit_code": 0,
+      "seconds": 163.02,
+      "log_sha256": "a77e73efa228f25534bf2355da6575375dcb4235e95abe7bc0f77f0b44b93f12",
+      "counts": {
+        "tests": 1151,
+        "pass": 1151,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "stage": "stability",
+      "command": "sh scripts/appforge-stability-gate ci",
+      "exit_code": 0,
+      "seconds": 1.27,
+      "log_sha256": "75a8c3dafabbffac1eb2d20639b845259e3ded0f3993728abe4751f9eb749ef6",
+      "counts": {}
+    },
+    {
+      "stage": "wiki_audit",
+      "command": "node scripts/wiki-audit.mjs --changed-source-check",
+      "exit_code": 0,
+      "seconds": 0.22,
+      "log_sha256": "3731c055ba4349e7d513b0b99081758fdc4c0ea5f2a3e57295aa4e13af9ad4a3",
+      "counts": {}
+    },
+    {
+      "stage": "snapshot",
+      "command": "python3 scripts/generate-second-brain-snapshot.py --check",
+      "exit_code": 0,
+      "seconds": 0.17,
+      "log_sha256": "9f481277e08b063da0a3a054965683367316937f819ba701f6a321e30f8898c8",
+      "counts": {}
+    },
+    {
+      "stage": "diff",
+      "command": "git diff --check",
+      "exit_code": 0,
+      "seconds": 0.03,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "counts": {}
+    },
+    {
+      "stage": "secret_hygiene",
+      "command": "python3 scripts/secret-hygiene-guard.py",
+      "exit_code": 0,
+      "seconds": 0.17,
+      "log_sha256": "f7cd2200c25b37c0f238592db552fe142f456fd91d80af6d090b809a5bf3d951",
+      "counts": {}
+    },
+    {
+      "stage": "proot_launch_failure",
+      "command": "proot-distro login ubuntu --bind \"$PWD:$PWD\" --bind \"$PWD/.appforge/tmp/v10/phase3/linux-tmp:/tmp\" -- /usr/bin/env TMPDIR=/tmp PATH=\"/usr/bin:/bin:$PREFIX/bin\" JAVA_HOME=\"$PREFIX/lib/jvm/java-25-openjdk\" \"$PREFIX/bin/node\" --test quality/tests/*.test.js",
+      "exit_code": 1,
+      "counts": {},
+      "log": ".appforge/tmp/v10/phase3/quality-proot.log",
+      "log_sha256": "d7325d9253eb3b4d8d0c9e641b906cc76ba8b1863bf0d9b4ae3a4474a0d6a700"
+    },
+    {
+      "stage": "proot_without_curl",
+      "command": "proot-distro login ubuntu --bind \"$PWD:$PWD\" --bind \"$PWD/.appforge/tmp/v10/phase3/linux-tmp:/tmp\" -- /bin/bash -c 'cd /data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo && export TMPDIR=/tmp JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin && /data/data/com.termux/files/usr/bin/node --test quality/tests/*.test.js'",
+      "exit_code": 1,
+      "counts": {
+        "tests": 1149,
+        "pass": 1148,
+        "fail": 1
+      },
+      "log": ".appforge/tmp/v10/phase3/quality-proot-retry.log",
+      "log_sha256": "97ea42144283ca614d2bd267ffddede207ad4993a40960edfc7c12bb1245bca9",
+      "note": "Executed before two new contracts; no curl bind"
+    },
+    {
+      "stage": "proot_curl_targeted",
+      "command": "proot-distro login ubuntu --bind \"$PWD:$PWD\" --bind \"$PWD/.appforge/tmp/v10/phase3/linux-tmp:/tmp\" --bind \"$PREFIX/bin/curl:/usr/bin/curl\" -- /bin/bash -c 'cd /data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo && export TMPDIR=/tmp JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin && /data/data/com.termux/files/usr/bin/node --test quality/tests/module_download_telemetry_v3_runtime.test.js'",
+      "exit_code": 0,
+      "counts": {
+        "tests": 2,
+        "pass": 2,
+        "fail": 0
+      },
+      "log": ".appforge/tmp/v10/phase3/proot-curl-targeted.log",
+      "log_sha256": "4d8ffd6160ac9428a2390c850bd4c1e95f9e9234e0609db3ac363ebca7de3075"
+    },
+    {
+      "stage": "v10_python",
+      "command": "python3 -m unittest discover -s quality/tests -p test_v10_oss_gate.py",
+      "exit_code": 0,
+      "counts": {
+        "tests": 14,
+        "pass": 14,
+        "fail": 0
+      },
+      "log": ".appforge/tmp/v10/phase3/v10-python.log",
+      "log_sha256": "4ecedbc89c63de78646d7d3bdd810a4ded7ba7d82ed458da059ec79f191f9852"
+    },
+    {
+      "stage": "workflow_static",
+      "command": "node - <<'JS'\nconst yaml=require('./windows-host/node_modules/js-yaml');const fs=require('fs');const cp=require('child_process');\nconst w=yaml.load(fs.readFileSync('.github/workflows/v10-host-verification.yml','utf8'));\nif(Object.keys(w.on).join()!=='workflow_dispatch')throw Error('unexpected trigger');\nfor(const step of w.jobs.compile.steps)if(step.run)cp.execFileSync('bash',['-n'],{input:step.run});\nconsole.log('YAML_PARSE=PASS BASH_SCRIPTS=2 BASH_SYNTAX=PASS');\nJS",
+      "exit_code": 0,
+      "counts": {},
+      "log": ".appforge/tmp/v10/phase3/workflow-static.log",
+      "log_sha256": "bbcd3617e367079a99e87b864dfe9cd47ca61c5bf095bced463aefb3f8bf8405"
+    }
+  ],
+  "static_archive_review": {
+    "command": "python3 .appforge/tmp/v10/phase3/review_archives.py",
+    "reproduction": "python3 docs/engineering/v10/phase3-review-archives.py",
+    "exit_code": 0,
+    "evidence": "docs/engineering/v10/phase3-security-archive-review.json",
+    "scanner_execution": false
+  },
+  "static_buildinfo": {
+    "command": "python3 docs/engineering/v10/phase3-extract-go-buildinfo.py",
+    "exit_code": 0,
+    "prior_diagnostic_failure": "exit 1 decoding binary module framing; corrected before final successful rerun; not a scanner invocation"
+  },
+  "not_run": {
+    "hosted_ci": "No push/dispatch authorized or executed; static workflow only",
+    "real_scans": "Version-specific transitive licenses/notices and provenance attestation not reviewed; x86_64 artifacts not executable on this ARM64 host",
+    "physical": "No device/EXE/APK signing/install/Play/release acceptance",
+    "osv": "No digest-pinned freshness/coverage-reviewed database or enforced network boundary"
+  },
+  "package_counts": {
+    "DONE": 2,
+    "PARTIAL": 4,
+    "BLOCKED": 7
+  },
+  "phase3_evidence_sha256": {
+    "docs/engineering/v10/phase3-ci-action-provenance.json": "63b76033f9a91a411ea6458df856ad6ab8c439ab6bfeb8f030557d59de5549a6",
+    "docs/engineering/v10/phase3-extract-go-buildinfo.py": "791432e2951cd05088ce3a598b20652dc964f6e9c5c2cf30d3ebd639ab0a13d0",
+    "docs/engineering/v10/phase3-license-inventory.json": "50eb333ac880537f46a7200d18e493ea356a8bb893a9c5816b1ed12de5c934b9",
+    "docs/engineering/v10/phase3-report.md": "0571c39487a9b2818c146923019123f377e0a47c007a86264020e8f092c7a329",
+    "docs/engineering/v10/phase3-review-archives.py": "ab2fa6c1687017174c383a285661487bf72302f2714d494b8f10dcb909f457ac",
+    "docs/engineering/v10/phase3-safety.json": "8bf6215d403b2e410accc28c38a0832bf8b654a52fe2264b4ddfe88764fbc440",
+    "docs/engineering/v10/phase3-security-archive-review.json": "2d8e6a1eb2dd3df0644075fa03d96bb5d88b3e6058eed41441eca74bf9b45d0c"
+  }
+}

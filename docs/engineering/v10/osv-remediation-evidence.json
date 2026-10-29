@@ -1,0 +1,1257 @@
+{
+  "branch": "feat/v10-oss-unified-20261028",
+  "head": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+  "dirty": true,
+  "before_pairs": [
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "GHSA-36hh-v3qg-5jq4"
+    ],
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "GHSA-chgr-c6px-7xpp"
+    ],
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "GHSA-pph8-gcv7-4qj5"
+    ],
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "RUSTSEC-2025-0020"
+    ],
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "RUSTSEC-2026-0177"
+    ],
+    [
+      "npm",
+      "@babel/core",
+      "7.25.2",
+      "GHSA-4x5r-pxfx-6jf8"
+    ],
+    [
+      "npm",
+      "@babel/runtime",
+      "7.25.0",
+      "GHSA-968p-4wvh-cqc8"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-7q85-xj36-vmfc"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-8238-w5pm-2374"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-c6fg-446q-cg94"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-j5f4-cc29-5x44"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-p634-w6r4-rjp2"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-rcw4-f5rp-g42v"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-vwc7-r8mq-g2x9"
+    ],
+    [
+      "npm",
+      "body-parser",
+      "1.20.8",
+      "GHSA-27r3-jxmh-p828"
+    ],
+    [
+      "npm",
+      "deepmerge",
+      "4.3.1",
+      "GHSA-gcqx-w48m-w2h4"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-2p8c-gr87-2676"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-3qxv-5xgr-q7w9"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-98mx-cjp9-gchm"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-997q-gvvc-jwmx"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-fw47-9c62-h3vw"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-h3v5-h239-pg29"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-jr5w-w6x2-84p9"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-qmv3-fv6v-rmhq"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-x562-297c-g43g"
+    ],
+    [
+      "npm",
+      "fast-uri",
+      "3.1.8",
+      "GHSA-333x-w4r6-6crp"
+    ],
+    [
+      "npm",
+      "fast-uri",
+      "3.1.8",
+      "GHSA-w74x-v6f9-j3xg"
+    ],
+    [
+      "npm",
+      "fast-uri",
+      "3.1.8",
+      "GHSA-wjr9-j795-jxcr"
+    ],
+    [
+      "npm",
+      "fast-uri",
+      "3.1.8",
+      "GHSA-xhq7-xmqj-769h"
+    ],
+    [
+      "npm",
+      "fast-xml-parser",
+      "4.5.7",
+      "GHSA-gh4j-gqv2-49f6"
+    ],
+    [
+      "npm",
+      "http-cache-semantics",
+      "4.2.0",
+      "GHSA-ch52-4w7c-c8xp"
+    ],
+    [
+      "npm",
+      "image-size",
+      "1.2.1",
+      "GHSA-5p2g-fcmc-qvqq"
+    ],
+    [
+      "npm",
+      "image-size",
+      "1.2.1",
+      "GHSA-w3rx-r6r6-pgpr"
+    ],
+    [
+      "npm",
+      "node-forge",
+      "1.4.0",
+      "GHSA-86w9-cpqp-85rv"
+    ],
+    [
+      "npm",
+      "postcss",
+      "8.4.49",
+      "GHSA-6g55-p6wh-862q"
+    ],
+    [
+      "npm",
+      "postcss",
+      "8.4.49",
+      "GHSA-fxqj-rqcc-2cmp"
+    ],
+    [
+      "npm",
+      "postcss",
+      "8.4.49",
+      "GHSA-qx2v-qp2m-jg93"
+    ],
+    [
+      "npm",
+      "postcss",
+      "8.4.49",
+      "GHSA-r28c-9q8g-f849"
+    ],
+    [
+      "npm",
+      "undici",
+      "6.28.1",
+      "GHSA-2m5v-pch6-74hx"
+    ],
+    [
+      "npm",
+      "undici",
+      "6.28.1",
+      "GHSA-4qv8-2p9j-2685"
+    ],
+    [
+      "npm",
+      "undici",
+      "6.28.1",
+      "GHSA-9fm3-97px-rjf6"
+    ],
+    [
+      "npm",
+      "undici",
+      "6.28.1",
+      "GHSA-qrxm-fqhp-jwvm"
+    ],
+    [
+      "npm",
+      "undici",
+      "6.28.1",
+      "GHSA-xjj6-f33q-929c"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-2m5v-pch6-74hx"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-4qv8-2p9j-2685"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-4w7w-5xrc-9h26"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-55wc-3pg8-jfw6"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-9fm3-97px-rjf6"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-f72v-6w45-q472"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-qrxm-fqhp-jwvm"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-xjj6-f33q-929c"
+    ],
+    [
+      "npm",
+      "zod",
+      "3.25.76",
+      "GHSA-mrhx-c7xc-m3w5"
+    ]
+  ],
+  "after_pairs": [
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "GHSA-36hh-v3qg-5jq4"
+    ],
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "GHSA-chgr-c6px-7xpp"
+    ],
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "GHSA-pph8-gcv7-4qj5"
+    ],
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "RUSTSEC-2025-0020"
+    ],
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "RUSTSEC-2026-0177"
+    ],
+    [
+      "npm",
+      "deepmerge",
+      "4.3.1",
+      "GHSA-gcqx-w48m-w2h4"
+    ],
+    [
+      "npm",
+      "fast-xml-parser",
+      "4.5.7",
+      "GHSA-gh4j-gqv2-49f6"
+    ],
+    [
+      "npm",
+      "http-cache-semantics",
+      "4.2.0",
+      "GHSA-ch52-4w7c-c8xp"
+    ],
+    [
+      "npm",
+      "image-size",
+      "1.2.1",
+      "GHSA-5p2g-fcmc-qvqq"
+    ],
+    [
+      "npm",
+      "image-size",
+      "1.2.1",
+      "GHSA-w3rx-r6r6-pgpr"
+    ],
+    [
+      "npm",
+      "node-forge",
+      "1.4.0",
+      "GHSA-86w9-cpqp-85rv"
+    ],
+    [
+      "npm",
+      "zod",
+      "3.25.76",
+      "GHSA-mrhx-c7xc-m3w5"
+    ]
+  ],
+  "fixed_pairs": [
+    [
+      "npm",
+      "@babel/core",
+      "7.25.2",
+      "GHSA-4x5r-pxfx-6jf8"
+    ],
+    [
+      "npm",
+      "@babel/runtime",
+      "7.25.0",
+      "GHSA-968p-4wvh-cqc8"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-7q85-xj36-vmfc"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-8238-w5pm-2374"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-c6fg-446q-cg94"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-j5f4-cc29-5x44"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-p634-w6r4-rjp2"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-rcw4-f5rp-g42v"
+    ],
+    [
+      "npm",
+      "adm-zip",
+      "0.6.0",
+      "GHSA-vwc7-r8mq-g2x9"
+    ],
+    [
+      "npm",
+      "body-parser",
+      "1.20.8",
+      "GHSA-27r3-jxmh-p828"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-2p8c-gr87-2676"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-3qxv-5xgr-q7w9"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-98mx-cjp9-gchm"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-997q-gvvc-jwmx"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-fw47-9c62-h3vw"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-h3v5-h239-pg29"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-jr5w-w6x2-84p9"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-qmv3-fv6v-rmhq"
+    ],
+    [
+      "npm",
+      "electron",
+      "43.4.1",
+      "GHSA-x562-297c-g43g"
+    ],
+    [
+      "npm",
+      "fast-uri",
+      "3.1.8",
+      "GHSA-333x-w4r6-6crp"
+    ],
+    [
+      "npm",
+      "fast-uri",
+      "3.1.8",
+      "GHSA-w74x-v6f9-j3xg"
+    ],
+    [
+      "npm",
+      "fast-uri",
+      "3.1.8",
+      "GHSA-wjr9-j795-jxcr"
+    ],
+    [
+      "npm",
+      "fast-uri",
+      "3.1.8",
+      "GHSA-xhq7-xmqj-769h"
+    ],
+    [
+      "npm",
+      "postcss",
+      "8.4.49",
+      "GHSA-6g55-p6wh-862q"
+    ],
+    [
+      "npm",
+      "postcss",
+      "8.4.49",
+      "GHSA-fxqj-rqcc-2cmp"
+    ],
+    [
+      "npm",
+      "postcss",
+      "8.4.49",
+      "GHSA-qx2v-qp2m-jg93"
+    ],
+    [
+      "npm",
+      "postcss",
+      "8.4.49",
+      "GHSA-r28c-9q8g-f849"
+    ],
+    [
+      "npm",
+      "undici",
+      "6.28.1",
+      "GHSA-2m5v-pch6-74hx"
+    ],
+    [
+      "npm",
+      "undici",
+      "6.28.1",
+      "GHSA-4qv8-2p9j-2685"
+    ],
+    [
+      "npm",
+      "undici",
+      "6.28.1",
+      "GHSA-9fm3-97px-rjf6"
+    ],
+    [
+      "npm",
+      "undici",
+      "6.28.1",
+      "GHSA-qrxm-fqhp-jwvm"
+    ],
+    [
+      "npm",
+      "undici",
+      "6.28.1",
+      "GHSA-xjj6-f33q-929c"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-2m5v-pch6-74hx"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-4qv8-2p9j-2685"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-4w7w-5xrc-9h26"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-55wc-3pg8-jfw6"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-9fm3-97px-rjf6"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-f72v-6w45-q472"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-qrxm-fqhp-jwvm"
+    ],
+    [
+      "npm",
+      "undici",
+      "7.29.1",
+      "GHSA-xjj6-f33q-929c"
+    ]
+  ],
+  "new_pairs": [],
+  "changes": [
+    {
+      "file": "windows-host/package-lock.json",
+      "node": "node_modules/adm-zip",
+      "before": "0.6.0",
+      "after": "0.6.1",
+      "license": "MIT"
+    },
+    {
+      "file": "windows-host/package-lock.json",
+      "node": "node_modules/electron",
+      "before": "43.4.1",
+      "after": "43.8.1",
+      "license": "MIT"
+    },
+    {
+      "file": "windows-host/package-lock.json",
+      "node": "node_modules/fast-uri",
+      "before": "3.1.8",
+      "after": "3.1.9",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "file": "windows-host/package-lock.json",
+      "node": "node_modules/node-gyp/node_modules/undici",
+      "before": "6.28.1",
+      "after": "6.29.1",
+      "license": "MIT"
+    },
+    {
+      "file": "windows-host/package-lock.json",
+      "node": "node_modules/undici",
+      "before": "7.29.1",
+      "after": "7.30.1",
+      "license": "MIT"
+    },
+    {
+      "file": "examples/rust-expo-jsi/package-lock.json",
+      "node": "node_modules/postcss",
+      "before": "8.4.49",
+      "after": "8.5.23",
+      "license": "MIT"
+    },
+    {
+      "file": "examples/rust-expo-turbo/package-lock.json",
+      "node": "node_modules/postcss",
+      "before": "8.4.49",
+      "after": "8.5.23",
+      "license": "MIT"
+    },
+    {
+      "file": "examples/rust-react-native-turbo/package-lock.json",
+      "node": "node_modules/@ampproject/remapping",
+      "before": "2.3.0",
+      "after": null,
+      "license": null
+    },
+    {
+      "file": "examples/rust-react-native-turbo/package-lock.json",
+      "node": "node_modules/@babel/core",
+      "before": "7.25.2",
+      "after": "7.29.6",
+      "license": "MIT"
+    },
+    {
+      "file": "examples/rust-react-native-turbo/package-lock.json",
+      "node": "node_modules/@babel/runtime",
+      "before": "7.25.0",
+      "after": "7.26.10",
+      "license": "MIT"
+    },
+    {
+      "file": "examples/rust-react-native-turbo/package-lock.json",
+      "node": "node_modules/@jridgewell/remapping",
+      "before": null,
+      "after": "2.3.5",
+      "license": "MIT"
+    },
+    {
+      "file": "examples/rust-react-native-turbo/package-lock.json",
+      "node": "node_modules/body-parser",
+      "before": "1.20.8",
+      "after": "1.20.9",
+      "license": "MIT"
+    }
+  ],
+  "after_summary": {
+    "scanner_version": "2.7.0",
+    "scanner_sha256": "4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7",
+    "executed": true,
+    "database_verified": true,
+    "network_boundary": "inherited kernel seccomp; IP socket probes denied inside PRoot exec child",
+    "security_tests": {
+      "missing_database": "PASS",
+      "corrupt_database": "PASS",
+      "known_vulnerable_dependency": "PASS",
+      "kernel_network_denial": "PASS"
+    },
+    "fixture_advisories": [
+      "GHSA-29mw-wpgm-hmr9",
+      "GHSA-35jh-r3h4-6jhm",
+      "GHSA-f23m-r3pf-42rh",
+      "GHSA-r5fr-rjxr-66jc",
+      "GHSA-xxjr-mmjv-4gpg"
+    ],
+    "project_exit": 1,
+    "source_manifest_count": 22,
+    "package_occurrences": 1993,
+    "unique_dependencies": 928,
+    "vulnerable_package_occurrences": 12,
+    "advisory_ids": [
+      "GHSA-36hh-v3qg-5jq4",
+      "GHSA-5p2g-fcmc-qvqq",
+      "GHSA-86w9-cpqp-85rv",
+      "GHSA-ch52-4w7c-c8xp",
+      "GHSA-chgr-c6px-7xpp",
+      "GHSA-gcqx-w48m-w2h4",
+      "GHSA-gh4j-gqv2-49f6",
+      "GHSA-mrhx-c7xc-m3w5",
+      "GHSA-pph8-gcv7-4qj5",
+      "GHSA-w3rx-r6r6-pgpr",
+      "RUSTSEC-2025-0020",
+      "RUSTSEC-2026-0177"
+    ],
+    "unique_advisory_count": 12,
+    "ecosystem_counts": {
+      "Maven": 2,
+      "crates.io": 30,
+      "npm": 896
+    },
+    "source_inventory": [
+      {
+        "path": "android-app/app/src/main/assets/device-build/python-template/app/requirements.txt",
+        "sha256": "f3fd3f4c755175e91daeaef06739feeea2fac52ab1cd242b61457e078f3bd6b9",
+        "bytes": 115
+      },
+      {
+        "path": "examples/rust-android-jni/Cargo.lock",
+        "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-android-jni/app/gradle.lockfile",
+        "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+        "bytes": 2045
+      },
+      {
+        "path": "examples/rust-expo-jsi/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-expo-jsi/package-lock.json",
+        "sha256": "e5e5852b9c852abc828cf1f042a1583a391a63e0412a651081e23c1ba1d83c2e",
+        "bytes": 348326
+      },
+      {
+        "path": "examples/rust-expo-turbo/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-expo-turbo/package-lock.json",
+        "sha256": "e5e5852b9c852abc828cf1f042a1583a391a63e0412a651081e23c1ba1d83c2e",
+        "bytes": 348326
+      },
+      {
+        "path": "examples/rust-git-bundle/Cargo.lock",
+        "sha256": "9aa6a937765f8ba183ef85da5f3d3369b5714b892521450972ca551743d4289f",
+        "bytes": 287
+      },
+      {
+        "path": "examples/rust-node-web/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-node-web/package-lock.json",
+        "sha256": "d8ee3b0b08910d198607730ea769830d3b8833e9c80917517396a10a98b3cd83",
+        "bytes": 158
+      },
+      {
+        "path": "examples/rust-python/Cargo.lock",
+        "sha256": "a2eb20f77275730b4cd7b43e8eb927bd142db220710fe8a7628d9253840fb0ec",
+        "bytes": 4693
+      },
+      {
+        "path": "examples/rust-python/requirements.txt",
+        "sha256": "18410d5f94e7f23c97bde82e96c8285dd5857efa36fad5dcb5745191cbbb4fb3",
+        "bytes": 86
+      },
+      {
+        "path": "examples/rust-react-native-turbo/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-react-native-turbo/package-lock.json",
+        "sha256": "949e0d9754a53076cc8227e2f6a9ce81ca8b0a7baa0d9219760334fef862bf74",
+        "bytes": 264449
+      },
+      {
+        "path": "examples/rust-universal/android/Cargo.lock",
+        "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-universal/android/app/gradle.lockfile",
+        "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+        "bytes": 2045
+      },
+      {
+        "path": "examples/rust-universal/web/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-wasm/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-windows-dll/Cargo.lock",
+        "sha256": "5210090e19be6d2eb1861a1c36e2943d9f098f29b7bcc9d37de70d70a6e1abb0",
+        "bytes": 173
+      },
+      {
+        "path": "examples/rust-windows-native/Cargo.lock",
+        "sha256": "7a8de802df14e5943dc2c58ef07053898dbb93a41342a4e71e703ab5658b568b",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-workspace/Cargo.lock",
+        "sha256": "98c53fc7d5b813dac1a9e2731e2d447e0415bd70cd283afecab27b828bbc1e63",
+        "bytes": 261
+      },
+      {
+        "path": "windows-host/package-lock.json",
+        "sha256": "df9711e4ececc9c9bf7f0941680f5ea062f042fdec483d578d4d4e614b9d2f76",
+        "bytes": 127969
+      }
+    ],
+    "commands": [
+      {
+        "name": "missing",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/missing",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/missing.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/vulnerable"
+        ],
+        "exit": 127,
+        "log_sha256": "d1765f93d29749982f084f0402d3661dfc9ff213f3070dc33f4c15fa8b12f14e"
+      },
+      {
+        "name": "corrupt",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/corrupt",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/corrupt.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/vulnerable"
+        ],
+        "exit": 127,
+        "log_sha256": "b631d7cd1292427f3018519a9389eb5f83c6f425be2f959a4d5b02fb9388cd50"
+      },
+      {
+        "name": "positive",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/database",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/positive.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/vulnerable"
+        ],
+        "exit": 1,
+        "log_sha256": "d6bdfa7065d1aca39ae1fc9455c4273b3529fcdf0da6c957d54552b7dc305513"
+      },
+      {
+        "name": "project",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/database",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/project.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/remediation-after/source"
+        ],
+        "exit": 1,
+        "log_sha256": "78574a88b830d02b8bf86f8f8775a70c08aa53599c327f733bd63f49372b38a1"
+      }
+    ]
+  },
+  "verification": [
+    {
+      "stage": "quality-proot",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/bin/bash",
+        "-c",
+        "cd /data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo && /data/data/com.termux/files/usr/bin/node --test quality/tests/*.test.js"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "v9",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v9_*.py"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "v10-python",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v10_oss_gate.py"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "windows",
+      "command": "TMPDIR=$PREFIX/tmp npm --prefix windows-host test",
+      "exit": 0
+    },
+    {
+      "stage": "stability",
+      "command": [
+        "sh",
+        "scripts/appforge-stability-gate",
+        "ci"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "snapshot",
+      "command": [
+        "python3",
+        "scripts/generate-second-brain-snapshot.py",
+        "--check"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "wiki",
+      "command": [
+        "node",
+        "scripts/wiki-audit.mjs",
+        "--changed-source-check"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "gitleaks-controls",
+      "command": [
+        "python3",
+        "quality/tests/v10_gitleaks_real_scanner.py",
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "gitleaks",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+        "dir",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--config",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10-gitleaks.toml",
+        "--redact=100",
+        "--no-banner",
+        "--report-format=json",
+        "--report-path",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/remediation/gitleaks.json"
+      ],
+      "exit": 1
+    },
+    {
+      "stage": "syft",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--",
+        "/usr/bin/env",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/syft-bin/syft",
+        "scan",
+        "dir:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/windows-host",
+        "-o",
+        "cyclonedx-json=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/remediation/windows.cdx.json"
+      ],
+      "exit": 0
+    }
+  ],
+  "gitleaks_source": {
+    "command": [
+      "proot-distro",
+      "login",
+      "ubuntu",
+      "--bind",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+      "--",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+      "dir",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/remediation/source",
+      "--config",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10-gitleaks.toml",
+      "--redact=100",
+      "--no-banner",
+      "--report-format=json",
+      "--report-path",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/remediation/gitleaks-source.json"
+    ],
+    "exit": 0,
+    "files": 1320
+  },
+  "scanner_integrity": [
+    {
+      "tool": "gitleaks",
+      "version": "8.30.1",
+      "archive_sha256": "e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080",
+      "binary_sha256": "00e91bbe655bd7c47753e8cfe61cb76ea1a5d7e7702fe161ee40102b46b3823b",
+      "archive_binary_match": true
+    },
+    {
+      "tool": "syft",
+      "version": "1.55.0",
+      "archive_sha256": "929bd163db2d7cd2255d3bcb8967208079813d7b46b0c952f7b794d8e2c7d304",
+      "binary_sha256": "4f8068b25551a42991a292a42078519fdc739a97a6f6310e1dcf1367a258c1c2",
+      "archive_binary_match": true
+    }
+  ],
+  "android_availability": {
+    "ANDROID_HOME": {
+      "configured": false,
+      "compatible_sdk_available": false
+    },
+    "ANDROID_SDK_ROOT": {
+      "configured": false,
+      "compatible_sdk_available": false
+    },
+    "local_properties_exists": false
+  },
+  "syft_components": 71,
+  "gitleaks_initial_broad_scan": "61 findings solely in ignored existing synthetic fixtures/baseline copies; not source clearance",
+  "windows_final": "9/9 PASS",
+  "quality": "1151/1151 PASS; zero skips; Ubuntu PRoot with existing Termux Node/JVM",
+  "v9": "440 PASS",
+  "v10_python": "14 PASS",
+  "offline_install": "initial ENOTCACHED, explicit acquisition followed by successful offline ci",
+  "log_hashes": {
+    "windows-update.log": "b125771fda8addd462adfe7f7b03299feb35e28badbb2d16ae8589e371216f8f",
+    "windows-transitive.log": "3cc0a06fbb937c6a1ec648c233b244a3557a48bdab8b7e9fe884ee0d072b5fe9",
+    "babel-update.log": "b125771fda8addd462adfe7f7b03299feb35e28badbb2d16ae8589e371216f8f",
+    "body-parser-update.log": "7c7fcaccf28d2c816d022422d955a90a80fedadbc63660c6411c41f65a99942e",
+    "postcss-update.log": "b125771fda8addd462adfe7f7b03299feb35e28badbb2d16ae8589e371216f8f",
+    "expo-lock.log": "790cca34a755f039ab5fc64f9f7a3a487454cdfa85dd48100284e8f7c01df7d8",
+    "expo-turbo-lock.log": "552e3c7d5965570e751bce04350c85708c06713ed48de92e64ed59926f908e9b",
+    "windows-offline-install.log": "2f3e9b1503754041d7f6c0522085311f11ae332cb555bef0f5894ed7da736e75",
+    "osv.log": "282d6a52d3de242dd81a5a28dcc0ef650bc80f5ae56f81f639625811128fa50f",
+    "quality-proot.log": "a24c4a4685097c782729e30773b85e9cc698d48675ee1fa7521adb894dcf3adb",
+    "windows-install.log": "1e297505b8fa131feaac8e86d1975a2710707ced5aab982003e60e300db2e8ec",
+    "windows-offline-retry.log": "1e297505b8fa131feaac8e86d1975a2710707ced5aab982003e60e300db2e8ec",
+    "smoke-install.log": "5d504291ebbe0aac1e3e299eab96b41711e64b87f3e8731c10515a1bbbfd77e9",
+    "smoke.log": "76de4df0078568c3db643db885bf3d0f42c765fbdcba01fa00361afb906662cb",
+    "windows-final.log": "79dc5245f8fadc7bed2dd09f0e8a563605580649768946e357296e56be2c5e25",
+    "v9.log": "58b389caccdba9e65267d6906632c5a74535e886b732cd23fcd2d28154f35a68",
+    "snapshot-generate.log": "b5f629e0d05f92974ac5c07dde37fcfec38e209c4d87af1bdd3cfe2672a366ca",
+    "snapshot-final.log": "c75314d5bae93a1413905c640fea2bb591e8074e5c49ec3ca0294013a1eaa477",
+    "v10-python.log": "c5389f0cb32a80ff45c90f24fc3fbf1bc6b9a5617cab52b463e77c761b2a7e4d",
+    "windows.log": "1a2e526cdf94dd9017810b51ed278660f306725920c8c1374055b56dd11f5786",
+    "stability.log": "215f8f0635c792a0bae32e1e61977b7b5549105b9ce8f85f381447a5db52be42",
+    "snapshot.log": "c75314d5bae93a1413905c640fea2bb591e8074e5c49ec3ca0294013a1eaa477",
+    "wiki.log": "9606293d0301d2184487ebe6b563f1b74e3fb068464568d5dca57e26d446d9f5",
+    "gitleaks-controls.log": "4fb6c8fd6a5acf432e51d5667cc02586e7921f9f17171b9a7f2d8e6732c8fbfb",
+    "gitleaks.log": "6af78b84cbc9f34b1dde07b4fc2f53021ae002c1692a813b483fde60d5cf8763",
+    "syft.log": "d099d170723bfedbe19305be6d7c33f292791663a2291826925ae43c74ba9fdc",
+    "gitleaks-source.log": "43c8c703208ed550022f5a10479cef1aacf4aa178c060bd07eb2f86769e85bcd",
+    "wiki-final.log": "9606293d0301d2184487ebe6b563f1b74e3fb068464568d5dca57e26d446d9f5",
+    "hygiene-final.log": "f7cd2200c25b37c0f238592db552fe142f456fd91d80af6d090b809a5bf3d951"
+  }
+}

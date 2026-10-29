@@ -1,0 +1,539 @@
+{
+  "status": "BLOCKED",
+  "branch": "feat/v10-oss-unified-20261028",
+  "head": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+  "worktree": "continued authorized dirty isolated worktree; no delivery",
+  "image_size": "BLOCKED_NATIVE_PARENT_MIGRATION",
+  "sdk55_fixture": [
+    {
+      "example": "rust-expo-jsi",
+      "stage": "install",
+      "exit": 0
+    },
+    {
+      "example": "rust-expo-jsi",
+      "stage": "prebuild",
+      "exit": 0
+    },
+    {
+      "example": "rust-expo-jsi",
+      "stage": "export",
+      "exit": 0
+    },
+    {
+      "example": "rust-expo-turbo",
+      "stage": "install",
+      "exit": 0
+    },
+    {
+      "example": "rust-expo-turbo",
+      "stage": "prebuild",
+      "exit": 0
+    },
+    {
+      "example": "rust-expo-turbo",
+      "stage": "export",
+      "exit": 0
+    }
+  ],
+  "pyo3": "BLOCKED_NO_TOOLCHAIN; candidate host probe prepared; shipped pin unchanged",
+  "host": {
+    "python": "Python 3.13.13",
+    "path_tools": {
+      "rustc": false,
+      "cargo": false,
+      "rustup": false,
+      "pwsh": false,
+      "actionlint": false
+    },
+    "termux_cargo_bin": {
+      "rustc": false,
+      "cargo": false
+    },
+    "termux_rustup_toolchains": false,
+    "android_home_configured": false,
+    "android_sdk_root_configured": false,
+    "local_properties": false
+  },
+  "hosted_ci": "NOT_RUN",
+  "android_ci": "PREPARED; YAML/actions/Bash checked; native execution NOT_RUN",
+  "windows_ci": "PREPARED; mandatory PowerShell AST validation pending on Windows; native execution NOT_RUN",
+  "osv": {
+    "scanner_version": "2.7.0",
+    "scanner_sha256": "4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7",
+    "executed": true,
+    "database_verified": true,
+    "network_boundary": "inherited kernel seccomp; IP socket probes denied inside PRoot exec child",
+    "security_tests": {
+      "missing_database": "PASS",
+      "corrupt_database": "PASS",
+      "known_vulnerable_dependency": "PASS",
+      "kernel_network_denial": "PASS"
+    },
+    "fixture_advisories": [
+      "GHSA-29mw-wpgm-hmr9",
+      "GHSA-35jh-r3h4-6jhm",
+      "GHSA-f23m-r3pf-42rh",
+      "GHSA-r5fr-rjxr-66jc",
+      "GHSA-xxjr-mmjv-4gpg"
+    ],
+    "project_exit": 1,
+    "source_manifest_count": 22,
+    "package_occurrences": 1987,
+    "unique_dependencies": 925,
+    "vulnerable_package_occurrences": 8,
+    "advisory_ids": [
+      "GHSA-36hh-v3qg-5jq4",
+      "GHSA-5p2g-fcmc-qvqq",
+      "GHSA-ch52-4w7c-c8xp",
+      "GHSA-chgr-c6px-7xpp",
+      "GHSA-gcqx-w48m-w2h4",
+      "GHSA-gh4j-gqv2-49f6",
+      "GHSA-pph8-gcv7-4qj5",
+      "GHSA-w3rx-r6r6-pgpr",
+      "RUSTSEC-2025-0020",
+      "RUSTSEC-2026-0177"
+    ],
+    "unique_advisory_count": 10,
+    "ecosystem_counts": {
+      "Maven": 2,
+      "crates.io": 30,
+      "npm": 893
+    },
+    "source_inventory": [
+      {
+        "path": "android-app/app/src/main/assets/device-build/python-template/app/requirements.txt",
+        "sha256": "f3fd3f4c755175e91daeaef06739feeea2fac52ab1cd242b61457e078f3bd6b9",
+        "bytes": 115
+      },
+      {
+        "path": "examples/rust-android-jni/Cargo.lock",
+        "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-android-jni/app/gradle.lockfile",
+        "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+        "bytes": 2045
+      },
+      {
+        "path": "examples/rust-expo-jsi/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-expo-jsi/package-lock.json",
+        "sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+        "bytes": 347821
+      },
+      {
+        "path": "examples/rust-expo-turbo/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-expo-turbo/package-lock.json",
+        "sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+        "bytes": 347821
+      },
+      {
+        "path": "examples/rust-git-bundle/Cargo.lock",
+        "sha256": "9aa6a937765f8ba183ef85da5f3d3369b5714b892521450972ca551743d4289f",
+        "bytes": 287
+      },
+      {
+        "path": "examples/rust-node-web/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-node-web/package-lock.json",
+        "sha256": "d8ee3b0b08910d198607730ea769830d3b8833e9c80917517396a10a98b3cd83",
+        "bytes": 158
+      },
+      {
+        "path": "examples/rust-python/Cargo.lock",
+        "sha256": "a2eb20f77275730b4cd7b43e8eb927bd142db220710fe8a7628d9253840fb0ec",
+        "bytes": 4693
+      },
+      {
+        "path": "examples/rust-python/requirements.txt",
+        "sha256": "18410d5f94e7f23c97bde82e96c8285dd5857efa36fad5dcb5745191cbbb4fb3",
+        "bytes": 86
+      },
+      {
+        "path": "examples/rust-react-native-turbo/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-react-native-turbo/package-lock.json",
+        "sha256": "949e0d9754a53076cc8227e2f6a9ce81ca8b0a7baa0d9219760334fef862bf74",
+        "bytes": 264449
+      },
+      {
+        "path": "examples/rust-universal/android/Cargo.lock",
+        "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-universal/android/app/gradle.lockfile",
+        "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+        "bytes": 2045
+      },
+      {
+        "path": "examples/rust-universal/web/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-wasm/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-windows-dll/Cargo.lock",
+        "sha256": "5210090e19be6d2eb1861a1c36e2943d9f098f29b7bcc9d37de70d70a6e1abb0",
+        "bytes": 173
+      },
+      {
+        "path": "examples/rust-windows-native/Cargo.lock",
+        "sha256": "7a8de802df14e5943dc2c58ef07053898dbb93a41342a4e71e703ab5658b568b",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-workspace/Cargo.lock",
+        "sha256": "98c53fc7d5b813dac1a9e2731e2d447e0415bd70cd283afecab27b828bbc1e63",
+        "bytes": 261
+      },
+      {
+        "path": "windows-host/package-lock.json",
+        "sha256": "df9711e4ececc9c9bf7f0941680f5ea062f042fdec483d578d4d4e614b9d2f76",
+        "bytes": 127969
+      }
+    ],
+    "commands": [
+      {
+        "name": "missing",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/missing",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/missing.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/vulnerable"
+        ],
+        "exit": 127,
+        "log_sha256": "a4abd7268ef1a20f13cc147cf6dd7194866ec7e95d65de833ec6b7c5717a6528"
+      },
+      {
+        "name": "corrupt",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/corrupt",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/corrupt.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/vulnerable"
+        ],
+        "exit": 127,
+        "log_sha256": "537295f11714ca9dfaa24d286e126eb3e2db03fa0a5421750aaa05bde45f546e"
+      },
+      {
+        "name": "positive",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/database",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/positive.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/vulnerable"
+        ],
+        "exit": 1,
+        "log_sha256": "e4f245b3c5da7860a5fa5ebc1f557bf261a6a2389b7aaa9f3f1ece434d894efa"
+      },
+      {
+        "name": "project",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/database",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/project.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase6-final/source"
+        ],
+        "exit": 1,
+        "log_sha256": "2e393e6859cb3b05fa93cbe8ae2ceb53c8d779985b8bbf5286b092b699d7a5af"
+      }
+    ]
+  },
+  "high": 4,
+  "quality": {
+    "final": "PASS",
+    "tests": 1152,
+    "initial": "1151 PASS / 1 snapshot freshness FAIL; retained"
+  },
+  "v9": "PASS 440/440",
+  "v10_python": "PASS 14/14",
+  "windows_node": "PASS 9/9; native NOT_RUN",
+  "stability": "PASS",
+  "gitleaks_controls": "PASS",
+  "gitleaks_final_evidence": ".appforge/tmp/v10/phase6-final/gitleaks-source-evidence.json",
+  "syft": "previous genuine inventory/evidence preserved; new packaged artifact NOT_RUN",
+  "sources": [
+    {
+      "path": ".github/workflows/v10-host-verification.yml",
+      "sha256": "8aac4d7d2a18794c5e54c00c45d6ce17a91138d9acc13e0c023d6b5dcf9e6c7a"
+    },
+    {
+      "path": "scripts/v10/pyo3-host-acceptance.sh",
+      "sha256": "c4dc85b14f1b0b676ee5dd5eab079ff70a2075d1fac4827e0440ba9bb39713e5"
+    },
+    {
+      "path": "scripts/v10/windows-host-acceptance.ps1",
+      "sha256": "93b9a0113bde9a5da1eeb436cf428058534df0f5a13c6352cbe4c129a4bfb9d2"
+    },
+    {
+      "path": "quality/tests/v10_host_verification_contract.test.js",
+      "sha256": "08b294f134fb5ce5f5bebab4a1e93916c300cb8227f0b9ee05f0c49ff0bd707f"
+    },
+    {
+      "path": "docs/wiki/03_Architecture/V10_OSS_Integration.md",
+      "sha256": "98afb9e81084b1f0c017a271c1b86397709de4111b8056c5001775d8a80c0032"
+    }
+  ],
+  "logs": [
+    {
+      "path": ".appforge/tmp/v10/phase6/gitleaks-controls.log",
+      "sha256": "4fb6c8fd6a5acf432e51d5667cc02586e7921f9f17171b9a7f2d8e6732c8fbfb"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/gitleaks-source.log",
+      "sha256": "3309eed335b606c29933eac16af1442671b52c8f377897a780f548b2ec4a3866"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/image-online-progress.log",
+      "sha256": "758e6c77a74b892c9c49db011397ed0ebd5b17ceb16f0cbca5e7b86bc8688220"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/image-progress.log",
+      "sha256": "758e6c77a74b892c9c49db011397ed0ebd5b17ceb16f0cbca5e7b86bc8688220"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/image-retry.log",
+      "sha256": "758e6c77a74b892c9c49db011397ed0ebd5b17ceb16f0cbca5e7b86bc8688220"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/osv-independent.log",
+      "sha256": "765418e473d0e51fb5d9c3a77941219c7f5311126a25338180de144a717e3a36"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/osv.log",
+      "sha256": "765418e473d0e51fb5d9c3a77941219c7f5311126a25338180de144a717e3a36"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/quality-frozen.log",
+      "sha256": "14ad916ab9cb3e7069f9fb379289c2f224f8d01f8084755051ed3293ba1d29a6"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/quality-proot.log",
+      "sha256": "402a547979364dc8146856d397852ce20579a9d3a57e14b9abb4ba2310d60119"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-jsi-0.log",
+      "sha256": "5b5b340fb1478764b0c5faeb5b9b6c4769316ba39d8485ee61e868723f7a2dc2"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-jsi-0.offline.log",
+      "sha256": "579e7e7fdb82694667a2fab6c7a7ec0db8be491e2a9d153506eae8b940031be3"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-jsi-1.log",
+      "sha256": "b7ed9be41b671611549d2c2258658830b5bc0b49cc0d8acf77ff72cd3dae45da"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-jsi-2.log",
+      "sha256": "82057d2077798fb9e5ab80c488a7634b3fb5d87f1485e21635c6b44e5e3e8fc6"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-jsi-sdk55-export.log",
+      "sha256": "558dc8fce69e212471038843b17bce89473345e25433392c61251fa20f2d27b0"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-jsi-sdk55-install.log",
+      "sha256": "715671dee2b5f6e60c73bf1ba6fbac6ee70d5ceafd490be869de420d5929baf4"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-jsi-sdk55-prebuild.log",
+      "sha256": "d5e4be0a0c10691bffa446716505e068d943d1fca32f0d93d5af6f817e29c4e4"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-turbo-0.log",
+      "sha256": "e6a77d44b59f2e28f6401907c93f352751013867c07555b4fa0ccd95b0bbb34f"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-turbo-0.offline.log",
+      "sha256": "faf073a892aaf1fd7862135915d3e8df2c795c4579206fefa6f29272ccde9151"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-turbo-1.log",
+      "sha256": "c195d6b02450afa4a24ae883985259d909572243bfaf8388409036c54a73b88a"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-turbo-2.log",
+      "sha256": "d81d1049cd4453705da2f46c7c0406211fa710136a67e4f2a63b1349461be348"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-turbo-sdk55-export.log",
+      "sha256": "c80465a17f167f3c55b0b9582be5358d01241ed09c70f824f32143e955b86258"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-turbo-sdk55-install.log",
+      "sha256": "330509d1e3c579559c7552b1a52acb00b26197e11110e19bd5af1a6431c9e6d7"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/rust-expo-turbo-sdk55-prebuild.log",
+      "sha256": "d5e4be0a0c10691bffa446716505e068d943d1fca32f0d93d5af6f817e29c4e4"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/sdk55-progress.log",
+      "sha256": "dc91d2dbb8b953d057a521d20b71a191b183feb4191ced13659263f5c0789bb2"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/snapshot-frozen.log",
+      "sha256": "b5f629e0d05f92974ac5c07dde37fcfec38e209c4d87af1bdd3cfe2672a366ca"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/snapshot-generate.log",
+      "sha256": "b5f629e0d05f92974ac5c07dde37fcfec38e209c4d87af1bdd3cfe2672a366ca"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/snapshot.log",
+      "sha256": "376b5d3a908c1a91f9d3c227c173e8d41f476e94a047bd48e7617ad5bc4d5a19"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/stability.log",
+      "sha256": "6a64e410b8a3331c9e96c7c524c671dd1eae457b8929271fbeb2d6a5c0e94eee"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/v10-python.log",
+      "sha256": "aea4a04c50d256f7b1b8e46ed1c4c06f80537e0a022611f3efa19f0263c1a7d2"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/v9.log",
+      "sha256": "995a7b0e38ddfadbe3b2a911a9af88b60bcb3e14c94339f5f5eab69c152dec85"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/verify-progress.log",
+      "sha256": "715d0c6da1d6cbc018a6a466e550d786a7cc8ef8805603a3dd8f223194687315"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/wiki-audit.log",
+      "sha256": "9606293d0301d2184487ebe6b563f1b74e3fb068464568d5dca57e26d446d9f5"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/wiki-secret.log",
+      "sha256": "4e841cef2bbb9b12c75fa9172407dad3161dae4add910164bec38ec168b927ff"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/wiki.log",
+      "sha256": "9606293d0301d2184487ebe6b563f1b74e3fb068464568d5dca57e26d446d9f5"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase6/windows.log",
+      "sha256": "9f43a65dd2b14a819c2ca2a17da8aac4b2a0351720b9529e1f61ffe270deeac5"
+    }
+  ]
+}

@@ -39,6 +39,25 @@ jobs:
       - name: Run Hard Stability Gate
         run: ./scripts/appforge-stability-gate ci
 
+      # Disabled unless a runner has explicitly pre-seeded reviewed pinned archives.
+      # This supplements the existing guard; missing scanners fail this opted-in step.
+      - name: Optional V10 OSS scans
+        if: vars.APPFORGE_V10_OSS_SCANS == '1'
+        env:
+          APPFORGE_V10_OSS_CACHE: ${{ vars.APPFORGE_V10_OSS_CACHE }}
+        run: |
+          python3 quality/tools/appforge_v10_oss_gate.py gitleaks --cache "$APPFORGE_V10_OSS_CACHE"
+          python3 quality/tools/appforge_v10_oss_gate.py syft --cache "$APPFORGE_V10_OSS_CACHE" --output "$RUNNER_TEMP/appforge-v10.cdx.json"
+
+      - name: Upload optional V10 manifest SBOM
+        if: vars.APPFORGE_V10_OSS_SCANS == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7, reviewed ref identity in docs/engineering/v10
+        with:
+          name: appforge-v10-manifest-sbom
+          path: ${{ runner.temp }}/appforge-v10.cdx.json
+          if-no-files-found: error
+          retention-days: 7
+
 
   backend-regression:
     name: Device Feature Contracts

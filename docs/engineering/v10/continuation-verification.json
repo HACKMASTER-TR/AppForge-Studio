@@ -1,0 +1,279 @@
+{
+  "identity": {
+    "branch": "feat/v10-oss-unified-20261028",
+    "head": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+    "base_sha": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+    "push_lock": "file:///APPFORGE_V10_PUSH_FORBIDDEN",
+    "clean": false,
+    "preserved_existing_edits": true,
+    "environment": "Termux Android ARM64; existing JDK 25.0.3 / Gradle 9.6.0; TMPDIR inherited as $PREFIX/tmp. CI config pins JDK 21 / Gradle 9.3.1; no Gradle wrapper exists."
+  },
+  "records": [
+    {
+      "stage": "quality",
+      "command": "npm --prefix quality test",
+      "exit_code": 1,
+      "duration_seconds": 81.935,
+      "log": ".appforge/tmp/v10/continuation/quality.log",
+      "log_sha256": "9d166d08b9de1c4f1ba6d1cf5ddf29058d147046923bd90eda1eab5edc4e8f85",
+      "test_counts": {
+        "tests": 1149,
+        "pass": 1146,
+        "fail": 3
+      }
+    },
+    {
+      "stage": "stability",
+      "command": "sh scripts/appforge-stability-gate ci",
+      "exit_code": 0,
+      "duration_seconds": 1.231,
+      "log": ".appforge/tmp/v10/continuation/stability.log",
+      "log_sha256": "aea7c9d984c4c075e96a364163f8487418dba6cea356eddc7ddb45583439a241"
+    },
+    {
+      "stage": "v9",
+      "command": "python3 -m unittest discover -s quality/tests -p \"test_v9_*.py\"",
+      "exit_code": 0,
+      "duration_seconds": 17.515,
+      "log": ".appforge/tmp/v10/continuation/v9.log",
+      "log_sha256": "41f4b784b91681bcd674e4e75ada213ed6e94d430c0927c9093b2ca249f43cf0",
+      "python_tests": 440
+    },
+    {
+      "stage": "v10",
+      "command": "node --test quality/tests/v10_build_telemetry_runtime.test.js quality/tests/v10_offline_catalog_runtime.test.js quality/tests/v10_oss_gate_runtime.test.js",
+      "exit_code": 0,
+      "duration_seconds": 15.594,
+      "log": ".appforge/tmp/v10/continuation/v10.log",
+      "log_sha256": "9282011bbe23f29ba70a56ec1281c8b4eded8a6072526887d455f31472ee8d97",
+      "test_counts": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0
+      }
+    },
+    {
+      "stage": "v10_python",
+      "command": "python3 -m unittest discover -s quality/tests -p test_v10_oss_gate.py",
+      "exit_code": 0,
+      "duration_seconds": 0.137,
+      "log": ".appforge/tmp/v10/continuation/v10_python.log",
+      "log_sha256": "f2dfea9eb8d553b11472dcf672c13331cc9564bdd3119fa87c7043efa87881bc",
+      "python_tests": 14
+    },
+    {
+      "stage": "android_unit",
+      "command": "gradle -p android-app :app:testDebugUnitTest --offline --no-daemon",
+      "exit_code": 1,
+      "duration_seconds": 3.542,
+      "log": ".appforge/tmp/v10/continuation/android_unit.log",
+      "log_sha256": "c81d5009911e8c1267e93951f093ec6a42f7cfff66506faf1972382fbae8fb6c"
+    },
+    {
+      "stage": "android_debug",
+      "command": "gradle -p android-app :app:assembleDebug --offline --no-daemon",
+      "exit_code": 1,
+      "duration_seconds": 3.373,
+      "log": ".appforge/tmp/v10/continuation/android_debug.log",
+      "log_sha256": "c81d5009911e8c1267e93951f093ec6a42f7cfff66506faf1972382fbae8fb6c"
+    },
+    {
+      "stage": "secret_hygiene",
+      "command": "python3 scripts/secret-hygiene-guard.py",
+      "exit_code": 0,
+      "duration_seconds": 1.506,
+      "log": ".appforge/tmp/v10/continuation/secret_hygiene-rerun.log",
+      "log_sha256": "f7cd2200c25b37c0f238592db552fe142f456fd91d80af6d090b809a5bf3d951"
+    },
+    {
+      "stage": "gitleaks",
+      "command": "python3 quality/tools/appforge_v10_oss_gate.py gitleaks --cache .appforge/tmp/v10/empty-cache",
+      "exit_code": 2,
+      "duration_seconds": 0.702,
+      "log": ".appforge/tmp/v10/continuation/gitleaks-rerun.log",
+      "log_sha256": "a3ba4e70e0ea8748aa8a5244fff89b6d8c6f88538598fbe8d015cfa708d8f65b"
+    },
+    {
+      "stage": "syft",
+      "command": "python3 quality/tools/appforge_v10_oss_gate.py syft --cache .appforge/tmp/v10/empty-cache",
+      "exit_code": 2,
+      "duration_seconds": 0.541,
+      "log": ".appforge/tmp/v10/continuation/syft-rerun.log",
+      "log_sha256": "62f07688875966c5cac249c1621a3b18d1a11cfc2109e5fd66babf449bceece4"
+    },
+    {
+      "stage": "osv",
+      "command": "python3 quality/tools/appforge_v10_oss_gate.py osv-scanner --cache .appforge/tmp/v10/empty-cache --offline",
+      "exit_code": 3,
+      "duration_seconds": 0.402,
+      "log": ".appforge/tmp/v10/continuation/osv-rerun.log",
+      "log_sha256": "1e7b0689c60198b8bf4aa763ba44f03f959bf01f40b8ed21c86b7bf107575385"
+    },
+    {
+      "stage": "stability_hardened",
+      "command": "sh scripts/appforge-stability-gate ci",
+      "exit_code": 1,
+      "duration_seconds": 2.635,
+      "log": ".appforge/tmp/v10/continuation/stability_hardened-rerun.log",
+      "log_sha256": "39c6c531c1c9fc5bbc1fd8b2836785cab789c65c9f7e8e2faf22daad24e960f0"
+    },
+    {
+      "stage": "android_unit_prefetched",
+      "command": "gradle -p android-app :app:testDebugUnitTest --offline --no-daemon --gradle-user-home /data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/continuation/network-gradle-cache",
+      "exit_code": 1,
+      "duration_seconds": 15.633,
+      "log": ".appforge/tmp/v10/continuation/android_unit_prefetched.log",
+      "log_sha256": "99ee1a9a2c926684d8039c893bf2e7efbb42761129fd99477f237a90769f4df5"
+    },
+    {
+      "stage": "android_debug_prefetched",
+      "command": "gradle -p android-app :app:assembleDebug --offline --no-daemon --gradle-user-home /data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/continuation/network-gradle-cache",
+      "exit_code": 1,
+      "duration_seconds": 9.699,
+      "log": ".appforge/tmp/v10/continuation/android_debug_prefetched.log",
+      "log_sha256": "c4dddaa66eb3132fff5168df2004425d595241472769b6bf25f5fa06bd84a259"
+    },
+    {
+      "stage": "history_fetch",
+      "command": "git -c maintenance.auto=false fetch --no-tags --no-write-fetch-head https://github.com/HACKMASTER-TR/AppForge-Studio.git 44614aa3c77925934b1eaf43ffafdf2dcbfe9fba",
+      "exit_code": 0
+    },
+    {
+      "stage": "windows_ci",
+      "command": "npm --prefix windows-host ci --ignore-scripts --no-audit --no-fund --cache .appforge/tmp/v10/npm-cache",
+      "exit_code": 0,
+      "result": "285 lockfile packages installed; no lifecycle scripts or global install"
+    },
+    {
+      "stage": "windows",
+      "command": "TMPDIR=$PREFIX/tmp npm --prefix windows-host test",
+      "exit_code": 0,
+      "test_counts": {
+        "tests": 7,
+        "pass": 7,
+        "fail": 0
+      },
+      "log": ".appforge/tmp/v10/continuation/windows.log",
+      "log_sha256": "86a93afa8b2d6999bb93518c91e0e9b7840608386c9b91082281ca26ad978a62"
+    },
+    {
+      "stage": "apt_linux",
+      "command": "proot-distro login ubuntu --bind \"$PWD:$PWD\" -- /usr/bin/env TMPDIR=\"$PWD/.appforge/tmp/v10/continuation/linux-tmp\" PATH=\"/usr/bin:/bin:$PREFIX/bin\" \"$PREFIX/bin/node\" --test \"$PWD/quality/tests/apt_acquire_payload_runtime.test.js\" \"$PWD/quality/tests/apt_snapshot_lock_runtime.test.js\"",
+      "exit_code": 0,
+      "test_counts": {
+        "tests": 14,
+        "pass": 14,
+        "fail": 0
+      },
+      "log": ".appforge/tmp/v10/continuation/apt-linux.log",
+      "scope": "Ubuntu 26.04 PRoot real glibc APT HTTP method, existing Termux Node process; not full native Linux quality acceptance",
+      "log_sha256": "5e9b3ca477ba0578ee60a10b8f4cf09c6dc2fdb5e847fc961df9720adeaa31f8"
+    },
+    {
+      "stage": "v10_hardened",
+      "command": "node --test quality/tests/v10_build_telemetry_runtime.test.js quality/tests/v10_offline_catalog_runtime.test.js quality/tests/v10_oss_gate_runtime.test.js",
+      "exit_code": 0,
+      "test_counts": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0
+      },
+      "log": ".appforge/tmp/v10/continuation/v10-hardened.log",
+      "log_sha256": "8c1357611b40537d0f0ed74b6f404becbaf98e973464062bb767b9f79e2b7097",
+      "benchmarks": [
+        {
+          "benchmark": "original-copy-fixture",
+          "baseline_ms": 4666,
+          "observed_ms": 4707,
+          "output_equal": true,
+          "speed_claim": false
+        }
+      ]
+    },
+    {
+      "stage": "quality_pre_snapshot_refresh",
+      "command": "npm --prefix quality test",
+      "exit_code": 1,
+      "test_counts": {
+        "tests": 1149,
+        "pass": 1145,
+        "fail": 4
+      },
+      "reason": "Three Termux APT failures plus stale generated snapshot after source change",
+      "log": ".appforge/tmp/v10/continuation/quality-hardened.log",
+      "log_sha256": "f6bddbbf1bb8eacfd74b7bec435f28988f7eefb719406e4b8a47dfe20ab6d250",
+      "benchmarks": [
+        {
+          "benchmark": "original-copy-fixture",
+          "baseline_ms": 3937,
+          "observed_ms": 4123,
+          "output_equal": true,
+          "speed_claim": false
+        }
+      ]
+    },
+    {
+      "stage": "android_online_prefetch",
+      "command": "timeout 180 gradle -p android-app :app:testDebugUnitTest --no-daemon --gradle-user-home \"$PWD/.appforge/tmp/v10/continuation/network-gradle-cache\"",
+      "exit_code": 1,
+      "reason": "AGP resolved; SDK location not found",
+      "log": ".appforge/tmp/v10/continuation/android-online.log",
+      "log_sha256": "9c7917ae64cad3efa3a5e6ab1680ef4d829254813af99e9bace2970c918ee55a"
+    },
+    {
+      "stage": "quality_final",
+      "command": "npm --prefix quality test",
+      "exit_code": 1,
+      "duration_seconds": 96.452,
+      "log": ".appforge/tmp/v10/continuation/quality_final.log",
+      "log_sha256": "0d95ac710191c96cb2acae19380ec846ab1e3e24253254ba2eb98a92c459bf8c",
+      "test_counts": {
+        "tests": 1149,
+        "pass": 1146,
+        "fail": 3
+      },
+      "benchmarks": [
+        {
+          "benchmark": "original-copy-fixture",
+          "baseline_ms": 3785,
+          "observed_ms": 4021,
+          "output_equal": true,
+          "speed_claim": false
+        }
+      ]
+    },
+    {
+      "stage": "stability_final",
+      "command": "sh scripts/appforge-stability-gate ci",
+      "exit_code": 0,
+      "duration_seconds": 1.501,
+      "log": ".appforge/tmp/v10/continuation/stability_final.log",
+      "log_sha256": "af2287d18da29ecfe940d4e800bf22fab2760d58b5fbdb062f35092bf89cb8d3"
+    },
+    {
+      "stage": "wiki_audit",
+      "command": "node scripts/wiki-audit.mjs --changed-source-check",
+      "exit_code": 0,
+      "duration_seconds": 0.255,
+      "log": ".appforge/tmp/v10/continuation/wiki_audit.log",
+      "log_sha256": "3731c055ba4349e7d513b0b99081758fdc4c0ea5f2a3e57295aa4e13af9ad4a3"
+    },
+    {
+      "stage": "snapshot_final",
+      "command": "python3 scripts/generate-second-brain-snapshot.py --check",
+      "exit_code": 0,
+      "duration_seconds": 0.117,
+      "log": ".appforge/tmp/v10/continuation/snapshot_final.log",
+      "log_sha256": "cea3050aa6ceb0c085a08d98fdafa3b934ae1745b5f1ffcda0e2281e41edf355"
+    },
+    {
+      "stage": "diff_final",
+      "command": "git diff --check",
+      "exit_code": 0,
+      "duration_seconds": 0.037,
+      "log": ".appforge/tmp/v10/continuation/diff_final.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "acceptance": "PARTIAL; no hosted/physical/production acceptance"
+}

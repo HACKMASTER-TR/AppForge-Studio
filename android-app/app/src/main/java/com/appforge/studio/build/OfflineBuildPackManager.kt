@@ -48,6 +48,13 @@ internal data class OfflineBuildRequirementCheck(
 
 internal object OfflineBuildPackManager {
 
+    /** Optional catalog preview only. Cache is app-private and separate from both
+     * managed Ubuntu package archives and the owner interactive Linux runtime.
+     * Completeness never grants prepare/activate/install authority. */
+    internal fun inspectToolCatalog(context: Context, manifest: String, expectedAbi: String): OfflineToolCatalogCheck =
+        OfflineToolCatalog.inspect(OfflineToolCatalog.decode(manifest),
+            File(context.applicationContext.noBackupFilesDir, "v10-oss/catalog-cache"), expectedAbi)
+
     const val REVISION =
         "offline-build-pack-v1"
 

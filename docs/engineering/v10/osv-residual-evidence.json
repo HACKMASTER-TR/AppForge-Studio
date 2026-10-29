@@ -1,0 +1,604 @@
+{
+  "branch": "feat/v10-oss-unified-20261028",
+  "head": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+  "status": "BLOCKED",
+  "osv_summary": {
+    "scanner_version": "2.7.0",
+    "scanner_sha256": "4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7",
+    "executed": true,
+    "database_verified": true,
+    "network_boundary": "inherited kernel seccomp; IP socket probes denied inside PRoot exec child",
+    "security_tests": {
+      "missing_database": "PASS",
+      "corrupt_database": "PASS",
+      "known_vulnerable_dependency": "PASS",
+      "kernel_network_denial": "PASS"
+    },
+    "fixture_advisories": [
+      "GHSA-29mw-wpgm-hmr9",
+      "GHSA-35jh-r3h4-6jhm",
+      "GHSA-f23m-r3pf-42rh",
+      "GHSA-r5fr-rjxr-66jc",
+      "GHSA-xxjr-mmjv-4gpg"
+    ],
+    "project_exit": 1,
+    "source_manifest_count": 22,
+    "package_occurrences": 1993,
+    "unique_dependencies": 928,
+    "vulnerable_package_occurrences": 10,
+    "advisory_ids": [
+      "GHSA-36hh-v3qg-5jq4",
+      "GHSA-5p2g-fcmc-qvqq",
+      "GHSA-ch52-4w7c-c8xp",
+      "GHSA-chgr-c6px-7xpp",
+      "GHSA-gcqx-w48m-w2h4",
+      "GHSA-gh4j-gqv2-49f6",
+      "GHSA-mrhx-c7xc-m3w5",
+      "GHSA-pph8-gcv7-4qj5",
+      "GHSA-w3rx-r6r6-pgpr",
+      "RUSTSEC-2025-0020",
+      "RUSTSEC-2026-0177"
+    ],
+    "unique_advisory_count": 11,
+    "ecosystem_counts": {
+      "Maven": 2,
+      "crates.io": 30,
+      "npm": 896
+    },
+    "source_inventory": [
+      {
+        "path": "android-app/app/src/main/assets/device-build/python-template/app/requirements.txt",
+        "sha256": "f3fd3f4c755175e91daeaef06739feeea2fac52ab1cd242b61457e078f3bd6b9",
+        "bytes": 115
+      },
+      {
+        "path": "examples/rust-android-jni/Cargo.lock",
+        "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-android-jni/app/gradle.lockfile",
+        "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+        "bytes": 2045
+      },
+      {
+        "path": "examples/rust-expo-jsi/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-expo-jsi/package-lock.json",
+        "sha256": "0e41b92e3baefb308432876cc359296d140c45c9ee89ef0ab09823634be362f5",
+        "bytes": 348326
+      },
+      {
+        "path": "examples/rust-expo-turbo/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-expo-turbo/package-lock.json",
+        "sha256": "0e41b92e3baefb308432876cc359296d140c45c9ee89ef0ab09823634be362f5",
+        "bytes": 348326
+      },
+      {
+        "path": "examples/rust-git-bundle/Cargo.lock",
+        "sha256": "9aa6a937765f8ba183ef85da5f3d3369b5714b892521450972ca551743d4289f",
+        "bytes": 287
+      },
+      {
+        "path": "examples/rust-node-web/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-node-web/package-lock.json",
+        "sha256": "d8ee3b0b08910d198607730ea769830d3b8833e9c80917517396a10a98b3cd83",
+        "bytes": 158
+      },
+      {
+        "path": "examples/rust-python/Cargo.lock",
+        "sha256": "a2eb20f77275730b4cd7b43e8eb927bd142db220710fe8a7628d9253840fb0ec",
+        "bytes": 4693
+      },
+      {
+        "path": "examples/rust-python/requirements.txt",
+        "sha256": "18410d5f94e7f23c97bde82e96c8285dd5857efa36fad5dcb5745191cbbb4fb3",
+        "bytes": 86
+      },
+      {
+        "path": "examples/rust-react-native-turbo/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-react-native-turbo/package-lock.json",
+        "sha256": "949e0d9754a53076cc8227e2f6a9ce81ca8b0a7baa0d9219760334fef862bf74",
+        "bytes": 264449
+      },
+      {
+        "path": "examples/rust-universal/android/Cargo.lock",
+        "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-universal/android/app/gradle.lockfile",
+        "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+        "bytes": 2045
+      },
+      {
+        "path": "examples/rust-universal/web/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-wasm/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-windows-dll/Cargo.lock",
+        "sha256": "5210090e19be6d2eb1861a1c36e2943d9f098f29b7bcc9d37de70d70a6e1abb0",
+        "bytes": 173
+      },
+      {
+        "path": "examples/rust-windows-native/Cargo.lock",
+        "sha256": "7a8de802df14e5943dc2c58ef07053898dbb93a41342a4e71e703ab5658b568b",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-workspace/Cargo.lock",
+        "sha256": "98c53fc7d5b813dac1a9e2731e2d447e0415bd70cd283afecab27b828bbc1e63",
+        "bytes": 261
+      },
+      {
+        "path": "windows-host/package-lock.json",
+        "sha256": "df9711e4ececc9c9bf7f0941680f5ea062f042fdec483d578d4d4e614b9d2f76",
+        "bytes": 127969
+      }
+    ],
+    "commands": [
+      {
+        "name": "missing",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/missing",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/missing.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/vulnerable"
+        ],
+        "exit": 127,
+        "log_sha256": "d384f907ad0fd8544d789459c70d3dcd6c61f85838578caca68bfd3237424b90"
+      },
+      {
+        "name": "corrupt",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/corrupt",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/corrupt.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/vulnerable"
+        ],
+        "exit": 127,
+        "log_sha256": "f5b1de55efb14cd81558a140829ee40e6385241986578a76de441ce81b4b6af7"
+      },
+      {
+        "name": "positive",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/database",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/positive.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/vulnerable"
+        ],
+        "exit": 1,
+        "log_sha256": "d6c78340fbcdddae5f6cdb8cbeba1cad20120c79385e3e6b252d327f3373574b"
+      },
+      {
+        "name": "project",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/database",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/project.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/residual-after/source"
+        ],
+        "exit": 1,
+        "log_sha256": "860c8292604c7cd7b66e0829a6b6268a134c6027f173f4d6b38d1c47e40f0357"
+      }
+    ]
+  },
+  "remaining_pairs": [
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "GHSA-36hh-v3qg-5jq4"
+    ],
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "GHSA-chgr-c6px-7xpp"
+    ],
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "GHSA-pph8-gcv7-4qj5"
+    ],
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "RUSTSEC-2025-0020"
+    ],
+    [
+      "crates.io",
+      "pyo3",
+      "0.23.5",
+      "RUSTSEC-2026-0177"
+    ],
+    [
+      "npm",
+      "deepmerge",
+      "4.3.1",
+      "GHSA-gcqx-w48m-w2h4"
+    ],
+    [
+      "npm",
+      "fast-xml-parser",
+      "4.5.7",
+      "GHSA-gh4j-gqv2-49f6"
+    ],
+    [
+      "npm",
+      "http-cache-semantics",
+      "4.2.0",
+      "GHSA-ch52-4w7c-c8xp"
+    ],
+    [
+      "npm",
+      "image-size",
+      "1.2.1",
+      "GHSA-5p2g-fcmc-qvqq"
+    ],
+    [
+      "npm",
+      "image-size",
+      "1.2.1",
+      "GHSA-w3rx-r6r6-pgpr"
+    ],
+    [
+      "npm",
+      "zod",
+      "3.25.76",
+      "GHSA-mrhx-c7xc-m3w5"
+    ]
+  ],
+  "removed_pairs": [
+    [
+      "npm",
+      "node-forge",
+      "1.4.0",
+      "GHSA-86w9-cpqp-85rv"
+    ]
+  ],
+  "new_pairs": [],
+  "database_provenance": [
+    {
+      "ecosystem": "npm",
+      "origin": "https://osv-vulnerabilities.storage.googleapis.com/npm/all.zip",
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/npm%2Fall.zip",
+      "download_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/npm%2Fall.zip?alt=media&generation=1793179981430925",
+      "generation": "1793179981430925",
+      "updated": "2026-10-28T09:33:01.574Z",
+      "acquired_at": "2026-10-28T10:14:47.317842+00:00",
+      "age_seconds_at_acquisition": 2505.743842,
+      "freshness_limit_seconds": 259200,
+      "size": 219263023,
+      "sha256": "ac6849f148cbb22f923c798f9e2c2a55f65ca4841631cd434eb3d63f1d452567",
+      "upstream_md5_base64": "9V31U731e2FzNwaGdF2eVg==",
+      "upstream_crc32c_base64": "YavmUA==",
+      "zip_crc_all_entries_verified": true,
+      "json_records": 230857,
+      "ecosystem_matching_records": 230857,
+      "uncompressed_bytes": 388443194,
+      "verification": "HTTPS origin + generation + size + upstream MD5 + local SHA-256 + ZIP CRC/JSON; no signed attestation"
+    },
+    {
+      "ecosystem": "Maven",
+      "origin": "https://osv-vulnerabilities.storage.googleapis.com/Maven/all.zip",
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/Maven%2Fall.zip",
+      "download_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/Maven%2Fall.zip?alt=media&generation=1793123419330909",
+      "generation": "1793123419330909",
+      "updated": "2026-10-27T17:50:19.460Z",
+      "acquired_at": "2026-10-28T10:15:02.797227+00:00",
+      "age_seconds_at_acquisition": 59083.337227,
+      "freshness_limit_seconds": 259200,
+      "size": 10443646,
+      "sha256": "51048a424aea097722980d0903613b420695fd324eca076a37fd641bf0fa9126",
+      "upstream_md5_base64": "oyIFHP8fGgCR42zGoYSoUA==",
+      "upstream_crc32c_base64": "tGYQzg==",
+      "zip_crc_all_entries_verified": true,
+      "json_records": 7206,
+      "ecosystem_matching_records": 7206,
+      "uncompressed_bytes": 26059048,
+      "verification": "HTTPS origin + generation + size + upstream MD5 + local SHA-256 + ZIP CRC/JSON; no signed attestation"
+    },
+    {
+      "ecosystem": "PyPI",
+      "origin": "https://osv-vulnerabilities.storage.googleapis.com/PyPI/all.zip",
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/PyPI%2Fall.zip",
+      "download_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/PyPI%2Fall.zip?alt=media&generation=1793148505011990",
+      "generation": "1793148505011990",
+      "updated": "2026-10-28T00:48:25.135Z",
+      "acquired_at": "2026-10-28T10:15:05.157809+00:00",
+      "age_seconds_at_acquisition": 34000.022809,
+      "freshness_limit_seconds": 259200,
+      "size": 37253441,
+      "sha256": "d399bbfba748c8ae0b808731cda13a80ae20d93b73205f4abcbbbac1cbb678ea",
+      "upstream_md5_base64": "xIN486XLPlBwG7mflrhvdA==",
+      "upstream_crc32c_base64": "zdsjIw==",
+      "zip_crc_all_entries_verified": true,
+      "json_records": 26677,
+      "ecosystem_matching_records": 26677,
+      "uncompressed_bytes": 80622196,
+      "verification": "HTTPS origin + generation + size + upstream MD5 + local SHA-256 + ZIP CRC/JSON; no signed attestation"
+    },
+    {
+      "ecosystem": "crates.io",
+      "origin": "https://osv-vulnerabilities.storage.googleapis.com/crates.io/all.zip",
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/crates.io%2Fall.zip",
+      "download_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/crates.io%2Fall.zip?alt=media&generation=1793178170750102",
+      "generation": "1793178170750102",
+      "updated": "2026-10-28T09:02:50.885Z",
+      "acquired_at": "2026-10-28T10:15:09.148705+00:00",
+      "age_seconds_at_acquisition": 4338.263705,
+      "freshness_limit_seconds": 259200,
+      "size": 3696965,
+      "sha256": "b70461f2db453ed385482277b539fb4dfc08688ba943d5023c0b87655beb24d8",
+      "upstream_md5_base64": "sMafU5FRDxXSxN1Eg6FsrQ==",
+      "upstream_crc32c_base64": "4Z5ehw==",
+      "zip_crc_all_entries_verified": true,
+      "json_records": 3002,
+      "ecosystem_matching_records": 3002,
+      "uncompressed_bytes": 7383105,
+      "verification": "HTTPS origin + generation + size + upstream MD5 + local SHA-256 + ZIP CRC/JSON; no signed attestation"
+    }
+  ],
+  "verification": [
+    {
+      "stage": "quality-proot",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/bin/bash",
+        "-c",
+        "cd /data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo && /data/data/com.termux/files/usr/bin/node --test quality/tests/*.test.js"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "v9",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v9_*.py"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "v10-python",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v10_oss_gate.py"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "windows",
+      "command": "TMPDIR=$PREFIX/tmp npm --prefix windows-host test",
+      "exit": 0
+    },
+    {
+      "stage": "stability",
+      "command": [
+        "sh",
+        "scripts/appforge-stability-gate",
+        "ci"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "snapshot",
+      "command": [
+        "python3",
+        "scripts/generate-second-brain-snapshot.py",
+        "--check"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "wiki",
+      "command": [
+        "node",
+        "scripts/wiki-audit.mjs",
+        "--changed-source-check"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "gitleaks-controls",
+      "command": [
+        "python3",
+        "quality/tests/v10_gitleaks_real_scanner.py",
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "osv",
+      "command": [
+        "python3",
+        "quality/tests/v10_osv_real_scanner.py",
+        "residual-after"
+      ],
+      "exit": 0
+    }
+  ],
+  "log_hashes": {
+    "baseline-install.log": "da13ab9d025b19c91553bc7d4c450975d3e4e36dd7c5fef6f223f8008ba39547",
+    "baseline-runtime.log": "6ff0525423cc123195d21352b95965e04a92bb092a8aeb7eb92f30e685a00b3d",
+    "forge-install.log": "a941066d38162d18c88ea4b096d8cf11d19b0d46b973f6d916e2f9b8794e1f36",
+    "forge-offline.log": "0ed5aa1a69d36927b0c5d561f461c444ef5b02c2a4d5410effb0006e43a81ee3",
+    "forge-runtime.log": "92db0ee59259e4d6386291fb8e660d65617cbb159faa1bb334331091a9fd7b3c",
+    "forge-update-jsi.log": "ce7bf91f54adc7390cff6bf1c2572fd00ce9cfbd0611637e273059c4710a80c9",
+    "forge-update-turbo.log": "ce7bf91f54adc7390cff6bf1c2572fd00ce9cfbd0611637e273059c4710a80c9",
+    "gitleaks-controls.log": "4fb6c8fd6a5acf432e51d5667cc02586e7921f9f17171b9a7f2d8e6732c8fbfb",
+    "gitleaks-source.log": "54bef7cece546c2a85883446cf1d21f8348f1c6ca579b182fb65ffa071fc279a",
+    "jsi-offline-lock.log": "b125771fda8addd462adfe7f7b03299feb35e28badbb2d16ae8589e371216f8f",
+    "osv.log": "4bd69b1239298e3aec98bea2cb557ad089ec19b514021d2dcd4a79bb1e798a39",
+    "quality-proot.log": "e5aa12347ed6549cecd7a5be90bcd09580abee3d14055acab35c001a82d723ca",
+    "snapshot-generate-final.log": "b5f629e0d05f92974ac5c07dde37fcfec38e209c4d87af1bdd3cfe2672a366ca",
+    "snapshot-generate.log": "b5f629e0d05f92974ac5c07dde37fcfec38e209c4d87af1bdd3cfe2672a366ca",
+    "snapshot.log": "d750f94484c8cec9f9e0cf18bdaf4177ca1d0f4d35659a862f0ff7051c2f69bc",
+    "stability.log": "6d0d32449814aca6bc47daa479bf93c0359cf3812fa09018e85609df80031b34",
+    "turbo-offline-lock.log": "b125771fda8addd462adfe7f7b03299feb35e28badbb2d16ae8589e371216f8f",
+    "v10-python.log": "c99229293ada0e8aa0b5e8b5b1b5e4247b0c323671664f69b6fae3b1a0e0a168",
+    "v9.log": "cbe467e4fcd2cb6501275747993f1e6a8961e8ec94e32e7c26107e220c5d3969",
+    "wiki.log": "9606293d0301d2184487ebe6b563f1b74e3fb068464568d5dca57e26d446d9f5",
+    "windows.log": "6ac5798710a1cbf71dbf244340f2bc064ac229fd93158bb2018519570cdec8fd"
+  },
+  "project_sha256": "68d350f39c9a095fb446ed977ba5dbfc4d780b234fea10a24812e532a21d8e96",
+  "mitigations": 0,
+  "unpatched": 2
+}

@@ -1,0 +1,5332 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-28T10:20:09.430254+00:00",
+  "branch": "feat/v10-oss-unified-20261028",
+  "base_sha": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+  "head": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+  "dirty_worktree": true,
+  "status": "FINDINGS",
+  "overall": "BLOCKED",
+  "production_osv_gate": "BLOCKED; unchanged",
+  "scanner": {
+    "version": "v2.7.0",
+    "url": "https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_linux_arm64",
+    "sha256": "4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7",
+    "official_checksums_url": "https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_SHA256SUMS",
+    "official_release_metadata_digest_matches": true,
+    "official_checksum_matches": true,
+    "elf_machine": 183,
+    "executed_version": "2.7.0",
+    "scalibr_runtime_version": "0.5.3",
+    "scalibr_source_module": "v0.5.4-0.20261009010329-5be78a00e3c2",
+    "license": "Apache-2.0",
+    "license_url": "https://raw.githubusercontent.com/google/osv-scanner/v2.7.0/LICENSE",
+    "license_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "license_distribution_closure": "NOT_APPROVED",
+    "signature_attestation": "NOT_VERIFIED"
+  },
+  "environment": {
+    "kernel": "Linux AArch64",
+    "runtime": "existing Ubuntu ARM64 PRoot / glibc; no rootfs/system installation",
+    "network_boundary": "inherited kernel seccomp; IP socket probes denied inside PRoot exec child",
+    "launcher": "quality/tools/v10_osv_offline_exec.py",
+    "syscalls_denied": [
+      198,
+      199,
+      203,
+      206,
+      211,
+      269,
+      425,
+      426,
+      427
+    ],
+    "alternate_syscall_abi": "KILL_PROCESS",
+    "inherited_socket_fds": "closed; socket stdio refused",
+    "scope": "network denial for reviewed scanner; not a hostile-code filesystem sandbox"
+  },
+  "database": [
+    {
+      "ecosystem": "npm",
+      "origin": "https://osv-vulnerabilities.storage.googleapis.com/npm/all.zip",
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/npm%2Fall.zip",
+      "download_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/npm%2Fall.zip?alt=media&generation=1793179981430925",
+      "generation": "1793179981430925",
+      "updated": "2026-10-28T09:33:01.574Z",
+      "acquired_at": "2026-10-28T10:14:47.317842+00:00",
+      "age_seconds_at_acquisition": 2505.743842,
+      "freshness_limit_seconds": 259200,
+      "size": 219263023,
+      "sha256": "ac6849f148cbb22f923c798f9e2c2a55f65ca4841631cd434eb3d63f1d452567",
+      "upstream_md5_base64": "9V31U731e2FzNwaGdF2eVg==",
+      "upstream_crc32c_base64": "YavmUA==",
+      "zip_crc_all_entries_verified": true,
+      "json_records": 230857,
+      "ecosystem_matching_records": 230857,
+      "uncompressed_bytes": 388443194,
+      "verification": "HTTPS origin + generation + size + upstream MD5 + local SHA-256 + ZIP CRC/JSON; no signed attestation"
+    },
+    {
+      "ecosystem": "Maven",
+      "origin": "https://osv-vulnerabilities.storage.googleapis.com/Maven/all.zip",
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/Maven%2Fall.zip",
+      "download_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/Maven%2Fall.zip?alt=media&generation=1793123419330909",
+      "generation": "1793123419330909",
+      "updated": "2026-10-27T17:50:19.460Z",
+      "acquired_at": "2026-10-28T10:15:02.797227+00:00",
+      "age_seconds_at_acquisition": 59083.337227,
+      "freshness_limit_seconds": 259200,
+      "size": 10443646,
+      "sha256": "51048a424aea097722980d0903613b420695fd324eca076a37fd641bf0fa9126",
+      "upstream_md5_base64": "oyIFHP8fGgCR42zGoYSoUA==",
+      "upstream_crc32c_base64": "tGYQzg==",
+      "zip_crc_all_entries_verified": true,
+      "json_records": 7206,
+      "ecosystem_matching_records": 7206,
+      "uncompressed_bytes": 26059048,
+      "verification": "HTTPS origin + generation + size + upstream MD5 + local SHA-256 + ZIP CRC/JSON; no signed attestation"
+    },
+    {
+      "ecosystem": "PyPI",
+      "origin": "https://osv-vulnerabilities.storage.googleapis.com/PyPI/all.zip",
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/PyPI%2Fall.zip",
+      "download_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/PyPI%2Fall.zip?alt=media&generation=1793148505011990",
+      "generation": "1793148505011990",
+      "updated": "2026-10-28T00:48:25.135Z",
+      "acquired_at": "2026-10-28T10:15:05.157809+00:00",
+      "age_seconds_at_acquisition": 34000.022809,
+      "freshness_limit_seconds": 259200,
+      "size": 37253441,
+      "sha256": "d399bbfba748c8ae0b808731cda13a80ae20d93b73205f4abcbbbac1cbb678ea",
+      "upstream_md5_base64": "xIN486XLPlBwG7mflrhvdA==",
+      "upstream_crc32c_base64": "zdsjIw==",
+      "zip_crc_all_entries_verified": true,
+      "json_records": 26677,
+      "ecosystem_matching_records": 26677,
+      "uncompressed_bytes": 80622196,
+      "verification": "HTTPS origin + generation + size + upstream MD5 + local SHA-256 + ZIP CRC/JSON; no signed attestation"
+    },
+    {
+      "ecosystem": "crates.io",
+      "origin": "https://osv-vulnerabilities.storage.googleapis.com/crates.io/all.zip",
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/crates.io%2Fall.zip",
+      "download_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/crates.io%2Fall.zip?alt=media&generation=1793178170750102",
+      "generation": "1793178170750102",
+      "updated": "2026-10-28T09:02:50.885Z",
+      "acquired_at": "2026-10-28T10:15:09.148705+00:00",
+      "age_seconds_at_acquisition": 4338.263705,
+      "freshness_limit_seconds": 259200,
+      "size": 3696965,
+      "sha256": "b70461f2db453ed385482277b539fb4dfc08688ba943d5023c0b87655beb24d8",
+      "upstream_md5_base64": "sMafU5FRDxXSxN1Eg6FsrQ==",
+      "upstream_crc32c_base64": "4Z5ehw==",
+      "zip_crc_all_entries_verified": true,
+      "json_records": 3002,
+      "ecosystem_matching_records": 3002,
+      "uncompressed_bytes": 7383105,
+      "verification": "HTTPS origin + generation + size + upstream MD5 + local SHA-256 + ZIP CRC/JSON; no signed attestation"
+    }
+  ],
+  "cache_layout": {
+    "env": "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY",
+    "path": "{cache}/osv-scalibr/{ecosystem}/all.zip",
+    "documentation_mismatch": "v2.7.0 offline guide names obsolete OSV_SCANNER variable/osv-scanner directory",
+    "authoritative_source": "https://github.com/google/osv-scalibr/blob/5be78a00e3c2/enricher/vulnmatch/osvlocal/matcher.go"
+  },
+  "result": {
+    "scanner_version": "2.7.0",
+    "scanner_sha256": "4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7",
+    "executed": true,
+    "database_verified": true,
+    "network_boundary": "inherited kernel seccomp; IP socket probes denied inside PRoot exec child",
+    "security_tests": {
+      "missing_database": "PASS",
+      "corrupt_database": "PASS",
+      "known_vulnerable_dependency": "PASS",
+      "kernel_network_denial": "PASS"
+    },
+    "fixture_advisories": [
+      "GHSA-29mw-wpgm-hmr9",
+      "GHSA-35jh-r3h4-6jhm",
+      "GHSA-f23m-r3pf-42rh",
+      "GHSA-r5fr-rjxr-66jc",
+      "GHSA-xxjr-mmjv-4gpg"
+    ],
+    "project_exit": 1,
+    "source_manifest_count": 22,
+    "package_occurrences": 1993,
+    "unique_dependencies": 930,
+    "vulnerable_package_occurrences": 22,
+    "advisory_ids": [
+      "GHSA-27r3-jxmh-p828",
+      "GHSA-2m5v-pch6-74hx",
+      "GHSA-2p8c-gr87-2676",
+      "GHSA-333x-w4r6-6crp",
+      "GHSA-36hh-v3qg-5jq4",
+      "GHSA-3qxv-5xgr-q7w9",
+      "GHSA-4qv8-2p9j-2685",
+      "GHSA-4w7w-5xrc-9h26",
+      "GHSA-4x5r-pxfx-6jf8",
+      "GHSA-55wc-3pg8-jfw6",
+      "GHSA-5p2g-fcmc-qvqq",
+      "GHSA-6g55-p6wh-862q",
+      "GHSA-7q85-xj36-vmfc",
+      "GHSA-8238-w5pm-2374",
+      "GHSA-86w9-cpqp-85rv",
+      "GHSA-968p-4wvh-cqc8",
+      "GHSA-98mx-cjp9-gchm",
+      "GHSA-997q-gvvc-jwmx",
+      "GHSA-9fm3-97px-rjf6",
+      "GHSA-c6fg-446q-cg94",
+      "GHSA-ch52-4w7c-c8xp",
+      "GHSA-chgr-c6px-7xpp",
+      "GHSA-f72v-6w45-q472",
+      "GHSA-fw47-9c62-h3vw",
+      "GHSA-fxqj-rqcc-2cmp",
+      "GHSA-gcqx-w48m-w2h4",
+      "GHSA-gh4j-gqv2-49f6",
+      "GHSA-h3v5-h239-pg29",
+      "GHSA-j5f4-cc29-5x44",
+      "GHSA-jr5w-w6x2-84p9",
+      "GHSA-mrhx-c7xc-m3w5",
+      "GHSA-p634-w6r4-rjp2",
+      "GHSA-pph8-gcv7-4qj5",
+      "GHSA-qmv3-fv6v-rmhq",
+      "GHSA-qrxm-fqhp-jwvm",
+      "GHSA-qx2v-qp2m-jg93",
+      "GHSA-r28c-9q8g-f849",
+      "GHSA-rcw4-f5rp-g42v",
+      "GHSA-vwc7-r8mq-g2x9",
+      "GHSA-w3rx-r6r6-pgpr",
+      "GHSA-w74x-v6f9-j3xg",
+      "GHSA-wjr9-j795-jxcr",
+      "GHSA-x562-297c-g43g",
+      "GHSA-xhq7-xmqj-769h",
+      "GHSA-xjj6-f33q-929c",
+      "RUSTSEC-2025-0020",
+      "RUSTSEC-2026-0177"
+    ],
+    "unique_advisory_count": 47,
+    "ecosystem_counts": {
+      "Maven": 2,
+      "crates.io": 30,
+      "npm": 898
+    },
+    "source_inventory": [
+      {
+        "path": "android-app/app/src/main/assets/device-build/python-template/app/requirements.txt",
+        "sha256": "f3fd3f4c755175e91daeaef06739feeea2fac52ab1cd242b61457e078f3bd6b9",
+        "bytes": 115
+      },
+      {
+        "path": "examples/rust-android-jni/Cargo.lock",
+        "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-android-jni/app/gradle.lockfile",
+        "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+        "bytes": 2045
+      },
+      {
+        "path": "examples/rust-expo-jsi/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-expo-jsi/package-lock.json",
+        "sha256": "c8701d06c75a9b0b48a240bf21dd1af5f011b259eca2e6af526d9eb90fdfcf3f",
+        "bytes": 348325
+      },
+      {
+        "path": "examples/rust-expo-turbo/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-expo-turbo/package-lock.json",
+        "sha256": "c8701d06c75a9b0b48a240bf21dd1af5f011b259eca2e6af526d9eb90fdfcf3f",
+        "bytes": 348325
+      },
+      {
+        "path": "examples/rust-git-bundle/Cargo.lock",
+        "sha256": "9aa6a937765f8ba183ef85da5f3d3369b5714b892521450972ca551743d4289f",
+        "bytes": 287
+      },
+      {
+        "path": "examples/rust-node-web/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-node-web/package-lock.json",
+        "sha256": "d8ee3b0b08910d198607730ea769830d3b8833e9c80917517396a10a98b3cd83",
+        "bytes": 158
+      },
+      {
+        "path": "examples/rust-python/Cargo.lock",
+        "sha256": "a2eb20f77275730b4cd7b43e8eb927bd142db220710fe8a7628d9253840fb0ec",
+        "bytes": 4693
+      },
+      {
+        "path": "examples/rust-python/requirements.txt",
+        "sha256": "18410d5f94e7f23c97bde82e96c8285dd5857efa36fad5dcb5745191cbbb4fb3",
+        "bytes": 86
+      },
+      {
+        "path": "examples/rust-react-native-turbo/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-react-native-turbo/package-lock.json",
+        "sha256": "c4b82932c7eac96d414c8d6feb44baa562eef052717c1c3c3e140962c6dac16f",
+        "bytes": 264507
+      },
+      {
+        "path": "examples/rust-universal/android/Cargo.lock",
+        "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-universal/android/app/gradle.lockfile",
+        "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+        "bytes": 2045
+      },
+      {
+        "path": "examples/rust-universal/web/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-wasm/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-windows-dll/Cargo.lock",
+        "sha256": "5210090e19be6d2eb1861a1c36e2943d9f098f29b7bcc9d37de70d70a6e1abb0",
+        "bytes": 173
+      },
+      {
+        "path": "examples/rust-windows-native/Cargo.lock",
+        "sha256": "7a8de802df14e5943dc2c58ef07053898dbb93a41342a4e71e703ab5658b568b",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-workspace/Cargo.lock",
+        "sha256": "98c53fc7d5b813dac1a9e2731e2d447e0415bd70cd283afecab27b828bbc1e63",
+        "bytes": 261
+      },
+      {
+        "path": "windows-host/package-lock.json",
+        "sha256": "812623db44dcb94bb236c7e3259c081abcbc0c30552e93af15000d4fa3aeab2d",
+        "bytes": 127969
+      }
+    ],
+    "commands": [
+      {
+        "name": "missing",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/missing",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/missing.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/vulnerable"
+        ],
+        "exit": 127,
+        "log_sha256": "58d096daec49dadccb4373eec970f7ac7832822839b9a73aec2788dda32e0521"
+      },
+      {
+        "name": "corrupt",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/corrupt",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/corrupt.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/vulnerable"
+        ],
+        "exit": 127,
+        "log_sha256": "185477d8d667ad6d6a97db6ebd1fca8455724ebbd11d62f9f6ea0ca983fd57f0"
+      },
+      {
+        "name": "positive",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/database",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/positive.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/vulnerable"
+        ],
+        "exit": 1,
+        "log_sha256": "25cb6a7756e1e3f2a4daf847dba2bf0bb868be14a2d2da69f2613e0fb4d2f4a3"
+      },
+      {
+        "name": "project",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/database",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/project.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-retry4/source"
+        ],
+        "exit": 1,
+        "log_sha256": "7a82375ba795f9ca6c222a567c6b6b57c85bd547c5cd2dd5772ebef5c8477de4"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "manifest": "examples/rust-expo-jsi/package-lock.json",
+      "package": {
+        "name": "deepmerge",
+        "version": "4.3.1",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/deepmerge@4.3.1?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-gcqx-w48m-w2h4",
+          "aliases": [
+            "CVE-2026-93753"
+          ],
+          "severity": "LOW",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:N/SC:N/SI:N/SA:N/E:U",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-gcqx-w48m-w2h4/GHSA-gcqx-w48m-w2h4.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "deepmerge",
+                "purl": "pkg:npm/deepmerge"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "4.2.0"
+                    },
+                    {
+                      "last_affected": "4.3.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-gcqx-w48m-w2h4"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-expo-jsi/package-lock.json",
+      "package": {
+        "name": "image-size",
+        "version": "1.2.1",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/image-size@1.2.1?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-5p2g-fcmc-qvqq",
+          "aliases": [
+            "CVE-2025-71329"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 2.0.2",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/06/GHSA-5p2g-fcmc-qvqq/GHSA-5p2g-fcmc-qvqq.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "image-size",
+                "purl": "pkg:npm/image-size"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "1.2.0"
+                    },
+                    {
+                      "fixed": "2.0.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-5p2g-fcmc-qvqq"
+        },
+        {
+          "id": "GHSA-w3rx-r6r6-pgpr",
+          "aliases": [
+            "CVE-2025-71330"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N/E:X/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 2.0.2",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/06/GHSA-w3rx-r6r6-pgpr/GHSA-w3rx-r6r6-pgpr.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "image-size",
+                "purl": "pkg:npm/image-size"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0.6.3"
+                    },
+                    {
+                      "fixed": "2.0.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-w3rx-r6r6-pgpr"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-expo-jsi/package-lock.json",
+      "package": {
+        "name": "node-forge",
+        "version": "1.4.0",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/node-forge@1.4.0?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-86w9-cpqp-85rv",
+          "aliases": [
+            "CVE-2026-33894",
+            "CVE-2026-85393",
+            "GHSA-ppp5-5v6c-4jwp"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-86w9-cpqp-85rv/GHSA-86w9-cpqp-85rv.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "node-forge",
+                "purl": "pkg:npm/node-forge"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "last_affected": "1.4.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-86w9-cpqp-85rv"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-expo-jsi/package-lock.json",
+      "package": {
+        "name": "postcss",
+        "version": "8.4.49",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/postcss@8.4.49?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-6g55-p6wh-862q",
+          "aliases": [
+            "CVE-2026-45623"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 8.5.11",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/07/GHSA-6g55-p6wh-862q/GHSA-6g55-p6wh-862q.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss",
+                "purl": "pkg:npm/postcss"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "8.5.12"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-6g55-p6wh-862q"
+        },
+        {
+          "id": "GHSA-fxqj-rqcc-2cmp",
+          "aliases": [
+            "CVE-2026-69153"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 8.5.22",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/08/GHSA-fxqj-rqcc-2cmp/GHSA-fxqj-rqcc-2cmp.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss",
+                "purl": "pkg:npm/postcss"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "8.5.23"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-fxqj-rqcc-2cmp"
+        },
+        {
+          "id": "GHSA-qx2v-qp2m-jg93",
+          "aliases": [
+            "CVE-2026-41305"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/04/GHSA-qx2v-qp2m-jg93/GHSA-qx2v-qp2m-jg93.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss",
+                "purl": "pkg:npm/postcss"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "8.5.10"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-qx2v-qp2m-jg93"
+        },
+        {
+          "id": "GHSA-r28c-9q8g-f849",
+          "aliases": [
+            "CVE-2026-73646"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 8.5.17",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/07/GHSA-r28c-9q8g-f849/GHSA-r28c-9q8g-f849.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss",
+                "purl": "pkg:npm/postcss"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "8.5.18"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-r28c-9q8g-f849"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-expo-jsi/package-lock.json",
+      "package": {
+        "name": "zod",
+        "version": "3.25.76",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/zod@3.25.76?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-mrhx-c7xc-m3w5",
+          "aliases": [
+            "CVE-2023-54404"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-mrhx-c7xc-m3w5/GHSA-mrhx-c7xc-m3w5.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "zod",
+                "purl": "pkg:npm/zod"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "4.6.6"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-mrhx-c7xc-m3w5"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-expo-turbo/package-lock.json",
+      "package": {
+        "name": "deepmerge",
+        "version": "4.3.1",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/deepmerge@4.3.1?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-gcqx-w48m-w2h4",
+          "aliases": [
+            "CVE-2026-93753"
+          ],
+          "severity": "LOW",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:N/SC:N/SI:N/SA:N/E:U",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-gcqx-w48m-w2h4/GHSA-gcqx-w48m-w2h4.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "deepmerge",
+                "purl": "pkg:npm/deepmerge"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "4.2.0"
+                    },
+                    {
+                      "last_affected": "4.3.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-gcqx-w48m-w2h4"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-expo-turbo/package-lock.json",
+      "package": {
+        "name": "image-size",
+        "version": "1.2.1",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/image-size@1.2.1?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-5p2g-fcmc-qvqq",
+          "aliases": [
+            "CVE-2025-71329"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 2.0.2",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/06/GHSA-5p2g-fcmc-qvqq/GHSA-5p2g-fcmc-qvqq.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "image-size",
+                "purl": "pkg:npm/image-size"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "1.2.0"
+                    },
+                    {
+                      "fixed": "2.0.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-5p2g-fcmc-qvqq"
+        },
+        {
+          "id": "GHSA-w3rx-r6r6-pgpr",
+          "aliases": [
+            "CVE-2025-71330"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N/E:X/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 2.0.2",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/06/GHSA-w3rx-r6r6-pgpr/GHSA-w3rx-r6r6-pgpr.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "image-size",
+                "purl": "pkg:npm/image-size"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0.6.3"
+                    },
+                    {
+                      "fixed": "2.0.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-w3rx-r6r6-pgpr"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-expo-turbo/package-lock.json",
+      "package": {
+        "name": "node-forge",
+        "version": "1.4.0",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/node-forge@1.4.0?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-86w9-cpqp-85rv",
+          "aliases": [
+            "CVE-2026-33894",
+            "CVE-2026-85393",
+            "GHSA-ppp5-5v6c-4jwp"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-86w9-cpqp-85rv/GHSA-86w9-cpqp-85rv.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "node-forge",
+                "purl": "pkg:npm/node-forge"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "last_affected": "1.4.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-86w9-cpqp-85rv"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-expo-turbo/package-lock.json",
+      "package": {
+        "name": "postcss",
+        "version": "8.4.49",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/postcss@8.4.49?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-6g55-p6wh-862q",
+          "aliases": [
+            "CVE-2026-45623"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 8.5.11",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/07/GHSA-6g55-p6wh-862q/GHSA-6g55-p6wh-862q.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss",
+                "purl": "pkg:npm/postcss"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "8.5.12"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-6g55-p6wh-862q"
+        },
+        {
+          "id": "GHSA-fxqj-rqcc-2cmp",
+          "aliases": [
+            "CVE-2026-69153"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 8.5.22",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/08/GHSA-fxqj-rqcc-2cmp/GHSA-fxqj-rqcc-2cmp.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss",
+                "purl": "pkg:npm/postcss"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "8.5.23"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-fxqj-rqcc-2cmp"
+        },
+        {
+          "id": "GHSA-qx2v-qp2m-jg93",
+          "aliases": [
+            "CVE-2026-41305"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/04/GHSA-qx2v-qp2m-jg93/GHSA-qx2v-qp2m-jg93.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss",
+                "purl": "pkg:npm/postcss"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "8.5.10"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-qx2v-qp2m-jg93"
+        },
+        {
+          "id": "GHSA-r28c-9q8g-f849",
+          "aliases": [
+            "CVE-2026-73646"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 8.5.17",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/07/GHSA-r28c-9q8g-f849/GHSA-r28c-9q8g-f849.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss",
+                "purl": "pkg:npm/postcss"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "8.5.18"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-r28c-9q8g-f849"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-expo-turbo/package-lock.json",
+      "package": {
+        "name": "zod",
+        "version": "3.25.76",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/zod@3.25.76?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-mrhx-c7xc-m3w5",
+          "aliases": [
+            "CVE-2023-54404"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-mrhx-c7xc-m3w5/GHSA-mrhx-c7xc-m3w5.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "zod",
+                "purl": "pkg:npm/zod"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "4.6.6"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-mrhx-c7xc-m3w5"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-python/Cargo.lock",
+      "package": {
+        "name": "pyo3",
+        "version": "0.23.5",
+        "ecosystem": "crates.io",
+        "purl": "pkg:cargo/pyo3@0.23.5"
+      },
+      "advisories": [
+        {
+          "id": "RUSTSEC-2025-0020",
+          "aliases": [
+            "GHSA-pph8-gcv7-4qj5"
+          ],
+          "severity": "UNKNOWN",
+          "cvss": [],
+          "affected": [
+            {
+              "database_specific": {
+                "categories": [
+                  "memory-exposure"
+                ],
+                "cvss": null,
+                "informational": null,
+                "source": "https://github.com/rustsec/advisory-db/blob/osv/crates/RUSTSEC-2025-0020.json"
+              },
+              "ecosystem_specific": {
+                "affected_functions": null,
+                "affects": {
+                  "arch": [],
+                  "functions": [
+                    "pyo3::types::PyString::from_object",
+                    "pyo3::types::PyString::from_object_bound"
+                  ],
+                  "os": []
+                }
+              },
+              "package": {
+                "ecosystem": "crates.io",
+                "name": "pyo3",
+                "purl": "pkg:cargo/pyo3"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0.0.0-0"
+                    },
+                    {
+                      "fixed": "0.24.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/RUSTSEC-2025-0020"
+        },
+        {
+          "id": "RUSTSEC-2026-0177",
+          "aliases": [
+            "GHSA-chgr-c6px-7xpp"
+          ],
+          "severity": "UNKNOWN",
+          "cvss": [],
+          "affected": [
+            {
+              "database_specific": {
+                "categories": [
+                  "thread-safety"
+                ],
+                "cvss": null,
+                "informational": null,
+                "source": "https://github.com/rustsec/advisory-db/blob/osv/crates/RUSTSEC-2026-0177.json"
+              },
+              "ecosystem_specific": {
+                "affected_functions": null,
+                "affects": {
+                  "arch": [],
+                  "functions": [
+                    "pyo3::types::PyCFunction::new_closure",
+                    "pyo3::types::PyCFunction::new_closure_bound"
+                  ],
+                  "os": []
+                }
+              },
+              "package": {
+                "ecosystem": "crates.io",
+                "name": "pyo3",
+                "purl": "pkg:cargo/pyo3"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0.0.0-0"
+                    },
+                    {
+                      "fixed": "0.29.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/RUSTSEC-2026-0177"
+        },
+        {
+          "id": "GHSA-36hh-v3qg-5jq4",
+          "aliases": [
+            "RUSTSEC-2026-0176"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/06/GHSA-36hh-v3qg-5jq4/GHSA-36hh-v3qg-5jq4.json"
+              },
+              "package": {
+                "ecosystem": "crates.io",
+                "name": "pyo3",
+                "purl": "pkg:cargo/pyo3"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "0.29.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-36hh-v3qg-5jq4"
+        },
+        {
+          "id": "GHSA-chgr-c6px-7xpp",
+          "aliases": [
+            "RUSTSEC-2026-0177"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:4.0/AV:N/AC:H/AT:P/PR:N/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/06/GHSA-chgr-c6px-7xpp/GHSA-chgr-c6px-7xpp.json"
+              },
+              "package": {
+                "ecosystem": "crates.io",
+                "name": "pyo3",
+                "purl": "pkg:cargo/pyo3"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "0.29.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-chgr-c6px-7xpp"
+        },
+        {
+          "id": "GHSA-pph8-gcv7-4qj5",
+          "aliases": [
+            "RUSTSEC-2025-0020"
+          ],
+          "severity": "LOW",
+          "cvss": [
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N/E:P",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2025/04/GHSA-pph8-gcv7-4qj5/GHSA-pph8-gcv7-4qj5.json"
+              },
+              "package": {
+                "ecosystem": "crates.io",
+                "name": "pyo3",
+                "purl": "pkg:cargo/pyo3"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0.1.0"
+                    },
+                    {
+                      "fixed": "0.24.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-pph8-gcv7-4qj5"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-react-native-turbo/package-lock.json",
+      "package": {
+        "name": "@babel/core",
+        "version": "7.25.2",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/%40babel/core@7.25.2?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-4x5r-pxfx-6jf8",
+          "aliases": [
+            "CVE-2026-49356"
+          ],
+          "severity": "LOW",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:C/C:L/I:N/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "< 8.0.0-rc.5",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/06/GHSA-4x5r-pxfx-6jf8/GHSA-4x5r-pxfx-6jf8.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "@babel/core",
+                "purl": "pkg:npm/%40babel/core"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0-alpha.0"
+                    },
+                    {
+                      "fixed": "8.0.0-rc.6"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 7.29.0",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/06/GHSA-4x5r-pxfx-6jf8/GHSA-4x5r-pxfx-6jf8.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "@babel/core",
+                "purl": "pkg:npm/%40babel/core"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "7.29.6"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-4x5r-pxfx-6jf8"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-react-native-turbo/package-lock.json",
+      "package": {
+        "name": "@babel/runtime",
+        "version": "7.25.0",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/%40babel/runtime@7.25.0?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-968p-4wvh-cqc8",
+          "aliases": [
+            "CVE-2025-27789"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2025/03/GHSA-968p-4wvh-cqc8/GHSA-968p-4wvh-cqc8.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "@babel/helpers",
+                "purl": "pkg:npm/%40babel/helpers"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "7.26.10"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2025/03/GHSA-968p-4wvh-cqc8/GHSA-968p-4wvh-cqc8.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "@babel/runtime",
+                "purl": "pkg:npm/%40babel/runtime"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "7.26.10"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2025/03/GHSA-968p-4wvh-cqc8/GHSA-968p-4wvh-cqc8.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "@babel/runtime-corejs2",
+                "purl": "pkg:npm/%40babel/runtime-corejs2"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "7.26.10"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2025/03/GHSA-968p-4wvh-cqc8/GHSA-968p-4wvh-cqc8.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "@babel/runtime-corejs3",
+                "purl": "pkg:npm/%40babel/runtime-corejs3"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "7.26.10"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "< 8.0.0-alpha.16",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2025/03/GHSA-968p-4wvh-cqc8/GHSA-968p-4wvh-cqc8.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "@babel/helpers",
+                "purl": "pkg:npm/%40babel/helpers"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0-alpha.0"
+                    },
+                    {
+                      "fixed": "8.0.0-alpha.17"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "< 8.0.0-alpha.16",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2025/03/GHSA-968p-4wvh-cqc8/GHSA-968p-4wvh-cqc8.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "@babel/runtime",
+                "purl": "pkg:npm/%40babel/runtime"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0-alpha.0"
+                    },
+                    {
+                      "fixed": "8.0.0-alpha.17"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "< 8.0.0-alpha.16",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2025/03/GHSA-968p-4wvh-cqc8/GHSA-968p-4wvh-cqc8.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "@babel/runtime-corejs2",
+                "purl": "pkg:npm/%40babel/runtime-corejs2"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0-alpha.0"
+                    },
+                    {
+                      "fixed": "8.0.0-alpha.17"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "< 8.0.0-alpha.16",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2025/03/GHSA-968p-4wvh-cqc8/GHSA-968p-4wvh-cqc8.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "@babel/runtime-corejs3",
+                "purl": "pkg:npm/%40babel/runtime-corejs3"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0-alpha.0"
+                    },
+                    {
+                      "fixed": "8.0.0-alpha.17"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-968p-4wvh-cqc8"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-react-native-turbo/package-lock.json",
+      "package": {
+        "name": "body-parser",
+        "version": "1.20.8",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/body-parser@1.20.8?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-27r3-jxmh-p828",
+          "aliases": [
+            "CVE-2026-111181"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-27r3-jxmh-p828/GHSA-27r3-jxmh-p828.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "body-parser",
+                "purl": "pkg:npm/body-parser"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "2.0.0"
+                    },
+                    {
+                      "fixed": "2.4.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-27r3-jxmh-p828/GHSA-27r3-jxmh-p828.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "body-parser",
+                "purl": "pkg:npm/body-parser"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "1.20.9"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-27r3-jxmh-p828"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-react-native-turbo/package-lock.json",
+      "package": {
+        "name": "deepmerge",
+        "version": "4.3.1",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/deepmerge@4.3.1?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-gcqx-w48m-w2h4",
+          "aliases": [
+            "CVE-2026-93753"
+          ],
+          "severity": "LOW",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:N/SC:N/SI:N/SA:N/E:U",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-gcqx-w48m-w2h4/GHSA-gcqx-w48m-w2h4.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "deepmerge",
+                "purl": "pkg:npm/deepmerge"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "4.2.0"
+                    },
+                    {
+                      "last_affected": "4.3.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-gcqx-w48m-w2h4"
+        }
+      ]
+    },
+    {
+      "manifest": "examples/rust-react-native-turbo/package-lock.json",
+      "package": {
+        "name": "fast-xml-parser",
+        "version": "4.5.7",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/fast-xml-parser@4.5.7?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-gh4j-gqv2-49f6",
+          "aliases": [
+            "CVE-2026-41650"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/04/GHSA-gh4j-gqv2-49f6/GHSA-gh4j-gqv2-49f6.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-xml-parser",
+                "purl": "pkg:npm/fast-xml-parser"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "5.7.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-gh4j-gqv2-49f6"
+        }
+      ]
+    },
+    {
+      "manifest": "windows-host/package-lock.json",
+      "package": {
+        "name": "adm-zip",
+        "version": "0.6.0",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/adm-zip@0.6.0?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-7q85-xj36-vmfc",
+          "aliases": [
+            "CVE-2026-77301"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-7q85-xj36-vmfc/GHSA-7q85-xj36-vmfc.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "adm-zip",
+                "purl": "pkg:npm/adm-zip"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "0.6.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-7q85-xj36-vmfc"
+        },
+        {
+          "id": "GHSA-8238-w5pm-2374",
+          "aliases": [
+            "CVE-2026-114102"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 0.6.0",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-8238-w5pm-2374/GHSA-8238-w5pm-2374.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "adm-zip",
+                "purl": "pkg:npm/adm-zip"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "0.6.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-8238-w5pm-2374"
+        },
+        {
+          "id": "GHSA-c6fg-446q-cg94",
+          "aliases": [
+            "CVE-2026-114103"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 0.6.0",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-c6fg-446q-cg94/GHSA-c6fg-446q-cg94.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "adm-zip",
+                "purl": "pkg:npm/adm-zip"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "0.6.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-c6fg-446q-cg94"
+        },
+        {
+          "id": "GHSA-j5f4-cc29-5x44",
+          "aliases": [
+            "CVE-2026-102282"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 0.6.0",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-j5f4-cc29-5x44/GHSA-j5f4-cc29-5x44.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "adm-zip",
+                "purl": "pkg:npm/adm-zip"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "0.6.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-j5f4-cc29-5x44"
+        },
+        {
+          "id": "GHSA-p634-w6r4-rjp2",
+          "aliases": [
+            "CVE-2026-114104"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 0.6.0",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-p634-w6r4-rjp2/GHSA-p634-w6r4-rjp2.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "adm-zip",
+                "purl": "pkg:npm/adm-zip"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "0.6.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-p634-w6r4-rjp2"
+        },
+        {
+          "id": "GHSA-rcw4-f5rp-g42v",
+          "aliases": [
+            "CVE-2026-92000"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "last_known_affected_version_range": "<= 0.6.0",
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-rcw4-f5rp-g42v/GHSA-rcw4-f5rp-g42v.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "adm-zip",
+                "purl": "pkg:npm/adm-zip"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "0.6.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-rcw4-f5rp-g42v"
+        },
+        {
+          "id": "GHSA-vwc7-r8mq-g2x9",
+          "aliases": [
+            "CVE-2026-76845"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:C/C:N/I:H/A:N",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/08/GHSA-vwc7-r8mq-g2x9/GHSA-vwc7-r8mq-g2x9.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "adm-zip",
+                "purl": "pkg:npm/adm-zip"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0.5.9"
+                    },
+                    {
+                      "last_affected": "0.6.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-vwc7-r8mq-g2x9"
+        }
+      ]
+    },
+    {
+      "manifest": "windows-host/package-lock.json",
+      "package": {
+        "name": "electron",
+        "version": "43.4.1",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/electron@43.4.1?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-2p8c-gr87-2676",
+          "aliases": [
+            "CVE-2026-113796"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-2p8c-gr87-2676/GHSA-2p8c-gr87-2676.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "45.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "45.0.0-alpha.6"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-2p8c-gr87-2676/GHSA-2p8c-gr87-2676.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "44.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "44.3.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-2p8c-gr87-2676/GHSA-2p8c-gr87-2676.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "43.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "43.7.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-2p8c-gr87-2676/GHSA-2p8c-gr87-2676.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "42.11.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-2p8c-gr87-2676"
+        },
+        {
+          "id": "GHSA-3qxv-5xgr-q7w9",
+          "aliases": [
+            "CVE-2026-114122"
+          ],
+          "severity": "LOW",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:L/AC:H/PR:H/UI:N/S:C/C:L/I:N/A:L",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-3qxv-5xgr-q7w9/GHSA-3qxv-5xgr-q7w9.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "42.11.6"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-3qxv-5xgr-q7w9/GHSA-3qxv-5xgr-q7w9.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "43.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "43.7.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-3qxv-5xgr-q7w9/GHSA-3qxv-5xgr-q7w9.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "44.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "44.4.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-3qxv-5xgr-q7w9/GHSA-3qxv-5xgr-q7w9.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "45.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "45.0.0-alpha.9"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-3qxv-5xgr-q7w9"
+        },
+        {
+          "id": "GHSA-98mx-cjp9-gchm",
+          "aliases": [
+            "CVE-2026-113797"
+          ],
+          "severity": "LOW",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:N/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-98mx-cjp9-gchm/GHSA-98mx-cjp9-gchm.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "45.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "45.0.0-alpha.4"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-98mx-cjp9-gchm/GHSA-98mx-cjp9-gchm.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "44.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "44.1.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-98mx-cjp9-gchm/GHSA-98mx-cjp9-gchm.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "43.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "43.5.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-98mx-cjp9-gchm/GHSA-98mx-cjp9-gchm.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "42.11.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-98mx-cjp9-gchm"
+        },
+        {
+          "id": "GHSA-997q-gvvc-jwmx",
+          "aliases": [
+            "CVE-2026-114121"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:L/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-997q-gvvc-jwmx/GHSA-997q-gvvc-jwmx.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "42.11.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-997q-gvvc-jwmx/GHSA-997q-gvvc-jwmx.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "43.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "43.7.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-997q-gvvc-jwmx/GHSA-997q-gvvc-jwmx.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "44.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "44.3.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-997q-gvvc-jwmx/GHSA-997q-gvvc-jwmx.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "45.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "45.0.0-alpha.5"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-997q-gvvc-jwmx"
+        },
+        {
+          "id": "GHSA-fw47-9c62-h3vw",
+          "aliases": [
+            "CVE-2026-113800"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:L/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-fw47-9c62-h3vw/GHSA-fw47-9c62-h3vw.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "45.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "45.0.0-alpha.5"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-fw47-9c62-h3vw/GHSA-fw47-9c62-h3vw.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "44.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "44.3.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-fw47-9c62-h3vw/GHSA-fw47-9c62-h3vw.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "43.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "43.7.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-fw47-9c62-h3vw/GHSA-fw47-9c62-h3vw.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "42.11.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-fw47-9c62-h3vw"
+        },
+        {
+          "id": "GHSA-h3v5-h239-pg29",
+          "aliases": [
+            "CVE-2026-114124"
+          ],
+          "severity": "LOW",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:L/AC:H/PR:H/UI:N/S:C/C:L/I:N/A:L",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-h3v5-h239-pg29/GHSA-h3v5-h239-pg29.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "42.11.6"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-h3v5-h239-pg29/GHSA-h3v5-h239-pg29.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "43.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "43.7.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-h3v5-h239-pg29/GHSA-h3v5-h239-pg29.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "44.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "44.4.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-h3v5-h239-pg29/GHSA-h3v5-h239-pg29.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "45.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "45.0.0-alpha.9"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-h3v5-h239-pg29"
+        },
+        {
+          "id": "GHSA-jr5w-w6x2-84p9",
+          "aliases": [
+            "CVE-2026-115570"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-jr5w-w6x2-84p9/GHSA-jr5w-w6x2-84p9.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "45.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "45.0.0-beta.6"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-jr5w-w6x2-84p9/GHSA-jr5w-w6x2-84p9.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "44.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "44.9.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-jr5w-w6x2-84p9/GHSA-jr5w-w6x2-84p9.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "43.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "43.8.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-jr5w-w6x2-84p9/GHSA-jr5w-w6x2-84p9.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "42.11.16"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-jr5w-w6x2-84p9"
+        },
+        {
+          "id": "GHSA-qmv3-fv6v-rmhq",
+          "aliases": [
+            "CVE-2026-102677"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-qmv3-fv6v-rmhq/GHSA-qmv3-fv6v-rmhq.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "42.3.3"
+                    },
+                    {
+                      "fixed": "42.10.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-qmv3-fv6v-rmhq/GHSA-qmv3-fv6v-rmhq.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "43.0.0-beta.1"
+                    },
+                    {
+                      "fixed": "43.5.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-qmv3-fv6v-rmhq/GHSA-qmv3-fv6v-rmhq.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "44.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "44.0.0-beta.6"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-qmv3-fv6v-rmhq"
+        },
+        {
+          "id": "GHSA-x562-297c-g43g",
+          "aliases": [
+            "CVE-2026-113798"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:L",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-x562-297c-g43g/GHSA-x562-297c-g43g.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "45.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "45.0.0-alpha.13"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-x562-297c-g43g/GHSA-x562-297c-g43g.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "44.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "44.5.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-x562-297c-g43g/GHSA-x562-297c-g43g.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "43.0.0-alpha.1"
+                    },
+                    {
+                      "fixed": "43.7.6"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-x562-297c-g43g/GHSA-x562-297c-g43g.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "electron",
+                "purl": "pkg:npm/electron"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "42.11.9"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-x562-297c-g43g"
+        }
+      ]
+    },
+    {
+      "manifest": "windows-host/package-lock.json",
+      "package": {
+        "name": "fast-uri",
+        "version": "3.1.8",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/fast-uri@3.1.8?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-333x-w4r6-6crp",
+          "aliases": [
+            "CVE-2026-110725"
+          ],
+          "severity": "LOW",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-333x-w4r6-6crp/GHSA-333x-w4r6-6crp.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-uri",
+                "purl": "pkg:npm/fast-uri"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "2.4.8"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-333x-w4r6-6crp/GHSA-333x-w4r6-6crp.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-uri",
+                "purl": "pkg:npm/fast-uri"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "3.0.0"
+                    },
+                    {
+                      "fixed": "3.1.9"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-333x-w4r6-6crp/GHSA-333x-w4r6-6crp.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-uri",
+                "purl": "pkg:npm/fast-uri"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "4.0.0"
+                    },
+                    {
+                      "fixed": "4.2.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-333x-w4r6-6crp"
+        },
+        {
+          "id": "GHSA-w74x-v6f9-j3xg",
+          "aliases": [
+            "CVE-2026-110306"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-w74x-v6f9-j3xg/GHSA-w74x-v6f9-j3xg.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-uri",
+                "purl": "pkg:npm/fast-uri"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "2.4.8"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-w74x-v6f9-j3xg/GHSA-w74x-v6f9-j3xg.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-uri",
+                "purl": "pkg:npm/fast-uri"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "3.0.0"
+                    },
+                    {
+                      "fixed": "3.1.9"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-w74x-v6f9-j3xg/GHSA-w74x-v6f9-j3xg.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-uri",
+                "purl": "pkg:npm/fast-uri"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "4.0.0"
+                    },
+                    {
+                      "fixed": "4.2.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-w74x-v6f9-j3xg"
+        },
+        {
+          "id": "GHSA-wjr9-j795-jxcr",
+          "aliases": [
+            "CVE-2026-110180"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-wjr9-j795-jxcr/GHSA-wjr9-j795-jxcr.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-uri",
+                "purl": "pkg:npm/fast-uri"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "2.4.2"
+                    },
+                    {
+                      "fixed": "2.4.8"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-wjr9-j795-jxcr/GHSA-wjr9-j795-jxcr.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-uri",
+                "purl": "pkg:npm/fast-uri"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "3.1.3"
+                    },
+                    {
+                      "fixed": "3.1.9"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-wjr9-j795-jxcr/GHSA-wjr9-j795-jxcr.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-uri",
+                "purl": "pkg:npm/fast-uri"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "4.0.1"
+                    },
+                    {
+                      "fixed": "4.2.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-wjr9-j795-jxcr"
+        },
+        {
+          "id": "GHSA-xhq7-xmqj-769h",
+          "aliases": [
+            "CVE-2026-110095"
+          ],
+          "severity": "LOW",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-xhq7-xmqj-769h/GHSA-xhq7-xmqj-769h.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-uri",
+                "purl": "pkg:npm/fast-uri"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "fixed": "2.4.8"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-xhq7-xmqj-769h/GHSA-xhq7-xmqj-769h.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-uri",
+                "purl": "pkg:npm/fast-uri"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "3.0.0"
+                    },
+                    {
+                      "fixed": "3.1.9"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-xhq7-xmqj-769h/GHSA-xhq7-xmqj-769h.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "fast-uri",
+                "purl": "pkg:npm/fast-uri"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "4.0.0"
+                    },
+                    {
+                      "fixed": "4.2.3"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-xhq7-xmqj-769h"
+        }
+      ]
+    },
+    {
+      "manifest": "windows-host/package-lock.json",
+      "package": {
+        "name": "http-cache-semantics",
+        "version": "4.2.0",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/http-cache-semantics@4.2.0?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-ch52-4w7c-c8xp",
+          "aliases": [
+            "CVE-2026-93748"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "type": "CVSS_V3"
+            },
+            {
+              "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N",
+              "type": "CVSS_V4"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-ch52-4w7c-c8xp/GHSA-ch52-4w7c-c8xp.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "http-cache-semantics",
+                "purl": "pkg:npm/http-cache-semantics"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "0"
+                    },
+                    {
+                      "last_affected": "4.2.0"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-ch52-4w7c-c8xp"
+        }
+      ]
+    },
+    {
+      "manifest": "windows-host/package-lock.json",
+      "package": {
+        "name": "undici",
+        "version": "6.28.1",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/undici@6.28.1?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-2m5v-pch6-74hx",
+          "aliases": [
+            "CVE-2026-109383"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-2m5v-pch6-74hx/GHSA-2m5v-pch6-74hx.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "4.0.0"
+                    },
+                    {
+                      "fixed": "6.29.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-2m5v-pch6-74hx/GHSA-2m5v-pch6-74hx.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.0.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-2m5v-pch6-74hx/GHSA-2m5v-pch6-74hx.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-2m5v-pch6-74hx"
+        },
+        {
+          "id": "GHSA-4qv8-2p9j-2685",
+          "aliases": [
+            "CVE-2026-109924"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-4qv8-2p9j-2685/GHSA-4qv8-2p9j-2685.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "6.5.0"
+                    },
+                    {
+                      "fixed": "6.29.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-4qv8-2p9j-2685/GHSA-4qv8-2p9j-2685.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.0.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-4qv8-2p9j-2685/GHSA-4qv8-2p9j-2685.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-4qv8-2p9j-2685"
+        },
+        {
+          "id": "GHSA-9fm3-97px-rjf6",
+          "aliases": [
+            "CVE-2026-109932"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-9fm3-97px-rjf6/GHSA-9fm3-97px-rjf6.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "5.15.0"
+                    },
+                    {
+                      "fixed": "6.29.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-9fm3-97px-rjf6/GHSA-9fm3-97px-rjf6.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.0.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-9fm3-97px-rjf6/GHSA-9fm3-97px-rjf6.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-9fm3-97px-rjf6"
+        },
+        {
+          "id": "GHSA-qrxm-fqhp-jwvm",
+          "aliases": [
+            "CVE-2026-87018"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-qrxm-fqhp-jwvm/GHSA-qrxm-fqhp-jwvm.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "4.2.1"
+                    },
+                    {
+                      "fixed": "6.29.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-qrxm-fqhp-jwvm/GHSA-qrxm-fqhp-jwvm.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.0.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-qrxm-fqhp-jwvm/GHSA-qrxm-fqhp-jwvm.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-qrxm-fqhp-jwvm"
+        },
+        {
+          "id": "GHSA-xjj6-f33q-929c",
+          "aliases": [
+            "CVE-2026-109869"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-xjj6-f33q-929c/GHSA-xjj6-f33q-929c.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "6.23.0"
+                    },
+                    {
+                      "fixed": "6.29.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-xjj6-f33q-929c/GHSA-xjj6-f33q-929c.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.18.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-xjj6-f33q-929c/GHSA-xjj6-f33q-929c.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-xjj6-f33q-929c"
+        }
+      ]
+    },
+    {
+      "manifest": "windows-host/package-lock.json",
+      "package": {
+        "name": "undici",
+        "version": "7.29.1",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/undici@7.29.1?source=PUBLIC_REGISTRY"
+      },
+      "advisories": [
+        {
+          "id": "GHSA-2m5v-pch6-74hx",
+          "aliases": [
+            "CVE-2026-109383"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-2m5v-pch6-74hx/GHSA-2m5v-pch6-74hx.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "4.0.0"
+                    },
+                    {
+                      "fixed": "6.29.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-2m5v-pch6-74hx/GHSA-2m5v-pch6-74hx.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.0.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-2m5v-pch6-74hx/GHSA-2m5v-pch6-74hx.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-2m5v-pch6-74hx"
+        },
+        {
+          "id": "GHSA-4qv8-2p9j-2685",
+          "aliases": [
+            "CVE-2026-109924"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-4qv8-2p9j-2685/GHSA-4qv8-2p9j-2685.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "6.5.0"
+                    },
+                    {
+                      "fixed": "6.29.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-4qv8-2p9j-2685/GHSA-4qv8-2p9j-2685.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.0.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-4qv8-2p9j-2685/GHSA-4qv8-2p9j-2685.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-4qv8-2p9j-2685"
+        },
+        {
+          "id": "GHSA-4w7w-5xrc-9h26",
+          "aliases": [
+            "CVE-2026-109829"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-4w7w-5xrc-9h26/GHSA-4w7w-5xrc-9h26.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.0.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-4w7w-5xrc-9h26/GHSA-4w7w-5xrc-9h26.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-4w7w-5xrc-9h26"
+        },
+        {
+          "id": "GHSA-55wc-3pg8-jfw6",
+          "aliases": [
+            "CVE-2026-87029"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-55wc-3pg8-jfw6/GHSA-55wc-3pg8-jfw6.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.15.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-55wc-3pg8-jfw6/GHSA-55wc-3pg8-jfw6.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-55wc-3pg8-jfw6"
+        },
+        {
+          "id": "GHSA-9fm3-97px-rjf6",
+          "aliases": [
+            "CVE-2026-109932"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-9fm3-97px-rjf6/GHSA-9fm3-97px-rjf6.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "5.15.0"
+                    },
+                    {
+                      "fixed": "6.29.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-9fm3-97px-rjf6/GHSA-9fm3-97px-rjf6.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.0.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-9fm3-97px-rjf6/GHSA-9fm3-97px-rjf6.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-9fm3-97px-rjf6"
+        },
+        {
+          "id": "GHSA-f72v-6w45-q472",
+          "aliases": [
+            "CVE-2026-109841"
+          ],
+          "severity": "MODERATE",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-f72v-6w45-q472/GHSA-f72v-6w45-q472.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.15.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-f72v-6w45-q472/GHSA-f72v-6w45-q472.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-f72v-6w45-q472"
+        },
+        {
+          "id": "GHSA-qrxm-fqhp-jwvm",
+          "aliases": [
+            "CVE-2026-87018"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-qrxm-fqhp-jwvm/GHSA-qrxm-fqhp-jwvm.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "4.2.1"
+                    },
+                    {
+                      "fixed": "6.29.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-qrxm-fqhp-jwvm/GHSA-qrxm-fqhp-jwvm.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.0.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-qrxm-fqhp-jwvm/GHSA-qrxm-fqhp-jwvm.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-qrxm-fqhp-jwvm"
+        },
+        {
+          "id": "GHSA-xjj6-f33q-929c",
+          "aliases": [
+            "CVE-2026-109869"
+          ],
+          "severity": "HIGH",
+          "cvss": [
+            {
+              "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "type": "CVSS_V3"
+            }
+          ],
+          "affected": [
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-xjj6-f33q-929c/GHSA-xjj6-f33q-929c.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "6.23.0"
+                    },
+                    {
+                      "fixed": "6.29.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-xjj6-f33q-929c/GHSA-xjj6-f33q-929c.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "7.18.0"
+                    },
+                    {
+                      "fixed": "7.30.1"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            },
+            {
+              "database_specific": {
+                "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-xjj6-f33q-929c/GHSA-xjj6-f33q-929c.json"
+              },
+              "package": {
+                "ecosystem": "npm",
+                "name": "undici",
+                "purl": "pkg:npm/undici"
+              },
+              "ranges": [
+                {
+                  "events": [
+                    {
+                      "introduced": "8.0.0"
+                    },
+                    {
+                      "fixed": "8.12.2"
+                    }
+                  ],
+                  "type": "SEMVER"
+                }
+              ]
+            }
+          ],
+          "url": "https://osv.dev/vulnerability/GHSA-xjj6-f33q-929c"
+        }
+      ]
+    }
+  ],
+  "coverage_limits": [
+    "Working-tree supported lockfiles/manifests only; not Git history, installed artifacts, generated user projects, APK/EXE or runtime reachability.",
+    "22 manifests copied; 19 nonempty scanner result sources, 2 comment-only requirements and 1 empty Cargo.lock yield no packages.",
+    "PyPI export verified but project requirements contain no pinned Python packages; no PyPI dependencies assessed.",
+    "Main android-app Gradle build scripts are not resolved lockfiles. SDK absent; Android dependency/transitive closure and build/plugin/native/bundled runtime dependency coverage remain BLOCKED.",
+    "Cargo extraction includes first-party local crate identities; their absence of database matches is not a first-party code audit.",
+    "47 advisory IDs may have aliases and are not 47 deduplicated CVEs; no call analysis or reachability claims.",
+    "Databases verified via OSV-owned HTTPS GCS origin, immutable object generation, server size/MD5, ZIP CRC/JSON and recorded SHA-256; no signed database provenance attestation."
+  ],
+  "retained_failures": [
+    {
+      "attempt": "offline-version",
+      "reason": "Termux Python platform.system() reports Android; corrected guard to Linux kernel os.uname sysname"
+    },
+    {
+      "attempt": "assessment",
+      "reason": "ignored .appforge cache caused no source extraction; test failed, not accepted"
+    },
+    {
+      "attempt": "assessment-retry2",
+      "reason": "fixture without registry resolved URL classified LOCAL; missing DB exit 0, assertion failed"
+    },
+    {
+      "attempt": "assessment-retry3",
+      "reason": "upstream-documented obsolete cache layout caused valid DB unavailable; positive assertion failed"
+    },
+    {
+      "attempt": "assessment-retry4",
+      "reason": "genuine scanner completed; missing/corrupt 127, positive/project 1"
+    }
+  ],
+  "private_artifact_hashes": {
+    ".appforge/tmp/v10/osv/release.json": "13b00d206279cc75a6a0b2d4fdd01ea80a5a7276d8e50127537a4e003df7be02",
+    ".appforge/tmp/v10/osv/SHA256SUMS": "95d69019bcfe0586eb8f07aad4c56e2f734ee969e8e3e209591f259a1bfde88c",
+    ".appforge/tmp/v10/osv/LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    ".appforge/tmp/v10/osv/offline-mode.md": "fea448a15c406bd5f0bb0c794d953c386abf496322ba0334922226bcb5556eea",
+    ".appforge/tmp/v10/osv/languages.md": "8be428a3aefd6315da92a51d54cf09e78831aa43f5cacc44490a33a752cd447f",
+    ".appforge/tmp/v10/osv/go.mod": "3e5985b09095a2a836bbafd4a79e126010af066acaf6d32b5d098a12f989a6a6",
+    ".appforge/tmp/v10/osv/matcher.go": "a55baa860690fa620ea3e988b4c59b154bbb0f25607da13b0467cc5327e825e3",
+    ".appforge/tmp/v10/osv/osvlocal.go": "e347d756816a341d8025a77ff997b6b83d5e4b13662f082299a4478807843da1",
+    ".appforge/tmp/v10/osv/zip.go": "25d53abb2c584a09d3522236f9dc1225f95551863c521005274bb70a71cb0586",
+    ".appforge/tmp/v10/osv/offline-version.log": "8f9b933a05c036b9807b13484f649d0273739fbf957cef3464a077082c8b097c",
+    ".appforge/tmp/v10/osv/offline-version-retry.log": "b3cc1396816165ee927b55527ee8e67c9938d87d71eb9b9c8f313b4f6af14e37",
+    ".appforge/tmp/v10/osv/assessment-run.log": "43b40a7209be5fc48dd51933ea2f67266795fbe89eb6573dee845573e5db7e32",
+    ".appforge/tmp/v10/osv/assessment-retry2-run.log": "2a4fe00b8e12bf51e860db6e5a45be8c80cc15e47f9498d34df411deb0daabbc",
+    ".appforge/tmp/v10/osv/assessment-retry3-run.log": "bd13ef3c8938d03fa7285bf9d73fed53a773b3a5707347a76d9bd7a38f7850e7",
+    ".appforge/tmp/v10/osv/assessment-retry4-run.log": "9b7ead13e31a9ec4275c1d7c56cb3f664efee9ba5e00824a60d7b1c004d65056",
+    ".appforge/tmp/v10/osv/assessment-retry4/boundary.log": "6dd4169e88a9b7302c7ad20bbc3761358ebf72ef64477250b19df06896e3bbf7",
+    ".appforge/tmp/v10/osv/assessment-retry4/project.json": "599e54afbe049a21f091cc041c001242d8d821d664c6b17a98eb056771546fa8",
+    ".appforge/tmp/v10/osv/assessment-retry4/positive.json": "551ff8076ab297264384b8d9510769d1ac1cd7785b19869df9554d6765f84235",
+    ".appforge/tmp/v10/osv/assessment-retry4/missing.json": "35df32f6ddf700270f753d55519d8e1abee5374b1348acb00c0c2c6cb3e9023c",
+    ".appforge/tmp/v10/osv/assessment-retry4/corrupt.json": "35df32f6ddf700270f753d55519d8e1abee5374b1348acb00c0c2c6cb3e9023c",
+    ".appforge/tmp/v10/osv/assessment-retry4/summary.json": "08e27aa974d52e78281d35024cf40982913d51e14769eb9a3653c5c0644cf5d0"
+  },
+  "no_dependency_upgrades": true,
+  "no_push": true,
+  "no_commit": true,
+  "no_merge": true,
+  "no_deploy": true,
+  "no_release": true,
+  "final_repeat": {
+    "result": {
+      "scanner_version": "2.7.0",
+      "scanner_sha256": "4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7",
+      "executed": true,
+      "database_verified": true,
+      "network_boundary": "inherited kernel seccomp; IP socket probes denied inside PRoot exec child",
+      "security_tests": {
+        "missing_database": "PASS",
+        "corrupt_database": "PASS",
+        "known_vulnerable_dependency": "PASS",
+        "kernel_network_denial": "PASS"
+      },
+      "fixture_advisories": [
+        "GHSA-29mw-wpgm-hmr9",
+        "GHSA-35jh-r3h4-6jhm",
+        "GHSA-f23m-r3pf-42rh",
+        "GHSA-r5fr-rjxr-66jc",
+        "GHSA-xxjr-mmjv-4gpg"
+      ],
+      "project_exit": 1,
+      "source_manifest_count": 22,
+      "package_occurrences": 1993,
+      "unique_dependencies": 930,
+      "vulnerable_package_occurrences": 22,
+      "advisory_ids": [
+        "GHSA-27r3-jxmh-p828",
+        "GHSA-2m5v-pch6-74hx",
+        "GHSA-2p8c-gr87-2676",
+        "GHSA-333x-w4r6-6crp",
+        "GHSA-36hh-v3qg-5jq4",
+        "GHSA-3qxv-5xgr-q7w9",
+        "GHSA-4qv8-2p9j-2685",
+        "GHSA-4w7w-5xrc-9h26",
+        "GHSA-4x5r-pxfx-6jf8",
+        "GHSA-55wc-3pg8-jfw6",
+        "GHSA-5p2g-fcmc-qvqq",
+        "GHSA-6g55-p6wh-862q",
+        "GHSA-7q85-xj36-vmfc",
+        "GHSA-8238-w5pm-2374",
+        "GHSA-86w9-cpqp-85rv",
+        "GHSA-968p-4wvh-cqc8",
+        "GHSA-98mx-cjp9-gchm",
+        "GHSA-997q-gvvc-jwmx",
+        "GHSA-9fm3-97px-rjf6",
+        "GHSA-c6fg-446q-cg94",
+        "GHSA-ch52-4w7c-c8xp",
+        "GHSA-chgr-c6px-7xpp",
+        "GHSA-f72v-6w45-q472",
+        "GHSA-fw47-9c62-h3vw",
+        "GHSA-fxqj-rqcc-2cmp",
+        "GHSA-gcqx-w48m-w2h4",
+        "GHSA-gh4j-gqv2-49f6",
+        "GHSA-h3v5-h239-pg29",
+        "GHSA-j5f4-cc29-5x44",
+        "GHSA-jr5w-w6x2-84p9",
+        "GHSA-mrhx-c7xc-m3w5",
+        "GHSA-p634-w6r4-rjp2",
+        "GHSA-pph8-gcv7-4qj5",
+        "GHSA-qmv3-fv6v-rmhq",
+        "GHSA-qrxm-fqhp-jwvm",
+        "GHSA-qx2v-qp2m-jg93",
+        "GHSA-r28c-9q8g-f849",
+        "GHSA-rcw4-f5rp-g42v",
+        "GHSA-vwc7-r8mq-g2x9",
+        "GHSA-w3rx-r6r6-pgpr",
+        "GHSA-w74x-v6f9-j3xg",
+        "GHSA-wjr9-j795-jxcr",
+        "GHSA-x562-297c-g43g",
+        "GHSA-xhq7-xmqj-769h",
+        "GHSA-xjj6-f33q-929c",
+        "RUSTSEC-2025-0020",
+        "RUSTSEC-2026-0177"
+      ],
+      "unique_advisory_count": 47,
+      "ecosystem_counts": {
+        "Maven": 2,
+        "crates.io": 30,
+        "npm": 898
+      },
+      "source_inventory": [
+        {
+          "path": "android-app/app/src/main/assets/device-build/python-template/app/requirements.txt",
+          "sha256": "f3fd3f4c755175e91daeaef06739feeea2fac52ab1cd242b61457e078f3bd6b9",
+          "bytes": 115
+        },
+        {
+          "path": "examples/rust-android-jni/Cargo.lock",
+          "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+          "bytes": 156
+        },
+        {
+          "path": "examples/rust-android-jni/app/gradle.lockfile",
+          "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+          "bytes": 2045
+        },
+        {
+          "path": "examples/rust-expo-jsi/Cargo.lock",
+          "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+          "bytes": 156
+        },
+        {
+          "path": "examples/rust-expo-jsi/package-lock.json",
+          "sha256": "c8701d06c75a9b0b48a240bf21dd1af5f011b259eca2e6af526d9eb90fdfcf3f",
+          "bytes": 348325
+        },
+        {
+          "path": "examples/rust-expo-turbo/Cargo.lock",
+          "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+          "bytes": 156
+        },
+        {
+          "path": "examples/rust-expo-turbo/package-lock.json",
+          "sha256": "c8701d06c75a9b0b48a240bf21dd1af5f011b259eca2e6af526d9eb90fdfcf3f",
+          "bytes": 348325
+        },
+        {
+          "path": "examples/rust-git-bundle/Cargo.lock",
+          "sha256": "9aa6a937765f8ba183ef85da5f3d3369b5714b892521450972ca551743d4289f",
+          "bytes": 287
+        },
+        {
+          "path": "examples/rust-node-web/Cargo.lock",
+          "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+          "bytes": 165
+        },
+        {
+          "path": "examples/rust-node-web/package-lock.json",
+          "sha256": "d8ee3b0b08910d198607730ea769830d3b8833e9c80917517396a10a98b3cd83",
+          "bytes": 158
+        },
+        {
+          "path": "examples/rust-python/Cargo.lock",
+          "sha256": "a2eb20f77275730b4cd7b43e8eb927bd142db220710fe8a7628d9253840fb0ec",
+          "bytes": 4693
+        },
+        {
+          "path": "examples/rust-python/requirements.txt",
+          "sha256": "18410d5f94e7f23c97bde82e96c8285dd5857efa36fad5dcb5745191cbbb4fb3",
+          "bytes": 86
+        },
+        {
+          "path": "examples/rust-react-native-turbo/Cargo.lock",
+          "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+          "bytes": 156
+        },
+        {
+          "path": "examples/rust-react-native-turbo/package-lock.json",
+          "sha256": "c4b82932c7eac96d414c8d6feb44baa562eef052717c1c3c3e140962c6dac16f",
+          "bytes": 264507
+        },
+        {
+          "path": "examples/rust-universal/android/Cargo.lock",
+          "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+          "bytes": 156
+        },
+        {
+          "path": "examples/rust-universal/android/app/gradle.lockfile",
+          "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+          "bytes": 2045
+        },
+        {
+          "path": "examples/rust-universal/web/Cargo.lock",
+          "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+          "bytes": 165
+        },
+        {
+          "path": "examples/rust-wasm/Cargo.lock",
+          "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+          "bytes": 165
+        },
+        {
+          "path": "examples/rust-windows-dll/Cargo.lock",
+          "sha256": "5210090e19be6d2eb1861a1c36e2943d9f098f29b7bcc9d37de70d70a6e1abb0",
+          "bytes": 173
+        },
+        {
+          "path": "examples/rust-windows-native/Cargo.lock",
+          "sha256": "7a8de802df14e5943dc2c58ef07053898dbb93a41342a4e71e703ab5658b568b",
+          "bytes": 165
+        },
+        {
+          "path": "examples/rust-workspace/Cargo.lock",
+          "sha256": "98c53fc7d5b813dac1a9e2731e2d447e0415bd70cd283afecab27b828bbc1e63",
+          "bytes": 261
+        },
+        {
+          "path": "windows-host/package-lock.json",
+          "sha256": "812623db44dcb94bb236c7e3259c081abcbc0c30552e93af15000d4fa3aeab2d",
+          "bytes": 127969
+        }
+      ],
+      "commands": [
+        {
+          "name": "missing",
+          "command": [
+            "/data/data/com.termux/files/usr/bin/python3",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+            "proot-distro",
+            "login",
+            "ubuntu",
+            "--bind",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+            "--",
+            "/usr/bin/env",
+            "-i",
+            "PATH=/usr/bin:/bin",
+            "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/home",
+            "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/home",
+            "GOMAXPROCS=2",
+            "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/missing",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+            "scan",
+            "source",
+            "--offline",
+            "--no-resolve",
+            "--no-call-analysis=go",
+            "--no-call-analysis=rust",
+            "--all-packages",
+            "--all-vulns",
+            "--format=json",
+            "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/missing.json",
+            "--no-ignore",
+            "--recursive",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/vulnerable"
+          ],
+          "exit": 127,
+          "log_sha256": "28182f81eda6a371a9cd6adfa1bfb14b44544a1cf459b7712ffb411bd49f0a63"
+        },
+        {
+          "name": "corrupt",
+          "command": [
+            "/data/data/com.termux/files/usr/bin/python3",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+            "proot-distro",
+            "login",
+            "ubuntu",
+            "--bind",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+            "--",
+            "/usr/bin/env",
+            "-i",
+            "PATH=/usr/bin:/bin",
+            "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/home",
+            "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/home",
+            "GOMAXPROCS=2",
+            "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/corrupt",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+            "scan",
+            "source",
+            "--offline",
+            "--no-resolve",
+            "--no-call-analysis=go",
+            "--no-call-analysis=rust",
+            "--all-packages",
+            "--all-vulns",
+            "--format=json",
+            "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/corrupt.json",
+            "--no-ignore",
+            "--recursive",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/vulnerable"
+          ],
+          "exit": 127,
+          "log_sha256": "8ee89959d0ae8f40eee31f6576093ad4bd0c00580ef31926b05e9b7c13c09e08"
+        },
+        {
+          "name": "positive",
+          "command": [
+            "/data/data/com.termux/files/usr/bin/python3",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+            "proot-distro",
+            "login",
+            "ubuntu",
+            "--bind",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+            "--",
+            "/usr/bin/env",
+            "-i",
+            "PATH=/usr/bin:/bin",
+            "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/home",
+            "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/home",
+            "GOMAXPROCS=2",
+            "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/database",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+            "scan",
+            "source",
+            "--offline",
+            "--no-resolve",
+            "--no-call-analysis=go",
+            "--no-call-analysis=rust",
+            "--all-packages",
+            "--all-vulns",
+            "--format=json",
+            "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/positive.json",
+            "--no-ignore",
+            "--recursive",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/vulnerable"
+          ],
+          "exit": 1,
+          "log_sha256": "f6c46375ef2136eb58a957e31fd7e5793e761c89d15161f80bff0fac4c8facea"
+        },
+        {
+          "name": "project",
+          "command": [
+            "/data/data/com.termux/files/usr/bin/python3",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+            "proot-distro",
+            "login",
+            "ubuntu",
+            "--bind",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+            "--",
+            "/usr/bin/env",
+            "-i",
+            "PATH=/usr/bin:/bin",
+            "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/home",
+            "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/home",
+            "GOMAXPROCS=2",
+            "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/database",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+            "scan",
+            "source",
+            "--offline",
+            "--no-resolve",
+            "--no-call-analysis=go",
+            "--no-call-analysis=rust",
+            "--all-packages",
+            "--all-vulns",
+            "--format=json",
+            "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/project.json",
+            "--no-ignore",
+            "--recursive",
+            "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/assessment-final/source"
+          ],
+          "exit": 1,
+          "log_sha256": "cdfbaf075a088ed4828e5d1b173fa7cc34d2316b9d2ca85ae0319e81772a5eec"
+        }
+      ]
+    },
+    "exit": 0,
+    "run_log_sha256": "9b7ead13e31a9ec4275c1d7c56cb3f664efee9ba5e00824a60d7b1c004d65056",
+    "artifacts": {
+      ".appforge/tmp/v10/osv/assessment-final/boundary.log": "6dd4169e88a9b7302c7ad20bbc3761358ebf72ef64477250b19df06896e3bbf7",
+      ".appforge/tmp/v10/osv/assessment-final/project.json": "61e80a7abcc6622a2a7d796462e49f0bbdaf21ff00f03f5c05645b4b98c77bea",
+      ".appforge/tmp/v10/osv/assessment-final/positive.json": "5136d307edf25e09fdf336bf9441865414543557467539cb917921a0591a051a",
+      ".appforge/tmp/v10/osv/assessment-final/missing.json": "86537f5042c6243f67753ea9676ba1bf116668c88190db947a2d8a9df4762218",
+      ".appforge/tmp/v10/osv/assessment-final/corrupt.json": "86537f5042c6243f67753ea9676ba1bf116668c88190db947a2d8a9df4762218",
+      ".appforge/tmp/v10/osv/assessment-final/summary.json": "abefe711be69fad124b4a87342070292accb587043d2c2fef3752996e4adafd5"
+    }
+  },
+  "local_verification": [
+    {
+      "stage": "v10-python",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v10_oss_gate.py"
+      ],
+      "exit": 0,
+      "log_sha256": "281ab33dd13800b4ddb2e1e0bbd7f8394d3d4d5535a589452eaf08fbd6568c68"
+    },
+    {
+      "stage": "v10-contracts",
+      "command": [
+        "node",
+        "--test",
+        "quality/tests/v10_oss_gate_runtime.test.js",
+        "quality/tests/v10_host_verification_contract.test.js"
+      ],
+      "exit": 0,
+      "log_sha256": "6d6ee9232f32d10902a316e74ddd6a15cc96426549e9a4961b75bc83f4a3b51d"
+    },
+    {
+      "stage": "osv-production-gate",
+      "command": [
+        "python3",
+        "quality/tools/appforge_v10_oss_gate.py",
+        "osv-scanner",
+        "--cache",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv",
+        "--offline"
+      ],
+      "exit": 3,
+      "log_sha256": "1e7b0689c60198b8bf4aa763ba44f03f959bf01f40b8ed21c86b7bf107575385"
+    },
+    {
+      "stage": "secret-hygiene",
+      "command": [
+        "python3",
+        "scripts/secret-hygiene-guard.py"
+      ],
+      "exit": 0,
+      "log_sha256": "f7cd2200c25b37c0f238592db552fe142f456fd91d80af6d090b809a5bf3d951"
+    },
+    {
+      "stage": "wiki-secret",
+      "command": [
+        "python3",
+        "scripts/wiki-secret-scan.py"
+      ],
+      "exit": 0,
+      "log_sha256": "4e841cef2bbb9b12c75fa9172407dad3161dae4add910164bec38ec168b927ff"
+    },
+    {
+      "stage": "snapshot-check",
+      "command": [
+        "python3",
+        "scripts/generate-second-brain-snapshot.py",
+        "--check"
+      ],
+      "exit": 0,
+      "log_sha256": "35b530aa566859e6a3e92944a28e4e545642710cf18132c6639f8b05556528b2"
+    },
+    {
+      "stage": "wiki-audit",
+      "command": [
+        "node",
+        "scripts/wiki-audit.mjs",
+        "--changed-source-check"
+      ],
+      "exit": 0,
+      "log_sha256": "3731c055ba4349e7d513b0b99081758fdc4c0ea5f2a3e57295aa4e13af9ad4a3"
+    },
+    {
+      "stage": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "stage": "v9",
+      "exit": 0,
+      "tests": 440,
+      "log_sha256": "7860447b765a29a4e08ce14ab7804ea9ef0a93948bc385907ca7b3ce8ba5f001"
+    },
+    {
+      "stage": "gitleaks-controls",
+      "exit": 0,
+      "negative_paths": 8,
+      "positive_fixture": "DETECTED",
+      "log_sha256": "4fb6c8fd6a5acf432e51d5667cc02586e7921f9f17171b9a7f2d8e6732c8fbfb"
+    }
+  ],
+  "preservation": {
+    "existing_file_count": 1311,
+    "changed_existing_files": [
+      "V10_OSS_INTEGRATION_REPORT.md",
+      "docs/engineering/v10/integrations.json",
+      "docs/wiki/03_Architecture/V10_OSS_Integration.md",
+      "android-app/app/src/main/assets/second_brain_snapshot.json"
+    ],
+    "missing_files": [],
+    "only_authorized_existing_documentation_and_generated_snapshot_changes": true,
+    "existing_source_config_tests_pins_preserved": true,
+    "head_unchanged": true,
+    "branch_unchanged": true
+  },
+  "assessment_source_sha256": {
+    "quality/tools/v10_osv_offline_exec.py": "b79735c489266ef30dd0a72efa63ea637fbc1e690f6ed9d7144291b8c1c0375c",
+    "quality/tests/v10_osv_real_scanner.py": "072efe974e153e2ec6fb589a23e62ba87229fc01d8956f257fe0c3c21d4b27de",
+    "docs/engineering/v10/osv-acquire.py": "dc96be7bb6f094eb893fd21a78281aaeb86fe16c7d726698a805ffd292cc1ef8"
+  },
+  "wiki_audit": "0 errors; 20 advisory warnings, not full green",
+  "gitleaks_preserved": {
+    "status": "PASS",
+    "exit": 0,
+    "findings": 0,
+    "command": [
+      "proot-distro",
+      "login",
+      "ubuntu",
+      "--bind",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+      "--",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+      "dir",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/gitleaks-final-source",
+      "--config",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10-gitleaks.toml",
+      "--redact=100",
+      "--exit-code=42",
+      "--no-banner",
+      "--report-format=json",
+      "--report-path",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/gitleaks-final.json"
+    ],
+    "coverage": {
+      "included_files": 1311,
+      "source_sha256": "6830048eb0bc8615adf17bde6c8e150ec85cf8bbf5c6db4bf00a2b4455cf41eb",
+      "source_files": 1311,
+      "source_bytes": 14013254,
+      "scope": "nonignored-repository-working-tree",
+      "limitations": [
+        "not Git history",
+        "not external user projects",
+        "not compiled APK/EXE contents",
+        "not dependency vulnerability clearance"
+      ]
+    },
+    "scope": "bounded nonignored source snapshot; excludes tracked operational .appforge state as in phase4; final evidence bookkeeping follows scan",
+    "policy_unchanged": true,
+    "log_sha256": "5e9218c0a3cdaa3ebd40939a14b0b2df8d889c09d4f78a61c711c73b5aada48b"
+  },
+  "stages_not_run": {
+    "full_quality": "not rerun; focused V10 and V9 evidence only",
+    "hosted_ci": "no push or hosted execution authorized",
+    "android_build": "existing SDK blocker; no repeated build or signing",
+    "physical_runtime": "no device/Windows/production acceptance claimed"
+  },
+  "push_lock_preserved": true
+}

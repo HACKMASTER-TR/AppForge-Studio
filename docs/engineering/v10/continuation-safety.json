@@ -1,0 +1,18 @@
+{
+  "head": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+  "push_locked": true,
+  "protected_manifests_diff_exit": 0,
+  "no_staged_changes": true,
+  "hooks": {
+    "pre-commit": "20104ab9d22701f2dc915019e47c631ffc6fa948ef97af329678cd41c796f081",
+    "pre-push": "8a84299361a06b295b099490f8bf6c922c036e94041e1a17c89b0ae0d1f6ebe2"
+  },
+  "protected_files": [
+    "windows-host/package.json",
+    "windows-host/package-lock.json",
+    "android-app/build.gradle.kts",
+    "android-app/app/build.gradle.kts",
+    "android-app/settings.gradle.kts",
+    ".github/workflows/android-play-release.yml"
+  ]
+}

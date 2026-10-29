@@ -2200,6 +2200,8 @@ object DeviceBuildEngine {
             // Typed transfer observation is incompatible with configuration-cache
             // replay. Keep task/build caches; explicitly retain resource events.
             append("--no-configuration-cache ")
+            append("--init-script /workspace/runtime/build-metrics.init.gradle ")
+            append("-Dappforge.metrics.path=/workspace/gradle-task-graph-v1.json ")
 
             if (useBuildCache) {
                 append("--build-cache ")

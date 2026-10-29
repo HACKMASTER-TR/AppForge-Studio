@@ -1,0 +1,1006 @@
+{
+  "inventory_sha256": "b53e54df17d841a627f6d44fed982d2f2f3b2473d5fd750821d4830c06cc2dcd",
+  "repositories": [
+    {
+      "id": "codeassist",
+      "repository": "https://github.com/tyron12233/CodeAssist",
+      "checked_at": "2026-10-28T08:35:18.267693+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [],
+      "default_branch": "main",
+      "license_spdx": "GPL-3.0",
+      "head_sha": "1368787112e4e8da52e5329f79c75c05f0ad276f",
+      "license_path": "LICENSE",
+      "license_sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "license_url": "https://github.com/tyron12233/CodeAssist/blob/main/LICENSE",
+      "release_tag": "v3.33.0",
+      "release_url": "https://github.com/tyron12233/CodeAssist/releases/tag/v3.33.0",
+      "published_at": "2026-10-26T21:47:02Z",
+      "assets": [
+        {
+          "name": "CodeAssist-3.33.0-linux-x64-portable.tar.gz",
+          "size": 353549793,
+          "url": "https://github.com/tyron12233/CodeAssist/releases/download/v3.33.0/CodeAssist-3.33.0-linux-x64-portable.tar.gz",
+          "digest": "sha256:9b64de043aac95a844467d0aafb3436974d23f0816574fd8dd2d94393f1ab5b6"
+        },
+        {
+          "name": "CodeAssist-3.33.0-linux-x64.deb",
+          "size": 324172304,
+          "url": "https://github.com/tyron12233/CodeAssist/releases/download/v3.33.0/CodeAssist-3.33.0-linux-x64.deb",
+          "digest": "sha256:21ec3afb9b98dd6e32c4f229854464c20db8ff76c6bd1c1dea71d19751069e1f"
+        },
+        {
+          "name": "CodeAssist-3.33.0-windows-x64-portable.zip",
+          "size": 345766556,
+          "url": "https://github.com/tyron12233/CodeAssist/releases/download/v3.33.0/CodeAssist-3.33.0-windows-x64-portable.zip",
+          "digest": "sha256:7b91c86ca4de6bbaf317d686da387f1172653d6edcc8eba6a69096a360d6628b"
+        },
+        {
+          "name": "CodeAssist-3.33.0-windows-x64.msi",
+          "size": 349210510,
+          "url": "https://github.com/tyron12233/CodeAssist/releases/download/v3.33.0/CodeAssist-3.33.0-windows-x64.msi",
+          "digest": "sha256:832d42b825a1cd6b2c930c38a10506bf1451ef7b1cee56d52ed7d049c41b67d7"
+        },
+        {
+          "name": "CodeAssist-3.33.0.aab",
+          "size": 161939061,
+          "url": "https://github.com/tyron12233/CodeAssist/releases/download/v3.33.0/CodeAssist-3.33.0.aab",
+          "digest": "sha256:8b8455ebff066ca4be0ebcb47802460ef28926aa89a31af2f31d447c0f0942aa"
+        },
+        {
+          "name": "CodeAssist-3.33.0.apk",
+          "size": 163861525,
+          "url": "https://github.com/tyron12233/CodeAssist/releases/download/v3.33.0/CodeAssist-3.33.0.apk",
+          "digest": "sha256:820a143a72ab03b76d2d308f1533920530257e22361f14d693b162419524c4a2"
+        },
+        {
+          "name": "codeassist-cli.zip",
+          "size": 231678761,
+          "url": "https://github.com/tyron12233/CodeAssist/releases/download/v3.33.0/codeassist-cli.zip",
+          "digest": "sha256:902146e4010e23f975e04ea208555acb752f0e1e6a856d6e2c2408e8704fcfe6"
+        },
+        {
+          "name": "CodeAssist-NDK-Plugin-3.33.0.apk",
+          "size": 47079653,
+          "url": "https://github.com/tyron12233/CodeAssist/releases/download/v3.33.0/CodeAssist-NDK-Plugin-3.33.0.apk",
+          "digest": "sha256:b9f4c13d1933ed157fb17246c2b056e35d13ed3a05f17e29d8b7e3807aa73cbb"
+        }
+      ]
+    },
+    {
+      "id": "sora-editor",
+      "repository": "https://github.com/Rosemoe/sora-editor",
+      "checked_at": "2026-10-28T08:35:18.268655+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [
+        "release:HTTPError:404"
+      ],
+      "default_branch": "main",
+      "license_spdx": "LGPL-2.1",
+      "head_sha": "94681e9e6523cbdc288e81def76a117f7740a195",
+      "license_path": "LICENSE",
+      "license_sha256": "7ffe1954587c77dfba1cf8eb9b2ea743671fa6e63f9e7a2f258119d42e14eefe",
+      "license_url": "https://github.com/Rosemoe/sora-editor/blob/main/LICENSE"
+    },
+    {
+      "id": "tree-sitter",
+      "repository": "https://github.com/tree-sitter/tree-sitter",
+      "checked_at": "2026-10-28T08:35:18.269405+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [],
+      "default_branch": "master",
+      "license_spdx": "MIT",
+      "head_sha": "ad067fddf76a32c3071f8f3a31e8719d348e2737",
+      "license_path": "LICENSE",
+      "license_sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78",
+      "license_url": "https://github.com/tree-sitter/tree-sitter/blob/master/LICENSE",
+      "release_tag": "v0.27.1",
+      "release_url": "https://github.com/tree-sitter/tree-sitter/releases/tag/v0.27.1",
+      "published_at": "2026-10-08T17:43:54Z",
+      "assets": [
+        {
+          "name": "tree-sitter-cli-linux-arm.zip",
+          "size": 4187527,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-cli-linux-arm.zip",
+          "digest": "sha256:ba666443480344e1c132b5b15175ed4639fd2b8190068ee4065c0c831fce27f9"
+        },
+        {
+          "name": "tree-sitter-cli-linux-arm64.zip",
+          "size": 8054297,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-cli-linux-arm64.zip",
+          "digest": "sha256:3c0d0113cae3fea36f2336c271cbdacbcdb349edb006319155652b9386803c55"
+        },
+        {
+          "name": "tree-sitter-cli-linux-powerpc64.zip",
+          "size": 5378359,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-cli-linux-powerpc64.zip",
+          "digest": "sha256:14775704e263f3b25ca5d8a5562e36f5910fad29b821bf382746c72c5cbd7791"
+        },
+        {
+          "name": "tree-sitter-cli-linux-x64.zip",
+          "size": 8642525,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-cli-linux-x64.zip",
+          "digest": "sha256:c7e686aec16ba17053c2e6fd87600ccb10cf8ba3d055756b17e756d538e11114"
+        },
+        {
+          "name": "tree-sitter-cli-linux-x86.zip",
+          "size": 4803112,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-cli-linux-x86.zip",
+          "digest": "sha256:d95aac786246e949f355efd08a949d01387048ce8a308f4f111aa9eaec7c214f"
+        },
+        {
+          "name": "tree-sitter-cli-macos-arm64.zip",
+          "size": 7343877,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-cli-macos-arm64.zip",
+          "digest": "sha256:6362cda144b6e45d92c739d4eafb7e3c322f0545b0b959b4f7ca7d53fb3300fa"
+        },
+        {
+          "name": "tree-sitter-cli-macos-x64.zip",
+          "size": 8212051,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-cli-macos-x64.zip",
+          "digest": "sha256:fd7e60f57b6e00caecaa055b94da20d7875b05cef2277831588546e08ab8bb29"
+        },
+        {
+          "name": "tree-sitter-cli-windows-arm64.zip",
+          "size": 3525190,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-cli-windows-arm64.zip",
+          "digest": "sha256:eadbb00c87c5a38f874eb92af593df7264635afefb455af3218bdb1c50123bad"
+        },
+        {
+          "name": "tree-sitter-cli-windows-x64.zip",
+          "size": 3809617,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-cli-windows-x64.zip",
+          "digest": "sha256:de043e4c289efcef7981df99988300f23763befdeb36abf7c1898f080c478424"
+        },
+        {
+          "name": "tree-sitter-cli-windows-x86.zip",
+          "size": 3404992,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-cli-windows-x86.zip",
+          "digest": "sha256:62cdf6606ff46eaafe5aae1ca0aa6ea2096e793958b41d4f34dde8771c4b9f50"
+        },
+        {
+          "name": "tree-sitter-linux-arm.gz",
+          "size": 4205955,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-linux-arm.gz",
+          "digest": "sha256:4dcd9043fdac5eb8830156ad83fd37b2936c790b07d995cea6ccc271bb888659"
+        },
+        {
+          "name": "tree-sitter-linux-arm64.gz",
+          "size": 8102735,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-linux-arm64.gz",
+          "digest": "sha256:404be5d54a4955571c4067c21d4699660eab3a534cefb0659341b207f7139ec5"
+        },
+        {
+          "name": "tree-sitter-linux-powerpc64.gz",
+          "size": 5437797,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-linux-powerpc64.gz",
+          "digest": "sha256:3127d936d7db1c4613e6922e196833162dd9f113539911d139ec289db67b589d"
+        },
+        {
+          "name": "tree-sitter-linux-x64.gz",
+          "size": 8702418,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-linux-x64.gz",
+          "digest": "sha256:d01042f94ba3d6827ddc9788e235f75d8366431be42bdf90ade534d960c98b7d"
+        },
+        {
+          "name": "tree-sitter-linux-x86.gz",
+          "size": 4830941,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-linux-x86.gz",
+          "digest": "sha256:8ad5f5d3eddea1dbd1b2f2ddaddf6ea9292c8cec7ed5459023ab92058fe1b0c2"
+        },
+        {
+          "name": "tree-sitter-macos-arm64.gz",
+          "size": 7372537,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-macos-arm64.gz",
+          "digest": "sha256:46cb97d9a2c52c94e22d9a76c2f1116156b8b61f98360e2a9cce05fcb197cd4d"
+        },
+        {
+          "name": "tree-sitter-macos-x64.gz",
+          "size": 8262944,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-macos-x64.gz",
+          "digest": "sha256:b740262cb0f35be64e39b50ad68b020433924a7bcee5ae5c8e40e68d71215647"
+        },
+        {
+          "name": "tree-sitter-windows-arm64.gz",
+          "size": 3531495,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-windows-arm64.gz",
+          "digest": "sha256:0ee7f0123a62315826e6aec252703370fc0c015757e5f5c623d30ae5dce232eb"
+        },
+        {
+          "name": "tree-sitter-windows-x64.gz",
+          "size": 3825022,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-windows-x64.gz",
+          "digest": "sha256:e21184878f908f91c753b78a76a0766e61954e06627b46088d70d66233424531"
+        },
+        {
+          "name": "tree-sitter-windows-x86.gz",
+          "size": 3415570,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-windows-x86.gz",
+          "digest": "sha256:19ee495195adf8ed0e7a885f6115d3a242a0de284b67caefc75a349262540e25"
+        },
+        {
+          "name": "web-tree-sitter.tar.gz",
+          "size": 1176564,
+          "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/web-tree-sitter.tar.gz",
+          "digest": "sha256:0a1c8c6a369c5483bbc5385ef1ae9a0d68793553c59f83458fa5973f5de0568a"
+        }
+      ]
+    },
+    {
+      "id": "termux-packages",
+      "repository": "https://github.com/termux/termux-packages",
+      "checked_at": "2026-10-28T08:35:18.270042+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [],
+      "default_branch": "master",
+      "license_spdx": "NOASSERTION",
+      "head_sha": "00d21d12bab7c46c46c16333e9a7b2f725d09cf5",
+      "license_path": "LICENSE.md",
+      "license_sha256": "e86f899e394c692ce10dff53614f93ce473f02cddb4d88c5d49cb0c728ba5f68",
+      "license_url": "https://github.com/termux/termux-packages/blob/master/LICENSE.md",
+      "release_tag": "bootstrap-2026.10.25-r1+apt.android-7",
+      "release_url": "https://github.com/termux/termux-packages/releases/tag/bootstrap-2026.10.25-r1%2Bapt.android-7",
+      "published_at": "2026-10-25T00:27:58Z",
+      "assets": [
+        {
+          "name": "bootstrap-aarch64.zip",
+          "size": 33081376,
+          "url": "https://github.com/termux/termux-packages/releases/download/bootstrap-2026.10.25-r1%2Bapt.android-7/bootstrap-aarch64.zip",
+          "digest": "sha256:964e0473a9fa881600927c0151b99896089fb595b81afdcd74b1a6743b8b5889"
+        },
+        {
+          "name": "bootstrap-arm.zip",
+          "size": 29738742,
+          "url": "https://github.com/termux/termux-packages/releases/download/bootstrap-2026.10.25-r1%2Bapt.android-7/bootstrap-arm.zip",
+          "digest": "sha256:137d3a4a887194811dcc36e1c73c6f476105279648565b87491d67d0ab6abe3d"
+        },
+        {
+          "name": "bootstrap-i686.zip",
+          "size": 32209775,
+          "url": "https://github.com/termux/termux-packages/releases/download/bootstrap-2026.10.25-r1%2Bapt.android-7/bootstrap-i686.zip",
+          "digest": "sha256:b2e6aeafd937df1890dff86eff4938894d19db2cd3f444e070cd2ac8e93adcd2"
+        },
+        {
+          "name": "bootstrap-x86_64.zip",
+          "size": 32992728,
+          "url": "https://github.com/termux/termux-packages/releases/download/bootstrap-2026.10.25-r1%2Bapt.android-7/bootstrap-x86_64.zip",
+          "digest": "sha256:cb0ffc9f35dbb13971aad9683c393e6652bc95a4ba0eac905ca35065687f7de4"
+        }
+      ]
+    },
+    {
+      "id": "bundletool",
+      "repository": "https://github.com/google/bundletool",
+      "checked_at": "2026-10-28T08:35:19.811413+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [],
+      "default_branch": "master",
+      "license_spdx": "Apache-2.0",
+      "head_sha": "586a43a450712a1067f3d92cf7574dee68226302",
+      "license_path": "LICENSE",
+      "license_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "license_url": "https://github.com/google/bundletool/blob/master/LICENSE",
+      "release_tag": "1.18.3",
+      "release_url": "https://github.com/google/bundletool/releases/tag/1.18.3",
+      "published_at": "2025-12-15T20:10:39Z",
+      "assets": [
+        {
+          "name": "bundletool-all-1.18.3.jar",
+          "size": 32520401,
+          "url": "https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar",
+          "digest": "sha256:a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29"
+        }
+      ]
+    },
+    {
+      "id": "gitleaks",
+      "repository": "https://github.com/gitleaks/gitleaks",
+      "checked_at": "2026-10-28T08:35:19.894854+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [],
+      "default_branch": "master",
+      "license_spdx": "MIT",
+      "head_sha": "5f6ec56cfa6f8c67648d863582c7ae2f206d5c1c",
+      "license_path": "LICENSE",
+      "license_sha256": "e3884b252b3bfc045e55be43a34d1e80da070bc6f804ac95bf4660e97d62ebc6",
+      "license_url": "https://github.com/gitleaks/gitleaks/blob/master/LICENSE",
+      "release_tag": "v8.30.1",
+      "release_url": "https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1",
+      "published_at": "2026-03-21T02:17:58Z",
+      "assets": [
+        {
+          "name": "gitleaks_8.30.1_checksums.txt",
+          "size": 999,
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt",
+          "digest": "sha256:061476c21adaf5441516f96f185c1a4706a83cd6329b9b38762271b3d4a52fae"
+        },
+        {
+          "name": "gitleaks_8.30.1_darwin_arm64.tar.gz",
+          "size": 7897593,
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_arm64.tar.gz",
+          "digest": "sha256:b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5"
+        },
+        {
+          "name": "gitleaks_8.30.1_darwin_x64.tar.gz",
+          "size": 8359235,
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_x64.tar.gz",
+          "digest": "sha256:dfe101a4db2255fc85120ac7f3d25e4342c3c20cf749f2c20a18081af1952709"
+        },
+        {
+          "name": "gitleaks_8.30.1_linux_arm64.tar.gz",
+          "size": 7601421,
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_arm64.tar.gz",
+          "digest": "sha256:e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080"
+        },
+        {
+          "name": "gitleaks_8.30.1_linux_armv6.tar.gz",
+          "size": 7515485,
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_armv6.tar.gz",
+          "digest": "sha256:5c2a4ee657a27614e10352bed2b8f1018ef9b05fc6c037cf737776bbe1255766"
+        },
+        {
+          "name": "gitleaks_8.30.1_linux_armv7.tar.gz",
+          "size": 7501622,
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_armv7.tar.gz",
+          "digest": "sha256:8d39f0d94ba0d774b2282187656fb039a2d82893ec1fd6be7d7121aae759a57d"
+        },
+        {
+          "name": "gitleaks_8.30.1_linux_x32.tar.gz",
+          "size": 7634107,
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x32.tar.gz",
+          "digest": "sha256:a87ba11adab22b4d6c6ea28b2da60f09154d5c2fdb44d4b07015d1e0433daecb"
+        },
+        {
+          "name": "gitleaks_8.30.1_linux_x64.tar.gz",
+          "size": 8230402,
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz",
+          "digest": "sha256:551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+        },
+        {
+          "name": "gitleaks_8.30.1_windows_arm64.zip",
+          "size": 7701820,
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_windows_arm64.zip",
+          "digest": "sha256:b95f5e4f5c425cedca7ee203d9afd29597e692c4924a12ed42f970537c72cc0f"
+        },
+        {
+          "name": "gitleaks_8.30.1_windows_x32.zip",
+          "size": 7912746,
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_windows_x32.zip",
+          "digest": "sha256:190ad53db301eec3e90afe3a1a75270768b8ebf89e731345e19421c32c1ae1a1"
+        },
+        {
+          "name": "gitleaks_8.30.1_windows_x64.zip",
+          "size": 8438883,
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_windows_x64.zip",
+          "digest": "sha256:d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e"
+        }
+      ]
+    },
+    {
+      "id": "osv-scanner",
+      "repository": "https://github.com/google/osv-scanner",
+      "checked_at": "2026-10-28T08:35:19.896713+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [],
+      "default_branch": "main",
+      "license_spdx": "Apache-2.0",
+      "head_sha": "666f85749ac142b9ddad8bd17e4c46d39d697465",
+      "license_path": "LICENSE",
+      "license_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "license_url": "https://github.com/google/osv-scanner/blob/main/LICENSE",
+      "release_tag": "v2.7.0",
+      "release_url": "https://github.com/google/osv-scanner/releases/tag/v2.7.0",
+      "published_at": "2026-10-12T01:32:07Z",
+      "assets": [
+        {
+          "name": "multiple.intoto.jsonl",
+          "size": 23623,
+          "url": "https://github.com/google/osv-scanner/releases/download/v2.7.0/multiple.intoto.jsonl",
+          "digest": "sha256:f76e4c6fe6c5f12cb209978418ac42de3da63251bdbef16417645c7660f10ea8"
+        },
+        {
+          "name": "osv-scanner_darwin_amd64",
+          "size": 58881680,
+          "url": "https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_darwin_amd64",
+          "digest": "sha256:e82c5df7ab0a42dff29a1cd0660711447b56b4c0483ff66ad8634df10fd81a45"
+        },
+        {
+          "name": "osv-scanner_darwin_arm64",
+          "size": 55336530,
+          "url": "https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_darwin_arm64",
+          "digest": "sha256:d4926ef8da134332543be276dff157e4c170f99ad91fc48e89448a8816bdf70b"
+        },
+        {
+          "name": "osv-scanner_linux_amd64",
+          "size": 57725088,
+          "url": "https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_linux_amd64",
+          "digest": "sha256:160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b"
+        },
+        {
+          "name": "osv-scanner_linux_arm64",
+          "size": 53870752,
+          "url": "https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_linux_arm64",
+          "digest": "sha256:4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7"
+        },
+        {
+          "name": "osv-scanner_SHA256SUMS",
+          "size": 554,
+          "url": "https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_SHA256SUMS",
+          "digest": "sha256:95d69019bcfe0586eb8f07aad4c56e2f734ee969e8e3e209591f259a1bfde88c"
+        },
+        {
+          "name": "osv-scanner_windows_amd64.exe",
+          "size": 58999296,
+          "url": "https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_windows_amd64.exe",
+          "digest": "sha256:9964ed64ec9a387391eb4cc006ad5c531154821aef29b793e02c448de4686438"
+        },
+        {
+          "name": "osv-scanner_windows_arm64.exe",
+          "size": 54355456,
+          "url": "https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_windows_arm64.exe",
+          "digest": "sha256:3e630381c1f1fd3c9c4d447e6ff2ef6c737083371722773db8337eead0f97962"
+        }
+      ]
+    },
+    {
+      "id": "syft",
+      "repository": "https://github.com/anchore/syft",
+      "checked_at": "2026-10-28T08:35:20.057138+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [],
+      "default_branch": "main",
+      "license_spdx": "Apache-2.0",
+      "head_sha": "fb56f1eef1908ad249a59ea7b2fe913bae16304f",
+      "license_path": "LICENSE",
+      "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "license_url": "https://github.com/anchore/syft/blob/main/LICENSE",
+      "release_tag": "v1.55.0",
+      "release_url": "https://github.com/anchore/syft/releases/tag/v1.55.0",
+      "published_at": "2026-10-19T19:01:26Z",
+      "assets": [
+        {
+          "name": "syft_1.55.0_checksums.txt",
+          "size": 2690,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_checksums.txt",
+          "digest": "sha256:aba5ac8ee870bb93fd3b2058471ffe7e57492ba673b5e0bcbfca92006c2f4dc7"
+        },
+        {
+          "name": "syft_1.55.0_checksums.txt.sigstore.json",
+          "size": 10468,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_checksums.txt.sigstore.json",
+          "digest": "sha256:52f55787eebb09e2d24042481a16663c8f094101370bb7748a2dbaaa32ee839a"
+        },
+        {
+          "name": "syft_1.55.0_darwin_amd64.sbom",
+          "size": 279504,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_darwin_amd64.sbom",
+          "digest": "sha256:5ae210d803dd7752a4fa8645ebfae653eb6dc260c37f25c666d6a9352ec1a545"
+        },
+        {
+          "name": "syft_1.55.0_darwin_amd64.tar.gz",
+          "size": 30658726,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_darwin_amd64.tar.gz",
+          "digest": "sha256:e2e5831cbabaec9a36fe65c34755c1113982c842a685edce3ce0b54a0ded8003"
+        },
+        {
+          "name": "syft_1.55.0_darwin_arm64.sbom",
+          "size": 279506,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_darwin_arm64.sbom",
+          "digest": "sha256:eeb394aab0eb201f5080d644248ad2eec38b6b77534b8463ed16272de34e28a3"
+        },
+        {
+          "name": "syft_1.55.0_darwin_arm64.tar.gz",
+          "size": 28090287,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_darwin_arm64.tar.gz",
+          "digest": "sha256:1217c258bd5eb91ef3189cf22a82e02f9cac07e4ce934350f428e93aff674625"
+        },
+        {
+          "name": "syft_1.55.0_linux_amd64.deb",
+          "size": 31191188,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.deb",
+          "digest": "sha256:070620d4a7ed6a2fbca67dae6cd0622c05354b351e171f325f0a3c9e7f42adab"
+        },
+        {
+          "name": "syft_1.55.0_linux_amd64.rpm",
+          "size": 31113913,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.rpm",
+          "digest": "sha256:59d7787e0c7ca487338427f18e566df89b030f3f0431686c6f7444c115cce4a0"
+        },
+        {
+          "name": "syft_1.55.0_linux_amd64.sbom",
+          "size": 302110,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.sbom",
+          "digest": "sha256:61a6d924be27f362dea10a82c386c64696bc67b0698ba773658ac77e55f7e521"
+        },
+        {
+          "name": "syft_1.55.0_linux_amd64.tar.gz",
+          "size": 31198534,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz",
+          "digest": "sha256:bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d"
+        },
+        {
+          "name": "syft_1.55.0_linux_arm64.deb",
+          "size": 28480064,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_arm64.deb",
+          "digest": "sha256:93f9fccf80850e3fedac7963aa87dc61a01638a45858dd558e6aef655ad938ea"
+        },
+        {
+          "name": "syft_1.55.0_linux_arm64.rpm",
+          "size": 28328792,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_arm64.rpm",
+          "digest": "sha256:d437c942bc81737958e50687c898291e0f60552fb479eb9b92dc18c938d1a173"
+        },
+        {
+          "name": "syft_1.55.0_linux_arm64.sbom",
+          "size": 302112,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_arm64.sbom",
+          "digest": "sha256:7a848c8da63a0df515f95c4d805b90a95bf2521456924c1e58a5326bd448a992"
+        },
+        {
+          "name": "syft_1.55.0_linux_arm64.tar.gz",
+          "size": 28485268,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_arm64.tar.gz",
+          "digest": "sha256:929bd163db2d7cd2255d3bcb8967208079813d7b46b0c952f7b794d8e2c7d304"
+        },
+        {
+          "name": "syft_1.55.0_linux_ppc64le.deb",
+          "size": 28464754,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_ppc64le.deb",
+          "digest": "sha256:e41efc6e4d8b9b8ba6161295246d58042fea946f7f406c3595668ae8d1cadbf3"
+        },
+        {
+          "name": "syft_1.55.0_linux_ppc64le.rpm",
+          "size": 28308939,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_ppc64le.rpm",
+          "digest": "sha256:d245a996a4954183400731212e15ba5e0c4ee3e8defa90fdbbc21a4696b51afa"
+        },
+        {
+          "name": "syft_1.55.0_linux_ppc64le.sbom",
+          "size": 302710,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_ppc64le.sbom",
+          "digest": "sha256:84e3e9ec732cb704e8a73f107e691228948eae94eecba6aade09825653bf4949"
+        },
+        {
+          "name": "syft_1.55.0_linux_ppc64le.tar.gz",
+          "size": 28469576,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_ppc64le.tar.gz",
+          "digest": "sha256:771e7c3b3e91cf9ded39079366ebe5693a16b4f2723cc72c8c6487e457726ea4"
+        },
+        {
+          "name": "syft_1.55.0_linux_riscv64.deb",
+          "size": 29590188,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_riscv64.deb",
+          "digest": "sha256:f8314acc0197f19bd059217dfe329d703836c71ec759eb0c9132bbba6d1b5fed"
+        },
+        {
+          "name": "syft_1.55.0_linux_riscv64.rpm",
+          "size": 29477114,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_riscv64.rpm",
+          "digest": "sha256:b43c611f215999e2ab14618467a633d4610fc13c83e5f08e640d3b86a1d62f9b"
+        },
+        {
+          "name": "syft_1.55.0_linux_riscv64.sbom",
+          "size": 301688,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_riscv64.sbom",
+          "digest": "sha256:eb22cd4aeb303fe9b6cf2f9d5e181aeaf659532dfd908d235e5c9fb79a449aac"
+        },
+        {
+          "name": "syft_1.55.0_linux_riscv64.tar.gz",
+          "size": 29594081,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_riscv64.tar.gz",
+          "digest": "sha256:ad9d50073431bdb9f54a71648eb8ea173021b283b5191b899da392c9abcc3168"
+        },
+        {
+          "name": "syft_1.55.0_linux_s390x.deb",
+          "size": 30119464,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_s390x.deb",
+          "digest": "sha256:415d84523694e108131a2a84508334d7304ed18f46fca48e28d8c2f7ca914f17"
+        },
+        {
+          "name": "syft_1.55.0_linux_s390x.rpm",
+          "size": 30033993,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_s390x.rpm",
+          "digest": "sha256:ab678fa06f3de843c7ec7b139a1a88e5e072ae8fd3eb72341701256bdf524d87"
+        },
+        {
+          "name": "syft_1.55.0_linux_s390x.sbom",
+          "size": 302091,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_s390x.sbom",
+          "digest": "sha256:c8df893dce54929c568da7063b8bb95dd58c21d6df804c1d66bbb222199e4532"
+        },
+        {
+          "name": "syft_1.55.0_linux_s390x.tar.gz",
+          "size": 30124657,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_s390x.tar.gz",
+          "digest": "sha256:614aec958214cf9fc663b401ac648443c078c844603e16bde2733bee1f002b80"
+        },
+        {
+          "name": "syft_1.55.0_windows_amd64.sbom",
+          "size": 288326,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_windows_amd64.sbom",
+          "digest": "sha256:1c3521fba6c3ccd9f90c0b16ba77ef1dc58c7a487d5c5a8c60aaa96095f0533b"
+        },
+        {
+          "name": "syft_1.55.0_windows_amd64.zip",
+          "size": 30025255,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_windows_amd64.zip",
+          "digest": "sha256:ada4c9b93af575f479ce80fce6629897272a2d41f300a14bc49bace020767ca2"
+        },
+        {
+          "name": "syft_1.55.0_windows_arm64.sbom",
+          "size": 288328,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_windows_arm64.sbom",
+          "digest": "sha256:ba0251cbaef7940bdd25e48fe7367aba1beb616d9e90edc73cad155a4e0cd7d1"
+        },
+        {
+          "name": "syft_1.55.0_windows_arm64.zip",
+          "size": 27023664,
+          "url": "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_windows_arm64.zip",
+          "digest": "sha256:f52f7796e41e4d1ae511c228c99239fd09887077336dcb7a8c2aa7046ed7c816"
+        }
+      ]
+    },
+    {
+      "id": "esbuild",
+      "repository": "https://github.com/evanw/esbuild",
+      "checked_at": "2026-10-28T08:35:21.282393+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [],
+      "default_branch": "main",
+      "license_spdx": "MIT",
+      "head_sha": "f6058f8364fe7ab91ca57a83e02577ed74c9cae4",
+      "license_path": "LICENSE.md",
+      "license_sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "license_url": "https://github.com/evanw/esbuild/blob/main/LICENSE.md",
+      "release_tag": "v0.28.2",
+      "release_url": "https://github.com/evanw/esbuild/releases/tag/v0.28.2",
+      "published_at": "2026-08-08T19:58:58Z",
+      "assets": []
+    },
+    {
+      "id": "spec-kit",
+      "repository": "https://github.com/github/spec-kit",
+      "checked_at": "2026-10-28T08:35:21.424570+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [],
+      "default_branch": "main",
+      "license_spdx": "MIT",
+      "head_sha": "222a973f8b8794366680c043fb935a31f71902af",
+      "license_path": "LICENSE",
+      "license_sha256": "2510b446bc1f0cf9702453075d20cd88631e20e5642658edb7325d9c1eb534f7",
+      "license_url": "https://github.com/github/spec-kit/blob/main/LICENSE",
+      "release_tag": "v1.2.4",
+      "release_url": "https://github.com/github/spec-kit/releases/tag/v1.2.4",
+      "published_at": "2026-10-27T18:07:43Z",
+      "assets": []
+    },
+    {
+      "id": "superpowers",
+      "repository": "https://github.com/obra/superpowers",
+      "checked_at": "2026-10-28T08:35:21.619458+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [],
+      "default_branch": "main",
+      "license_spdx": "MIT",
+      "head_sha": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+      "license_path": "LICENSE",
+      "license_sha256": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+      "license_url": "https://github.com/obra/superpowers/blob/main/LICENSE",
+      "release_tag": "v7.0.1",
+      "release_url": "https://github.com/obra/superpowers/releases/tag/v7.0.1",
+      "published_at": "2026-10-21T21:05:11Z",
+      "assets": []
+    },
+    {
+      "id": "jadx",
+      "repository": "https://github.com/skylot/jadx",
+      "checked_at": "2026-10-28T08:35:21.681766+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [],
+      "default_branch": "master",
+      "license_spdx": "Apache-2.0",
+      "head_sha": "71dc1ed810c443174285cbf65b98999851f582e5",
+      "license_path": "LICENSE",
+      "license_sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+      "license_url": "https://github.com/skylot/jadx/blob/master/LICENSE",
+      "release_tag": "v1.5.6",
+      "release_url": "https://github.com/skylot/jadx/releases/tag/v1.5.6",
+      "published_at": "2026-07-10T19:07:35Z",
+      "assets": [
+        {
+          "name": "jadx-1.5.6.zip",
+          "size": 72646741,
+          "url": "https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip",
+          "digest": "sha256:545ea2be9c242511bc145755cf4bda2485ade42966e096f8b4d3da2a230e8974"
+        },
+        {
+          "name": "jadx-gui-1.5.6-win.zip",
+          "size": 72668086,
+          "url": "https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-gui-1.5.6-win.zip",
+          "digest": "sha256:6e070b197d4e40275d10f6559a1661bdd2e2bb325e9ef4181c7ac1286b274d99"
+        },
+        {
+          "name": "jadx-gui-1.5.6-with-jre-win.zip",
+          "size": 99122202,
+          "url": "https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-gui-1.5.6-with-jre-win.zip",
+          "digest": "sha256:56a870460d03d3d6f22eb0908c33e298bc7370c952a6b7fa48c22a187ecd690b"
+        }
+      ]
+    },
+    {
+      "id": "uv",
+      "repository": "https://github.com/astral-sh/uv",
+      "checked_at": "2026-10-28T08:35:22.968322+00:00",
+      "artifact_verification": "NOT_RUN",
+      "errors": [],
+      "default_branch": "main",
+      "license_spdx": "Apache-2.0",
+      "head_sha": "e4c55567ada966de4911513b5c526070e6cddd3f",
+      "license_path": "LICENSE-APACHE",
+      "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "license_url": "https://github.com/astral-sh/uv/blob/main/LICENSE-APACHE",
+      "release_tag": "0.13.6",
+      "release_url": "https://github.com/astral-sh/uv/releases/tag/0.13.6",
+      "published_at": "2026-10-27T00:47:49Z",
+      "assets": [
+        {
+          "name": "dist-manifest.json",
+          "size": 50996,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/dist-manifest.json",
+          "digest": "sha256:c7e6d5f081605b347cafe2ead974d60bc737db01f694ea9ab9a644b66c59c40f"
+        },
+        {
+          "name": "sha256.sum",
+          "size": 1901,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/sha256.sum",
+          "digest": "sha256:e62513e51d02ce9660c60b51a6b4913c11e3a3bb2b5097ba95b7a6b69e5b3383"
+        },
+        {
+          "name": "source.tar.gz",
+          "size": 8983322,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/source.tar.gz",
+          "digest": "sha256:37af57c31f780488bce798b73fcd382949faef72e7a98a7e73fe0f24874ed924"
+        },
+        {
+          "name": "source.tar.gz.sha256",
+          "size": 81,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/source.tar.gz.sha256",
+          "digest": "sha256:0110885c46e5b0c4f8b1d61bafbd27596fe0d4a984bc402a500eec3d521d729c"
+        },
+        {
+          "name": "uv-aarch64-apple-darwin.tar.gz",
+          "size": 14235670,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-aarch64-apple-darwin.tar.gz",
+          "digest": "sha256:60fbd5c8a1ed681845eea28d9d622fcde03c51e91a43465b64a1e17db1ed3472"
+        },
+        {
+          "name": "uv-aarch64-apple-darwin.tar.gz.sha256",
+          "size": 97,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-aarch64-apple-darwin.tar.gz.sha256",
+          "digest": "sha256:b9a4221c795c94d9a9b25deae2822bfbaf4740cb32dd089287c4689566550ac5"
+        },
+        {
+          "name": "uv-aarch64-pc-windows-msvc.zip",
+          "size": 15439263,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-aarch64-pc-windows-msvc.zip",
+          "digest": "sha256:c2426c0c8e28b53d8c440e47a18d96ad4db51e159866c0e81435b196d7f0081c"
+        },
+        {
+          "name": "uv-aarch64-pc-windows-msvc.zip.sha256",
+          "size": 97,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-aarch64-pc-windows-msvc.zip.sha256",
+          "digest": "sha256:ab3e57e66280b499c41a955eaa2560701b223f6c8c5c089e36b21618b76aa9a5"
+        },
+        {
+          "name": "uv-aarch64-unknown-linux-gnu.tar.gz",
+          "size": 15794886,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-aarch64-unknown-linux-gnu.tar.gz",
+          "digest": "sha256:229e194255c7958d86d56e8790d969a6f74736592133f0dfd0076f754c642c1d"
+        },
+        {
+          "name": "uv-aarch64-unknown-linux-gnu.tar.gz.sha256",
+          "size": 102,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-aarch64-unknown-linux-gnu.tar.gz.sha256",
+          "digest": "sha256:cef8689fecf605e7b5b3569692a7fdeccfa04c50dedcce55360c1f3ae3c9c36c"
+        },
+        {
+          "name": "uv-aarch64-unknown-linux-musl.tar.gz",
+          "size": 16993447,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-aarch64-unknown-linux-musl.tar.gz",
+          "digest": "sha256:819692e404d23e5aae6bc44c0e260f1f5492fd1910ab4693b2c650f926dbe800"
+        },
+        {
+          "name": "uv-aarch64-unknown-linux-musl.tar.gz.sha256",
+          "size": 103,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-aarch64-unknown-linux-musl.tar.gz.sha256",
+          "digest": "sha256:2c17584c6f7e5d8cd497b4357f8d2cfc64edee01d7e348c7954e816d3f226070"
+        },
+        {
+          "name": "uv-arm-unknown-linux-musleabihf.tar.gz",
+          "size": 17428835,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-arm-unknown-linux-musleabihf.tar.gz",
+          "digest": "sha256:57ac0f7c04deb42c5d686b4eeeef555c442db6ffea16fe4cbd7adb0384403794"
+        },
+        {
+          "name": "uv-arm-unknown-linux-musleabihf.tar.gz.sha256",
+          "size": 105,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-arm-unknown-linux-musleabihf.tar.gz.sha256",
+          "digest": "sha256:e2ee8b4335fb572e6985c38ab443324140002703dc38e864c20dfc692086afe0"
+        },
+        {
+          "name": "uv-armv7-unknown-linux-gnueabihf.tar.gz",
+          "size": 17052527,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-armv7-unknown-linux-gnueabihf.tar.gz",
+          "digest": "sha256:d00cd4949c4524c934afcfee1aedfa9d337cf4e43be4d6b692ad8d74d0a65562"
+        },
+        {
+          "name": "uv-armv7-unknown-linux-gnueabihf.tar.gz.sha256",
+          "size": 106,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-armv7-unknown-linux-gnueabihf.tar.gz.sha256",
+          "digest": "sha256:163851e2aa51e8ea0d5cf58163df76967628bdf859971fc499a5cfaeed803c3f"
+        },
+        {
+          "name": "uv-armv7-unknown-linux-musleabihf.tar.gz",
+          "size": 17015196,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-armv7-unknown-linux-musleabihf.tar.gz",
+          "digest": "sha256:b215398c886e8cc2cfa282fe346c02025957f8633b75a3d4fd848e0adda4eddd"
+        },
+        {
+          "name": "uv-armv7-unknown-linux-musleabihf.tar.gz.sha256",
+          "size": 107,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-armv7-unknown-linux-musleabihf.tar.gz.sha256",
+          "digest": "sha256:3a19f11e5df0cceb084144d59ccd52a51e1e848a0cb04a19dd118f797cfa56d6"
+        },
+        {
+          "name": "uv-i686-pc-windows-msvc.zip",
+          "size": 16120746,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-i686-pc-windows-msvc.zip",
+          "digest": "sha256:32ceb64db231cbedfd499f7654c72e4c0b564f2846f9e76c0a4a7b2d03d7e67c"
+        },
+        {
+          "name": "uv-i686-pc-windows-msvc.zip.sha256",
+          "size": 94,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-i686-pc-windows-msvc.zip.sha256",
+          "digest": "sha256:c6f3dbbbdc86aaedd0aa3d87a9f6a098830239bf552721583d6ce57c591bbc2a"
+        },
+        {
+          "name": "uv-i686-unknown-linux-gnu.tar.gz",
+          "size": 17955325,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-i686-unknown-linux-gnu.tar.gz",
+          "digest": "sha256:665ea831c38d342900950e606beb2ccc37b7ba0fcefc37b814eb4b076305f2b6"
+        },
+        {
+          "name": "uv-i686-unknown-linux-gnu.tar.gz.sha256",
+          "size": 99,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-i686-unknown-linux-gnu.tar.gz.sha256",
+          "digest": "sha256:da42a2eb92cc5f67daf4a3a9219267714d3ad8f9b9339b581b33ca757e18cb1f"
+        },
+        {
+          "name": "uv-i686-unknown-linux-musl.tar.gz",
+          "size": 17295552,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-i686-unknown-linux-musl.tar.gz",
+          "digest": "sha256:de3a015c4b0fce63c178ae4fa95c94c873adfd92fa1e258c6a2a94e529812629"
+        },
+        {
+          "name": "uv-i686-unknown-linux-musl.tar.gz.sha256",
+          "size": 100,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-i686-unknown-linux-musl.tar.gz.sha256",
+          "digest": "sha256:60ac48f06254efc15311e7a90971c9305cff3ea98e01d0eee9134447e94b8d9b"
+        },
+        {
+          "name": "uv-installer.ps1",
+          "size": 23285,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-installer.ps1",
+          "digest": "sha256:d00580051699bee58a2e2d9b925f45788b35f7e0fff7966fd5bedfc3c547dc7d"
+        },
+        {
+          "name": "uv-installer.sh",
+          "size": 71300,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-installer.sh",
+          "digest": "sha256:f7a56e7afaec49a3bcbc3ac3cdbe917e7c6ce30e0d815308a12e531aa5ef23b7"
+        },
+        {
+          "name": "uv-powerpc64le-unknown-linux-gnu.tar.gz",
+          "size": 19175432,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-powerpc64le-unknown-linux-gnu.tar.gz",
+          "digest": "sha256:3b2847185ec2946fcc928500efef7e3e74c255d3be6f2cb435081a84885d8c6c"
+        },
+        {
+          "name": "uv-powerpc64le-unknown-linux-gnu.tar.gz.sha256",
+          "size": 106,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-powerpc64le-unknown-linux-gnu.tar.gz.sha256",
+          "digest": "sha256:a0c3089b282eef503c1a87dd04b611e87fe9bb2cc82f288c2abf726e99c56cb8"
+        },
+        {
+          "name": "uv-riscv64gc-unknown-linux-gnu.tar.gz",
+          "size": 17426101,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-riscv64gc-unknown-linux-gnu.tar.gz",
+          "digest": "sha256:517052603ed46483b59d8875c9c61a577946b8f493c73e4339e45e7b119171d0"
+        },
+        {
+          "name": "uv-riscv64gc-unknown-linux-gnu.tar.gz.sha256",
+          "size": 104,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-riscv64gc-unknown-linux-gnu.tar.gz.sha256",
+          "digest": "sha256:9517bc44aa3300ddf9c0cf03b5bc52364888b07134b240c07c8bf80680bcea64"
+        },
+        {
+          "name": "uv-riscv64gc-unknown-linux-musl.tar.gz",
+          "size": 17530724,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-riscv64gc-unknown-linux-musl.tar.gz",
+          "digest": "sha256:659a95dc6aee3ecf86742a08d8ca6c6261422121cbd41decc0042f5a71af6305"
+        },
+        {
+          "name": "uv-riscv64gc-unknown-linux-musl.tar.gz.sha256",
+          "size": 105,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-riscv64gc-unknown-linux-musl.tar.gz.sha256",
+          "digest": "sha256:f6da206a11fbdc0a301b79d3a7d72eb0af073722c339cd4697e8f80cf5c8fe30"
+        },
+        {
+          "name": "uv-s390x-unknown-linux-gnu.tar.gz",
+          "size": 19132306,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-s390x-unknown-linux-gnu.tar.gz",
+          "digest": "sha256:fb56d731308aa5c7718059d71afcb14d9a933a974997cee3d4eb5d06fc462a4b"
+        },
+        {
+          "name": "uv-s390x-unknown-linux-gnu.tar.gz.sha256",
+          "size": 100,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-s390x-unknown-linux-gnu.tar.gz.sha256",
+          "digest": "sha256:46a2ad8eea2959d8d7d8f35cabaab9e4dccc83d39c1bbed3578813002949495e"
+        },
+        {
+          "name": "uv-x86_64-apple-darwin.tar.gz",
+          "size": 17004934,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-apple-darwin.tar.gz",
+          "digest": "sha256:63ba17fdda55ad1a230d4b37fc6017ffa10c23688c83818bd3bfdf914c652a02"
+        },
+        {
+          "name": "uv-x86_64-apple-darwin.tar.gz.sha256",
+          "size": 96,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-apple-darwin.tar.gz.sha256",
+          "digest": "sha256:478b1c01d725f11bc83c935ca3d5c0776f624d3b6a7ca6bd06f9c474739e4434"
+        },
+        {
+          "name": "uv-x86_64-pc-windows-msvc.zip",
+          "size": 15239500,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-pc-windows-msvc.zip",
+          "digest": "sha256:a2a8820d5eea32f08ef467ef3b7f66883a9b076d5737a2fc2fbb5f458d1bb50f"
+        },
+        {
+          "name": "uv-x86_64-pc-windows-msvc.zip.sha256",
+          "size": 96,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-pc-windows-msvc.zip.sha256",
+          "digest": "sha256:2134775e8fde27f8ce7a24b52f7335af765b8638f255ea46022ce3231e695eee"
+        },
+        {
+          "name": "uv-x86_64-unknown-linux-gnu.tar.gz",
+          "size": 16799024,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-unknown-linux-gnu.tar.gz",
+          "digest": "sha256:f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645"
+        },
+        {
+          "name": "uv-x86_64-unknown-linux-gnu.tar.gz.sha256",
+          "size": 101,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-unknown-linux-gnu.tar.gz.sha256",
+          "digest": "sha256:6bf0bf9bf50fd7101afc50a10c568502a23967764af0b0efd9be522a41a95af0"
+        },
+        {
+          "name": "uv-x86_64-unknown-linux-musl.tar.gz",
+          "size": 18383831,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-unknown-linux-musl.tar.gz",
+          "digest": "sha256:5d61f26b6c7213779eda90edc6971ea6b0b796bfb8d49a574c8ad69b59838548"
+        },
+        {
+          "name": "uv-x86_64-unknown-linux-musl.tar.gz.sha256",
+          "size": 102,
+          "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-unknown-linux-musl.tar.gz.sha256",
+          "digest": "sha256:9c8d26438d1ac4efba8b4809a3ac988d9a04a5a6fc0573e4c6dc94fe45c98529"
+        }
+      ]
+    }
+  ],
+  "inventory_basis": "integrations.initial.json (preserved initial inventory)",
+  "audited_inventory_sha256": "411b7297e36ff471baa096f0261063120708e0bbe6b03883d5e69d30ee040c34",
+  "continuation_audit": "docs/engineering/v10/continuation-upstream-audit.json",
+  "phase3_inventory_sha256": "3a33b139dba0fd8c6e491fa6c57b51231c4c9613b8bf342d64b2063dd410204b",
+  "phase3_archive_review": "docs/engineering/v10/phase3-security-archive-review.json"
+}

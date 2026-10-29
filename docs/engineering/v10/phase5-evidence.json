@@ -1,0 +1,1837 @@
+{
+  "status": "BLOCKED",
+  "branch": "feat/v10-oss-unified-20261028",
+  "head": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+  "initial_tree": "dirty; continued by explicit task authorization",
+  "delivery": "NOT_RUN; no commit/push/merge/deploy/release/production/Play action",
+  "image_size": "BLOCKED; verified patched artifact passes probes, owning Expo SDK54 Metro still uses 1.2.1",
+  "zod": "FIXED_SUPPORTED_PARENT; Expo54.0.38 removes MCP/Zod dependency",
+  "pyo3": "BLOCKED_NO_COMPILER; verified artifact and abi3 feature only",
+  "artifacts": [
+    {
+      "package": "image-size",
+      "version": "2.0.4",
+      "url": "https://registry.npmjs.org/image-size/-/image-size-2.0.4.tgz",
+      "integrity": "sha512-QRUkFFsRV/6fuESxb9Vkq+a0LkSrgKXuc2NEqfikiXxxN/G3tjWt5EVUlMaImRBZRZK/jRBEbYvpPYZL8t08Zw==",
+      "sha256": "7562a60f2316539588bd49f35213cf3e2b74229dc50ee8532b42c9adf157390a"
+    },
+    {
+      "package": "zod",
+      "version": "4.6.6",
+      "url": "https://registry.npmjs.org/zod/-/zod-4.6.6.tgz",
+      "integrity": "sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==",
+      "sha256": "312553620ac82cbb25d505100fbb41c1e219b3cd6979cf93c3a1b4dd5b79e039"
+    },
+    {
+      "package": "mcp",
+      "version": "0.1.0",
+      "url": "https://registry.npmjs.org/@expo/mcp-tunnel/-/mcp-tunnel-0.1.0.tgz",
+      "integrity": "sha512-rJ6hl0GnIZj9+ssaJvFsC7fwyrmndcGz+RGFzu+0gnlm78X01957yjtHgjcmnQAgL5hWEOR6pkT0ijY5nU5AWw==",
+      "sha256": "660b4a9739b37fb6d9e47a56ffdd1974030323247bd03d11c01d5c21810749ae"
+    },
+    {
+      "package": "metro",
+      "version": "0.83.8",
+      "url": "https://registry.npmjs.org/metro/-/metro-0.83.8.tgz",
+      "integrity": "sha512-ZbJDJCDlvv0O3QHVbhZkyP2/DtebfEoDZ3wVyYHgu6Uoy6DmmE/bis6lIDBYh+kWPuaueJDegyutPjkIBLtZDQ==",
+      "sha256": "81d624afec660127f3162e89b09a145186dc22f25715c62d36a871c9ca9ff4eb"
+    },
+    {
+      "package": "mcp",
+      "version": "0.2.4",
+      "url": "https://registry.npmjs.org/@expo/mcp-tunnel/-/mcp-tunnel-0.2.4.tgz",
+      "integrity": "sha512-hxFzqdUNKCt+8pbGV3oGcd/aBNA1mmhwh3DSeXoHReypxzsiLYLITJs1OctglaPecfMA9qFb+6z/RIkRSf5S4g==",
+      "sha256": "d8aa53d93350b3fecec97ff93ff46f14856f44c30738f5f2dd34e28e32211c26"
+    },
+    {
+      "package": "mcp",
+      "version": "0.3.1",
+      "url": "https://registry.npmjs.org/@expo/mcp-tunnel/-/mcp-tunnel-0.3.1.tgz",
+      "integrity": "sha512-WDey01SbZ7XvRKZYmb0+lUk8Z1kBLhdn9jPakbFxRHueDi+/fOwXNERhTh/MOnFehKbR/TduWBw6nBkziYCHHQ==",
+      "sha256": "0095070079aca93a3f7da12dac4a46a712cea785ac62253273888389cdb56ead"
+    }
+  ],
+  "pyo3_artifact": {
+    "version": "0.29.0",
+    "checksum": "cd274650b21d4bfc26a0a47587962c1edb425f69287324355cd040c3ea66071c",
+    "rust_version": "1.83",
+    "compile": "BLOCKED_NO_CARGO_OR_RUSTC"
+  },
+  "host": {
+    "cargo_termux": false,
+    "rustc_termux": false,
+    "ANDROID_HOME_configured": false,
+    "ANDROID_SDK_ROOT_configured": false,
+    "local_properties": false,
+    "android_gradle_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "proot_probe_exit": 0,
+    "cargo_proot": false,
+    "rustc_proot": false,
+    "sdk_default_proot": false,
+    "sdk_default_termux": false
+  },
+  "expo_acceptance": [
+    {
+      "example": "rust-expo-jsi",
+      "stage": "config",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-jsi/node_modules/expo/bin/cli",
+        "config",
+        "--type",
+        "public",
+        "--json"
+      ]
+    },
+    {
+      "example": "rust-expo-jsi",
+      "stage": "prebuild",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-jsi/node_modules/expo/bin/cli",
+        "prebuild",
+        "--platform",
+        "android",
+        "--no-install"
+      ]
+    },
+    {
+      "example": "rust-expo-jsi",
+      "stage": "export-js",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-jsi/node_modules/expo/bin/cli",
+        "export",
+        "--platform",
+        "android",
+        "--max-workers",
+        "2",
+        "--no-bytecode"
+      ]
+    },
+    {
+      "example": "rust-expo-turbo",
+      "stage": "config",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-turbo/node_modules/expo/bin/cli",
+        "config",
+        "--type",
+        "public",
+        "--json"
+      ]
+    },
+    {
+      "example": "rust-expo-turbo",
+      "stage": "prebuild",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-turbo/node_modules/expo/bin/cli",
+        "prebuild",
+        "--platform",
+        "android",
+        "--no-install"
+      ]
+    },
+    {
+      "example": "rust-expo-turbo",
+      "stage": "export-js",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-turbo/node_modules/expo/bin/cli",
+        "export",
+        "--platform",
+        "android",
+        "--max-workers",
+        "2",
+        "--no-bytecode"
+      ]
+    }
+  ],
+  "expo_first_fixture_failures": [
+    {
+      "example": "rust-expo-jsi",
+      "stage": "config",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-jsi/node_modules/expo/bin/cli",
+        "config",
+        "--type",
+        "public",
+        "--json"
+      ]
+    },
+    {
+      "example": "rust-expo-jsi",
+      "stage": "prebuild",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-jsi/node_modules/expo/bin/cli",
+        "prebuild",
+        "--platform",
+        "android",
+        "--no-install"
+      ]
+    },
+    {
+      "example": "rust-expo-jsi",
+      "stage": "export",
+      "exit": 1,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-jsi/node_modules/expo/bin/cli",
+        "export",
+        "--platform",
+        "android",
+        "--max-workers",
+        "2"
+      ]
+    },
+    {
+      "example": "rust-expo-turbo",
+      "stage": "config",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-turbo/node_modules/expo/bin/cli",
+        "config",
+        "--type",
+        "public",
+        "--json"
+      ]
+    },
+    {
+      "example": "rust-expo-turbo",
+      "stage": "prebuild",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-turbo/node_modules/expo/bin/cli",
+        "prebuild",
+        "--platform",
+        "android",
+        "--no-install"
+      ]
+    },
+    {
+      "example": "rust-expo-turbo",
+      "stage": "export",
+      "exit": 1,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-turbo/node_modules/expo/bin/cli",
+        "export",
+        "--platform",
+        "android",
+        "--max-workers",
+        "2"
+      ]
+    }
+  ],
+  "expo_hermes_host_failure": [
+    {
+      "example": "rust-expo-jsi",
+      "stage": "config",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-jsi/node_modules/expo/bin/cli",
+        "config",
+        "--type",
+        "public",
+        "--json"
+      ]
+    },
+    {
+      "example": "rust-expo-jsi",
+      "stage": "prebuild",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-jsi/node_modules/expo/bin/cli",
+        "prebuild",
+        "--platform",
+        "android",
+        "--no-install"
+      ]
+    },
+    {
+      "example": "rust-expo-jsi",
+      "stage": "export",
+      "exit": 1,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-jsi/node_modules/expo/bin/cli",
+        "export",
+        "--platform",
+        "android",
+        "--max-workers",
+        "2"
+      ]
+    },
+    {
+      "example": "rust-expo-turbo",
+      "stage": "config",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-turbo/node_modules/expo/bin/cli",
+        "config",
+        "--type",
+        "public",
+        "--json"
+      ]
+    },
+    {
+      "example": "rust-expo-turbo",
+      "stage": "prebuild",
+      "exit": 0,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-turbo/node_modules/expo/bin/cli",
+        "prebuild",
+        "--platform",
+        "android",
+        "--no-install"
+      ]
+    },
+    {
+      "example": "rust-expo-turbo",
+      "stage": "export",
+      "exit": 1,
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/rust-expo-turbo/node_modules/expo/bin/cli",
+        "export",
+        "--platform",
+        "android",
+        "--max-workers",
+        "2"
+      ]
+    }
+  ],
+  "native_fixture_inventory": [
+    {
+      "example": "rust-expo-jsi",
+      "architecture": "false",
+      "files": [
+        "android/app/src/main/cpp/RustJsi.cpp",
+        "android/app/src/main/java/com/example/rustjsi/MainApplication.kt",
+        "android/app/src/main/java/com/appforge/rustjsi/RustJsiModule.java",
+        "android/app/src/main/java/com/appforge/rustjsi/RustJsiPackage.java"
+      ]
+    },
+    {
+      "example": "rust-expo-turbo",
+      "architecture": "true",
+      "files": [
+        "android/app/src/main/jni/RustTurboModule.h",
+        "android/app/src/main/jni/RustTurboModule.cpp",
+        "android/app/src/main/java/com/example/rustjsi/MainApplication.kt"
+      ]
+    }
+  ],
+  "image_baseline_negative_control": {
+    "version": "1.2.1",
+    "result": "TIMEOUT",
+    "timeout_seconds": 1
+  },
+  "package_changes": {
+    "rust-expo-jsi": [
+      {
+        "path": "node_modules/@expo/code-signing-certificates",
+        "before": "0.0.5",
+        "after": "0.0.6",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/devtools",
+        "before": "0.1.7",
+        "after": "0.1.8",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/fingerprint",
+        "before": "0.15.3",
+        "after": "0.15.5",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/fingerprint/node_modules/glob",
+        "before": "10.5.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@expo/fingerprint/node_modules/lru-cache",
+        "before": "10.4.3",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@expo/fingerprint/node_modules/path-scurry",
+        "before": "1.11.1",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@expo/mcp-tunnel",
+        "before": "0.1.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@expo/mcp-tunnel/node_modules/ws",
+        "before": "8.22.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@expo/metro",
+        "before": "54.1.0",
+        "after": "54.2.0",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/@babel/code-frame",
+        "before": null,
+        "after": "7.29.7",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/ansi-styles",
+        "before": null,
+        "after": "4.3.0",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/chalk",
+        "before": null,
+        "after": "4.1.2",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/color-convert",
+        "before": null,
+        "after": "2.0.1",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/color-name",
+        "before": null,
+        "after": "1.1.4",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/has-flag",
+        "before": null,
+        "after": "4.0.0",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-babel-transformer",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-cache",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-cache-key",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-config",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-core",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-file-map",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-minify-terser",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-resolver",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-runtime",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-source-map",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-symbolicate",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-transform-plugins",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-transform-worker",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/ob1",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/supports-color",
+        "before": null,
+        "after": "7.2.0",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@isaacs/cliui",
+        "before": "8.0.2",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@isaacs/cliui/node_modules/ansi-regex",
+        "before": "6.4.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@isaacs/cliui/node_modules/ansi-styles",
+        "before": "6.2.3",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@isaacs/cliui/node_modules/emoji-regex",
+        "before": "9.2.2",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@isaacs/cliui/node_modules/string-width",
+        "before": "5.1.2",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@isaacs/cliui/node_modules/strip-ansi",
+        "before": "7.2.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@isaacs/cliui/node_modules/wrap-ansi",
+        "before": "8.1.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@pkgjs/parseargs",
+        "before": "0.11.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/agent-cli-detector",
+        "before": null,
+        "after": "0.1.7",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/brace-expansion",
+        "before": "2.1.7",
+        "after": "5.0.12",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/brace-expansion/node_modules/balanced-match",
+        "before": null,
+        "after": "4.0.4",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/eastasianwidth",
+        "before": "0.2.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/expo",
+        "before": "54.0.22",
+        "after": "54.0.38",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/expo-modules-autolinking",
+        "before": "3.0.20",
+        "after": "3.0.28",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/expo-modules-core",
+        "before": "3.0.24",
+        "after": "3.0.30",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/expo/node_modules/@expo/cli",
+        "before": "54.0.15",
+        "after": "54.0.28",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/expo/node_modules/@expo/metro-config",
+        "before": "54.0.8",
+        "after": "54.0.17",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/expo/node_modules/brace-expansion",
+        "before": null,
+        "after": "2.1.7",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/expo/node_modules/glob",
+        "before": "10.5.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/expo/node_modules/lru-cache",
+        "before": "10.4.3",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/expo/node_modules/minimatch",
+        "before": null,
+        "after": "9.0.9",
+        "license": "ISC"
+      },
+      {
+        "path": "node_modules/expo/node_modules/path-scurry",
+        "before": "1.11.1",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/expo/node_modules/picomatch",
+        "before": "3.0.2",
+        "after": "4.0.7",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/foreground-child",
+        "before": "3.3.1",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/foreground-child/node_modules/signal-exit",
+        "before": "4.1.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/glob/node_modules/balanced-match",
+        "before": "4.0.4",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/glob/node_modules/brace-expansion",
+        "before": "5.0.12",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/glob/node_modules/minimatch",
+        "before": "10.2.6",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/jackspeak",
+        "before": "3.4.3",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/lan-network",
+        "before": "0.1.7",
+        "after": "0.2.1",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/minimatch",
+        "before": "9.0.9",
+        "after": "10.2.6",
+        "license": "BlueOak-1.0.0"
+      },
+      {
+        "path": "node_modules/package-json-from-dist",
+        "before": "1.0.1",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/string-width-cjs",
+        "before": "4.2.3",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/strip-ansi-cjs",
+        "before": "6.0.1",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/wrap-ansi-cjs",
+        "before": "7.0.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/wrap-ansi-cjs/node_modules/ansi-styles",
+        "before": "4.3.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/wrap-ansi-cjs/node_modules/color-convert",
+        "before": "2.0.1",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/wrap-ansi-cjs/node_modules/color-name",
+        "before": "1.1.4",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/zod",
+        "before": "3.25.76",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/zod-to-json-schema",
+        "before": "3.25.2",
+        "after": null,
+        "license": null
+      }
+    ],
+    "rust-expo-turbo": [
+      {
+        "path": "node_modules/@expo/code-signing-certificates",
+        "before": "0.0.5",
+        "after": "0.0.6",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/devtools",
+        "before": "0.1.7",
+        "after": "0.1.8",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/fingerprint",
+        "before": "0.15.3",
+        "after": "0.15.5",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/fingerprint/node_modules/glob",
+        "before": "10.5.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@expo/fingerprint/node_modules/lru-cache",
+        "before": "10.4.3",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@expo/fingerprint/node_modules/path-scurry",
+        "before": "1.11.1",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@expo/mcp-tunnel",
+        "before": "0.1.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@expo/mcp-tunnel/node_modules/ws",
+        "before": "8.22.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@expo/metro",
+        "before": "54.1.0",
+        "after": "54.2.0",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/@babel/code-frame",
+        "before": null,
+        "after": "7.29.7",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/ansi-styles",
+        "before": null,
+        "after": "4.3.0",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/chalk",
+        "before": null,
+        "after": "4.1.2",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/color-convert",
+        "before": null,
+        "after": "2.0.1",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/color-name",
+        "before": null,
+        "after": "1.1.4",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/has-flag",
+        "before": null,
+        "after": "4.0.0",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-babel-transformer",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-cache",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-cache-key",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-config",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-core",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-file-map",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-minify-terser",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-resolver",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-runtime",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-source-map",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-symbolicate",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-transform-plugins",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/metro-transform-worker",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/ob1",
+        "before": null,
+        "after": "0.83.3",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@expo/metro/node_modules/supports-color",
+        "before": null,
+        "after": "7.2.0",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/@isaacs/cliui",
+        "before": "8.0.2",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@isaacs/cliui/node_modules/ansi-regex",
+        "before": "6.4.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@isaacs/cliui/node_modules/ansi-styles",
+        "before": "6.2.3",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@isaacs/cliui/node_modules/emoji-regex",
+        "before": "9.2.2",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@isaacs/cliui/node_modules/string-width",
+        "before": "5.1.2",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@isaacs/cliui/node_modules/strip-ansi",
+        "before": "7.2.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@isaacs/cliui/node_modules/wrap-ansi",
+        "before": "8.1.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/@pkgjs/parseargs",
+        "before": "0.11.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/agent-cli-detector",
+        "before": null,
+        "after": "0.1.7",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/brace-expansion",
+        "before": "2.1.7",
+        "after": "5.0.12",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/brace-expansion/node_modules/balanced-match",
+        "before": null,
+        "after": "4.0.4",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/eastasianwidth",
+        "before": "0.2.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/expo",
+        "before": "54.0.22",
+        "after": "54.0.38",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/expo-modules-autolinking",
+        "before": "3.0.20",
+        "after": "3.0.28",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/expo-modules-core",
+        "before": "3.0.24",
+        "after": "3.0.30",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/expo/node_modules/@expo/cli",
+        "before": "54.0.15",
+        "after": "54.0.28",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/expo/node_modules/@expo/metro-config",
+        "before": "54.0.8",
+        "after": "54.0.17",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/expo/node_modules/brace-expansion",
+        "before": null,
+        "after": "2.1.7",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/expo/node_modules/glob",
+        "before": "10.5.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/expo/node_modules/lru-cache",
+        "before": "10.4.3",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/expo/node_modules/minimatch",
+        "before": null,
+        "after": "9.0.9",
+        "license": "ISC"
+      },
+      {
+        "path": "node_modules/expo/node_modules/path-scurry",
+        "before": "1.11.1",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/expo/node_modules/picomatch",
+        "before": "3.0.2",
+        "after": "4.0.7",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/foreground-child",
+        "before": "3.3.1",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/foreground-child/node_modules/signal-exit",
+        "before": "4.1.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/glob/node_modules/balanced-match",
+        "before": "4.0.4",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/glob/node_modules/brace-expansion",
+        "before": "5.0.12",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/glob/node_modules/minimatch",
+        "before": "10.2.6",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/jackspeak",
+        "before": "3.4.3",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/lan-network",
+        "before": "0.1.7",
+        "after": "0.2.1",
+        "license": "MIT"
+      },
+      {
+        "path": "node_modules/minimatch",
+        "before": "9.0.9",
+        "after": "10.2.6",
+        "license": "BlueOak-1.0.0"
+      },
+      {
+        "path": "node_modules/package-json-from-dist",
+        "before": "1.0.1",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/string-width-cjs",
+        "before": "4.2.3",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/strip-ansi-cjs",
+        "before": "6.0.1",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/wrap-ansi-cjs",
+        "before": "7.0.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/wrap-ansi-cjs/node_modules/ansi-styles",
+        "before": "4.3.0",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/wrap-ansi-cjs/node_modules/color-convert",
+        "before": "2.0.1",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/wrap-ansi-cjs/node_modules/color-name",
+        "before": "1.1.4",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/zod",
+        "before": "3.25.76",
+        "after": null,
+        "license": null
+      },
+      {
+        "path": "node_modules/zod-to-json-schema",
+        "before": "3.25.2",
+        "after": null,
+        "license": null
+      }
+    ]
+  },
+  "verification_wrapper": [
+    {
+      "stage": "quality-proot",
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/bin/bash",
+        "-c",
+        "cd /data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo && /data/data/com.termux/files/usr/bin/node --test quality/tests/*.test.js"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "v9",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v9_*.py"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "v10-python",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v10_oss_gate.py"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "windows",
+      "command": "TMPDIR=$PREFIX/tmp npm --prefix windows-host test",
+      "exit": 0
+    },
+    {
+      "stage": "stability",
+      "command": [
+        "sh",
+        "scripts/appforge-stability-gate",
+        "ci"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "snapshot",
+      "command": [
+        "python3",
+        "scripts/generate-second-brain-snapshot.py",
+        "--check"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "wiki",
+      "command": [
+        "node",
+        "scripts/wiki-audit.mjs",
+        "--changed-source-check"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "gitleaks-controls",
+      "command": [
+        "python3",
+        "quality/tests/v10_gitleaks_real_scanner.py",
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks"
+      ],
+      "exit": 0
+    },
+    {
+      "stage": "osv",
+      "command": [
+        "python3",
+        "quality/tests/v10_osv_real_scanner.py",
+        "phase5-after"
+      ],
+      "exit": 1
+    }
+  ],
+  "wrapper_osv_failure": "Reused existing phase5-after directory: rejected before scanning; fresh phase5-final is authoritative",
+  "osv": {
+    "scanner_version": "2.7.0",
+    "scanner_sha256": "4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7",
+    "executed": true,
+    "database_verified": true,
+    "network_boundary": "inherited kernel seccomp; IP socket probes denied inside PRoot exec child",
+    "security_tests": {
+      "missing_database": "PASS",
+      "corrupt_database": "PASS",
+      "known_vulnerable_dependency": "PASS",
+      "kernel_network_denial": "PASS"
+    },
+    "fixture_advisories": [
+      "GHSA-29mw-wpgm-hmr9",
+      "GHSA-35jh-r3h4-6jhm",
+      "GHSA-f23m-r3pf-42rh",
+      "GHSA-r5fr-rjxr-66jc",
+      "GHSA-xxjr-mmjv-4gpg"
+    ],
+    "project_exit": 1,
+    "source_manifest_count": 22,
+    "package_occurrences": 1987,
+    "unique_dependencies": 925,
+    "vulnerable_package_occurrences": 8,
+    "advisory_ids": [
+      "GHSA-36hh-v3qg-5jq4",
+      "GHSA-5p2g-fcmc-qvqq",
+      "GHSA-ch52-4w7c-c8xp",
+      "GHSA-chgr-c6px-7xpp",
+      "GHSA-gcqx-w48m-w2h4",
+      "GHSA-gh4j-gqv2-49f6",
+      "GHSA-pph8-gcv7-4qj5",
+      "GHSA-w3rx-r6r6-pgpr",
+      "RUSTSEC-2025-0020",
+      "RUSTSEC-2026-0177"
+    ],
+    "unique_advisory_count": 10,
+    "ecosystem_counts": {
+      "Maven": 2,
+      "crates.io": 30,
+      "npm": 893
+    },
+    "source_inventory": [
+      {
+        "path": "android-app/app/src/main/assets/device-build/python-template/app/requirements.txt",
+        "sha256": "f3fd3f4c755175e91daeaef06739feeea2fac52ab1cd242b61457e078f3bd6b9",
+        "bytes": 115
+      },
+      {
+        "path": "examples/rust-android-jni/Cargo.lock",
+        "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-android-jni/app/gradle.lockfile",
+        "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+        "bytes": 2045
+      },
+      {
+        "path": "examples/rust-expo-jsi/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-expo-jsi/package-lock.json",
+        "sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+        "bytes": 347821
+      },
+      {
+        "path": "examples/rust-expo-turbo/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-expo-turbo/package-lock.json",
+        "sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+        "bytes": 347821
+      },
+      {
+        "path": "examples/rust-git-bundle/Cargo.lock",
+        "sha256": "9aa6a937765f8ba183ef85da5f3d3369b5714b892521450972ca551743d4289f",
+        "bytes": 287
+      },
+      {
+        "path": "examples/rust-node-web/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-node-web/package-lock.json",
+        "sha256": "d8ee3b0b08910d198607730ea769830d3b8833e9c80917517396a10a98b3cd83",
+        "bytes": 158
+      },
+      {
+        "path": "examples/rust-python/Cargo.lock",
+        "sha256": "a2eb20f77275730b4cd7b43e8eb927bd142db220710fe8a7628d9253840fb0ec",
+        "bytes": 4693
+      },
+      {
+        "path": "examples/rust-python/requirements.txt",
+        "sha256": "18410d5f94e7f23c97bde82e96c8285dd5857efa36fad5dcb5745191cbbb4fb3",
+        "bytes": 86
+      },
+      {
+        "path": "examples/rust-react-native-turbo/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-react-native-turbo/package-lock.json",
+        "sha256": "949e0d9754a53076cc8227e2f6a9ce81ca8b0a7baa0d9219760334fef862bf74",
+        "bytes": 264449
+      },
+      {
+        "path": "examples/rust-universal/android/Cargo.lock",
+        "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-universal/android/app/gradle.lockfile",
+        "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+        "bytes": 2045
+      },
+      {
+        "path": "examples/rust-universal/web/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-wasm/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-windows-dll/Cargo.lock",
+        "sha256": "5210090e19be6d2eb1861a1c36e2943d9f098f29b7bcc9d37de70d70a6e1abb0",
+        "bytes": 173
+      },
+      {
+        "path": "examples/rust-windows-native/Cargo.lock",
+        "sha256": "7a8de802df14e5943dc2c58ef07053898dbb93a41342a4e71e703ab5658b568b",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-workspace/Cargo.lock",
+        "sha256": "98c53fc7d5b813dac1a9e2731e2d447e0415bd70cd283afecab27b828bbc1e63",
+        "bytes": 261
+      },
+      {
+        "path": "windows-host/package-lock.json",
+        "sha256": "df9711e4ececc9c9bf7f0941680f5ea062f042fdec483d578d4d4e614b9d2f76",
+        "bytes": 127969
+      }
+    ],
+    "commands": [
+      {
+        "name": "missing",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/missing",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/missing.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/vulnerable"
+        ],
+        "exit": 127,
+        "log_sha256": "567c4818a127ddcebe47c17a8dc03da1485b531a52c6374ab0710a6aa836ecdf"
+      },
+      {
+        "name": "corrupt",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/corrupt",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/corrupt.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/vulnerable"
+        ],
+        "exit": 127,
+        "log_sha256": "565f8f2353670f0b3f9b553c723429246ea63a4406776178d8dce97cc98298b7"
+      },
+      {
+        "name": "positive",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/database",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/positive.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/vulnerable"
+        ],
+        "exit": 1,
+        "log_sha256": "be8d20165d06d8fc7787cca2c3bb8e349796a16e0ce838168e81f3368bf2fb27"
+      },
+      {
+        "name": "project",
+        "command": [
+          "/data/data/com.termux/files/usr/bin/python3",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10_osv_offline_exec.py",
+          "proot-distro",
+          "login",
+          "ubuntu",
+          "--bind",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+          "--",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin:/bin",
+          "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/home",
+          "TMPDIR=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/home",
+          "GOMAXPROCS=2",
+          "OSV_SCALIBR_LOCAL_DB_CACHE_DIRECTORY=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/database",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/osv-scanner",
+          "scan",
+          "source",
+          "--offline",
+          "--no-resolve",
+          "--no-call-analysis=go",
+          "--no-call-analysis=rust",
+          "--all-packages",
+          "--all-vulns",
+          "--format=json",
+          "--output-file=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/project.json",
+          "--no-ignore",
+          "--recursive",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/osv/phase5-final/source"
+        ],
+        "exit": 1,
+        "log_sha256": "28229265f46fb8de2b80bf1a9174f8fbb8bc1ab7c20dd75d450b35ca8c4dedca"
+      }
+    ]
+  },
+  "remaining_high": 4,
+  "remaining_no_fixed_event": 2,
+  "gitleaks": {
+    "status": "PASS",
+    "exit": 0,
+    "command": [
+      "proot-distro",
+      "login",
+      "ubuntu",
+      "--bind",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+      "--",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks",
+      "dir",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/source",
+      "--config",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/quality/tools/v10-gitleaks.toml",
+      "--redact=100",
+      "--no-banner",
+      "--report-format=json",
+      "--report-path",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase5/gitleaks-source.json"
+    ],
+    "file_count": 1326,
+    "binary_sha256": "00e91bbe655bd7c47753e8cfe61cb76ea1a5d7e7702fe161ee40102b46b3823b",
+    "scope": "unchanged Git tracked + nonignored untracked regular source files; no added exclusions",
+    "evidence_digest_false_positive": "One intermediate source scan flagged a generated SHA-256 adjacent to wiki-secret-final.log. Digest was verified as that log checksum. Evidence now represents typed checksum/path fields; no scanner configuration, rule, allowlist, exclusion or source scope change."
+  },
+  "quality": "PASS 1151/1151; zero skips; Ubuntu PRoot",
+  "v9": "PASS 440/440",
+  "v10_python": "PASS 14/14",
+  "windows_node": "PASS 9/9; native Windows NOT_RUN",
+  "android": "BLOCKED; no configured SDK; Hermes compiler unsupported on Termux; native/physical acceptance NOT_RUN",
+  "source_hashes": {
+    "examples/rust-expo-jsi/package.json": "5b1f050a8956b41c858c8dd74c74d1ae68006b3f42f30650525f151da37ee869",
+    "examples/rust-expo-jsi/package-lock.json": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+    "examples/rust-expo-turbo/package.json": "5b1f050a8956b41c858c8dd74c74d1ae68006b3f42f30650525f151da37ee869",
+    "examples/rust-expo-turbo/package-lock.json": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+    "examples/rust-python/Cargo.toml": "db80cda9c6e1d911acf2539cb29fb4647d04665caf6685a81001c87a38f4232d",
+    "examples/rust-python/Cargo.lock": "a2eb20f77275730b4cd7b43e8eb927bd142db220710fe8a7628d9253840fb0ec",
+    "examples/rust-python/src/lib.rs": "ee1d755e9989538c11af909ed8b659821702ad090e5a9114d0e3b86f8497fa20",
+    "quality/tests/v10_phase5_real_runtime.cjs": "279da7ed7bfed68dd8ef6e063422140a07d416ca0510e5e932a0405f6e49d14f",
+    "docs/wiki/03_Architecture/V10_OSS_Integration.md": "74091ff1f4c8ba63c1a89f2d1aaccb0f70482915f122ae985095989430756513"
+  },
+  "private_log_hashes": [
+    {
+      "sha256": "aeb55305694872936436dcf789b5226d325d6c8d27614203add02274d1f08af7",
+      "path": "expo54-install.log"
+    },
+    {
+      "sha256": "92db0ee59259e4d6386291fb8e660d65617cbb159faa1bb334331091a9fd7b3c",
+      "path": "forge-regression.log"
+    },
+    {
+      "sha256": "4fb6c8fd6a5acf432e51d5667cc02586e7921f9f17171b9a7f2d8e6732c8fbfb",
+      "path": "gitleaks-controls.log"
+    },
+    {
+      "sha256": "227870c8ddb63beb872d4f9afde840f40facea182c19eb73c905abbda64dc6f9",
+      "path": "jsi-ci.log"
+    },
+    {
+      "sha256": "eabfce39884ec36fa0f520f099fe0019fd1765b07587b8ae0d2968b66ebd7b6e",
+      "path": "metro-patch-probe-retry.log"
+    },
+    {
+      "sha256": "c4e995282aea5362fcc50098b6b2bf354c1ab080e8b5296a3a8956f8cdf2d5a6",
+      "path": "metro-patch-probe.log"
+    },
+    {
+      "sha256": "5c2cd7d50573c8209b25d005858062612d257bdda2d608ab7a79cf314f1d2f4c",
+      "path": "migration-ci-offline-retry.log"
+    },
+    {
+      "sha256": "367163457da95605c25ac1be03887163ca9c56978a2a4b83bdbba09a877d556a",
+      "path": "migration-ci-online.log"
+    },
+    {
+      "sha256": "12d4b0034e5a41176dd03dae66b9f5dbc461cadb44bbadb348a9abe276088648",
+      "path": "migration-ci.log"
+    },
+    {
+      "sha256": "99ba92dc3484afc0677576e2eb780b75fff448062f5e48c145ae879e0be7e2a8",
+      "path": "migration-lock.log"
+    },
+    {
+      "sha256": "765418e473d0e51fb5d9c3a77941219c7f5311126a25338180de144a717e3a36",
+      "path": "osv-final.log"
+    },
+    {
+      "sha256": "ce0b718ecd1ece1428d02ed1244d9d344a72a183d481b631a6cf537d5f406f2e",
+      "path": "osv.log"
+    },
+    {
+      "sha256": "db0b4222c369a06f28e6d0a3f8d09c28ae14905ab1df0aef1a1e40c9e0ebc1b9",
+      "path": "parser-schema-final.log"
+    },
+    {
+      "sha256": "db0b4222c369a06f28e6d0a3f8d09c28ae14905ab1df0aef1a1e40c9e0ebc1b9",
+      "path": "parser-schema-retry.log"
+    },
+    {
+      "sha256": "8e12b2e769a8975fdb3fc53fe525069726a02c23a7540b702f6e54be838bb55b",
+      "path": "parser-schema.log"
+    },
+    {
+      "sha256": "9880fadbad8016caf9c26badf365e3fcaed1dfa56789291fe27c1bb737f3d9b3",
+      "path": "proot-availability.log"
+    },
+    {
+      "sha256": "26c6ccb966633469995f55bbb2a3acc18df211e04f31e745fd24846adff00940",
+      "path": "quality-proot-in-progress-copy.log"
+    },
+    {
+      "sha256": "b4b4c96ce2d41bb91de8bb93e0cda7372051fefa3fc4c383317f8a586e981c58",
+      "path": "quality-proot.log"
+    },
+    {
+      "sha256": "b7ed9be41b671611549d2c2258658830b5bc0b49cc0d8acf77ff72cd3dae45da",
+      "path": "rust-expo-jsi-config.log"
+    },
+    {
+      "sha256": "5d90407d68f0735af46fd98065633808bd74839e42da380bc28aa3dc31fd490a",
+      "path": "rust-expo-jsi-export-js.log"
+    },
+    {
+      "sha256": "f17b6b4e3e46cb5a77e0cfbc13ae649926810a9149d112d2e532dfbe6eb87593",
+      "path": "rust-expo-jsi-export.log"
+    },
+    {
+      "sha256": "f545f5026840ae0ca77e64c7978a6ee729428325ad0ac9014bed6a49bb170783",
+      "path": "rust-expo-jsi-prebuild.log"
+    },
+    {
+      "sha256": "c195d6b02450afa4a24ae883985259d909572243bfaf8388409036c54a73b88a",
+      "path": "rust-expo-turbo-config.log"
+    },
+    {
+      "sha256": "f178b98004458f73ed0d356330560f255e50c8d0ca7ac2f09abcb69c79a7c4ca",
+      "path": "rust-expo-turbo-export-js.log"
+    },
+    {
+      "sha256": "9744fbccb62c2dca5362c3ddb80845acc5dbb76d5c262c5c83f4e1511dcd72e8",
+      "path": "rust-expo-turbo-export.log"
+    },
+    {
+      "sha256": "f545f5026840ae0ca77e64c7978a6ee729428325ad0ac9014bed6a49bb170783",
+      "path": "rust-expo-turbo-prebuild.log"
+    },
+    {
+      "sha256": "b4a999ea51dfc81120a53ecf292e4d944735cf58f95f740858dc43f2a6d629c7",
+      "path": "schema-parent-install.log"
+    },
+    {
+      "sha256": "50222720338e9eb3208367b480dbd288798804859828091513e6e80c851d9de5",
+      "path": "schema-parent-probe.log"
+    },
+    {
+      "sha256": "b5f629e0d05f92974ac5c07dde37fcfec38e209c4d87af1bdd3cfe2672a366ca",
+      "path": "snapshot-after-change.log"
+    },
+    {
+      "sha256": "8aa84443b7506541d916ae7bb14f6b4c7b8b7d6186bf63297be95f10135019fa",
+      "path": "snapshot-final-check.log"
+    },
+    {
+      "sha256": "b5f629e0d05f92974ac5c07dde37fcfec38e209c4d87af1bdd3cfe2672a366ca",
+      "path": "snapshot-final-generate.log"
+    },
+    {
+      "sha256": "b5f629e0d05f92974ac5c07dde37fcfec38e209c4d87af1bdd3cfe2672a366ca",
+      "path": "snapshot-report-generate.log"
+    },
+    {
+      "sha256": "b5f629e0d05f92974ac5c07dde37fcfec38e209c4d87af1bdd3cfe2672a366ca",
+      "path": "snapshot-wiki-generate.log"
+    },
+    {
+      "sha256": "8aa84443b7506541d916ae7bb14f6b4c7b8b7d6186bf63297be95f10135019fa",
+      "path": "snapshot.log"
+    },
+    {
+      "sha256": "81a84bffc423f5033176c970858bd164fbced51bb356ac69a140ef5bcf7651a7",
+      "path": "stability.log"
+    },
+    {
+      "sha256": "80beb82e1b15a35713b8bfa70bbfa91fa92a3e6db88b1f586f227f858a70e397",
+      "path": "turbo-ci.log"
+    },
+    {
+      "sha256": "f2e92f6f11b9465ed8fc8112334f943f0c86cf5997be8dac04bfe6c227fc42a3",
+      "path": "v10-python.log"
+    },
+    {
+      "sha256": "24e2d0b21e60d63d56af7260233e3b4aa2c6b4d32d5cb10be006776524d9ae46",
+      "path": "v9.log"
+    },
+    {
+      "sha256": "1ac651160de356d3c3e78266c9a50b7b809e2e7c00a297c870b27069aa551c67",
+      "path": "verify-final-progress.log"
+    },
+    {
+      "sha256": "9606293d0301d2184487ebe6b563f1b74e3fb068464568d5dca57e26d446d9f5",
+      "path": "wiki-final.log"
+    },
+    {
+      "sha256": "4e841cef2bbb9b12c75fa9172407dad3161dae4add910164bec38ec168b927ff",
+      "path": "wiki-secret-final.log"
+    },
+    {
+      "sha256": "9606293d0301d2184487ebe6b563f1b74e3fb068464568d5dca57e26d446d9f5",
+      "path": "wiki.log"
+    },
+    {
+      "sha256": "3fbc318085a778113678a7e6661bcecd4eb0cb6ca21061715947e205570d7aa6",
+      "path": "windows.log"
+    }
+  ]
+}

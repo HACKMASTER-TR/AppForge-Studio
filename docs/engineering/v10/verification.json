@@ -1,0 +1,169 @@
+[
+  {
+    "stage": "quality",
+    "command": "npm --prefix quality test",
+    "exit_code": 1,
+    "duration_seconds": 71.756,
+    "environment": "Existing Termux JDK 25.0.3, Gradle 9.6.0; no installs",
+    "log": ".appforge/tmp/v10/quality.log",
+    "test_counts": {
+      "tests": 1149,
+      "pass": 1145,
+      "fail": 4,
+      "skipped": 0
+    }
+  },
+  {
+    "stage": "stability",
+    "command": "sh scripts/appforge-stability-gate ci",
+    "exit_code": 0,
+    "duration_seconds": 1.298,
+    "log": ".appforge/tmp/v10/stability.log"
+  },
+  {
+    "stage": "android_unit",
+    "command": "gradle -p android-app :app:testDebugUnitTest --offline --no-daemon",
+    "exit_code": 1,
+    "duration_seconds": 14.321,
+    "log": ".appforge/tmp/v10/android_unit.log"
+  },
+  {
+    "stage": "android_debug_build",
+    "command": "gradle -p android-app :app:assembleDebug --offline --no-daemon",
+    "exit_code": 1,
+    "duration_seconds": 3.224,
+    "log": ".appforge/tmp/v10/android_debug_build.log"
+  },
+  {
+    "stage": "windows",
+    "command": "npm --prefix windows-host test",
+    "exit_code": 1,
+    "duration_seconds": 0.875,
+    "log": ".appforge/tmp/v10/windows.log",
+    "test_counts": {
+      "tests": 5,
+      "pass": 4,
+      "fail": 1,
+      "skipped": 0
+    }
+  },
+  {
+    "stage": "v9_regression",
+    "command": "python3 -m unittest discover -s quality/tests -p test_v9_*.py",
+    "exit_code": 0,
+    "duration_seconds": 19.839,
+    "log": ".appforge/tmp/v10/v9_regression.log",
+    "test_counts": {
+      "python_tests": 440
+    }
+  },
+  {
+    "stage": "v10_targeted",
+    "command": "node --test quality/tests/v10_build_telemetry_runtime.test.js quality/tests/v10_offline_catalog_runtime.test.js quality/tests/v10_oss_gate_runtime.test.js",
+    "exit_code": 0,
+    "duration_seconds": 17.797,
+    "log": ".appforge/tmp/v10/v10_targeted.log",
+    "test_counts": {
+      "tests": 3,
+      "pass": 3,
+      "fail": 0,
+      "skipped": 0
+    }
+  },
+  {
+    "stage": "v10_python",
+    "command": "python3 -m unittest discover -s quality/tests -p test_v10_oss_gate.py",
+    "exit_code": 0,
+    "duration_seconds": 0.266,
+    "log": ".appforge/tmp/v10/v10_python.log",
+    "test_counts": {
+      "python_tests": 13
+    }
+  },
+  {
+    "stage": "gitleaks",
+    "command": "python3 quality/tools/appforge_v10_oss_gate.py gitleaks --cache .appforge/tmp/v10/empty-cache",
+    "exit_code": 2,
+    "duration_seconds": 0.269,
+    "result": {
+      "reason": "ARCHIVE_MISSING",
+      "status": "NOT_RUN",
+      "tool": "gitleaks",
+      "version": "v8.30.1"
+    }
+  },
+  {
+    "stage": "osv-scanner",
+    "command": "python3 quality/tools/appforge_v10_oss_gate.py osv-scanner --cache .appforge/tmp/v10/empty-cache --offline",
+    "exit_code": 3,
+    "duration_seconds": 0.209,
+    "result": {
+      "reason": "OFFLINE_DATABASE_AND_NETWORK_ISOLATION_UNVERIFIED",
+      "status": "BLOCKED",
+      "tool": "osv-scanner"
+    }
+  },
+  {
+    "stage": "syft",
+    "command": "python3 quality/tools/appforge_v10_oss_gate.py syft --cache .appforge/tmp/v10/empty-cache",
+    "exit_code": 2,
+    "duration_seconds": 0.191,
+    "result": {
+      "reason": "ARCHIVE_MISSING",
+      "status": "NOT_RUN",
+      "tool": "syft",
+      "version": "v1.55.0"
+    }
+  },
+  {
+    "stage": "quality_final",
+    "command": "npm --prefix quality test",
+    "exit_code": 1,
+    "duration_seconds": 80.315,
+    "log": ".appforge/tmp/v10/quality_final.log",
+    "test_counts": {
+      "tests": 1149,
+      "pass": 1145,
+      "fail": 4,
+      "skipped": 0
+    }
+  },
+  {
+    "stage": "v10_python_final",
+    "command": "python3 -m unittest discover -s quality/tests -p test_v10_oss_gate.py",
+    "exit_code": 0,
+    "duration_seconds": 0.168,
+    "log": ".appforge/tmp/v10/v10_python_final.log",
+    "test_counts": {
+      "python_tests": 14
+    }
+  },
+  {
+    "stage": "stability_final",
+    "command": "sh scripts/appforge-stability-gate ci",
+    "exit_code": 0,
+    "duration_seconds": 1.119,
+    "log": ".appforge/tmp/v10/stability_final.log"
+  },
+  {
+    "stage": "wiki_changed_source",
+    "command": "node scripts/wiki-audit.mjs --changed-source-check",
+    "exit_code": 0,
+    "duration_seconds": 0.216,
+    "log": ".appforge/tmp/v10/wiki_changed_source.log"
+  },
+  {
+    "stage": "snapshot_check",
+    "command": "python3 scripts/generate-second-brain-snapshot.py --check",
+    "exit_code": 0,
+    "duration_seconds": 0.116,
+    "log": ".appforge/tmp/v10/snapshot_check.log"
+  },
+  {
+    "stage": "diff_check",
+    "command": "git diff --check",
+    "exit_code": 0,
+    "duration_seconds": 0.034,
+    "log": ".appforge/tmp/v10/diff_check.log"
+  }
+]

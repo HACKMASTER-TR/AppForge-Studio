@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "created": "2026-10-28",
+  "status": "CANDIDATES_NOT_IMPLEMENTED",
+  "target_repository": "HACKMASTER-TR/AppForge-Studio",
+  "base_branch": "feat/v9-global-package-distribution-20261027",
+  "base_sha": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+  "target_branch": "feat/v10-oss-unified-20261028",
+  "repositories": [
+    {
+      "id": "codeassist",
+      "github": "tyron12233/CodeAssist",
+      "license_hint": "GPL-3.0",
+      "integration_type": "reference-only",
+      "intended_benefit": "Incremental build architecture; no code import",
+      "priority": "P0",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    },
+    {
+      "id": "sora-editor",
+      "github": "Rosemoe/sora-editor",
+      "license_hint": "LGPL-2.1",
+      "integration_type": "conditional-library",
+      "intended_benefit": "Adapter for existing UltimateCodeEditorPanel; license notices",
+      "priority": "P1",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    },
+    {
+      "id": "tree-sitter",
+      "github": "tree-sitter/tree-sitter",
+      "license_hint": "MIT",
+      "integration_type": "conditional-library",
+      "intended_benefit": "Syntax trees; preferably via Sora; ARM64/grammar audit",
+      "priority": "P1",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    },
+    {
+      "id": "termux-packages",
+      "github": "termux/termux-packages",
+      "license_hint": "varied",
+      "integration_type": "catalog-only",
+      "intended_benefit": "Offline Build Pack ABI/manifests with license per package",
+      "priority": "P1",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    },
+    {
+      "id": "bundletool",
+      "github": "google/bundletool",
+      "license_hint": "Apache-2.0",
+      "integration_type": "conditional-tool",
+      "intended_benefit": "AAB verification and reproducible APKS with pinned JAR",
+      "priority": "P0",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    },
+    {
+      "id": "gitleaks",
+      "github": "gitleaks/gitleaks",
+      "license_hint": "MIT",
+      "integration_type": "optional-scanner",
+      "intended_benefit": "Secret scanning in addition to existing secret hygiene guard",
+      "priority": "P0",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    },
+    {
+      "id": "osv-scanner",
+      "github": "google/osv-scanner",
+      "license_hint": "Apache-2.0",
+      "integration_type": "optional-scanner",
+      "intended_benefit": "Dependency scan; offline database freshness check",
+      "priority": "P0",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    },
+    {
+      "id": "syft",
+      "github": "anchore/syft",
+      "license_hint": "Apache-2.0",
+      "integration_type": "ci-tool",
+      "intended_benefit": "Generate SBOM and license inventory",
+      "priority": "P0",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    },
+    {
+      "id": "esbuild",
+      "github": "evanw/esbuild",
+      "license_hint": "MIT",
+      "integration_type": "conditional-tool",
+      "intended_benefit": "Web/TypeScript build speed subject to measured semantic equivalence",
+      "priority": "P1",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    },
+    {
+      "id": "spec-kit",
+      "github": "github/spec-kit",
+      "license_hint": "MIT",
+      "integration_type": "methodology",
+      "intended_benefit": "Specification-first process integrated with AGENTS.md and Second Brain",
+      "priority": "P1",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    },
+    {
+      "id": "superpowers",
+      "github": "obra/superpowers",
+      "license_hint": "MIT",
+      "integration_type": "methodology",
+      "intended_benefit": "Test/verification discipline, not elevation of third-party prompts",
+      "priority": "P1",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    },
+    {
+      "id": "jadx",
+      "github": "skylot/jadx",
+      "license_hint": "Apache-2.0",
+      "integration_type": "optional-analyzer",
+      "intended_benefit": "User-imported APK inspection with resource limits",
+      "priority": "P2",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    },
+    {
+      "id": "uv",
+      "github": "astral-sh/uv",
+      "license_hint": "Apache-2.0",
+      "integration_type": "conditional-tool",
+      "intended_benefit": "Optional Python env / host CI; Android ARM64 feasibility gate",
+      "priority": "P2",
+      "implementation_status": "NOT_STARTED",
+      "license_verification": "REQUIRED",
+      "version_pin": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY"
+    }
+  ],
+  "already_present": {
+    "electron-builder": "windows-host/package.json already contains electron-builder 26.15.3",
+    "ultimate_editor": "UltimateCodeEditorCore.kt/Panel.kt and LSP exist",
+    "secrets_guard": "scripts/secret-hygiene-guard.py exists",
+    "offline_pack": "OfflineBuildPackManager.kt exists"
+  }
+}

@@ -1,0 +1,413 @@
+{
+  "schema_version": 1,
+  "created": "2026-10-28",
+  "status": "PARTIAL_NOT_ACCEPTED",
+  "target_repository": "HACKMASTER-TR/AppForge-Studio",
+  "base_branch": "feat/v9-global-package-distribution-20261027",
+  "base_sha": "afb3ad9209bcce8b84773d8873d037b15b4d804d",
+  "target_branch": "feat/v10-oss-unified-20261028",
+  "repositories": [
+    {
+      "id": "codeassist",
+      "github": "tyron12233/CodeAssist",
+      "license_hint": "GPL-3.0",
+      "integration_type": "reference-only",
+      "intended_benefit": "Incremental build architecture; no code import",
+      "priority": "P0",
+      "implementation_status": "PARTIAL",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "Metadata observation only; no upstream code imported",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "integration_level": "reference-only; original observer integrated",
+      "license_spdx_observed": "GPL-3.0",
+      "version_observed": "v3.33.0",
+      "upstream_head_sha": "1368787112e4e8da52e5329f79c75c05f0ad276f",
+      "license_sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "sha256_provenance": "upstream-evidence.json assets (published metadata only), continuation-upstream-audit.json (local license/AAR byte checks); scanner archive pins in quality/tools/v10-oss-pins.json",
+      "source_files": [
+        "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt",
+        "android-app/app/src/main/assets/device-build/build-metrics.init.gradle"
+      ],
+      "test_files": [
+        "quality/tests/v10_build_telemetry_runtime.test.js"
+      ],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json"
+      ],
+      "blocker_or_scope": "No GPL import. Original baseline/observed fixture verifies equal output and telemetry I/O failure compatibility. No cache-invalidation implementation or device benchmark."
+    },
+    {
+      "id": "sora-editor",
+      "github": "Rosemoe/sora-editor",
+      "license_hint": "LGPL-2.1",
+      "integration_type": "conditional-library",
+      "intended_benefit": "Adapter for existing UltimateCodeEditorPanel; license notices",
+      "priority": "P1",
+      "implementation_status": "BLOCKED",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "Metadata observation only; no upstream code imported",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "integration_level": "reference-only",
+      "license_spdx_observed": "LGPL-2.1",
+      "version_observed": "0.24.7",
+      "upstream_head_sha": "94681e9e6523cbdc288e81def76a117f7740a195",
+      "license_sha256": "7ffe1954587c77dfba1cf8eb9b2ea743671fa6e63f9e7a2f258119d42e14eefe",
+      "sha256_provenance": "upstream-evidence.json assets (published metadata only), continuation-upstream-audit.json (local license/AAR byte checks); scanner archive pins in quality/tools/v10-oss-pins.json",
+      "source_files": [
+        "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorPanel.kt"
+      ],
+      "test_files": [],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json"
+      ],
+      "blocker_or_scope": "Verified core AAR hash only. No notices in AAR; LGPL relinking/source delivery, dependency closure, parser ABI, memory and editor parity unresolved.",
+      "artifact_sha256": "cdfdacdb3ac8605b190768d93f504935400c9aa37b773dc6f6c840311faf2b4c"
+    },
+    {
+      "id": "tree-sitter",
+      "github": "tree-sitter/tree-sitter",
+      "license_hint": "MIT",
+      "integration_type": "conditional-library",
+      "intended_benefit": "Syntax trees; preferably via Sora; ARM64/grammar audit",
+      "priority": "P1",
+      "implementation_status": "BLOCKED",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "Metadata observation only; no upstream code imported",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "integration_level": "reference-only",
+      "license_spdx_observed": "MIT",
+      "version_observed": "v0.27.1",
+      "upstream_head_sha": "ad067fddf76a32c3071f8f3a31e8719d348e2737",
+      "license_sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78",
+      "sha256_provenance": "upstream-evidence.json assets (published metadata only), continuation-upstream-audit.json (local license/AAR byte checks); scanner archive pins in quality/tools/v10-oss-pins.json",
+      "source_files": [
+        "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorCore.kt"
+      ],
+      "test_files": [],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json"
+      ],
+      "blocker_or_scope": "No selected binding/grammar/versioned Android native library; Sora core AAR contains no jni entries. ABI and memory not proven."
+    },
+    {
+      "id": "termux-packages",
+      "github": "termux/termux-packages",
+      "license_hint": "varied",
+      "integration_type": "catalog-only",
+      "intended_benefit": "Offline Build Pack ABI/manifests with license per package",
+      "priority": "P1",
+      "implementation_status": "PARTIAL",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "Metadata observation only; no upstream code imported",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "integration_level": "integrated original catalog preview",
+      "license_spdx_observed": "NOASSERTION",
+      "version_observed": "bootstrap-2026.10.25-r1+apt.android-7",
+      "upstream_head_sha": "00d21d12bab7c46c46c16333e9a7b2f725d09cf5",
+      "license_sha256": "e86f899e394c692ce10dff53614f93ce473f02cddb4d88c5d49cb0c728ba5f68",
+      "sha256_provenance": "upstream-evidence.json assets (published metadata only), continuation-upstream-audit.json (local license/AAR byte checks); scanner archive pins in quality/tools/v10-oss-pins.json",
+      "source_files": [
+        "android-app/app/src/main/java/com/appforge/studio/build/OfflineToolCatalog.kt",
+        "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
+      ],
+      "test_files": [
+        "quality/tests/v10_offline_catalog_runtime.test.js",
+        "android-app/app/src/test/java/com/appforge/studio/build/OfflineToolCatalogTest.kt"
+      ],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json"
+      ],
+      "blocker_or_scope": "Dry-run only; no reviewed real package set, package-specific SPDX/notice closure or prepare/activate/rollback integration. Bionic cannot satisfy GNU ABI."
+    },
+    {
+      "id": "bundletool",
+      "github": "google/bundletool",
+      "license_hint": "Apache-2.0",
+      "integration_type": "conditional-tool",
+      "intended_benefit": "AAB verification and reproducible APKS with pinned JAR",
+      "priority": "P0",
+      "implementation_status": "BLOCKED",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "Metadata observation only; no upstream code imported",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "integration_level": "reference-only",
+      "license_spdx_observed": "Apache-2.0",
+      "version_observed": "1.18.3",
+      "upstream_head_sha": "586a43a450712a1067f3d92cf7574dee68226302",
+      "license_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "sha256_provenance": "upstream-evidence.json assets (published metadata only), continuation-upstream-audit.json (local license/AAR byte checks); scanner archive pins in quality/tools/v10-oss-pins.json",
+      "source_files": [],
+      "test_files": [],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json"
+      ],
+      "blocker_or_scope": "Metadata digest only. No verified local JAR, shaded license closure, valid AAB/APKS fixture, signing identity or reproducibility test."
+    },
+    {
+      "id": "gitleaks",
+      "github": "gitleaks/gitleaks",
+      "license_hint": "MIT",
+      "integration_type": "optional-scanner",
+      "intended_benefit": "Secret scanning in addition to existing secret hygiene guard",
+      "priority": "P0",
+      "implementation_status": "PARTIAL",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "Metadata observation only; no upstream code imported",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "integration_level": "CI-only optional wrapper",
+      "license_spdx_observed": "MIT",
+      "version_observed": "v8.30.1",
+      "upstream_head_sha": "5f6ec56cfa6f8c67648d863582c7ae2f206d5c1c",
+      "license_sha256": "e3884b252b3bfc045e55be43a34d1e80da070bc6f804ac95bf4660e97d62ebc6",
+      "sha256_provenance": "upstream-evidence.json assets (published metadata only), continuation-upstream-audit.json (local license/AAR byte checks); scanner archive pins in quality/tools/v10-oss-pins.json",
+      "source_files": [
+        "quality/tools/appforge_v10_oss_gate.py",
+        "quality/tools/v10-oss-pins.json",
+        ".github/workflows/appforge-stability-gate.yml"
+      ],
+      "test_files": [
+        "quality/tests/test_v10_oss_gate.py"
+      ],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json",
+        "docs/engineering/v10/phase3-security-archive-review.json"
+      ],
+      "blocker_or_scope": "Real scanner NOT_RUN: ARCHIVE_MISSING; license_closure_reviewed=false. Redaction/status tests do not prove scanner/platform acceptance. Phase3 statically reviews pinned Linux x86_64 archive bytes; transitive closure and real execution remain blocked."
+    },
+    {
+      "id": "osv-scanner",
+      "github": "google/osv-scanner",
+      "license_hint": "Apache-2.0",
+      "integration_type": "optional-scanner",
+      "intended_benefit": "Dependency scan; offline database freshness check",
+      "priority": "P0",
+      "implementation_status": "BLOCKED",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "v2.7.0 verified internal Linux ARM64 assessment; production adapter unchanged",
+      "sha256": "4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7",
+      "integration_level": "CI-only fail-closed production stub; genuine internal offline assessment",
+      "license_spdx_observed": "Apache-2.0",
+      "version_observed": "v2.7.0",
+      "upstream_head_sha": "666f85749ac142b9ddad8bd17e4c46d39d697465",
+      "license_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "sha256_provenance": "Official v2.7.0 release digest + SHA256SUMS match locally downloaded/executed ARM64 bytes; osv-assessment-evidence.json",
+      "source_files": [
+        "quality/tools/appforge_v10_oss_gate.py",
+        "quality/tools/v10_osv_offline_exec.py",
+        "docs/engineering/v10/osv-acquire.py"
+      ],
+      "test_files": [
+        "quality/tests/test_v10_oss_gate.py",
+        "quality/tests/v10_osv_real_scanner.py"
+      ],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json",
+        "docs/engineering/v10/osv-assessment-evidence.json",
+        "docs/engineering/v10/osv-assessment-report.md"
+      ],
+      "blocker_or_scope": "Real seccomp-enforced offline scan executed: 930 unique coordinates, 47 advisory IDs / 22 affected package occurrences. Four complete ecosystem exports verified with provenance/hash/age. Findings unresolved; main Android resolved dependency closure absent; production license/distribution and adapter gates remain BLOCKED."
+    },
+    {
+      "id": "syft",
+      "github": "anchore/syft",
+      "license_hint": "Apache-2.0",
+      "integration_type": "ci-tool",
+      "intended_benefit": "Generate SBOM and license inventory",
+      "priority": "P0",
+      "implementation_status": "PARTIAL",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "Metadata observation only; no upstream code imported",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "integration_level": "CI-only optional wrapper",
+      "license_spdx_observed": "Apache-2.0",
+      "version_observed": "v1.55.0",
+      "upstream_head_sha": "fb56f1eef1908ad249a59ea7b2fe913bae16304f",
+      "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "sha256_provenance": "upstream-evidence.json assets (published metadata only), continuation-upstream-audit.json (local license/AAR byte checks); scanner archive pins in quality/tools/v10-oss-pins.json",
+      "source_files": [
+        "quality/tools/appforge_v10_oss_gate.py",
+        "quality/tools/v10-oss-pins.json",
+        ".github/workflows/appforge-stability-gate.yml"
+      ],
+      "test_files": [
+        "quality/tests/test_v10_oss_gate.py"
+      ],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json",
+        "docs/engineering/v10/phase3-security-archive-review.json"
+      ],
+      "blocker_or_scope": "Real scanner/SBOM NOT_RUN: ARCHIVE_MISSING; license closure unreviewed. Manifest-only SBOM sanitization tests are not real inventory acceptance. Phase3 statically reviews pinned Linux x86_64 archive bytes; transitive closure and real execution remain blocked."
+    },
+    {
+      "id": "esbuild",
+      "github": "evanw/esbuild",
+      "license_hint": "MIT",
+      "integration_type": "conditional-tool",
+      "intended_benefit": "Web/TypeScript build speed subject to measured semantic equivalence",
+      "priority": "P1",
+      "implementation_status": "BLOCKED",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "Metadata observation only; no upstream code imported",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "integration_level": "reference-only; existing probe retained",
+      "license_spdx_observed": "MIT",
+      "version_observed": "v0.28.2",
+      "upstream_head_sha": "f6058f8364fe7ab91ca57a83e02577ed74c9cae4",
+      "license_sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "sha256_provenance": "upstream-evidence.json assets (published metadata only), continuation-upstream-audit.json (local license/AAR byte checks); scanner archive pins in quality/tools/v10-oss-pins.json",
+      "source_files": [
+        "android-app/app/src/main/assets/device-build/build-node.sh",
+        "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
+      ],
+      "test_files": [
+        "quality/tests/node_web_npm_cache_contract.test.js"
+      ],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json"
+      ],
+      "blocker_or_scope": "Existing transform probe is not a meaningful bundled Web target. No equivalent bundling fixture, measured benefit or Android executable acceptance."
+    },
+    {
+      "id": "spec-kit",
+      "github": "github/spec-kit",
+      "license_hint": "MIT",
+      "integration_type": "methodology",
+      "intended_benefit": "Specification-first process integrated with AGENTS.md and Second Brain",
+      "priority": "P1",
+      "implementation_status": "DONE",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "Metadata observation only; no upstream code imported",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "integration_level": "reference-only; original methodology integrated",
+      "license_spdx_observed": "MIT",
+      "version_observed": "v1.2.4",
+      "upstream_head_sha": "222a973f8b8794366680c043fb935a31f71902af",
+      "license_sha256": "2510b446bc1f0cf9702453075d20cd88631e20e5642658edb7325d9c1eb534f7",
+      "sha256_provenance": "upstream-evidence.json assets (published metadata only), continuation-upstream-audit.json (local license/AAR byte checks); scanner archive pins in quality/tools/v10-oss-pins.json",
+      "source_files": [
+        "docs/wiki/03_Architecture/V10_OSS_Integration.md"
+      ],
+      "test_files": [],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json"
+      ],
+      "blocker_or_scope": "DONE covers original specification/contracts under AGENTS.md only; no upstream runtime/template imported."
+    },
+    {
+      "id": "superpowers",
+      "github": "obra/superpowers",
+      "license_hint": "MIT",
+      "integration_type": "methodology",
+      "intended_benefit": "Test/verification discipline, not elevation of third-party prompts",
+      "priority": "P1",
+      "implementation_status": "DONE",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "Metadata observation only; no upstream code imported",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "integration_level": "reference-only; original methodology integrated",
+      "license_spdx_observed": "MIT",
+      "version_observed": "v7.0.1",
+      "upstream_head_sha": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+      "license_sha256": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+      "sha256_provenance": "upstream-evidence.json assets (published metadata only), continuation-upstream-audit.json (local license/AAR byte checks); scanner archive pins in quality/tools/v10-oss-pins.json",
+      "source_files": [
+        "docs/wiki/03_Architecture/V10_OSS_Integration.md"
+      ],
+      "test_files": [
+        "quality/tests/v10_build_telemetry_runtime.test.js",
+        "quality/tests/v10_offline_catalog_runtime.test.js",
+        "quality/tests/test_v10_oss_gate.py"
+      ],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json"
+      ],
+      "blocker_or_scope": "DONE covers test/verification discipline under AGENTS.md only; no external prompt authority imported."
+    },
+    {
+      "id": "jadx",
+      "github": "skylot/jadx",
+      "license_hint": "Apache-2.0",
+      "integration_type": "optional-analyzer",
+      "intended_benefit": "User-imported APK inspection with resource limits",
+      "priority": "P2",
+      "implementation_status": "BLOCKED",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "Metadata observation only; no upstream code imported",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "integration_level": "reference-only",
+      "license_spdx_observed": "Apache-2.0",
+      "version_observed": "v1.5.6",
+      "upstream_head_sha": "71dc1ed810c443174285cbf65b98999851f582e5",
+      "license_sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+      "sha256_provenance": "upstream-evidence.json assets (published metadata only), continuation-upstream-audit.json (local license/AAR byte checks); scanner archive pins in quality/tools/v10-oss-pins.json",
+      "source_files": [],
+      "test_files": [],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json"
+      ],
+      "blocker_or_scope": "Release ZIP digest is metadata only. No reviewed transitive notices, supported JVM execution, bounded analysis adapter or user-APK fixture corpus."
+    },
+    {
+      "id": "uv",
+      "github": "astral-sh/uv",
+      "license_hint": "Apache-2.0",
+      "integration_type": "conditional-tool",
+      "intended_benefit": "Optional Python env / host CI; Android ARM64 feasibility gate",
+      "priority": "P2",
+      "implementation_status": "BLOCKED",
+      "license_verification": "Immutable HEAD license hash rechecked; dependency/distribution closure NOT_APPROVED",
+      "version_pin": "Metadata observation only; no upstream code imported",
+      "sha256": "REQUIRED_FOR_BINARY_OR_LIBRARY",
+      "integration_level": "reference-only",
+      "license_spdx_observed": "Apache-2.0 OR MIT",
+      "version_observed": "0.13.6",
+      "upstream_head_sha": "e4c55567ada966de4911513b5c526070e6cddd3f",
+      "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "sha256_provenance": "upstream-evidence.json assets (published metadata only), continuation-upstream-audit.json (local license/AAR byte checks); scanner archive pins in quality/tools/v10-oss-pins.json",
+      "source_files": [
+        "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+      ],
+      "test_files": [
+        "quality/tests/offline_build_pack_v1_contract.test.js"
+      ],
+      "evidence": [
+        "docs/engineering/v10/continuation-upstream-audit.json",
+        "docs/engineering/v10/continuation-verification.json",
+        "docs/engineering/v10/phase3-verification.json"
+      ],
+      "blocker_or_scope": "Dual Apache-2.0 OR MIT HEAD license verified; no Android/Bionic ARM64 support or Chaquopy coexistence proof. No host toolchain/environment replacement."
+    }
+  ],
+  "already_present": {
+    "electron-builder": "windows-host/package.json already contains electron-builder 26.15.3",
+    "ultimate_editor": "UltimateCodeEditorCore.kt/Panel.kt and LSP exist",
+    "secrets_guard": "scripts/secret-hygiene-guard.py exists",
+    "offline_pack": "OfflineBuildPackManager.kt exists"
+  },
+  "initial_inventory": "docs/engineering/v10/integrations.initial.json",
+  "initial_inventory_sha256": "b53e54df17d841a627f6d44fed982d2f2f3b2473d5fd750821d4830c06cc2dcd"
+}

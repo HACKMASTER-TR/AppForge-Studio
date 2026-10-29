@@ -1,0 +1,62 @@
+// Original AppForge observation only. No CodeAssist source or runtime dependency.
+// Configuration cache is already disabled by DeviceBuildEngine. These listeners
+// observe Gradle's own decisions; they never skip work or change cache keys.
+import groovy.json.JsonOutput
+import java.security.MessageDigest
+import java.util.concurrent.atomic.AtomicInteger
+
+final long started = System.nanoTime()
+final counters = ['executed', 'uptodate', 'cache', 'skipped', 'failed'].collectEntries {
+    [(it): new AtomicInteger()]
+}
+final int maxNodes = 5000
+final int maxEdges = 20000
+
+gradle.taskGraph.whenReady { graph ->
+    // Deterministic anonymous topology. Do not record paths, environment, task
+    // arguments, dependency coordinates, user source or signing material.
+    def tasks = new ArrayList(graph.allTasks).sort { a, b -> a.path <=> b.path }
+    boolean truncated = tasks.size() > maxNodes
+    def selected = tasks.take(maxNodes)
+    def ids = selected.withIndex().collectEntries { task, index -> [(task): index] }
+    def edges = []
+    selected.each { task ->
+        task.taskDependencies.getDependencies(task).each { dependency ->
+            if (ids.containsKey(dependency)) {
+                if (edges.size() < maxEdges) edges << [ids[task], ids[dependency]]
+                else truncated = true
+            }
+        }
+    }
+    edges.sort { a, b -> a[0] <=> b[0] ?: a[1] <=> b[1] }
+    def topology = [schema: 1, nodes: (0..<selected.size()).toList(), edges: edges, truncated: truncated]
+    // The engine fixes this path inside its isolated workspace. Host fixtures
+    // may select their own temporary output; this is not an authenticated DAG.
+    String location = System.getProperty('appforge.metrics.path')
+    if (location) {
+        try {
+            new File(location).setText(JsonOutput.toJson(topology) + '\n', 'UTF-8')
+        } catch (IOException ignored) {
+            // Observation must not fail valid builds or expose private paths.
+            println 'APPFORGE_GRADLE_GRAPH_V1 status=UNAVAILABLE reason=OUTPUT_IO'
+        }
+    }
+    println "APPFORGE_GRADLE_GRAPH_V1 nodes=${tasks.size()} edges=${edges.size()} truncated=${truncated}"
+}
+
+gradle.taskGraph.afterTask { task, state ->
+    String bucket = state.failure != null ? 'failed' :
+        task.actions.empty ? 'skipped' :
+        state.skipMessage == 'FROM-CACHE' ? 'cache' :
+        state.upToDate ? 'uptodate' : state.skipped ? 'skipped' :
+        state.didWork ? 'executed' : 'skipped'
+    counters[bucket].incrementAndGet()
+}
+
+gradle.buildFinished {
+    long elapsed = Math.max(0L, (System.nanoTime() - started).intdiv(1000000L))
+    println 'APPFORGE_GRADLE_METRICS_V1 ' + counters.collect { key, value -> "${key}=${value.get()}" }.join(' ') +
+        " duration_ms=${elapsed} invalidation=UNKNOWN"
+    // Executed != cache miss: not every task is cacheable. Invalidation causes
+    // require separately reviewed Gradle diagnostics, so remain UNKNOWN here.
+}

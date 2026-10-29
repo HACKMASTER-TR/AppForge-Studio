@@ -68,3 +68,5 @@ source_files: []
 - [[Release_Integration_V1]]
 
 - [[APT_Snapshot_Offline_Toolchain]] — pinned Ubuntu APT, exact replay locks and safety limits.
+
+- [[V10_OSS_Integration]] — optional build telemetry, catalog preview and host scanner boundaries; partial local implementation.

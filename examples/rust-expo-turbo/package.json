@@ -1,1 +1,16 @@
-{"name":"appforge-rust-jsi-example","version":"1.0.0","private":true,"main":"node_modules/expo/AppEntry.js","dependencies":{"expo":"54.0.22","react":"19.1.0","react-native":"0.81.5"}}
+{
+  "name": "appforge-rust-jsi-example",
+  "version": "1.0.0",
+  "private": true,
+  "main": "node_modules/expo/AppEntry.js",
+  "dependencies": {
+    "expo": "54.0.38",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "overrides": {
+    "@expo/metro-config": {
+      "postcss": "8.5.23"
+    }
+  }
+}
