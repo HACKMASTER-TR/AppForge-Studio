@@ -1,0 +1,208 @@
+# One-shot, disposable Cloudflare live DO smoke. No public route, no real Google credentials.
+name: V9 Stage 5D Live Private Device Admin Smoke
+on:
+  push:
+    branches: [feat/v9-global-package-distribution-20261027]
+    paths: ['.github/workflows/v9-stage5d-live.yml']
+  workflow_dispatch:
+    inputs:
+      confirm_disposable:
+        description: 'Type RUN_PRIVATE_STAGE5D_LIVE to allow only the isolated disposable Worker smoke'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: v9-stage5d-live-disposable-single-run
+  cancel-in-progress: false
+jobs:
+  stage5d-live:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.confirm_disposable == 'RUN_PRIVATE_STAGE5D_LIVE'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      WRANGLER_SEND_METRICS: 'false'
+      PROBE_NAME_PREFIX: appforge-v9-stage5d-live-smoke
+      PROBE_CONFIG: cloudflare/v9-witness/stage5d-probe/wrangler.toml
+    steps:
+      - name: Checkout exact V9 development source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: One-shot commit and no-public-access preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD^)" = 'be0bc65e8781eee668dacf20e5160f8958452464'
+          python3 - <<'PY'
+          import pathlib, subprocess, tomllib
+          files={
+            '.github/workflows/v9-stage5d-live.yml',
+            '.github/workflows/v9-device-auth-offline.yml',
+            'android-app/app/src/main/java/com/appforge/studio/security/V9AdminNonceWire.kt',
+            'cloudflare/v9-witness/device-auth/stage5d-private.mjs',
+            'cloudflare/v9-witness/stage5d-probe/core.mjs',
+            'cloudflare/v9-witness/stage5d-probe/core.test.mjs',
+            'cloudflare/v9-witness/stage5d-probe/entry.mjs',
+            'cloudflare/v9-witness/stage5d-probe/wrangler.toml',
+            'docs/engineering/appforge-v9-stage5d-acceptance.md',
+          }
+          actual=set(subprocess.check_output(['git','diff-tree','--no-commit-id','--name-only','-r','HEAD'],text=True).splitlines())
+          assert actual==files, ('unexpected scope',actual^files)
+          c=tomllib.loads(pathlib.Path('cloudflare/v9-witness/stage5d-probe/wrangler.toml').read_text())
+          assert set(c)=={'name','main','compatibility_date','workers_dev','preview_urls','vars','durable_objects','migrations','triggers'}
+          assert c['name']=='appforge-v9-stage5d-live-smoke-20261028'
+          assert c['main']=='entry.mjs' and c['workers_dev'] is False and c['preview_urls'] is False
+          assert c['vars']=={'STAGE5D_TEST_MODE':'SYNTHETIC_ONLY'}
+          assert c['triggers']=={'crons':['* * * * *']}
+          assert c['durable_objects']['bindings']==[{'name':'V9_STAGE5D_PROBE','class_name':'V9Stage5DLiveDO'}]
+          assert c['migrations']==[{'tag':'v1','new_sqlite_classes':['V9Stage5DLiveDO']}]
+          print('STAGE5D_EXACT_SCOPE_AND_DISABLED_PUBLIC=PASS')
+          PY
+          python3 quality/tools/appforge_v9_cloudflare_staging_preflight.py --repo .
+          test "$(git status --porcelain)" = ''
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify previous device suites and new Stage5D integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in \
+            cloudflare/v9-witness/device-auth/protocol.test.mjs \
+            cloudflare/v9-witness/device-auth/registry.test.mjs \
+            cloudflare/v9-witness/device-auth/admin-oidc.test.mjs \
+            cloudflare/v9-witness/stage5d-probe/core.test.mjs; do
+            node --test --test-reporter=tap "$path"
+          done
+          npx --yes wrangler@4.153.0 deploy --dry-run --config "$PROBE_CONFIG" --outdir "$RUNNER_TEMP/v9-stage5d-bundle"
+          echo 'STAGE5D_DRY_RUN=PASS'
+      - name: Real isolated Durable Object, Cron acceptance, cleanup
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          test -n "$CLOUDFLARE_API_TOKEN"
+          [[ "$CLOUDFLARE_ACCOUNT_ID" =~ ^[0-9a-fA-F]{32}$ ]]
+          PROBE_NAME="${PROBE_NAME_PREFIX}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          export PROBE_NAME
+          [[ "$PROBE_NAME" =~ ^appforge-v9-stage5d-live-smoke-[0-9]+-[0-9]+$ ]]
+          python3 - <<'PY'
+          import json,os,urllib.request,urllib.error
+          aid=os.environ['CLOUDFLARE_ACCOUNT_ID'];token=os.environ['CLOUDFLARE_API_TOKEN']
+          req=urllib.request.Request('https://api.cloudflare.com/client/v4/accounts/'+aid+'/workers/scripts',
+            headers={'Authorization':'Bearer '+token,'Accept':'application/json'},method='GET')
+          try:
+            with urllib.request.urlopen(req,timeout=25) as r:data=json.load(r)
+          except urllib.error.HTTPError as e:raise SystemExit('STOP: worker list HTTP '+str(e.code)) from None
+          assert data.get('success') is True and isinstance(data.get('result'),list),'STOP: incomplete worker list'
+          info=data.get('result_info') or {};lst=data['result']
+          assert info.get('total_pages',1)<=1 and info.get('total_count',len(lst))<=len(lst),'STOP: paginated worker list'
+          names={i.get('id') for i in lst if isinstance(i,dict)}
+          assert 'appforge-v9-witness-isolated-staging' in names,'STOP: expected isolated Witness absent'
+          assert os.environ['PROBE_NAME'] not in names,'STOP: disposable target preexists'
+          original='appforge-v9-witness-isolated-staging'
+          script_url='https://api.cloudflare.com/client/v4/accounts/'+aid+'/workers/scripts/'+original
+          with urllib.request.urlopen(urllib.request.Request(script_url,headers={'Authorization':'Bearer '+token,'Accept':'application/json'}),timeout=30) as r:
+            orig_hash=__import__('hashlib').sha256(r.read()).hexdigest()
+          from pathlib import Path
+          Path(os.environ['RUNNER_TEMP'],'stage5d-original-witness.sha256').write_text(orig_hash+'\n')
+          print('STAGE5D_ORIGINAL_WITNESS_CONTENT_PINNED=PASS')
+          print('STAGE5D_DISPOSABLE_TARGET_UNUSED=PASS')
+          PY
+          DEPLOY_ATTEMPTED=0
+          DEPLOY_SUCCEEDED=0
+          TAIL_PID=''
+          cleanup(){
+            local previous=$?
+            trap - EXIT
+            set +e
+            if [ -n "$TAIL_PID" ]; then kill "$TAIL_PID" 2>/dev/null || true; wait "$TAIL_PID" 2>/dev/null || true; fi
+            if [ "$DEPLOY_ATTEMPTED" = '1' ]; then
+              python3 - <<'PY'
+          import hashlib,json,os,time,urllib.request,urllib.error
+          from pathlib import Path
+          aid=os.environ['CLOUDFLARE_ACCOUNT_ID']; token=os.environ['CLOUDFLARE_API_TOKEN']
+          root='https://api.cloudflare.com/client/v4/accounts/'+aid+'/workers/scripts/'
+          headers={'Authorization':'Bearer '+token,'Accept':'application/json'}
+          def request(name,method='GET'):
+            req=urllib.request.Request(root+name,method=method,headers=headers)
+            try:
+              with urllib.request.urlopen(req,timeout=35) as r:return r.status,r.read()
+            except urllib.error.HTTPError as e:
+              if e.code==404:return 404,b''
+              raise
+          target=os.environ['PROBE_NAME']
+          code,_=request(target)
+          if code==404:
+            if os.environ.get('DEPLOY_SUCCEEDED')=='1':raise SystemExit('STOP: uploaded Worker unexpectedly absent before cleanup')
+            print('STAGE5D_DISPOSABLE_WORKER_NEVER_CREATED=PASS')
+          elif code==200:
+            deleted,body=request(target,'DELETE')
+            if not 200<=deleted<300:raise SystemExit('STOP: DELETE status invalid')
+            if body:
+              response=json.loads(body)
+              if response.get('success') is not True:raise SystemExit('STOP: DELETE not successful')
+            for attempt in range(5):
+              status,_=request(target)
+              if status==404:break
+              time.sleep(3)
+            else:raise SystemExit('STOP: Worker still exists after DELETE')
+            print('STAGE5D_DISPOSABLE_WORKER_DELETED=PASS')
+          else:raise SystemExit('STOP: unexpected Worker GET status '+str(code))
+          original='appforge-v9-witness-isolated-staging'
+          status,content=request(original)
+          if status!=200:raise SystemExit('STOP: original Witness missing')
+          actual=hashlib.sha256(content).hexdigest()
+          expected=Path(os.environ['RUNNER_TEMP'],'stage5d-original-witness.sha256').read_text().strip()
+          if actual!=expected:raise SystemExit('STOP: original Witness content changed')
+          print('STAGE5D_ORIGINAL_WITNESS_CONTENT_UNCHANGED=PASS')
+          PY
+              if [ "$?" -ne 0 ]; then
+                echo 'STAGE5D_CLEANUP_OR_WITNESS_INTEGRITY=FAILED'
+                previous=1
+              fi
+            fi
+            exit "$previous"
+          }
+          trap cleanup EXIT
+          DEPLOY_ATTEMPTED=1
+          export DEPLOY_SUCCEEDED
+          npx --yes wrangler@4.153.0 deploy --name "$PROBE_NAME" --config "$PROBE_CONFIG"
+          DEPLOY_SUCCEEDED=1
+          export DEPLOY_SUCCEEDED
+          echo 'STAGE5D_DISPOSABLE_WORKER_UPLOADED=PASS'
+          echo 'STAGE5D_PUBLIC_ROUTE=DISABLED'
+          npx --yes wrangler@4.153.0 tail "$PROBE_NAME" --format json > "$RUNNER_TEMP/stage5d-tail.jsonl" 2>&1 &
+          TAIL_PID=$!
+          sleep 8
+          kill -0 "$TAIL_PID" 2>/dev/null || { echo 'STAGE5D_TAIL=FAILED';exit 1; }
+          FOUND=0
+          for _ in $(seq 1 75); do
+            if grep -q 'V9_STAGE5D_LIVE=PASS;OIDC=PASS;ENROLL=PASS;APPROVE=PASS;REVOKE=PASS;RESTART=PASS;PERSIST=PASS;DENY=PASS' "$RUNNER_TEMP/stage5d-tail.jsonl"; then
+              FOUND=1;break
+            fi
+            if ! kill -0 "$TAIL_PID" 2>/dev/null;then echo 'STAGE5D_TAIL_STOPPED';break;fi
+            sleep 15
+          done
+          if [ "$FOUND" != 1 ]; then
+            echo 'STAGE5D_LIVE_ACCEPTANCE=NOT_VERIFIED'
+            grep -E 'V9_STAGE5D_|Error|ERROR' "$RUNNER_TEMP/stage5d-tail.jsonl" | tail -25 || true
+            exit 1
+          fi
+          echo 'STAGE5D_LIVE_ACCEPTANCE=PASS'
+          echo 'STAGE5D_REAL_SQLITE_AND_RESTART=PASS'
+          echo 'STAGE5D_SYNTHETIC_GOOGLE_OIDC=PASS'
+          echo 'REAL_GOOGLE_USER_SESSION=NOT_VERIFIED'
+          echo 'PRODUCTION_SIGNER=NOT_CONFIGURED'
+          echo 'ANDROID_APK_BUILD=NO'
+          echo 'PRODUCTION_READINESS=BLOCKED'

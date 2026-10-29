@@ -1,0 +1,15 @@
+name = "appforge-v9-stage5d-live-smoke-20261028"
+main = "entry.mjs"
+compatibility_date = "2026-10-27"
+workers_dev = false
+preview_urls = false
+[vars]
+STAGE5D_TEST_MODE = "SYNTHETIC_ONLY"
+[[durable_objects.bindings]]
+name = "V9_STAGE5D_PROBE"
+class_name = "V9Stage5DLiveDO"
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["V9Stage5DLiveDO"]
+[triggers]
+crons = ["* * * * *"]

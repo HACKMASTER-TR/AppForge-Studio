@@ -6,6 +6,7 @@ on:
       - feat/v9-global-package-distribution-20261027
     paths:
       - 'cloudflare/v9-witness/device-auth/**'
+      - 'cloudflare/v9-witness/stage5d-probe/**'
       - 'android-app/app/src/main/java/com/appforge/studio/security/V9DeviceProofWire.kt'
       - 'android-app/app/src/main/java/com/appforge/studio/security/V9WitnessDeviceProof.kt'
       - '.github/workflows/v9-device-auth-offline.yml'
@@ -17,7 +18,7 @@ jobs:
       github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
       github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,15 +26,37 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run P-256 challenge verification and replay attack tests
+      - name: Verify all 106 Node security tests with exact TAP counters
+        shell: bash
         run: |
           set -euo pipefail
-          node --test --test-reporter=tap cloudflare/v9-witness/device-auth/protocol.test.mjs
-          node --test --test-reporter=tap cloudflare/v9-witness/device-auth/registry.test.mjs
-          node --test --test-reporter=tap cloudflare/v9-witness/device-auth/admin-oidc.test.mjs
-          echo 'V9_ADMIN_OIDC_OFFLINE=PASS'
-          echo 'V9_ENROLLMENT_REGISTRY_OFFLINE=PASS'
-          echo 'V9_DEVICE_PROOF_OFFLINE=PASS'
+          run_tap(){
+            local label="$1" expected="$2" file="$3" log="$RUNNER_TEMP/$1.tap"
+            if ! node --test --test-reporter=tap "$file" > "$log" 2>&1; then cat "$log"; exit 1; fi
+            for row in "# tests $expected" "# pass $expected" "# fail 0" "# skipped 0" "# cancelled 0"; do
+              if ! grep -Fxq "$row" "$log"; then cat "$log"; echo "FAIL: $label expected: $row"; exit 1; fi
+            done
+            echo "$label=$expected PASS"
+          }
+          run_tap V9_STAGE5A_DEVICE_PROOF 17 cloudflare/v9-witness/device-auth/protocol.test.mjs
+          run_tap V9_STAGE5B_REGISTRY 27 cloudflare/v9-witness/device-auth/registry.test.mjs
+          run_tap V9_STAGE5C_GOOGLE_OIDC 24 cloudflare/v9-witness/device-auth/admin-oidc.test.mjs
+          run_tap V9_STAGE5D_SYNTHETIC 2 cloudflare/v9-witness/stage5d-probe/core.test.mjs
+          run_tap V9_WITNESS 28 cloudflare/v9-witness/witness.test.mjs
+          run_tap V9_R2_WORKER 8 cloudflare/package-distribution/worker.test.mjs
+      - name: Verify all 440 Python V9 regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/v9-python-440.log"
+          if ! PYTHONWARNINGS=error::ResourceWarning python3 -B -m unittest discover -s quality/tests -p 'test_v9_*.py' -v > "$log" 2>&1; then
+            tail -100 "$log"; exit 1
+          fi
+          if ! grep -Eq '^Ran 440 tests? in ' "$log" || ! grep -Fxq 'OK' "$log" || grep -Eq 'ResourceWarning|\.\.\. skipped ' "$log"; then
+            tail -100 "$log"; echo 'PYTHON_TEST_COUNT_INVALID'; exit 1
+          fi
+          echo 'V9_PYTHON_QUALITY=440 PASS'
+          echo 'V9_OFFLINE_TOTAL=546 PASS;FAIL=0;SKIPPED=0'
           echo 'CLOUDFLARE_DEPLOYED=NO'
           echo 'ANDROID_APK_BUILD=NO'
           echo 'PUBLIC_WITNESS_API=DISABLED'
