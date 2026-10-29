@@ -1,0 +1,311 @@
+# Local-only R9 evidence. No push/merge/deploy in this workflow.
+name: V9 Stage5D R9 Local Workerd Root Cause (No Deploy)
+'on':
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - .github/workflows/v9-stage5d-r9-local-root-cause.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-stage5d-r9-local-only
+  cancel-in-progress: false
+jobs:
+  r9-workerd-root-cause:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      WRANGLER_SEND_METRICS: 'false'
+      CLOUDFLARE_SEND_METRICS: 'false'
+      EXPECTED_PARENT: cb384b2e14eb0a641218ee46d09eff66ae9c15ec
+      R9_WORKFLOW: .github/workflows/v9-stage5d-r9-local-root-cause.yml
+    steps:
+      - name: Checkout without write credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Verify exact one-file R9 scope and source pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, subprocess
+          g=lambda *a: subprocess.check_output(['git',*a],text=True).strip()
+          assert g('rev-parse','HEAD^')==os.environ['EXPECTED_PARENT'],'PARENT_CHANGED'
+          assert g('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines()==[os.environ['R9_WORKFLOW']],'R9_SCOPE_CHANGED'
+          pins={
+           'cloudflare/v9-witness/stage5d-r3-probe/entry.mjs':'a13bfba95f5a848cc1a7a58aee7f20b22bbcde04',
+           'cloudflare/v9-witness/stage5d-r3-probe/scheduled.mjs':'e5bff1fd72abaca6e9159d8d8b674c830fb535f1',
+           'cloudflare/v9-witness/stage5d-r3-probe/wrangler.toml':'fe743d26ea110f9f2a05a00353607cab21b17137',
+           'cloudflare/v9-witness/stage5d-probe/core.mjs':'97c387597cdaf3d34bbad9c106d3fc4ed59681c6',
+           'cloudflare/v9-witness/device-auth/stage5d-private.mjs':'537d8167550aca3eebc5de87299efb46b2ff12c7'}
+          for p,sha in pins.items():
+           assert g('rev-parse','HEAD:'+p)==sha,'R9_SOURCE_PIN_DRIFT'
+          print('R9_PREFLIGHT=PASS;ONE_WORKFLOW_ONLY=YES;SOURCE_PIN=PASS')
+          print('R9_REMOTE_DEPLOY=NO;GITHUB_WRITE=NO;PRODUCTION_SECRETS=NOT_USED')
+          PY
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify original Node regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test cloudflare/v9-witness/stage5d-r3-probe/scheduled.test.mjs cloudflare/v9-witness/stage5d-probe/core.test.mjs > "$RUNNER_TEMP/r9-node-private.log" 2>&1
+          echo 'R9_ORIGINAL_NODE_TESTS=PASS'
+      - name: Create instrumented ephemeral copy only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, shutil, pathlib, tomllib
+          src=pathlib.Path('cloudflare/v9-witness')
+          dst=pathlib.Path(os.environ['RUNNER_TEMP'])/'r9-source'/'cloudflare'/'v9-witness'
+          dst.mkdir(parents=True)
+          for part in ('device-auth','stage5d-probe','stage5d-r3-probe'):
+           shutil.copytree(src/part,dst/part)
+          marker=dst/'stage5d-probe'/'r9-marker.mjs'
+          marker.write_text('''let phase='BOOT';
+          export function mark(tag){if(!/^[A-Z0-9_]{3,50}$/.test(tag))throw Error('R9_INVALID_MARKER');phase=tag;}
+          export function getMark(){return phase;}
+          export function resetMark(){phase='BOOT';}
+          ''')
+          def edit(part, insertions):
+           p=dst/part
+           s=p.read_text()
+           if part.startswith('stage5d-probe/'):
+            s="import {mark} from './r9-marker.mjs';\n"+s
+           else:
+            s="import {mark} from '../stage5d-probe/r9-marker.mjs';\n"+s
+           for anchor, code, label in insertions:
+            assert s.count(anchor)==1, 'R9_INSTRUMENTATION_ANCHOR_DRIFT:'+label
+            s=s.replace(anchor,code,1)
+           p.write_text(s)
+          edit('stage5d-probe/core.mjs',[
+           ("  const pub=await crypto.subtle.exportKey('jwk',key.publicKey);", "  mark('JWT_EXPORT_JWK');\n  const pub=await crypto.subtle.exportKey('jwk',key.publicKey);",'JWT_EXPORT'),
+           ("  const signature=await crypto.subtle.sign('RSASSA-PKCS1-v1_5'", "  mark('JWT_RSA_SIGN');\n  const signature=await crypto.subtle.sign('RSASSA-PKCS1-v1_5'",'JWT_RSA_SIGN'),
+           ('  const msg=proofMessage(challenge);',"  mark('PROOF_MESSAGE_BUILD');\n  const msg=proofMessage(challenge);",'PROOF_MSG'),
+           ("  const raw=new Uint8Array(await crypto.subtle.sign({name:'ECDSA'", "  mark('P256_PROOF_SIGN');\n  const raw=new Uint8Array(await crypto.subtle.sign({name:'ECDSA'",'P256_SIGN'),
+           ('  const r=derInt(raw.slice(0,32)),s=derInt(raw.slice(32));',"  mark('P256_DER_ENCODING');\n  const r=derInt(raw.slice(0,32)),s=derInt(raw.slice(32));",'P256_DER'),
+           ('    insist(!this.storage.kv.get(',"    mark('CHECKPOINT_READ');\n    insist(!this.storage.kv.get(",'CHECKPOINT_READ'),
+           ('    const pair=await deviceKey(),ga=await googleKey(),aa=await adminKey();',
+            "    mark('P256_GENERATE');const pair=await deviceKey();\n    mark('RSA_GENERATE');const ga=await googleKey();\n    mark('ED25519_GENERATE');const aa=await adminKey();",'KEYGEN'),
+           ("    const spki=new Uint8Array(await crypto.subtle.exportKey('spki',pair.publicKey));", "    mark('P256_EXPORT');\n    const spki=new Uint8Array(await crypto.subtle.exportKey('spki',pair.publicKey));",'P256_EXPORT'),
+           ("    const adminSpki=new Uint8Array(await crypto.subtle.exportKey('spki',aa.publicKey));", "    mark('ED25519_EXPORT');\n    const adminSpki=new Uint8Array(await crypto.subtle.exportKey('spki',aa.publicKey));",'ED25519_EXPORT'),
+           ("    const adminPin=hex(await crypto.subtle.digest('SHA-256',adminSpki));", "    mark('ADMIN_PIN_SHA256');\n    const adminPin=hex(await crypto.subtle.digest('SHA-256',adminSpki));",'ADMIN_PIN'),
+           ("    const pubFixture=await fixtureJwt(ga,'placeholder',this.clock());", "    mark('RSA_JWT_FIXTURE');\n    const pubFixture=await fixtureJwt(ga,'placeholder',this.clock());",'RSA_FIXTURE'),
+           ('    const service=new V9PrivateDeviceAdminService(',"    mark('PRIVATE_SERVICE_INIT');\n    const service=new V9PrivateDeviceAdminService(",'SERVICE'),
+           ('    const enrollment=await service.beginDeviceEnrollment(',"    mark('ENROLL_BEGIN');\n    const enrollment=await service.beginDeviceEnrollment(",'ENROLL_BEGIN'),
+           ('    const p=await makeDeviceProof(',"    mark('ENROLL_PROOF_SIGN');\n    const p=await makeDeviceProof(",'ENROLL_PROOF'),
+           ('    const req=await service.submitDeviceEnrollment(',"    mark('ENROLL_SUBMIT');\n    const req=await service.submitDeviceEnrollment(",'ENROLL_SUBMIT'),
+           ("    insist(req.status==='pending'", "    mark('PENDING_ASSERT');\n    insist(req.status==='pending'",'PENDING_ASSERT'),
+           ('    const session=service.beginAdminSession(),jwt=await fixtureJwt(ga,session.nonce,this.clock());',
+            "    mark('OIDC_SESSION_APPROVE');const session=service.beginAdminSession();\n    mark('OIDC_JWT_APPROVE');const jwt=await fixtureJwt(ga,session.nonce,this.clock());",'OIDC_APPROVE'),
+           ('    const approved=await service.decideDevice(',"    mark('ADMIN_APPROVE');\n    const approved=await service.decideDevice(",'ADMIN_APPROVE'),
+           ("    insist(approved.status==='active'", "    mark('APPROVE_ASSERT');\n    insist(approved.status==='active'",'APPROVE_ASSERT'),
+           ('    const actionChallenge=service.beginAuthorizedChallenge(',"    mark('AUTH_CHALLENGE_ISSUE');\n    const actionChallenge=service.beginAuthorizedChallenge(",'CHALLENGE'),
+           ('    const actionProof=await makeDeviceProof(',"    mark('AUTH_CHALLENGE_SIGN');\n    const actionProof=await makeDeviceProof(",'CHALLENGE_SIGN'),
+           ('    const accepted=await service.verifyAuthorizedProof(',"    mark('AUTH_CHALLENGE_VERIFY');\n    const accepted=await service.verifyAuthorizedProof(",'CHALLENGE_VERIFY'),
+           ("    insist(accepted.authenticated===true", "    mark('AUTHORIZED_ASSERT');\n    insist(accepted.authenticated===true",'AUTH_ASSERT'),
+           ('    let replayDenied=false;',"    mark('REPLAY_DENY');\n    let replayDenied=false;",'REPLAY'),
+           ('    const revokedSession=service.beginAdminSession(),revJwt=await fixtureJwt(ga,revokedSession.nonce,this.clock());',
+            "    mark('OIDC_SESSION_REVOKE');const revokedSession=service.beginAdminSession();\n    mark('OIDC_JWT_REVOKE');const revJwt=await fixtureJwt(ga,revokedSession.nonce,this.clock());",'OIDC_REVOKE'),
+           ('    const revoked=await service.decideDevice(',"    mark('ADMIN_REVOKE');\n    const revoked=await service.decideDevice(",'ADMIN_REVOKE'),
+           ("    insist(revoked.status==='revoked'", "    mark('REVOKE_ASSERT');\n    insist(revoked.status==='revoked'",'REVOKE_ASSERT'),
+           ('    let blocked=false;',"    mark('REVOKED_CHALLENGE_DENY');\n    let blocked=false;",'REVOKED_DENY'),
+           ("    this.storage.kv.put('stage5d:checkpoint'", "    mark('CHECKPOINT_WRITE');\n    this.storage.kv.put('stage5d:checkpoint'",'CHECKPOINT_WRITE'),
+          ])
+          edit('device-auth/protocol.mjs',[
+           ('  const der=strictBase64Url(proof.spkiB64Url,[70,110]);',"  mark('PROOF_DECODE_SPKI');\n  const der=strictBase64Url(proof.spkiB64Url,[70,110]);",'PROOF_SPKI'),
+           ("  const pin=hex(new Uint8Array(await crypto.subtle.digest('SHA-256',der)));","  mark('PROOF_SHA256');\n  const pin=hex(new Uint8Array(await crypto.subtle.digest('SHA-256',der)));",'PROOF_HASH'),
+           ("  try {pub=await crypto.subtle.importKey('spki'", "  mark('PROOF_IMPORT_P256');\n  try {pub=await crypto.subtle.importKey('spki'",'PROOF_IMPORT'),
+           ('  const sig=derToP1363(',"  mark('PROOF_DER_TO_P1363');\n  const sig=derToP1363(",'PROOF_DER'),
+           ("  const ok=await crypto.subtle.verify({name:'ECDSA'", "  mark('PROOF_P256_VERIFY');\n  const ok=await crypto.subtle.verify({name:'ECDSA'",'PROOF_VERIFY'),
+          ])
+          edit('device-auth/registry.mjs',[
+           ('    const der=strictBase64Url(spkiB64Url,[70,110]);',"    mark('ENROLL_DECODE_SPKI');\n    const der=strictBase64Url(spkiB64Url,[70,110]);",'ENROLL_DECODE'),
+           ("    try { pub=await crypto.subtle.importKey('spki'", "    mark('ENROLL_IMPORT_P256');\n    try { pub=await crypto.subtle.importKey('spki'",'ENROLL_IMPORT'),
+           ("    const deviceId=hex(new Uint8Array(await crypto.subtle.digest('SHA-256',der)));", "    mark('ENROLL_SHA256');\n    const deviceId=hex(new Uint8Array(await crypto.subtle.digest('SHA-256',der)));",'ENROLL_HASH'),
+           ("    return this.s.transactionSync(()=>{\n      demand(!this.s.kv.get(enState(deviceId))", "    mark('ENROLL_CHALLENGE_TRANSACTION');\n    return this.s.transactionSync(()=>{\n      demand(!this.s.kv.get(enState(deviceId))",'ENROLL_TX'),
+           ('    const c=this.s.kv.get(enChallenge(proof.deviceId));',"    mark('ENROLL_CHALLENGE_READ');\n    const c=this.s.kv.get(enChallenge(proof.deviceId));",'ENROLL_READ'),
+           ('    const verified=await verifyDeviceProof(',"    mark('ENROLL_PROOF_VERIFY');\n    const verified=await verifyDeviceProof(",'ENROLL_PROOF_VERIFY'),
+           ('    const requestId=this.random();',"    mark('ENROLL_REQUEST_RANDOM');\n    const requestId=this.random();",'ENROLL_REQUEST_RANDOM'),
+           ("    return this.s.transactionSync(()=>{\n      const latest=this.s.kv.get(enChallenge(verified.deviceId));", "    mark('ENROLL_REQUEST_TRANSACTION');\n    return this.s.transactionSync(()=>{\n      const latest=this.s.kv.get(enChallenge(verified.deviceId));",'ENROLL_REQUEST_TX'),
+           ('    const expectedPin=hex(new Uint8Array(await crypto.subtle.digest(',"    mark('PERMIT_ADMIN_PIN');\n    const expectedPin=hex(new Uint8Array(await crypto.subtle.digest(",'PERMIT_PIN'),
+           ("    try {key=await crypto.subtle.importKey('spki',this.adminSpkiDer", "    mark('PERMIT_IMPORT_ED25519');\n    try {key=await crypto.subtle.importKey('spki',this.adminSpkiDer",'PERMIT_IMPORT'),
+           ("    const valid=await crypto.subtle.verify('Ed25519'", "    mark('PERMIT_VERIFY_ED25519');\n    const valid=await crypto.subtle.verify('Ed25519'",'PERMIT_VERIFY'),
+           ('    const p=await this.#verifyPermit(permit);',"    mark('PERMIT_VERIFY_ENTRY');\n    const p=await this.#verifyPermit(permit);",'PERMIT_ENTRY'),
+           ("    return this.s.transactionSync(()=>{\n      demand(!this.s.kv.get(spent(p.decisionId))", "    mark('PERMIT_APPLY_TRANSACTION');\n    return this.s.transactionSync(()=>{\n      demand(!this.s.kv.get(spent(p.decisionId))",'PERMIT_APPLY_TX'),
+          ])
+          edit('device-auth/admin-authority.mjs',[
+           ('    const sessionId=this.random(),nonce=b64url(',"    mark('NONCE_GENERATE');\n    const sessionId=this.random(),nonce=b64url(",'NONCE_RANDOM'),
+           ('    return this.s.transactionSync(()=>{\n      demand(!this.s.kv.get(nonceKey(sessionId))',"    mark('NONCE_STORE_TRANSACTION');\n    return this.s.transactionSync(()=>{\n      demand(!this.s.kv.get(nonceKey(sessionId))",'NONCE_STORE_TX'),
+           ('    const nonce=this.#nonces.inspect(sessionId);',"    mark('OIDC_NONCE_INSPECT');\n    const nonce=this.#nonces.inspect(sessionId);",'NONCE_INSPECT'),
+           ('    const now=this.#clock(),trustedJwks=await this.#getGoogleKeys();',"    mark('OIDC_JWKS_GET');\n    const now=this.#clock(),trustedJwks=await this.#getGoogleKeys();",'JWKS_GET'),
+           ('    const admin=await verifyGoogleAdminIdToken(',"    mark('OIDC_VERIFY_ID_TOKEN');\n    const admin=await verifyGoogleAdminIdToken(",'OIDC_VERIFY'),
+           ('    this.#nonces.consume(sessionId,nonce);',"    mark('OIDC_NONCE_CONSUME');\n    this.#nonces.consume(sessionId,nonce);",'NONCE_CONSUME'),
+           ('    const state=this.#registry.snapshot(',"    mark('OIDC_REGISTRY_SNAPSHOT');\n    const state=this.#registry.snapshot(",'REGISTRY_SNAPSHOT'),
+           ("    const adminId=hex(new Uint8Array(await crypto.subtle.digest('SHA-256'", "    mark('OIDC_ADMIN_ID_SHA256');\n    const adminId=hex(new Uint8Array(await crypto.subtle.digest('SHA-256'",'OIDC_ADMIN_HASH'),
+           ("    const signed=await crypto.subtle.sign('Ed25519'", "    mark('OIDC_ED25519_SIGN');\n    const signed=await crypto.subtle.sign('Ed25519'",'OIDC_ED_SIGN'),
+          ])
+          edit('device-auth/admin-oidc.mjs',[
+           ('  const keys=trustedJwks.keys.filter(',"  mark('OIDC_JWKS_KEY_SELECT');\n  const keys=trustedJwks.keys.filter(",'JWKS_KEY'),
+           ("  let key;try {key=await crypto.subtle.importKey('jwk'", "  mark('OIDC_RSA_JWK_IMPORT');\n  let key;try {key=await crypto.subtle.importKey('jwk'",'RSA_IMPORT'),
+           ('  const ok=await crypto.subtle.verify({name:',"  mark('OIDC_RSA_SIGNATURE_VERIFY');\n  const ok=await crypto.subtle.verify({name:",'RSA_VERIFY'),
+           ('  const s=Math.floor(now/1000);',"  mark('OIDC_CLAIMS_CHECK');\n  const s=Math.floor(now/1000);",'OIDC_CLAIMS'),
+          ])
+          # R9 entry exists only in the ephemeral runner folder. No public routes and no live bindings.
+          (dst/'stage5d-r3-probe'/'r9-entry.mjs').write_text(r'''import {DurableObject} from 'cloudflare:workers';
+          import {V9Stage5DProbeCore} from '../stage5d-probe/core.mjs';
+          import {getMark,resetMark} from '../stage5d-probe/r9-marker.mjs';
+          import {runR3Scheduled} from './scheduled.mjs';
+          const doName='stage5d-r3-disposable-private-do-20261029';
+          const allowed=new Set(['Error','TypeError','OperationError','NotSupportedError','DataError','InvalidAccessError','InvalidStateError','QuotaExceededError','SyntaxError','UnknownError']);
+          export class V9Stage5DR9DO extends DurableObject {
+            constructor(ctx,env){super(ctx,env);this.core=new V9Stage5DProbeCore(ctx.storage,crypto.randomUUID());}
+            async exercise(){resetMark();try{return await this.core.exercise();}catch(e){
+              const stage=getMark(),raw=String(e?.name||'Error'),errorClass=allowed.has(raw)?raw:'OtherError';
+              this.ctx.storage.kv.put('r9:diag',{stage,errorClass});
+              throw new Error('R9_EXERCISE_BLOCKED');
+            }}
+            inspectRestart(){return this.core.inspectRestart();}
+            getPhase(){return this.ctx.storage.kv.get('stage5d:checkpoint')?.phase??'empty';}
+            getDiag(){return this.ctx.storage.kv.get('r9:diag')??{stage:'NONE',errorClass:'NONE'};}
+            abortInstance(){this.ctx.abort('R9_EXPECTED_RESTART',{retryAlarm:false});}
+          }
+          let lastRun={reached:false};
+          export default {
+            async fetch(req,env){
+              if(env.R9_LOCAL_DIAG!=='ENABLED'||req.method!=='GET'||new URL(req.url).pathname!=='/__r9_diag'||req.headers.get('x-r9-loopback')!=='LOCAL_ONLY')
+                return new Response('not exposed',{status:503,headers:{'cache-control':'no-store'}});
+              const ns=env.V9_STAGE5D_R3_PROBE,stub=ns.get(ns.idFromName(doName));
+              const [phase,diag]=await Promise.all([stub.getPhase(),stub.getDiag()]);
+              const p=['empty','revoked'].includes(phase)?phase:'OTHER';
+              const stage=/^[A-Z0-9_]{3,50}$/.test(diag.stage)?diag.stage:'UNKNOWN';
+              const errorClass=allowed.has(diag.errorClass)?diag.errorClass:'OtherError';
+              return new Response(JSON.stringify({run:lastRun,phase:p,stage,errorClass}),{headers:{'content-type':'application/json','cache-control':'no-store'}});
+            },
+            async scheduled(event,env){
+              const r={reached:true,received:false,initial:false,restartRequested:false,persistence:false,final:false,result:'PENDING'};
+              lastRun=r;
+              try{
+                await runR3Scheduled(event,env,msg=>{
+                  if(msg==='R3_SCHEDULED_RECEIVED=YES;MODE=SYNTHETIC_ONLY')r.received=true;
+                  if(msg.startsWith('V9_STAGE5D_R3_INITIAL=PASS'))r.initial=true;
+                  if(msg.startsWith('R3_RESTART_REQUESTED=YES'))r.restartRequested=true;
+                  if(msg==='R3_RESTART_PERSISTENCE=PASS')r.persistence=true;
+                  if(msg.startsWith('V9_STAGE5D_R3_LIVE=PASS'))r.final=true;
+                });r.result='OK';
+              }catch(_){r.result='EXCEPTION';throw new Error('R9_SCHEDULED_DIAGNOSTIC_BLOCKED');}
+            }
+          };
+          ''')
+          config=(dst/'stage5d-r3-probe'/'wrangler.toml').read_text()
+          for before,after in [('main = "entry.mjs"','main = "r9-entry.mjs"'),('name = "appforge-v9-stage5d-r3-disposable-20261029"','name = "appforge-v9-stage5d-r9-local-only"'),('class_name = "V9Stage5DR3DO"','class_name = "V9Stage5DR9DO"'),('new_sqlite_classes = ["V9Stage5DR3DO"]','new_sqlite_classes = ["V9Stage5DR9DO"]'),('STAGE5D_R3_DIAGNOSTIC = "ENABLED"','STAGE5D_R3_DIAGNOSTIC = "ENABLED"\nR9_LOCAL_DIAG = "ENABLED"')]:
+           assert config.count(before)==1,'R9_CONFIG_DRIFT'
+           config=config.replace(before,after)
+          config_path=dst/'stage5d-r3-probe'/'r9-local.toml'
+          config_path.write_text(config)
+          t=tomllib.loads(config)
+          assert t['durable_objects']['bindings']==[{'name':'V9_STAGE5D_R3_PROBE','class_name':'V9Stage5DR9DO'}]
+          assert t['migrations'][0]['new_sqlite_classes']==['V9Stage5DR9DO']
+          assert t['vars']['R9_LOCAL_DIAG']=='ENABLED' and t['workers_dev'] is False and t['preview_urls'] is False
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+           f.write('R9_CONFIG_PATH='+str(config_path)+'\n')
+          print('R9_INSTRUMENTATION=PASS;EPHEMERAL_COPY=YES;NO_ORIGINAL_SOURCE_EDIT=YES')
+          PY
+          node --check "$RUNNER_TEMP/r9-source/cloudflare/v9-witness/stage5d-r3-probe/r9-entry.mjs"
+          node --check "$RUNNER_TEMP/r9-source/cloudflare/v9-witness/stage5d-probe/core.mjs"
+          git diff --exit-code -- cloudflare/v9-witness
+      - name: Workerd first call and process-restart persistence verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          PORT=8799
+          STATE="$RUNNER_TEMP/r9-workerd-state"
+          LOG="$RUNNER_TEMP/r9-workerd-private.log"
+          start_runtime() {
+            setsid npx --yes wrangler@4.153.0 dev --local --test-scheduled --config "$R9_CONFIG_PATH" --ip 127.0.0.1 --port "$PORT" --persist-to "$STATE" --log-level info --show-interactive-dev-session=false > "$LOG" 2>&1 &
+            PGID=$!
+          }
+          stop_runtime() {
+            kill -- -"$PGID" 2>/dev/null || true
+            wait "$PGID" 2>/dev/null || true
+            sleep 2
+          }
+          cleanup() { if [[ -n "${PGID:-}" ]]; then stop_runtime; fi; }
+          trap cleanup EXIT
+          start_runtime
+          python3 - <<'PY'
+          import urllib.request, urllib.error, time, json,sys
+          root='http://127.0.0.1:8799'
+          def get(path,header=False,timeout=60):
+           req=urllib.request.Request(root+path,headers={'x-r9-loopback':'LOCAL_ONLY'} if header else {})
+           try:
+            with urllib.request.urlopen(req,timeout=timeout) as response:return response.status,response.read(16384)
+           except urllib.error.HTTPError as ex:return ex.code,ex.read(16384)
+          for _ in range(80):
+           try:
+            code,_=get('/',timeout=1)
+            if code==503:break
+            raise RuntimeError('R9_DENY_FAILED')
+           except (TimeoutError,urllib.error.URLError):time.sleep(1)
+          else:raise RuntimeError('R9_WORKER_NOT_READY')
+          c,_=get('/__r9_diag')
+          if c!=503:raise RuntimeError('R9_DIAG_NOT_DENIED')
+          c,raw=get('/cdn-cgi/local/scheduled?cron=%2A+%2A+%2A+%2A+%2A&format=json',timeout=90)
+          try:out=json.loads(raw).get('outcome','unknown')
+          except:out='unknown'
+          c,raw=get('/__r9_diag',True)
+          if c!=200:raise RuntimeError('R9_DIAG_UNAVAILABLE')
+          data=json.loads(raw);r=data['run']
+          print('R9_FIRST_OUTCOME='+str(out))
+          print('R9_FIRST_STAGE='+str(data['stage']))
+          print('R9_FIRST_ERROR_CLASS='+str(data['errorClass']))
+          print('R9_FIRST_CHECKPOINT='+str(data['phase']))
+          print('R9_FIRST_RECEIVED='+str(r['received']))
+          print('R9_FIRST_INITIAL='+str(r['initial']))
+          print('R9_FIRST_RESTART_REQUESTED='+str(r['restartRequested']))
+          if not(r['reached'] and r['received'] and r['initial'] and r['restartRequested'] and r['result']=='OK' and data['phase']=='revoked'):
+           print('R9_ROOT_CAUSE_DIAGNOSIS=REQUIRES_FIX;LIVE_ACCEPTANCE=NOT_VERIFIED')
+           sys.exit(1)
+          print('R9_FIRST_PHASE=PASS')
+          PY
+          stop_runtime
+          PGID=''
+          start_runtime
+          python3 - <<'PY'
+          import urllib.request,urllib.error,time,json,sys
+          root='http://127.0.0.1:8799'
+          def get(path,headers=None,timeout=60):
+           req=urllib.request.Request(root+path,headers=headers or {})
+           try:
+            with urllib.request.urlopen(req,timeout=timeout) as x:return x.status,x.read(16384)
+           except urllib.error.HTTPError as e:return e.code,e.read(16384)
+          for _ in range(80):
+           try:
+            code,_=get('/',timeout=1)
+            if code==503:break
+            raise RuntimeError('R9_RESTART_DENY_FAILED')
+           except (TimeoutError,urllib.error.URLError):time.sleep(1)
+          else:raise RuntimeError('R9_RESTART_NOT_READY')
+          code,raw=get('/__r9_diag',{'x-r9-loopback':'LOCAL_ONLY'})
+          if code!=200 or json.loads(raw)['phase']!='revoked':
+           print('R9_PROCESS_RESTART_PERSISTENCE=FAIL');sys.exit(1)
+          get('/cdn-cgi/local/scheduled?cron=%2A+%2A+%2A+%2A+%2A&format=json',timeout=90)
+          code,raw=get('/__r9_diag',{'x-r9-loopback':'LOCAL_ONLY'})
+          if code!=200:raise RuntimeError('R9_SECOND_DIAG_UNAVAILABLE')
+          data=json.loads(raw);r=data['run']
+          print('R9_SECOND_CHECKPOINT='+str(data['phase']))
+          print('R9_SECOND_RESULT='+str(r['result']))
+          print('R9_SECOND_PERSISTENCE='+str(r['persistence']))
+          print('R9_SECOND_FINAL='+str(r['final']))
+          if not (r['received'] and r['persistence'] and r['final'] and r['result']=='OK' and data['phase']=='revoked'):
+           print('R9_ACCEPTANCE=FAIL;LIVE_ACCEPTANCE=NOT_VERIFIED');sys.exit(1)
+          print('R9_LOCAL_WORKERD_ACCEPTANCE=PASS;RESTART=PASS;PERSISTENCE=PASS;DENY=PASS')
+          print('R9_LIVE_ACCEPTANCE=NOT_VERIFIED;CLOUDFLARE_DEPLOY=NO')
+          PY
