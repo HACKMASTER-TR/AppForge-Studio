@@ -1,0 +1,175 @@
+# R8 AUTHORIZED: one workflow only, diagnostic endpoints loopback-only, no remote Cloudflare deploy.
+name: V9 Stage5D R8 Local Workerd Safe Phase Tracing (No Deploy)
+'on':
+  push:
+    branches:
+    - feat/v9-global-package-distribution-20261027
+    paths:
+    - .github/workflows/v9-stage5d-r8-local-phase-trace.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-stage5d-r8-local-only
+  cancel-in-progress: false
+jobs:
+  r8-local-phase-trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CI: 'true'
+      WRANGLER_SEND_METRICS: 'false'
+      CLOUDFLARE_SEND_METRICS: 'false'
+      EXPECTED_PARENT: 64564631fb51721b94e91056962996c15b71c6c4
+      WORKFLOW_PATH: .github/workflows/v9-stage5d-r8-local-phase-trace.yml
+    steps:
+    - name: Checkout pinned R7 baseline
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+        persist-credentials: false
+    - name: Guard exact one-workflow scope
+      shell: bash
+      run: |-
+        set -euo pipefail
+        python3 - <<'PY_R8_PREFLIGHT'
+        import os,subprocess
+        def git(*a):return subprocess.check_output(['git',*a],text=True).strip()
+        assert git('rev-parse','HEAD^')==os.environ['EXPECTED_PARENT'],'R8_PARENT_DRIFT'
+        assert git('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines()==[os.environ['WORKFLOW_PATH']],'R8_FILE_SCOPE'
+        pins={
+         'cloudflare/v9-witness/stage5d-r3-probe/entry.mjs':'a13bfba95f5a848cc1a7a58aee7f20b22bbcde04',
+         'cloudflare/v9-witness/stage5d-r3-probe/scheduled.mjs':'e5bff1fd72abaca6e9159d8d8b674c830fb535f1',
+         'cloudflare/v9-witness/stage5d-r3-probe/wrangler.toml':'fe743d26ea110f9f2a05a00353607cab21b17137',
+         'cloudflare/v9-witness/stage5d-probe/core.mjs':'97c387597cdaf3d34bbad9c106d3fc4ed59681c6',
+         'cloudflare/v9-witness/device-auth/stage5d-private.mjs':'537d8167550aca3eebc5de87299efb46b2ff12c7'}
+        for path,sha in pins.items():
+         assert git('rev-parse','HEAD:'+path)==sha,'R8_BLOB_DRIFT'
+         assert git('rev-parse','HEAD^:'+path)==sha,'R8_PARENT_BLOB_DRIFT'
+        print('R8_SOURCE_PIN=PASS;FILES=5;EXACT_ONE_WORKFLOW=YES')
+        print('R8_CLOUDFLARE_DEPLOY=NO;GITHUB_WRITE=NO;NODE_LOCAL=YES')
+        PY_R8_PREFLIGHT
+    - name: Set up Node 22
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - name: Run original source tests
+      shell: bash
+      run: |
+        set -euo pipefail
+        node --test cloudflare/v9-witness/stage5d-r3-probe/scheduled.test.mjs cloudflare/v9-witness/stage5d-probe/core.test.mjs > "$RUNNER_TEMP/r8-node.log" 2>&1
+        echo 'R8_ORIGINAL_NODE_TESTS=PASS;SUITES=2'
+    - name: Diagnose exact runtime phases locally without deployment
+      shell: bash
+      run: |
+        set -euo pipefail
+        DIR=cloudflare/v9-witness/stage5d-r3-probe
+        cat > "$DIR/r8-local-entry.mjs" <<'JS_R8_ENTRY'
+        import {V9Stage5DR3DO} from './entry.mjs';
+        import {runR3Scheduled} from './scheduled.mjs';
+        export {V9Stage5DR3DO};
+        const runs=[];
+        const doName='stage5d-r3-disposable-private-do-20261029';
+        const allowedStages=new Set(['mode-gate','bind-do','read-state','exercise','request-restart','inspect-restart']);
+        const initial='V9_STAGE5D_R3_INITIAL=PASS;ENROLL=PASS;OIDC=PASS;APPROVE=PASS;CHALLENGE=PASS;REVOKE=PASS';
+        const restart='R3_RESTART_REQUESTED=YES;CONFIRMATION=PENDING_SECOND_INVOCATION';
+        const persist='R3_RESTART_PERSISTENCE=PASS';
+        const final='V9_STAGE5D_R3_LIVE=PASS;OIDC=PASS;ENROLL=PASS;APPROVE=PASS;REVOKE=PASS;RESTART=PASS;PERSIST=PASS;DENY=PASS';
+        function record(msg,run){
+         if(msg==='R3_SCHEDULED_RECEIVED=YES;MODE=SYNTHETIC_ONLY')run.received=true;
+         if(msg===initial)run.initial=true;
+         if(msg===restart)run.restartRequested=true;
+         if(msg===persist)run.persistence=true;
+         if(msg===final)run.final=true;
+         const m=/^R3_SCHEDULED_FAILURE=YES;STAGE=([a-z-]+);ERROR_CLASS=(Error|TypeError)$/.exec(msg);
+         if(m && allowedStages.has(m[1])){run.failStage=m[1];run.errorClass=m[2];}
+        }
+        function phase(v){return v==='empty'||v==='revoked'?v:'OTHER';}
+        export default {
+         async fetch(req,env){
+          const path=new URL(req.url).pathname;
+          if(env.R8_LOCAL_DIAG==='ENABLED' && req.method==='GET' && path==='/__r8_diag' && req.headers.get('x-r8-test-only')==='ON_LOCAL_LOOPBACK'){
+           let checkpoint='NOT_CHECKED';
+           try{const ns=env.V9_STAGE5D_R3_PROBE;checkpoint=phase(await ns.get(ns.idFromName(doName)).getPhase());}
+           catch(_){checkpoint='EXCEPTION';}
+           return new Response(JSON.stringify({runs:runs.slice(-3),checkpoint}),{headers:{'content-type':'application/json','cache-control':'no-store'}});
+          }
+          return new Response('private diagnostics not exposed',{status:503,headers:{'cache-control':'no-store'}});
+         },
+         async scheduled(ev,env){
+          const run={reached:true,cronMatches:ev?.cron==='* * * * *',received:false,initial:false,restartRequested:false,persistence:false,final:false,failStage:'NONE',errorClass:'NONE',result:'PENDING',phase:'NONE'};
+          runs.push(run);
+          if(runs.length>3)runs.shift();
+          try{
+           const res=await runR3Scheduled(ev,env,(msg)=>record(msg,run));
+           run.result='OK';run.phase=res?.phase==='verified'?'verified':res?.phase==='restart-requested'?'restart-requested':'OTHER';
+          }catch(_){run.result='EXCEPTION';throw new Error('R8_LOCAL_DIAGNOSTIC_ERROR');}
+         }
+        };
+        JS_R8_ENTRY
+        python3 - <<'PY_R8_CONFIG'
+        from pathlib import Path
+        import tomllib
+        folder=Path('cloudflare/v9-witness/stage5d-r3-probe')
+        s=(folder/'wrangler.toml').read_text()
+        assert s.count('main = "entry.mjs"')==1
+        assert s.count('STAGE5D_R3_DIAGNOSTIC = "ENABLED"')==1
+        s=s.replace('main = "entry.mjs"','main = "r8-local-entry.mjs"')
+        s=s.replace('name = "appforge-v9-stage5d-r3-disposable-20261029"','name = "appforge-v9-stage5d-r8-local-only"')
+        s=s.replace('STAGE5D_R3_DIAGNOSTIC = "ENABLED"','STAGE5D_R3_DIAGNOSTIC = "ENABLED"'+chr(10)+'R8_LOCAL_DIAG = "ENABLED"')
+        p=folder/'r8-local.toml';p.write_text(s)
+        v=tomllib.loads(s)
+        assert v['vars']['R8_LOCAL_DIAG']=='ENABLED'
+        assert v['triggers']['crons']==['* * * * *']
+        assert v['durable_objects']['bindings']==[{'name':'V9_STAGE5D_R3_PROBE','class_name':'V9Stage5DR3DO'}]
+        assert v['workers_dev'] is False and v['preview_urls'] is False
+        print('R8_LOCAL_CONFIG=PASS;REMOTE_BINDINGS=NO')
+        PY_R8_CONFIG
+        node --check "$DIR/r8-local-entry.mjs"
+        npx --yes wrangler@4.153.0 dev --local --test-scheduled --config "$DIR/r8-local.toml" --ip 127.0.0.1 --port 8798 --persist-to "$RUNNER_TEMP/r8-local-state" --log-level info --show-interactive-dev-session=false > "$RUNNER_TEMP/r8-runtime-private.log" 2>&1 &
+        PID=$!
+        trap 'kill "$PID" 2>/dev/null || true' EXIT
+        python3 - <<'PY_R8_PROBE'
+        import json,time,urllib.request,urllib.error,sys
+        base='http://127.0.0.1:8798'
+        headers={'x-r8-test-only':'ON_LOCAL_LOOPBACK'}
+        def request(path,auth=False,timeout=30):
+         req=urllib.request.Request(base+path,headers=headers if auth else {})
+         try:
+          with urllib.request.urlopen(req,timeout=timeout) as r:return r.status,r.read(16384)
+         except urllib.error.HTTPError as e:return e.code,e.read(16384)
+        ready=False
+        for _ in range(70):
+         try:
+          code,_=request('/',timeout=1)
+          if code==503:ready=True;break
+          print('R8_FETCH_DENY=BLOCKED;HTTP='+str(code));sys.exit(1)
+         except (urllib.error.URLError,TimeoutError):time.sleep(1)
+        if not ready:print('R8_RUNTIME=NOT_READY');sys.exit(1)
+        print('R8_FETCH_DENY=PASS;HTTP=503')
+        def inspect():
+         code,raw=request('/__r8_diag',True)
+         if code!=200:raise RuntimeError('R8_DIAG_NOT_AVAILABLE')
+         result=json.loads(raw)
+         assert isinstance(result.get('runs'),list)
+         return result
+        for n in [1,2]:
+         code,raw=request('/cdn-cgi/local/scheduled?cron=%2A+%2A+%2A+%2A+%2A&format=json',timeout=90)
+         try:out=json.loads(raw).get('outcome','unknown')
+         except (ValueError,AttributeError):out='UNPARSEABLE'
+         if out not in ('ok','exception','canceled','exceededCpu','exceededMemory','unknown'):out='UNRECOGNIZED'
+         print('R8_SCHEDULED_'+str(n)+'_OUTCOME='+out)
+         time.sleep(1)
+         data=inspect()
+         runs=data['runs']
+         print('R8_'+str(n)+'_HANDLER_REACHED='+('YES' if len(runs)>=n else 'NO'))
+         if len(runs)<n:print('R8_INSTRUMENTATION=BLOCKED');sys.exit(1)
+         r=runs[n-1]
+         for f in ('cronMatches','received','initial','restartRequested','persistence','final'):
+          print('R8_'+str(n)+'_'+f.upper()+'='+('YES' if r.get(f) is True else 'NO'))
+         print('R8_'+str(n)+'_FAIL_STAGE='+str(r.get('failStage','NONE')))
+         print('R8_'+str(n)+'_ERROR_CLASS='+str(r.get('errorClass','NONE')))
+         print('R8_'+str(n)+'_RESULT='+str(r.get('result','NONE')))
+         print('R8_'+str(n)+'_CHECKPOINT='+str(data.get('checkpoint','NONE')))
+        print('R8_DIAGNOSTIC=COMPLETE;LIVE_ACCEPTANCE=NOT_VERIFIED;CLOUDFLARE_DEPLOY=NO')
+        PY_R8_PROBE
+        git diff --exit-code -- cloudflare/v9-witness/stage5d-r3-probe cloudflare/v9-witness/stage5d-probe
