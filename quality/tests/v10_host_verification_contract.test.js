@@ -64,3 +64,19 @@ test('V10 Windows explicitly installs local Electron before validating packaging
   }
   assert.doesNotMatch(windows, /continue-on-error|--ignore-scripts/);
 });
+
+test('V10 candidate lock export is read-only, opt-in and follows locked runtime acceptance', () => {
+  const rust = fs.readFileSync(new URL('../../scripts/v10/pyo3-host-acceptance.sh', import.meta.url), 'utf8');
+  const python = workflow.slice(workflow.indexOf('  python-extension:'), workflow.indexOf('  windows-native:'));
+  assert.match(python, /PYO3_EXPORT_LOCK: '1'/);
+  assert.match(rust, /test "\$mode" = candidate/);
+  for (const tool of ['rustc', 'cargo']) assert.ok(rust.includes(`$(${tool} --version | cut -d ' ' -f 2)" = 1.85.1`));
+  assert.ok(rust.includes('sys.version_info[:3] == (3, 12, 12)'));
+  const build = rust.indexOf('cargo build ');
+  const runtime = rust.indexOf('spec.loader.exec_module(m)');
+  const unchanged = rust.indexOf('cmp "$fixture/resolved.lock" "$fixture/Cargo.lock"');
+  const output = rust.indexOf("print('APPFORGE_PYO3_CANDIDATE_LOCK_V1='");
+  assert.ok(build < runtime && runtime < unchanged && unchanged < output);
+  for (const check of ["not p.is_symlink()", "assert 'appforge_native' in names", "len(data) <= 65536", "lock['version'] == 4", "x['version'] == '0.29.0'", "hashlib.sha256(data).hexdigest()", "base64.b64encode(data)"]) assert.ok(rust.includes(check));
+  assert.doesNotMatch(python, /secrets\.|upload-artifact|contents: write|continue-on-error/);
+});
