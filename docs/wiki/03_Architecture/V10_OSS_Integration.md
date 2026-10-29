@@ -232,3 +232,34 @@ Historical OSV 10 advisories/4 HIGH is not a fresh scan or security clearance.
 See `docs/engineering/v10/phase93-report.md` for provenance, local verification
 and unverified platform gates. Earlier unchanged-pin statements above are
 historical. No delivery authority is granted.
+
+## Phase 10 residual advisory investigation, 2026-10-29
+
+The five original residual IDs remain BLOCKED in the shipped lock graphs. Phase
+10 adds opt-in bounded real dependency/consumer probes in
+`quality/tests/v10_phase10_real_runtime.cjs`, without changing application
+behavior, dependency pins, scanner scope or production security settings.
+Deepmerge 4.3.1 target-side and null-target prototype poisoning is reproduced;
+ordinary source-key rejection does not establish a complete defense. Actual
+cacheable-request shared-store cross-principal reuse is reproduced with a
+synthetic transport, alongside private/no-store/Vary/separate-store controls.
+The Electron downloader's got default disables its HTTP cache; packaged EXE
+content is still NOT_RUN. No operational recommendation is counted as mitigation.
+
+Current upstream withdraws GHSA-ch52-4w7c-c8xp, while the authenticated pinned
+export still reports it. Preserve both observations and the finding until the
+normal fresh-database process reconciles them; no patch or suppression is implied.
+Parser 4.5.7 escapes the tested comment/CDATA delimiters, but OSV still matches
+it. A vulnerable 4.5.3 negative control proves these probes detect injection;
+5.7.0 and the CLI candidate's 5.11.2 reject the same injection paths.
+
+Supported CLI 20.2.0 replaces parser 4.x with ^5.3.6, preserving RN 0.81.5 in an
+isolated candidate. Android manifest and Apple scheme consumer probes, project
+and autolinking config comparison, and Android JavaScript bundling pass. Its
+32 package-path changes include dev-server body-parser 2; native Android,
+Hermes and actual Turbo registration acceptance remain NOT_RUN. Candidate
+promotion is deferred rather than declaring it incompatible or accepted. CLI
+20.1.0 still requires parser ^4.4.1. Expo SDK54 latest remains 54.0.38; the SDK55
+candidate still needs a reviewed native architecture migration. Full details,
+per-advisory decisions and fresh verification are in
+`docs/engineering/v10/phase10-report.md` and `phase10-evidence.json`.

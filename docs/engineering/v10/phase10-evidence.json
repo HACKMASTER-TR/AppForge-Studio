@@ -1,0 +1,2072 @@
+{
+  "schema_version": 1,
+  "status": "NO_SAFE_PARENT_FIX_ALL_5_BLOCKED",
+  "branch": "feat/v10-oss-unified-20261028",
+  "starting_head": "b286bb06d3e66947fc21a37734a1f70ad859f20b",
+  "evidence_dir": ".appforge/tmp/v10/phase10",
+  "advisories": [
+    {
+      "id": "GHSA-5p2g-fcmc-qvqq",
+      "package": "image-size",
+      "severity": "HIGH",
+      "status": "BLOCKED",
+      "shipped_graph_changed": false,
+      "mitigation_shipped": false,
+      "candidate_decision": "Expo55/Metro0.83.8 not promoted: architecture change; Android/Hermes/actual JSI registration NOT_RUN",
+      "root_chains": [
+        {
+          "manifest": "examples/rust-expo-jsi/package-lock.json",
+          "manifest_sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+          "steps": [
+            {
+              "name": "expo",
+              "range": "54.0.38",
+              "resolved": "54.0.38",
+              "path": "node_modules/expo"
+            },
+            {
+              "name": "@expo/metro",
+              "range": "~54.2.0",
+              "resolved": "54.2.0",
+              "path": "node_modules/@expo/metro"
+            },
+            {
+              "name": "metro",
+              "range": "0.83.3",
+              "resolved": "0.83.3",
+              "path": "node_modules/@expo/metro/node_modules/metro"
+            },
+            {
+              "name": "image-size",
+              "range": "^1.0.2",
+              "resolved": "1.2.1",
+              "path": "node_modules/image-size"
+            }
+          ]
+        },
+        {
+          "manifest": "examples/rust-expo-jsi/package-lock.json",
+          "manifest_sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+          "steps": [
+            {
+              "name": "react-native",
+              "range": "0.81.5",
+              "resolved": "0.81.5",
+              "path": "node_modules/react-native"
+            },
+            {
+              "name": "@react-native/community-cli-plugin",
+              "range": "0.81.5",
+              "resolved": "0.81.5",
+              "path": "node_modules/@react-native/community-cli-plugin"
+            },
+            {
+              "name": "metro",
+              "range": "^0.83.1",
+              "resolved": "0.83.2",
+              "path": "node_modules/metro"
+            },
+            {
+              "name": "image-size",
+              "range": "^1.0.2",
+              "resolved": "1.2.1",
+              "path": "node_modules/image-size"
+            }
+          ]
+        },
+        {
+          "manifest": "examples/rust-expo-turbo/package-lock.json",
+          "manifest_sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+          "steps": [
+            {
+              "name": "expo",
+              "range": "54.0.38",
+              "resolved": "54.0.38",
+              "path": "node_modules/expo"
+            },
+            {
+              "name": "@expo/metro",
+              "range": "~54.2.0",
+              "resolved": "54.2.0",
+              "path": "node_modules/@expo/metro"
+            },
+            {
+              "name": "metro",
+              "range": "0.83.3",
+              "resolved": "0.83.3",
+              "path": "node_modules/@expo/metro/node_modules/metro"
+            },
+            {
+              "name": "image-size",
+              "range": "^1.0.2",
+              "resolved": "1.2.1",
+              "path": "node_modules/image-size"
+            }
+          ]
+        },
+        {
+          "manifest": "examples/rust-expo-turbo/package-lock.json",
+          "manifest_sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+          "steps": [
+            {
+              "name": "react-native",
+              "range": "0.81.5",
+              "resolved": "0.81.5",
+              "path": "node_modules/react-native"
+            },
+            {
+              "name": "@react-native/community-cli-plugin",
+              "range": "0.81.5",
+              "resolved": "0.81.5",
+              "path": "node_modules/@react-native/community-cli-plugin"
+            },
+            {
+              "name": "metro",
+              "range": "^0.83.1",
+              "resolved": "0.83.2",
+              "path": "node_modules/metro"
+            },
+            {
+              "name": "image-size",
+              "range": "^1.0.2",
+              "resolved": "1.2.1",
+              "path": "node_modules/image-size"
+            }
+          ]
+        }
+      ],
+      "executed_evidence": [
+        {
+          "path": ".appforge/tmp/v10/phase10/image-vulnerable.log",
+          "sha256": "afb3f05013f351a680b123813707da8e9af2e57da80023a2e7d1b5d4b6c18e04"
+        },
+        {
+          "path": ".appforge/tmp/v10/phase10/image-patched.log",
+          "sha256": "db0b4222c369a06f28e6d0a3f8d09c28ae14905ab1df0aef1a1e40c9e0ebc1b9"
+        }
+      ],
+      "upstream_advisory": "https://github.com/advisories/GHSA-5p2g-fcmc-qvqq"
+    },
+    {
+      "id": "GHSA-ch52-4w7c-c8xp",
+      "package": "http-cache-semantics",
+      "severity": "HIGH",
+      "status": "BLOCKED",
+      "shipped_graph_changed": false,
+      "mitigation_shipped": false,
+      "candidate_decision": "4.3.0 not promoted: no verified patch; upstream withdrawal retained separately from pinned export",
+      "root_chains": [
+        {
+          "manifest": "windows-host/package-lock.json",
+          "manifest_sha256": "df9711e4ececc9c9bf7f0941680f5ea062f042fdec483d578d4d4e614b9d2f76",
+          "steps": [
+            {
+              "name": "electron-builder",
+              "range": "26.15.3",
+              "resolved": "26.15.3",
+              "path": "node_modules/electron-builder"
+            },
+            {
+              "name": "app-builder-lib",
+              "range": "26.15.3",
+              "resolved": "26.15.3",
+              "path": "node_modules/app-builder-lib"
+            },
+            {
+              "name": "@electron/get",
+              "range": "^3.0.0",
+              "resolved": "3.1.0",
+              "path": "node_modules/app-builder-lib/node_modules/@electron/get"
+            },
+            {
+              "name": "got",
+              "range": "^11.8.5",
+              "resolved": "11.8.6",
+              "path": "node_modules/got"
+            },
+            {
+              "name": "cacheable-request",
+              "range": "^7.0.2",
+              "resolved": "7.0.4",
+              "path": "node_modules/cacheable-request"
+            },
+            {
+              "name": "http-cache-semantics",
+              "range": "^4.0.0",
+              "resolved": "4.2.0",
+              "path": "node_modules/http-cache-semantics"
+            }
+          ]
+        }
+      ],
+      "executed_evidence": [
+        {
+          "path": ".appforge/tmp/v10/phase10/behavior-frozen.log",
+          "sha256": "2c99c2aa7918ca32a920ec63ea7df6e1205aa4a0662d652faf0c0e16a7df4e4c"
+        }
+      ],
+      "upstream_advisory": "https://github.com/advisories/GHSA-ch52-4w7c-c8xp",
+      "current_upstream_withdrawn": "2026-10-28T21:13:39Z",
+      "pinned_database_still_matches": true
+    },
+    {
+      "id": "GHSA-gcqx-w48m-w2h4",
+      "package": "deepmerge",
+      "severity": "LOW",
+      "status": "BLOCKED",
+      "shipped_graph_changed": false,
+      "mitigation_shipped": false,
+      "candidate_decision": "latest4.3.1 still affected; no published fixed version; internal config consumers cannot be protected by unused app wrapper",
+      "root_chains": [
+        {
+          "manifest": "examples/rust-expo-jsi/package-lock.json",
+          "manifest_sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+          "steps": [
+            {
+              "name": "expo",
+              "range": "54.0.38",
+              "resolved": "54.0.38",
+              "path": "node_modules/expo"
+            },
+            {
+              "name": "@expo/config",
+              "range": "~12.0.14",
+              "resolved": "12.0.14",
+              "path": "node_modules/@expo/config"
+            },
+            {
+              "name": "deepmerge",
+              "range": "^4.3.1",
+              "resolved": "4.3.1",
+              "path": "node_modules/deepmerge"
+            }
+          ]
+        },
+        {
+          "manifest": "examples/rust-expo-turbo/package-lock.json",
+          "manifest_sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+          "steps": [
+            {
+              "name": "expo",
+              "range": "54.0.38",
+              "resolved": "54.0.38",
+              "path": "node_modules/expo"
+            },
+            {
+              "name": "@expo/config",
+              "range": "~12.0.14",
+              "resolved": "12.0.14",
+              "path": "node_modules/@expo/config"
+            },
+            {
+              "name": "deepmerge",
+              "range": "^4.3.1",
+              "resolved": "4.3.1",
+              "path": "node_modules/deepmerge"
+            }
+          ]
+        },
+        {
+          "manifest": "examples/rust-react-native-turbo/package-lock.json",
+          "manifest_sha256": "949e0d9754a53076cc8227e2f6a9ce81ca8b0a7baa0d9219760334fef862bf74",
+          "steps": [
+            {
+              "name": "@react-native-community/cli",
+              "range": "20.0.0",
+              "resolved": "20.0.0",
+              "path": "node_modules/@react-native-community/cli"
+            },
+            {
+              "name": "deepmerge",
+              "range": "^4.3.0",
+              "resolved": "4.3.1",
+              "path": "node_modules/deepmerge"
+            }
+          ]
+        },
+        {
+          "manifest": "examples/rust-react-native-turbo/package-lock.json",
+          "manifest_sha256": "949e0d9754a53076cc8227e2f6a9ce81ca8b0a7baa0d9219760334fef862bf74",
+          "steps": [
+            {
+              "name": "@react-native-community/cli",
+              "range": "20.0.0",
+              "resolved": "20.0.0",
+              "path": "node_modules/@react-native-community/cli"
+            },
+            {
+              "name": "@react-native-community/cli-config",
+              "range": "20.0.0",
+              "resolved": "20.0.0",
+              "path": "node_modules/@react-native-community/cli-config"
+            },
+            {
+              "name": "deepmerge",
+              "range": "^4.3.0",
+              "resolved": "4.3.1",
+              "path": "node_modules/deepmerge"
+            }
+          ]
+        },
+        {
+          "manifest": "examples/rust-react-native-turbo/package-lock.json",
+          "manifest_sha256": "949e0d9754a53076cc8227e2f6a9ce81ca8b0a7baa0d9219760334fef862bf74",
+          "steps": [
+            {
+              "name": "@react-native-community/cli",
+              "range": "20.0.0",
+              "resolved": "20.0.0",
+              "path": "node_modules/@react-native-community/cli"
+            },
+            {
+              "name": "@react-native-community/cli-doctor",
+              "range": "20.0.0",
+              "resolved": "20.0.0",
+              "path": "node_modules/@react-native-community/cli-doctor"
+            },
+            {
+              "name": "deepmerge",
+              "range": "^4.3.0",
+              "resolved": "4.3.1",
+              "path": "node_modules/deepmerge"
+            }
+          ]
+        }
+      ],
+      "executed_evidence": [
+        {
+          "path": ".appforge/tmp/v10/phase10/behavior-frozen.log",
+          "sha256": "2c99c2aa7918ca32a920ec63ea7df6e1205aa4a0662d652faf0c0e16a7df4e4c"
+        }
+      ],
+      "upstream_advisory": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4"
+    },
+    {
+      "id": "GHSA-gh4j-gqv2-49f6",
+      "package": "fast-xml-parser",
+      "severity": "MODERATE",
+      "status": "BLOCKED",
+      "shipped_graph_changed": false,
+      "mitigation_shipped": false,
+      "candidate_decision": "CLI20.2.0/parser5.11.2 candidate config/bundle/consumer PASS; no native/Hermes/Turbo or complete body-parser2 server acceptance; not promoted",
+      "root_chains": [
+        {
+          "manifest": "examples/rust-react-native-turbo/package-lock.json",
+          "manifest_sha256": "949e0d9754a53076cc8227e2f6a9ce81ca8b0a7baa0d9219760334fef862bf74",
+          "steps": [
+            {
+              "name": "@react-native-community/cli-platform-android",
+              "range": "20.0.0",
+              "resolved": "20.0.0",
+              "path": "node_modules/@react-native-community/cli-platform-android"
+            },
+            {
+              "name": "@react-native-community/cli-config-android",
+              "range": "20.0.0",
+              "resolved": "20.0.0",
+              "path": "node_modules/@react-native-community/cli-config-android"
+            },
+            {
+              "name": "fast-xml-parser",
+              "range": "^4.4.1",
+              "resolved": "4.5.7",
+              "path": "node_modules/fast-xml-parser"
+            }
+          ]
+        },
+        {
+          "manifest": "examples/rust-react-native-turbo/package-lock.json",
+          "manifest_sha256": "949e0d9754a53076cc8227e2f6a9ce81ca8b0a7baa0d9219760334fef862bf74",
+          "steps": [
+            {
+              "name": "@react-native-community/cli",
+              "range": "20.0.0",
+              "resolved": "20.0.0",
+              "path": "node_modules/@react-native-community/cli"
+            },
+            {
+              "name": "@react-native-community/cli-doctor",
+              "range": "20.0.0",
+              "resolved": "20.0.0",
+              "path": "node_modules/@react-native-community/cli-doctor"
+            },
+            {
+              "name": "@react-native-community/cli-platform-apple",
+              "range": "20.0.0",
+              "resolved": "20.0.0",
+              "path": "node_modules/@react-native-community/cli-platform-apple"
+            },
+            {
+              "name": "fast-xml-parser",
+              "range": "^4.4.1",
+              "resolved": "4.5.7",
+              "path": "node_modules/fast-xml-parser"
+            }
+          ]
+        }
+      ],
+      "executed_evidence": [
+        {
+          "path": ".appforge/tmp/v10/phase10/behavior-frozen.log",
+          "sha256": "2c99c2aa7918ca32a920ec63ea7df6e1205aa4a0662d652faf0c0e16a7df4e4c"
+        },
+        {
+          "path": ".appforge/tmp/v10/phase10/candidate-check.log",
+          "sha256": "92501de59c527e6c656a8ee1b082906e0a73953973ad253ad36e4a8c107a06d1"
+        }
+      ],
+      "upstream_advisory": "https://github.com/advisories/GHSA-gh4j-gqv2-49f6"
+    },
+    {
+      "id": "GHSA-w3rx-r6r6-pgpr",
+      "package": "image-size",
+      "severity": "HIGH",
+      "status": "BLOCKED",
+      "shipped_graph_changed": false,
+      "mitigation_shipped": false,
+      "candidate_decision": "Expo55/Metro0.83.8 not promoted: architecture change; Android/Hermes/actual JSI registration NOT_RUN",
+      "root_chains": [
+        {
+          "manifest": "examples/rust-expo-jsi/package-lock.json",
+          "manifest_sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+          "steps": [
+            {
+              "name": "expo",
+              "range": "54.0.38",
+              "resolved": "54.0.38",
+              "path": "node_modules/expo"
+            },
+            {
+              "name": "@expo/metro",
+              "range": "~54.2.0",
+              "resolved": "54.2.0",
+              "path": "node_modules/@expo/metro"
+            },
+            {
+              "name": "metro",
+              "range": "0.83.3",
+              "resolved": "0.83.3",
+              "path": "node_modules/@expo/metro/node_modules/metro"
+            },
+            {
+              "name": "image-size",
+              "range": "^1.0.2",
+              "resolved": "1.2.1",
+              "path": "node_modules/image-size"
+            }
+          ]
+        },
+        {
+          "manifest": "examples/rust-expo-jsi/package-lock.json",
+          "manifest_sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+          "steps": [
+            {
+              "name": "react-native",
+              "range": "0.81.5",
+              "resolved": "0.81.5",
+              "path": "node_modules/react-native"
+            },
+            {
+              "name": "@react-native/community-cli-plugin",
+              "range": "0.81.5",
+              "resolved": "0.81.5",
+              "path": "node_modules/@react-native/community-cli-plugin"
+            },
+            {
+              "name": "metro",
+              "range": "^0.83.1",
+              "resolved": "0.83.2",
+              "path": "node_modules/metro"
+            },
+            {
+              "name": "image-size",
+              "range": "^1.0.2",
+              "resolved": "1.2.1",
+              "path": "node_modules/image-size"
+            }
+          ]
+        },
+        {
+          "manifest": "examples/rust-expo-turbo/package-lock.json",
+          "manifest_sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+          "steps": [
+            {
+              "name": "expo",
+              "range": "54.0.38",
+              "resolved": "54.0.38",
+              "path": "node_modules/expo"
+            },
+            {
+              "name": "@expo/metro",
+              "range": "~54.2.0",
+              "resolved": "54.2.0",
+              "path": "node_modules/@expo/metro"
+            },
+            {
+              "name": "metro",
+              "range": "0.83.3",
+              "resolved": "0.83.3",
+              "path": "node_modules/@expo/metro/node_modules/metro"
+            },
+            {
+              "name": "image-size",
+              "range": "^1.0.2",
+              "resolved": "1.2.1",
+              "path": "node_modules/image-size"
+            }
+          ]
+        },
+        {
+          "manifest": "examples/rust-expo-turbo/package-lock.json",
+          "manifest_sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+          "steps": [
+            {
+              "name": "react-native",
+              "range": "0.81.5",
+              "resolved": "0.81.5",
+              "path": "node_modules/react-native"
+            },
+            {
+              "name": "@react-native/community-cli-plugin",
+              "range": "0.81.5",
+              "resolved": "0.81.5",
+              "path": "node_modules/@react-native/community-cli-plugin"
+            },
+            {
+              "name": "metro",
+              "range": "^0.83.1",
+              "resolved": "0.83.2",
+              "path": "node_modules/metro"
+            },
+            {
+              "name": "image-size",
+              "range": "^1.0.2",
+              "resolved": "1.2.1",
+              "path": "node_modules/image-size"
+            }
+          ]
+        }
+      ],
+      "executed_evidence": [
+        {
+          "path": ".appforge/tmp/v10/phase10/image-vulnerable.log",
+          "sha256": "afb3f05013f351a680b123813707da8e9af2e57da80023a2e7d1b5d4b6c18e04"
+        },
+        {
+          "path": ".appforge/tmp/v10/phase10/image-patched.log",
+          "sha256": "db0b4222c369a06f28e6d0a3f8d09c28ae14905ab1df0aef1a1e40c9e0ebc1b9"
+        }
+      ],
+      "upstream_advisory": "https://github.com/advisories/GHSA-w3rx-r6r6-pgpr"
+    }
+  ],
+  "osv": {
+    "scanner_version": "2.7.0",
+    "scanner_sha256": "4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7",
+    "project_exit": 1,
+    "source_manifest_count": 22,
+    "package_occurrences": 1981,
+    "unique_dependencies": 919,
+    "vulnerable_package_occurrences": 7,
+    "advisory_ids": [
+      "GHSA-5p2g-fcmc-qvqq",
+      "GHSA-ch52-4w7c-c8xp",
+      "GHSA-gcqx-w48m-w2h4",
+      "GHSA-gh4j-gqv2-49f6",
+      "GHSA-w3rx-r6r6-pgpr"
+    ],
+    "security_tests": {
+      "missing_database": "PASS",
+      "corrupt_database": "PASS",
+      "known_vulnerable_dependency": "PASS",
+      "kernel_network_denial": "PASS"
+    },
+    "source_inventory": [
+      {
+        "path": "android-app/app/src/main/assets/device-build/python-template/app/requirements.txt",
+        "sha256": "f3fd3f4c755175e91daeaef06739feeea2fac52ab1cd242b61457e078f3bd6b9",
+        "bytes": 115
+      },
+      {
+        "path": "examples/rust-android-jni/Cargo.lock",
+        "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-android-jni/app/gradle.lockfile",
+        "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+        "bytes": 2045
+      },
+      {
+        "path": "examples/rust-expo-jsi/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-expo-jsi/package-lock.json",
+        "sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+        "bytes": 347821
+      },
+      {
+        "path": "examples/rust-expo-turbo/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-expo-turbo/package-lock.json",
+        "sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375",
+        "bytes": 347821
+      },
+      {
+        "path": "examples/rust-git-bundle/Cargo.lock",
+        "sha256": "9aa6a937765f8ba183ef85da5f3d3369b5714b892521450972ca551743d4289f",
+        "bytes": 287
+      },
+      {
+        "path": "examples/rust-node-web/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-node-web/package-lock.json",
+        "sha256": "d8ee3b0b08910d198607730ea769830d3b8833e9c80917517396a10a98b3cd83",
+        "bytes": 158
+      },
+      {
+        "path": "examples/rust-python/Cargo.lock",
+        "sha256": "a3be190006d0345960589c281dc5b913a26325c4dd4efbd2b117a2fe3e948f1a",
+        "bytes": 3391
+      },
+      {
+        "path": "examples/rust-python/requirements.txt",
+        "sha256": "18410d5f94e7f23c97bde82e96c8285dd5857efa36fad5dcb5745191cbbb4fb3",
+        "bytes": 86
+      },
+      {
+        "path": "examples/rust-react-native-turbo/Cargo.lock",
+        "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-react-native-turbo/package-lock.json",
+        "sha256": "949e0d9754a53076cc8227e2f6a9ce81ca8b0a7baa0d9219760334fef862bf74",
+        "bytes": 264449
+      },
+      {
+        "path": "examples/rust-universal/android/Cargo.lock",
+        "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995",
+        "bytes": 156
+      },
+      {
+        "path": "examples/rust-universal/android/app/gradle.lockfile",
+        "sha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+        "bytes": 2045
+      },
+      {
+        "path": "examples/rust-universal/web/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-wasm/Cargo.lock",
+        "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-windows-dll/Cargo.lock",
+        "sha256": "5210090e19be6d2eb1861a1c36e2943d9f098f29b7bcc9d37de70d70a6e1abb0",
+        "bytes": 173
+      },
+      {
+        "path": "examples/rust-windows-native/Cargo.lock",
+        "sha256": "7a8de802df14e5943dc2c58ef07053898dbb93a41342a4e71e703ab5658b568b",
+        "bytes": 165
+      },
+      {
+        "path": "examples/rust-workspace/Cargo.lock",
+        "sha256": "98c53fc7d5b813dac1a9e2731e2d447e0415bd70cd283afecab27b828bbc1e63",
+        "bytes": 261
+      },
+      {
+        "path": "windows-host/package-lock.json",
+        "sha256": "df9711e4ececc9c9bf7f0941680f5ea062f042fdec483d578d4d4e614b9d2f76",
+        "bytes": 127969
+      }
+    ]
+  },
+  "osv_database_provenance": [
+    {
+      "ecosystem": "npm",
+      "origin": "https://osv-vulnerabilities.storage.googleapis.com/npm/all.zip",
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/npm%2Fall.zip",
+      "download_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/npm%2Fall.zip?alt=media&generation=1793179981430925",
+      "generation": "1793179981430925",
+      "updated": "2026-10-28T09:33:01.574Z",
+      "acquired_at": "2026-10-28T10:14:47.317842+00:00",
+      "age_seconds_at_acquisition": 2505.743842,
+      "freshness_limit_seconds": 259200,
+      "size": 219263023,
+      "sha256": "ac6849f148cbb22f923c798f9e2c2a55f65ca4841631cd434eb3d63f1d452567",
+      "upstream_md5_base64": "9V31U731e2FzNwaGdF2eVg==",
+      "upstream_crc32c_base64": "YavmUA==",
+      "zip_crc_all_entries_verified": true,
+      "json_records": 230857,
+      "ecosystem_matching_records": 230857,
+      "uncompressed_bytes": 388443194,
+      "verification": "HTTPS origin + generation + size + upstream MD5 + local SHA-256 + ZIP CRC/JSON; no signed attestation"
+    },
+    {
+      "ecosystem": "Maven",
+      "origin": "https://osv-vulnerabilities.storage.googleapis.com/Maven/all.zip",
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/Maven%2Fall.zip",
+      "download_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/Maven%2Fall.zip?alt=media&generation=1793123419330909",
+      "generation": "1793123419330909",
+      "updated": "2026-10-27T17:50:19.460Z",
+      "acquired_at": "2026-10-28T10:15:02.797227+00:00",
+      "age_seconds_at_acquisition": 59083.337227,
+      "freshness_limit_seconds": 259200,
+      "size": 10443646,
+      "sha256": "51048a424aea097722980d0903613b420695fd324eca076a37fd641bf0fa9126",
+      "upstream_md5_base64": "oyIFHP8fGgCR42zGoYSoUA==",
+      "upstream_crc32c_base64": "tGYQzg==",
+      "zip_crc_all_entries_verified": true,
+      "json_records": 7206,
+      "ecosystem_matching_records": 7206,
+      "uncompressed_bytes": 26059048,
+      "verification": "HTTPS origin + generation + size + upstream MD5 + local SHA-256 + ZIP CRC/JSON; no signed attestation"
+    },
+    {
+      "ecosystem": "PyPI",
+      "origin": "https://osv-vulnerabilities.storage.googleapis.com/PyPI/all.zip",
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/PyPI%2Fall.zip",
+      "download_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/PyPI%2Fall.zip?alt=media&generation=1793148505011990",
+      "generation": "1793148505011990",
+      "updated": "2026-10-28T00:48:25.135Z",
+      "acquired_at": "2026-10-28T10:15:05.157809+00:00",
+      "age_seconds_at_acquisition": 34000.022809,
+      "freshness_limit_seconds": 259200,
+      "size": 37253441,
+      "sha256": "d399bbfba748c8ae0b808731cda13a80ae20d93b73205f4abcbbbac1cbb678ea",
+      "upstream_md5_base64": "xIN486XLPlBwG7mflrhvdA==",
+      "upstream_crc32c_base64": "zdsjIw==",
+      "zip_crc_all_entries_verified": true,
+      "json_records": 26677,
+      "ecosystem_matching_records": 26677,
+      "uncompressed_bytes": 80622196,
+      "verification": "HTTPS origin + generation + size + upstream MD5 + local SHA-256 + ZIP CRC/JSON; no signed attestation"
+    },
+    {
+      "ecosystem": "crates.io",
+      "origin": "https://osv-vulnerabilities.storage.googleapis.com/crates.io/all.zip",
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/crates.io%2Fall.zip",
+      "download_url": "https://storage.googleapis.com/storage/v1/b/osv-vulnerabilities/o/crates.io%2Fall.zip?alt=media&generation=1793178170750102",
+      "generation": "1793178170750102",
+      "updated": "2026-10-28T09:02:50.885Z",
+      "acquired_at": "2026-10-28T10:15:09.148705+00:00",
+      "age_seconds_at_acquisition": 4338.263705,
+      "freshness_limit_seconds": 259200,
+      "size": 3696965,
+      "sha256": "b70461f2db453ed385482277b539fb4dfc08688ba943d5023c0b87655beb24d8",
+      "upstream_md5_base64": "sMafU5FRDxXSxN1Eg6FsrQ==",
+      "upstream_crc32c_base64": "4Z5ehw==",
+      "zip_crc_all_entries_verified": true,
+      "json_records": 3002,
+      "ecosystem_matching_records": 3002,
+      "uncompressed_bytes": 7383105,
+      "verification": "HTTPS origin + generation + size + upstream MD5 + local SHA-256 + ZIP CRC/JSON; no signed attestation"
+    }
+  ],
+  "phase94_exact_ids_equal": true,
+  "new_ids": [],
+  "severity_map": {
+    "GHSA-5p2g-fcmc-qvqq": "HIGH",
+    "GHSA-w3rx-r6r6-pgpr": "HIGH",
+    "GHSA-ch52-4w7c-c8xp": "HIGH",
+    "GHSA-gh4j-gqv2-49f6": "MODERATE",
+    "GHSA-gcqx-w48m-w2h4": "LOW"
+  },
+  "high_count": 3,
+  "mitigations_verified": 0,
+  "manifest_freeze_verified": true,
+  "pyo3_and_13_integrations": {
+    "pyo3_lock_sha256": "a3be190006d0345960589c281dc5b913a26325c4dd4efbd2b117a2fe3e948f1a",
+    "integration_inventory": [
+      {
+        "id": "codeassist",
+        "implementation_status": "PARTIAL",
+        "source_files": [
+          "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt",
+          "android-app/app/src/main/assets/device-build/build-metrics.init.gradle"
+        ],
+        "test_files": [
+          "quality/tests/v10_build_telemetry_runtime.test.js"
+        ],
+        "blocker_or_scope": "No GPL import. Original baseline/observed fixture verifies equal output and telemetry I/O failure compatibility. No cache-invalidation implementation or device benchmark."
+      },
+      {
+        "id": "sora-editor",
+        "implementation_status": "BLOCKED",
+        "source_files": [
+          "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorPanel.kt"
+        ],
+        "test_files": [],
+        "blocker_or_scope": "Verified core AAR hash only. No notices in AAR; LGPL relinking/source delivery, dependency closure, parser ABI, memory and editor parity unresolved."
+      },
+      {
+        "id": "tree-sitter",
+        "implementation_status": "BLOCKED",
+        "source_files": [
+          "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorCore.kt"
+        ],
+        "test_files": [],
+        "blocker_or_scope": "No selected binding/grammar/versioned Android native library; Sora core AAR contains no jni entries. ABI and memory not proven."
+      },
+      {
+        "id": "termux-packages",
+        "implementation_status": "PARTIAL",
+        "source_files": [
+          "android-app/app/src/main/java/com/appforge/studio/build/OfflineToolCatalog.kt",
+          "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
+        ],
+        "test_files": [
+          "quality/tests/v10_offline_catalog_runtime.test.js",
+          "android-app/app/src/test/java/com/appforge/studio/build/OfflineToolCatalogTest.kt"
+        ],
+        "blocker_or_scope": "Dry-run only; no reviewed real package set, package-specific SPDX/notice closure or prepare/activate/rollback integration. Bionic cannot satisfy GNU ABI."
+      },
+      {
+        "id": "bundletool",
+        "implementation_status": "BLOCKED",
+        "source_files": [],
+        "test_files": [],
+        "blocker_or_scope": "Metadata digest only. No verified local JAR, shaded license closure, valid AAB/APKS fixture, signing identity or reproducibility test."
+      },
+      {
+        "id": "gitleaks",
+        "implementation_status": "PARTIAL",
+        "source_files": [
+          "quality/tools/appforge_v10_oss_gate.py",
+          "quality/tools/v10-oss-pins.json",
+          ".github/workflows/appforge-stability-gate.yml"
+        ],
+        "test_files": [
+          "quality/tests/test_v10_oss_gate.py"
+        ],
+        "blocker_or_scope": "Real scanner NOT_RUN: ARCHIVE_MISSING; license_closure_reviewed=false. Redaction/status tests do not prove scanner/platform acceptance. Phase3 statically reviews pinned Linux x86_64 archive bytes; transitive closure and real execution remain blocked."
+      },
+      {
+        "id": "osv-scanner",
+        "implementation_status": "BLOCKED",
+        "source_files": [
+          "quality/tools/appforge_v10_oss_gate.py",
+          "quality/tools/v10_osv_offline_exec.py",
+          "docs/engineering/v10/osv-acquire.py"
+        ],
+        "test_files": [
+          "quality/tests/test_v10_oss_gate.py",
+          "quality/tests/v10_osv_real_scanner.py"
+        ],
+        "blocker_or_scope": "Real seccomp-enforced offline scan executed: 930 unique coordinates, 47 advisory IDs / 22 affected package occurrences. Four complete ecosystem exports verified with provenance/hash/age. Findings unresolved; main Android resolved dependency closure absent; production license/distribution and adapter gates remain BLOCKED."
+      },
+      {
+        "id": "syft",
+        "implementation_status": "PARTIAL",
+        "source_files": [
+          "quality/tools/appforge_v10_oss_gate.py",
+          "quality/tools/v10-oss-pins.json",
+          ".github/workflows/appforge-stability-gate.yml"
+        ],
+        "test_files": [
+          "quality/tests/test_v10_oss_gate.py"
+        ],
+        "blocker_or_scope": "Real scanner/SBOM NOT_RUN: ARCHIVE_MISSING; license closure unreviewed. Manifest-only SBOM sanitization tests are not real inventory acceptance. Phase3 statically reviews pinned Linux x86_64 archive bytes; transitive closure and real execution remain blocked."
+      },
+      {
+        "id": "esbuild",
+        "implementation_status": "BLOCKED",
+        "source_files": [
+          "android-app/app/src/main/assets/device-build/build-node.sh",
+          "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
+        ],
+        "test_files": [
+          "quality/tests/node_web_npm_cache_contract.test.js"
+        ],
+        "blocker_or_scope": "Existing transform probe is not a meaningful bundled Web target. No equivalent bundling fixture, measured benefit or Android executable acceptance."
+      },
+      {
+        "id": "spec-kit",
+        "implementation_status": "DONE",
+        "source_files": [
+          "docs/wiki/03_Architecture/V10_OSS_Integration.md"
+        ],
+        "test_files": [],
+        "blocker_or_scope": "DONE covers original specification/contracts under AGENTS.md only; no upstream runtime/template imported."
+      },
+      {
+        "id": "superpowers",
+        "implementation_status": "DONE",
+        "source_files": [
+          "docs/wiki/03_Architecture/V10_OSS_Integration.md"
+        ],
+        "test_files": [
+          "quality/tests/v10_build_telemetry_runtime.test.js",
+          "quality/tests/v10_offline_catalog_runtime.test.js",
+          "quality/tests/test_v10_oss_gate.py"
+        ],
+        "blocker_or_scope": "DONE covers test/verification discipline under AGENTS.md only; no external prompt authority imported."
+      },
+      {
+        "id": "jadx",
+        "implementation_status": "BLOCKED",
+        "source_files": [],
+        "test_files": [],
+        "blocker_or_scope": "Release ZIP digest is metadata only. No reviewed transitive notices, supported JVM execution, bounded analysis adapter or user-APK fixture corpus."
+      },
+      {
+        "id": "uv",
+        "implementation_status": "BLOCKED",
+        "source_files": [
+          "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+        ],
+        "test_files": [
+          "quality/tests/offline_build_pack_v1_contract.test.js"
+        ],
+        "blocker_or_scope": "Dual Apache-2.0 OR MIT HEAD license verified; no Android/Bionic ARM64 support or Chaquopy coexistence proof. No host toolchain/environment replacement."
+      }
+    ]
+  },
+  "current_upstream_metadata": [
+    {
+      "url": "https://registry.npmjs.org/expo/sdk-54",
+      "exit": 0,
+      "name": "expo",
+      "version": "54.0.38",
+      "dependencies": {
+        "@expo/cli": "54.0.28",
+        "expo-font": "~14.0.12",
+        "expo-asset": "~12.0.14",
+        "@expo/metro": "~54.2.0",
+        "@expo/config": "~12.0.14",
+        "pretty-format": "^29.7.0",
+        "react-refresh": "^0.14.2",
+        "@babel/runtime": "^7.20.0",
+        "@expo/devtools": "0.1.8",
+        "expo-constants": "~18.0.14",
+        "expo-keep-awake": "~15.0.8",
+        "expo-file-system": "~19.0.24",
+        "@expo/fingerprint": "0.15.5",
+        "babel-preset-expo": "~54.0.12",
+        "expo-modules-core": "3.0.30",
+        "@expo/metro-config": "54.0.17",
+        "@expo/vector-icons": "^15.0.3",
+        "@expo/config-plugins": "~54.0.6",
+        "@ungap/structured-clone": "^1.3.0",
+        "expo-modules-autolinking": "3.0.28",
+        "whatwg-url-without-unicode": "8.0.0-3"
+      },
+      "peerDependencies": {
+        "react": "*",
+        "react-native": "*",
+        "@expo/dom-webview": "*",
+        "@expo/metro-runtime": "*",
+        "react-native-webview": "*"
+      },
+      "engines": null,
+      "dist": {
+        "shasum": "48941d35103904ce3f294c88450dcb976757c5e7",
+        "tarball": "https://registry.npmjs.org/expo/-/expo-54.0.38.tgz",
+        "fileCount": 376,
+        "integrity": "sha512-W8ZpBjx6nKRbZ0xyE1klb8KSdHRCRgPDm4HHNL+p9AHbNQJD845gB9jcXfO9SRWsvkGtE52QsWoYQZpQEV9YVw==",
+        "signatures": [
+          {
+            "sig": "MEYCIQCRhncs/stBX7m9AZ2ibPOr/fTxv58NbgMbw9hHh3/wfwIhAKE5DrBPii6olzfcCMcUWC4WPZNn1xZY9a59vr0/OlxG",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          },
+          {
+            "sig": "MEQCIBjvUuSr1gdTeFqhjEjvJhb/Fe0HhkRYI/zn1rofkM4CAiB+Jczr5BCfzX9k8hHKmovmyQ50k/0tHkCTRj5hdZsf4g==",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          }
+        ],
+        "unpackedSize": 875506
+      }
+    },
+    {
+      "url": "https://registry.npmjs.org/expo/sdk-55",
+      "exit": 0,
+      "name": "expo",
+      "version": "55.0.32",
+      "dependencies": {
+        "@expo/cli": "55.0.37",
+        "expo-font": "~55.0.8",
+        "expo-asset": "~55.0.20",
+        "@expo/metro": "~55.1.2",
+        "@expo/config": "~55.0.21",
+        "@expo/log-box": "55.0.13",
+        "pretty-format": "^29.7.0",
+        "react-refresh": "^0.14.2",
+        "@babel/runtime": "^7.20.0",
+        "@expo/devtools": "55.0.3",
+        "expo-constants": "~55.0.17",
+        "expo-keep-awake": "~55.0.8",
+        "expo-file-system": "~55.0.26",
+        "@expo/fingerprint": "0.16.8",
+        "babel-preset-expo": "~55.0.25",
+        "expo-modules-core": "55.0.27",
+        "@expo/metro-config": "55.0.27",
+        "@expo/vector-icons": "^15.0.2",
+        "whatwg-url-minimum": "^0.1.2",
+        "@expo/config-plugins": "~55.0.12",
+        "@ungap/structured-clone": "^1.3.0",
+        "expo-modules-autolinking": "55.0.28",
+        "@expo/local-build-cache-provider": "55.0.16"
+      },
+      "peerDependencies": {
+        "react": "*",
+        "react-native": "*",
+        "@expo/dom-webview": "*",
+        "@expo/metro-runtime": "*",
+        "react-native-webview": "*"
+      },
+      "engines": null,
+      "dist": {
+        "shasum": "ccc59bd1c37fb48e35f12c28e355390802b308ac",
+        "tarball": "https://registry.npmjs.org/expo/-/expo-55.0.32.tgz",
+        "fileCount": 387,
+        "integrity": "sha512-w0Y4tstI6+s67Icsrw8/EHnqLPJEtYAikQq2UlWLN0cSEWmQOD5KuxSwmJmNf+4m5aUuWKExwr4B9pw8vLnpHQ==",
+        "signatures": [
+          {
+            "sig": "MEUCID6lnYIQAzrL3NMlPihBk97LBaAeNk1N7IiTmQ2/m+lLAiEAza4F9/h2gnUaHYFCFNwjr/WLIse0lw1ff9lkgdHpv4s=",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          },
+          {
+            "sig": "MEQCIF/+Rio3yIgNmU1Eihdc4WsTDW9aPmgbZ/ayOK/qdcVbAiBDlaA4GuVIffwVeJy3OeTeyeYX6+ExZBBwmLwEYlWHYg==",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          }
+        ],
+        "unpackedSize": 880170
+      }
+    },
+    {
+      "url": "https://registry.npmjs.org/%40react-native-community%2Fcli/latest",
+      "exit": 0,
+      "name": "@react-native-community/cli",
+      "version": "20.2.0",
+      "dependencies": {
+        "execa": "^5.0.0",
+        "semver": "^7.5.2",
+        "find-up": "^5.0.0",
+        "prompts": "^2.4.2",
+        "fs-extra": "^8.1.0",
+        "commander": "^9.4.1",
+        "deepmerge": "^4.3.0",
+        "picocolors": "^1.1.1",
+        "graceful-fs": "^4.1.3",
+        "@react-native-community/cli-clean": "20.2.0",
+        "@react-native-community/cli-tools": "20.2.0",
+        "@react-native-community/cli-types": "20.2.0",
+        "@react-native-community/cli-config": "20.2.0",
+        "@react-native-community/cli-doctor": "20.2.0",
+        "@react-native-community/cli-server-api": "20.2.0"
+      },
+      "peerDependencies": null,
+      "engines": {
+        "node": ">=20.19.4"
+      },
+      "dist": {
+        "shasum": "9f95db1e7d27a19f14c07f7ae978ade0a6d23b3e",
+        "tarball": "https://registry.npmjs.org/@react-native-community/cli/-/cli-20.2.0.tgz",
+        "fileCount": 116,
+        "integrity": "sha512-5RZKkBeUFC4hhrzySzxWmRJwXBTc2PE3L6QUgvnJk3QDxNYMY7aGuI8Gr9eZRS1DbiY10IPWqpJfqSIplzVG6A==",
+        "signatures": [
+          {
+            "sig": "MEYCIQDkgWm9g26qKB/zdEOXyToFWbXZS/nJ6gRuBQGWQGo+ZwIhAM7pE9S/tY+Q50YgNDb/58ogrSd5KtR2+Gs8sp4COpi4",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          }
+        ],
+        "unpackedSize": 229285
+      }
+    },
+    {
+      "url": "https://registry.npmjs.org/%40react-native-community%2Fcli-config-android/latest",
+      "exit": 0,
+      "name": "@react-native-community/cli-config-android",
+      "version": "20.2.0",
+      "dependencies": {
+        "fast-glob": "^3.3.2",
+        "picocolors": "^1.1.1",
+        "fast-xml-parser": "^5.3.6",
+        "@react-native-community/cli-tools": "20.2.0"
+      },
+      "peerDependencies": null,
+      "engines": null,
+      "dist": {
+        "shasum": "9931493967f8ae27a67c1ae2e3cf8954f0154da0",
+        "tarball": "https://registry.npmjs.org/@react-native-community/cli-config-android/-/cli-config-android-20.2.0.tgz",
+        "fileCount": 55,
+        "integrity": "sha512-lASofUNBVK0Pq3VEJ1JrCfAW94Rnk38DikauycRcoHl0hWjHIN3XhsN20dEq+CaIJoq37aCg5NSSSpmkET+ShA==",
+        "signatures": [
+          {
+            "sig": "MEUCID9IwtFaC2zhRtQJipT1diYWZk5cFYLKs0kgwaRxIW/fAiEAzxg05KoL55JBo0Y94PHgQlmV3141MFJH5pT3VuOtywk=",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          }
+        ],
+        "unpackedSize": 84641
+      }
+    },
+    {
+      "url": "https://registry.npmjs.org/%40react-native-community%2Fcli-platform-apple/latest",
+      "exit": 0,
+      "name": "@react-native-community/cli-platform-apple",
+      "version": "20.2.0",
+      "dependencies": {
+        "execa": "^5.0.0",
+        "picocolors": "^1.1.1",
+        "fast-xml-parser": "^5.3.6",
+        "@react-native-community/cli-tools": "20.2.0",
+        "@react-native-community/cli-config-apple": "20.2.0"
+      },
+      "peerDependencies": null,
+      "engines": null,
+      "dist": {
+        "shasum": "95554f3bde9e8277af6ed7bb72158cbea7fc4863",
+        "tarball": "https://registry.npmjs.org/@react-native-community/cli-platform-apple/-/cli-platform-apple-20.2.0.tgz",
+        "fileCount": 123,
+        "integrity": "sha512-jkEPLAd8C/ZRu39a3nhxwSXe0iisUiJC808GExnrnTcViLtg3sad2ciQ/HjjvbdsPCS9sT+Jr7xh3MzBsPojsQ==",
+        "signatures": [
+          {
+            "sig": "MEYCIQCiUdtRRKQRARPxRPwfRx5PaWgZ8x4U8AaxmhQ3WyZqZQIhAJkbirxpfp1/tHw/Axb3gxkEN8EIqgXwWjUF32yPdr3k",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          }
+        ],
+        "unpackedSize": 226949
+      }
+    },
+    {
+      "url": "https://registry.npmjs.org/deepmerge/latest",
+      "exit": 0,
+      "name": "deepmerge",
+      "version": "4.3.1",
+      "dependencies": null,
+      "peerDependencies": null,
+      "engines": {
+        "node": ">=0.10.0"
+      },
+      "dist": {
+        "shasum": "44b5f2147cd3b00d4b56137685966f26fd25dd4a",
+        "tarball": "https://registry.npmjs.org/deepmerge/-/deepmerge-4.3.1.tgz",
+        "fileCount": 11,
+        "integrity": "sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==",
+        "signatures": [
+          {
+            "sig": "MEUCIQDN993WZ4bZkA9ji9rC0yXDb/eFJLDqMXftQaUQp3hA9AIgOqjV7vLLdNtIfYCLlcugHmhK6t3rgYR+AbGZf0GzGPI=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "unpackedSize": 31157,
+        "npm-signature": "-----BEGIN PGP SIGNATURE-----\r\nVersion: OpenPGP.js v4.10.10\r\nComment: https://openpgpjs.org\r\n\r\nwsFzBAEBCAAGBQJkE58wACEJED1NWxICdlZqFiEECWMYAoorWMhJKdjhPU1b\r\nEgJ2VmqwgA//SUBIsWdXabo9mcwaFaK0sg1UJMFXp+Z1PLA0FB98BZ7Kw+23\r\nXByEFVHf5SH2X7EG8VHMMCa4mdsqWUNP6Qz7UGa1oQebTXnTN20VhkBaAdUT\r\n2Hr61AwJHMNGaK098Vx4rn8OBLh1SDN9Q/FKIRU1M3PDo8p8dfsCs98WhLmj\r\nUtQzfb8AXRUmYf6A6vJaIwmShw3pJVU8a7JLFcl9Rgx7L5L6h/xjz2oNEb42\r\nwBYz+K1R/PvbhF2Ejkjmj5R0NSr8wSMmizK29uGXvtJYvon2kIqNPyPfaCaV\r\nVBCiHvtJdV4xCRUduPkXlHPMrgC0Xp1G+AoJn/Banx1OZFtLDjZa/ZBX86Am\r\nwPRAqr5ZiCaWzgC3Q8o1/qRsSrpdAO7OWRfzGVBqf10H4HdCvcnZzeyeSXQw\r\nCEnNT+zEsoe08upOGW5CCijrr8hq1Pj7LEtfyZr7nGmkWl1+bG2f6XB3VbdK\r\nRzWM5rcNRKJcDaCNMRXrzyKZ7eutn9Mzj70fRfUR1s5oqz5ruGAMHD8D8kx7\r\nsR/9P1u1a8E00oiQGMKHMIyaSVEvEtGGgLoJ8MXIJ+qArhasiWIzMY3eFcAf\r\n6z4MRfo0Nf6/m6WM+mMdwsitug9dVzhPa4+FFWWNNuhO0aVkXr9X2+A4Fjeb\r\nOUwt3H4PdpOegx1dVu7/IEYNFFEN0HmuZ1w=\r\n=A4WO\r\n-----END PGP SIGNATURE-----\r\n"
+      }
+    },
+    {
+      "url": "https://registry.npmjs.org/http-cache-semantics/latest",
+      "exit": 0,
+      "name": "http-cache-semantics",
+      "version": "4.3.0",
+      "dependencies": null,
+      "peerDependencies": null,
+      "engines": null,
+      "dist": {
+        "shasum": "09eead3b16c6d85552857cc3fbd888d8353a2aaf",
+        "tarball": "https://registry.npmjs.org/http-cache-semantics/-/http-cache-semantics-4.3.0.tgz",
+        "fileCount": 4,
+        "integrity": "sha512-M5t5LlJpS1UHMjvwRQVdFHvPISGeLAxNcrWuJkeGh0KxsqCHZ1O3NXZU/8x7cD0BDcGW8kapxMKTvwlqrNkHkA==",
+        "signatures": [
+          {
+            "sig": "MEUCIQDU71NGQGXN2buhOfei8zXURLpUX2HZ5LtN+S2RA3DdXAIgTyD8bU/4QDHCqLXZ9rJomYbAJ8S0FuwmAbXfZWIqAhw=",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          },
+          {
+            "sig": "MEUCIGi6foYRIrk5DVJSvvCMxa3/bOoY2UAobLWZqWuB0zPiAiEA9hXrJvqvBfqVrkB+W+TEbg+OPpjr9JqPrrmgPsZ3big=",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          }
+        ],
+        "unpackedSize": 50444
+      }
+    },
+    {
+      "url": "https://registry.npmjs.org/fast-xml-parser/5.7.0",
+      "exit": 0,
+      "name": "fast-xml-parser",
+      "version": "5.7.0",
+      "dependencies": {
+        "strnum": "^2.2.3",
+        "fast-xml-builder": "^1.1.5",
+        "@nodable/entities": "^2.1.0",
+        "path-expression-matcher": "^1.5.0"
+      },
+      "peerDependencies": null,
+      "engines": null,
+      "dist": {
+        "shasum": "b93e49a3d62a8824c5212d8fa099ac2e548d548a",
+        "tarball": "https://registry.npmjs.org/fast-xml-parser/-/fast-xml-parser-5.7.0.tgz",
+        "fileCount": 53,
+        "integrity": "sha512-MTcrUoRQ1GSQ9iG3QJzBGquYYYeA7piZaJoIWbPFGbRn6Jj6z7xgoAyi4DrZX4y2ZIQQBF59gc/zmvvejjgoFQ==",
+        "signatures": [
+          {
+            "sig": "MEUCIQCztv5E/Uy+4sY4md6Z82XBgcZMCMcP6oadO2Geg+o+7QIgDD6Lft4kVubOCd4gOhnA34QVhYD87zQc62yB2wG4bsY=",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          }
+        ],
+        "unpackedSize": 984790
+      }
+    }
+  ],
+  "cli_candidate_changes": [
+    {
+      "path": "node_modules/@nodable/entities",
+      "old": null,
+      "new": "3.1.0"
+    },
+    {
+      "path": "node_modules/@react-native-community/cli",
+      "old": "20.0.0",
+      "new": "20.2.0"
+    },
+    {
+      "path": "node_modules/@react-native-community/cli-clean",
+      "old": "20.0.0",
+      "new": "20.2.0"
+    },
+    {
+      "path": "node_modules/@react-native-community/cli-config",
+      "old": "20.0.0",
+      "new": "20.2.0"
+    },
+    {
+      "path": "node_modules/@react-native-community/cli-config-android",
+      "old": "20.0.0",
+      "new": "20.2.0"
+    },
+    {
+      "path": "node_modules/@react-native-community/cli-config-apple",
+      "old": "20.0.0",
+      "new": "20.2.0"
+    },
+    {
+      "path": "node_modules/@react-native-community/cli-doctor",
+      "old": "20.0.0",
+      "new": "20.2.0"
+    },
+    {
+      "path": "node_modules/@react-native-community/cli-platform-android",
+      "old": "20.0.0",
+      "new": "20.2.0"
+    },
+    {
+      "path": "node_modules/@react-native-community/cli-platform-apple",
+      "old": "20.0.0",
+      "new": "20.2.0"
+    },
+    {
+      "path": "node_modules/@react-native-community/cli-platform-ios",
+      "old": "20.0.0",
+      "new": "20.2.0"
+    },
+    {
+      "path": "node_modules/@react-native-community/cli-server-api",
+      "old": "20.0.0",
+      "new": "20.2.0"
+    },
+    {
+      "path": "node_modules/@react-native-community/cli-tools",
+      "old": "20.0.0",
+      "new": "20.2.0"
+    },
+    {
+      "path": "node_modules/@react-native-community/cli-types",
+      "old": "20.0.0",
+      "new": "20.2.0"
+    },
+    {
+      "path": "node_modules/anynum",
+      "old": null,
+      "new": "1.0.1"
+    },
+    {
+      "path": "node_modules/body-parser",
+      "old": "1.20.9",
+      "new": "2.4.0"
+    },
+    {
+      "path": "node_modules/body-parser/node_modules/debug",
+      "old": "2.6.9",
+      "new": null
+    },
+    {
+      "path": "node_modules/body-parser/node_modules/ms",
+      "old": "2.0.0",
+      "new": null
+    },
+    {
+      "path": "node_modules/content-type",
+      "old": "1.0.5",
+      "new": "2.1.0"
+    },
+    {
+      "path": "node_modules/fast-xml-builder",
+      "old": null,
+      "new": "1.3.1"
+    },
+    {
+      "path": "node_modules/fast-xml-parser",
+      "old": "4.5.7",
+      "new": "5.11.2"
+    },
+    {
+      "path": "node_modules/iconv-lite",
+      "old": "0.4.24",
+      "new": "0.7.3"
+    },
+    {
+      "path": "node_modules/is-unsafe",
+      "old": null,
+      "new": "2.0.2"
+    },
+    {
+      "path": "node_modules/joi",
+      "old": "17.13.8",
+      "new": "17.13.9"
+    },
+    {
+      "path": "node_modules/media-typer",
+      "old": "0.3.0",
+      "new": "1.1.1"
+    },
+    {
+      "path": "node_modules/metro/node_modules/content-type",
+      "old": "2.1.0",
+      "new": null
+    },
+    {
+      "path": "node_modules/path-expression-matcher",
+      "old": null,
+      "new": "1.6.2"
+    },
+    {
+      "path": "node_modules/qs",
+      "old": "6.16.1",
+      "new": "6.17.1"
+    },
+    {
+      "path": "node_modules/raw-body",
+      "old": "2.5.3",
+      "new": "3.0.2"
+    },
+    {
+      "path": "node_modules/strnum",
+      "old": "1.1.2",
+      "new": "2.5.1"
+    },
+    {
+      "path": "node_modules/type-is",
+      "old": "1.6.18",
+      "new": "2.1.0"
+    },
+    {
+      "path": "node_modules/type-is/node_modules/mime-types",
+      "old": null,
+      "new": "3.0.2"
+    },
+    {
+      "path": "node_modules/xml-naming",
+      "old": null,
+      "new": "0.3.0"
+    }
+  ],
+  "cli_candidate_execution": {
+    "baseline": [
+      {
+        "stage": "config",
+        "exit": 0,
+        "command": [
+          "node",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase10/rn-cli-baseline/node_modules/@react-native-community/cli/build/bin.js",
+          "config"
+        ]
+      },
+      {
+        "stage": "bundle",
+        "exit": 0,
+        "command": [
+          "node",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase10/rn-cli-baseline/node_modules/@react-native-community/cli/build/bin.js",
+          "bundle",
+          "--platform",
+          "android",
+          "--dev",
+          "false",
+          "--entry-file",
+          "index.js",
+          "--bundle-output",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase10/baseline.bundle",
+          "--max-workers",
+          "1"
+        ]
+      }
+    ],
+    "candidate": [
+      {
+        "stage": "config",
+        "exit": 0,
+        "command": [
+          "node",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase10/rn-cli-candidate/node_modules/@react-native-community/cli/build/bin.js",
+          "config"
+        ]
+      },
+      {
+        "stage": "bundle",
+        "exit": 0,
+        "command": [
+          "node",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase10/rn-cli-candidate/node_modules/@react-native-community/cli/build/bin.js",
+          "bundle",
+          "--platform",
+          "android",
+          "--dev",
+          "false",
+          "--entry-file",
+          "index.js",
+          "--bundle-output",
+          "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase10/candidate.bundle",
+          "--max-workers",
+          "1"
+        ]
+      }
+    ]
+  },
+  "focused_verification": [
+    {
+      "stage": "v9",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v9_*.py"
+      ],
+      "exit": 0,
+      "log_sha256": "93e9a29f43b7104de025e5b15594e8c6b169dc8403de5555326797f28bb3416d"
+    },
+    {
+      "stage": "v10-python",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v10_oss_gate.py"
+      ],
+      "exit": 0,
+      "log_sha256": "a969b166c71b844c169eb9db1c794421cb1693cf85fb4fbae3001f5406b8fad7"
+    },
+    {
+      "stage": "windows-node",
+      "command": [
+        "npm",
+        "--prefix",
+        "windows-host",
+        "test"
+      ],
+      "exit": 0,
+      "log_sha256": "67b615518821ab3c2fbb0bda71193b24232c49ab015c6cc6787fc88b20726ab0"
+    },
+    {
+      "stage": "host-contract",
+      "command": [
+        "node",
+        "--test",
+        "quality/tests/v10_host_verification_contract.test.js"
+      ],
+      "exit": 0,
+      "log_sha256": "c7a9ed16f2d03dae0e5a4c0854794bcda7bb9e18d2e49cb1862328b8e542fdb5"
+    }
+  ],
+  "quality_full": {
+    "status": "PASS",
+    "counts": {
+      "tests": 1154,
+      "pass": 1154,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "command": [
+      "proot-distro",
+      "login",
+      "ubuntu",
+      "--bind",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+      "--bind",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+      "--bind",
+      "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+      "--",
+      "/usr/bin/env",
+      "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+      "TMPDIR=/tmp",
+      "SYFT_CHECK_FOR_APP_UPDATE=false",
+      "GOMAXPROCS=2",
+      "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+      "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+      "/bin/bash",
+      "-c",
+      "cd /data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo && /data/data/com.termux/files/usr/bin/node --test quality/tests/*.test.js"
+    ],
+    "exit": 0,
+    "started_at": "2026-10-29T08:15:40.035989+00:00",
+    "finished_at": "2026-10-29T08:18:50.869760+00:00",
+    "log_sha256": "28265efd7869ac0b6f27870108e3d09cd48ba6e63fede1a347c01171200dd3ad"
+  },
+  "hosted_acceptance_this_dirty_worktree": "NOT_RUN",
+  "physical_acceptance": "NOT_RUN",
+  "release_approval": false,
+  "no_commit": true,
+  "no_push": true,
+  "no_main_play_signing": true,
+  "verified_at": "2026-10-29T08:20:04.115845+00:00",
+  "final_verification": [
+    {
+      "stage": "snapshot-check",
+      "command": [
+        "python3",
+        "scripts/generate-second-brain-snapshot.py",
+        "--check"
+      ],
+      "exit": 0,
+      "log_sha256": "2a3a29540110f03e05d5d056e2e701fd89f49db1f900d1dbec9f9237b05e515c"
+    },
+    {
+      "stage": "wiki-audit",
+      "command": [
+        "node",
+        "scripts/wiki-audit.mjs",
+        "--changed-source-check"
+      ],
+      "exit": 0,
+      "log_sha256": "7998cdef2b9549c3858160ad2ea0532daf3298ceba8eff8106862a6b4b5d4d9a"
+    },
+    {
+      "stage": "wiki-secret",
+      "command": [
+        "python3",
+        "scripts/wiki-secret-scan.py"
+      ],
+      "exit": 0,
+      "log_sha256": "4e841cef2bbb9b12c75fa9172407dad3161dae4add910164bec38ec168b927ff"
+    },
+    {
+      "stage": "stability",
+      "command": [
+        "sh",
+        "scripts/appforge-stability-gate",
+        "ci"
+      ],
+      "exit": 0,
+      "log_sha256": "8ff4ea0889c9c738051ff6f5414ec972418688052897ea6e18b4c211229de37a"
+    },
+    {
+      "stage": "gitleaks-controls",
+      "command": [
+        "python3",
+        "quality/tests/v10_gitleaks_real_scanner.py",
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks"
+      ],
+      "exit": 0,
+      "log_sha256": "4fb6c8fd6a5acf432e51d5667cc02586e7921f9f17171b9a7f2d8e6732c8fbfb"
+    },
+    {
+      "stage": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "behavior_probes": {
+    "status": "PASS",
+    "command": [
+      "node",
+      "quality/tests/v10_phase10_real_runtime.cjs",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase6/rust-expo-jsi",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase10/parser-fixture",
+      "windows-host",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase10/rn-cli-candidate"
+    ],
+    "exit": 0,
+    "log": ".appforge/tmp/v10/phase10/behavior-final-verification.log"
+  },
+  "gitleaks_real": {
+    "status": "PASS",
+    "version": "8.30.1",
+    "binary_sha256": "00e91bbe655bd7c47753e8cfe61cb76ea1a5d7e7702fe161ee40102b46b3823b",
+    "controls": "PASS",
+    "source_exit": 0,
+    "findings": 0,
+    "scope": "unchanged tracked plus nonignored untracked regular files; unchanged config",
+    "final_private_evidence": ".appforge/tmp/v10/phase10/gitleaks-source-evidence.json"
+  },
+  "native_host": {
+    "termux_cargo_available": false,
+    "termux_rustc_available": false,
+    "sdk_env_configured": false,
+    "local_properties_present": false,
+    "sdk55_jsi_authored_legacy": true,
+    "sdk55_generated_new_arch": true,
+    "native_android_compile": "NOT_RUN",
+    "hermes_compile": "NOT_RUN",
+    "actual_jsi_turbo_registration": "NOT_RUN",
+    "actual_exe_inspection": "NOT_RUN",
+    "ubuntu_cargo_rustc_available": false
+  },
+  "pinned_advisory_records": [
+    {
+      "id": "GHSA-5p2g-fcmc-qvqq",
+      "record_sha256": "99f03422cf39e1881b98cde24ad2b8feae4a21d63a6eaf7d0a7c64ea2f66959a",
+      "modified": "2026-09-24T18:45:10.915244487Z",
+      "withdrawn": null,
+      "affected": [
+        {
+          "package": {
+            "name": "image-size",
+            "ecosystem": "npm",
+            "purl": "pkg:npm/image-size"
+          },
+          "ranges": [
+            {
+              "type": "SEMVER",
+              "events": [
+                {
+                  "introduced": "1.2.0"
+                },
+                {
+                  "fixed": "2.0.3"
+                }
+              ]
+            }
+          ],
+          "database_specific": {
+            "last_known_affected_version_range": "<= 2.0.2",
+            "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/06/GHSA-5p2g-fcmc-qvqq/GHSA-5p2g-fcmc-qvqq.json"
+          }
+        }
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-835"
+        ],
+        "github_reviewed": true,
+        "github_reviewed_at": "2026-08-07T20:54:40Z",
+        "nvd_published_at": "2026-06-10T14:16:30Z",
+        "severity": "HIGH"
+      },
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+        },
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N"
+        }
+      ]
+    },
+    {
+      "id": "GHSA-ch52-4w7c-c8xp",
+      "record_sha256": "3c9d5244dfca3bad5158f63e7ea44ea6c20966b852f3cd0118cd13551298743a",
+      "modified": "2026-10-02T22:45:04.334960361Z",
+      "withdrawn": null,
+      "affected": [
+        {
+          "package": {
+            "name": "http-cache-semantics",
+            "ecosystem": "npm",
+            "purl": "pkg:npm/http-cache-semantics"
+          },
+          "ranges": [
+            {
+              "type": "SEMVER",
+              "events": [
+                {
+                  "introduced": "0"
+                },
+                {
+                  "last_affected": "4.2.0"
+                }
+              ]
+            }
+          ],
+          "database_specific": {
+            "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-ch52-4w7c-c8xp/GHSA-ch52-4w7c-c8xp.json"
+          }
+        }
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-524"
+        ],
+        "github_reviewed": true,
+        "github_reviewed_at": "2026-10-02T22:36:42Z",
+        "nvd_published_at": "2026-09-18T18:18:33Z",
+        "severity": "HIGH"
+      },
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+        },
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N"
+        }
+      ]
+    },
+    {
+      "id": "GHSA-gcqx-w48m-w2h4",
+      "record_sha256": "be03a5826636155b9d89e16a4c94bba95a67ee7439f4743e99a587057fbbf339",
+      "modified": "2026-10-27T21:45:04.256048049Z",
+      "withdrawn": null,
+      "affected": [
+        {
+          "package": {
+            "name": "deepmerge",
+            "ecosystem": "npm",
+            "purl": "pkg:npm/deepmerge"
+          },
+          "ranges": [
+            {
+              "type": "SEMVER",
+              "events": [
+                {
+                  "introduced": "4.2.0"
+                },
+                {
+                  "last_affected": "4.3.1"
+                }
+              ]
+            }
+          ],
+          "database_specific": {
+            "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-gcqx-w48m-w2h4/GHSA-gcqx-w48m-w2h4.json"
+          }
+        }
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-1321"
+        ],
+        "github_reviewed": true,
+        "github_reviewed_at": "2026-10-27T21:34:55Z",
+        "nvd_published_at": "2026-09-18T18:18:34Z",
+        "severity": "LOW"
+      },
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+        },
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:N/SC:N/SI:N/SA:N/E:U"
+        }
+      ]
+    },
+    {
+      "id": "GHSA-gh4j-gqv2-49f6",
+      "record_sha256": "8c8192e7dffb42a553c613872bd1afc1ad33d881ea0084b422fbdc355cbebbd8",
+      "modified": "2026-09-10T03:51:01.693430465Z",
+      "withdrawn": null,
+      "affected": [
+        {
+          "package": {
+            "name": "fast-xml-parser",
+            "ecosystem": "npm",
+            "purl": "pkg:npm/fast-xml-parser"
+          },
+          "ranges": [
+            {
+              "type": "SEMVER",
+              "events": [
+                {
+                  "introduced": "0"
+                },
+                {
+                  "fixed": "5.7.0"
+                }
+              ]
+            }
+          ],
+          "database_specific": {
+            "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/04/GHSA-gh4j-gqv2-49f6/GHSA-gh4j-gqv2-49f6.json"
+          }
+        }
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-91"
+        ],
+        "github_reviewed": true,
+        "github_reviewed_at": "2026-04-22T20:04:17Z",
+        "nvd_published_at": "2026-05-07T15:16:07Z",
+        "severity": "MODERATE"
+      },
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+        }
+      ]
+    },
+    {
+      "id": "GHSA-w3rx-r6r6-pgpr",
+      "record_sha256": "64221791cbc0dcde07a1e3eaa70ace887dcb2f06c40cea7104ea16cabef4ae7e",
+      "modified": "2026-09-24T18:30:11.322772203Z",
+      "withdrawn": null,
+      "affected": [
+        {
+          "package": {
+            "name": "image-size",
+            "ecosystem": "npm",
+            "purl": "pkg:npm/image-size"
+          },
+          "ranges": [
+            {
+              "type": "SEMVER",
+              "events": [
+                {
+                  "introduced": "0.6.3"
+                },
+                {
+                  "fixed": "2.0.3"
+                }
+              ]
+            }
+          ],
+          "database_specific": {
+            "last_known_affected_version_range": "<= 2.0.2",
+            "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/06/GHSA-w3rx-r6r6-pgpr/GHSA-w3rx-r6r6-pgpr.json"
+          }
+        }
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-835"
+        ],
+        "github_reviewed": true,
+        "github_reviewed_at": "2026-08-07T20:55:24Z",
+        "nvd_published_at": "2026-06-10T14:16:30Z",
+        "severity": "HIGH"
+      },
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+        },
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N/E:X/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X"
+        }
+      ]
+    }
+  ],
+  "changed_paths": [
+    "android-app/app/src/main/assets/second_brain_snapshot.json",
+    "docs/wiki/03_Architecture/V10_OSS_Integration.md",
+    "docs/engineering/v10/phase10-report.md",
+    "docs/engineering/v10/phase10-evidence.json",
+    "quality/tests/v10_phase10_real_runtime.cjs"
+  ],
+  "tracked_source_freeze_verified": true,
+  "historical_host_baselines": {
+    "android": "PASS_ON_PREVIOUS_COMMIT_ONLY",
+    "windows": "PASS_ON_PREVIOUS_COMMIT_ONLY",
+    "rust": "PASS_ON_PREVIOUS_COMMIT_ONLY"
+  },
+  "log_checksums": [
+    {
+      "path": ".appforge/tmp/v10/phase10/baseline-bundle.log",
+      "sha256": "9c26447c7bdb50962ed956f8e16013dee7d46ee2e220b1b5a12d2d91fec5699c"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/baseline-config.log",
+      "sha256": "0ef4ece4a75dd4b3ad6f5e546b9f9ef0a32ceab2db62ff802142a81965e463d8"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/behavior-consumers.log",
+      "sha256": "10c3317ae0919c4646ff90ccf3ae201bec010a6692c1a70f6b37e2520fced5d1"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/behavior-final-verification.log",
+      "sha256": "2c99c2aa7918ca32a920ec63ea7df6e1205aa4a0662d652faf0c0e16a7df4e4c"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/behavior-final.log",
+      "sha256": "53e504513691296b29add409089e6c4624abd111df9c4af7674f0e399168c07f"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/behavior-frozen.log",
+      "sha256": "2c99c2aa7918ca32a920ec63ea7df6e1205aa4a0662d652faf0c0e16a7df4e4c"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/behavior-retry.log",
+      "sha256": "d056500013a3c48502d89ba6506c6dfc9c11259e61c3d6127aa5413bbd0cbd62"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/behavior.log",
+      "sha256": "6f34f0c468e3f18576fb464385184fae39a7c0b959b38d159c5e02bfde274e90"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/candidate-bundle.log",
+      "sha256": "d565e66b0966cd0485e8c640cb19f6570e12531c6b9b8106e7c232e484059091"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/candidate-check.log",
+      "sha256": "92501de59c527e6c656a8ee1b082906e0a73953973ad253ad36e4a8c107a06d1"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/candidate-config.log",
+      "sha256": "38558023b8072b40ee4b12f40c542d5e350f7430fbc8f752def062e1f0e054d2"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/checks-progress.log",
+      "sha256": "7feebf1228db7421c747e1d6bbeceefd8e86d3a82930b1204b92cbd06b3a15a0"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/cli-config-wrong-cwd.log",
+      "sha256": "ff02dcbd9d44228f64b8c9f5e660fa9e869e26356b9683120bc146f24e12597b"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/cli-config.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/diff-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/finalize.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/gitleaks-controls.log",
+      "sha256": "4fb6c8fd6a5acf432e51d5667cc02586e7921f9f17171b9a7f2d8e6732c8fbfb"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/graph-retry.log",
+      "sha256": "f1242b3ce3df3157490a8683888d797b210fd58192479b32a14af8be6e28c4af"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/graph.log",
+      "sha256": "99ac72567ebe6a9a498b5447c3472be050b970ca53f246ea7e28d35b7361f291"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/host-contract.log",
+      "sha256": "c7a9ed16f2d03dae0e5a4c0854794bcda7bb9e18d2e49cb1862328b8e542fdb5"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/image-patched.log",
+      "sha256": "db0b4222c369a06f28e6d0a3f8d09c28ae14905ab1df0aef1a1e40c9e0ebc1b9"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/image-vulnerable.log",
+      "sha256": "afb3f05013f351a680b123813707da8e9af2e57da80023a2e7d1b5d4b6c18e04"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/osv.log",
+      "sha256": "0a56e0eb9a8c54bb60da946f90b00860e38654ffe53df49e0c0991c5b49c4d8f"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/parser-install.log",
+      "sha256": "6244e6337bd11c914bd6ead78b226d11b41588590f6ca1e222e26287089f02bf"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/parser-negative-install.log",
+      "sha256": "7fab84e97ca933cbaae5cdb77663ccf29d47bdd308ba2de6dbc94eb5579c2ef4"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/postchecks-progress.log",
+      "sha256": "97fd13479c3aa7657a1ef7c99b4a4e3fd9de2fc80524a432627f034d41b8a377"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/quality-progress.log",
+      "sha256": "6a82b1f65cc6cf91bd511ead253d81f04316383abd7d8a7dafbc54a4712f4790"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/quality-proot.log",
+      "sha256": "28265efd7869ac0b6f27870108e3d09cd48ba6e63fede1a347c01171200dd3ad"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/rn-cli-baseline-install.log",
+      "sha256": "7b70078d62dbda4846781e7b2e0ca82eb597b65f0753fdffd28e3b546c298f74"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/rn-cli-install.log",
+      "sha256": "b28d6a5c632445db9b0006afcfec2e1e005a80fca3bc76640d732f728d6d492c"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/snapshot-check.log",
+      "sha256": "2a3a29540110f03e05d5d056e2e701fd89f49db1f900d1dbec9f9237b05e515c"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/snapshot-generate.log",
+      "sha256": "b5f629e0d05f92974ac5c07dde37fcfec38e209c4d87af1bdd3cfe2672a366ca"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/source-scan-progress.log",
+      "sha256": "196fd367de389d9f536dbbdbe83c67ddacf47a5fb6c95b7640a5be161588bf80"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/stability.log",
+      "sha256": "8ff4ea0889c9c738051ff6f5414ec972418688052897ea6e18b4c211229de37a"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/upstream.log",
+      "sha256": "2f074d539b9ee87237fa34cf82c011af01c997c4429cfd233efea857c939b55b"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/v10-python.log",
+      "sha256": "a969b166c71b844c169eb9db1c794421cb1693cf85fb4fbae3001f5406b8fad7"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/v9.log",
+      "sha256": "93e9a29f43b7104de025e5b15594e8c6b169dc8403de5555326797f28bb3416d"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/wiki-audit.log",
+      "sha256": "7998cdef2b9549c3858160ad2ea0532daf3298ceba8eff8106862a6b4b5d4d9a"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/wiki-secret.log",
+      "sha256": "4e841cef2bbb9b12c75fa9172407dad3161dae4add910164bec38ec168b927ff"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase10/windows-node.log",
+      "sha256": "67b615518821ab3c2fbb0bda71193b24232c49ab015c6cc6787fc88b20726ab0"
+    }
+  ]
+}
