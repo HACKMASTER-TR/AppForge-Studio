@@ -219,3 +219,16 @@ JavaScript-only export, but the JSI fixture changes the requested legacy
 architecture to newArchEnabled=true. The native ready policy remains Expo54/RN0.81;
 no candidate migration was applied without native acceptance. Equivalent Phase6
 OSV rerun retains the same 10 advisory IDs, including 4 HIGH.
+
+## Phase 9.3 promoted PyO3, 2026-10-29
+
+The shipped example now pins PyO3 =0.29.0 with the authentic 3,391-byte Cargo
+lock supplied from candidate CI run 40836459198/job 123322262093 (SHA-256
+`a3be190006d0345960589c281dc5b913a26325c4dd4efbd2b117a2fe3e948f1a`).
+Host acceptance checks this exact pair with locked build/import/behavior in a
+temporary fixture; active candidate lock export has been removed. Prior candidate
+CI success is distinct from post-promotion host acceptance, which is NOT_RUN.
+Historical OSV 10 advisories/4 HIGH is not a fresh scan or security clearance.
+See `docs/engineering/v10/phase93-report.md` for provenance, local verification
+and unverified platform gates. Earlier unchanged-pin statements above are
+historical. No delivery authority is granted.

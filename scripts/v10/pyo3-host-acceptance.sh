@@ -1,35 +1,42 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Temporary copies only; shipped pins remain unchanged.
-mode=${1:-candidate}
+# Both modes use temporary copies of the exact promoted manifest/lock pair.
+# Candidate is an optional isolated recheck, never an implicit resolver/update.
+mode=${1:-shipped}
 case "$mode" in shipped|candidate) ;; *) echo "Invalid probe mode" >&2; exit 2 ;; esac
-if [ "${PYO3_EXPORT_LOCK:-0}" = 1 ]; then
-  test "$mode" = candidate
-  test "$(rustc --version | cut -d ' ' -f 2)" = 1.85.1
-  test "$(cargo --version | cut -d ' ' -f 2)" = 1.85.1
-  python3 -c 'import sys; assert sys.version_info[:3] == (3, 12, 12)'
-fi
 test "$(uname -s)" = Linux
+test "$(uname -m)" = x86_64
+test "$(rustc --version | cut -d ' ' -f 2)" = 1.85.1
+test "$(cargo --version | cut -d ' ' -f 2)" = 1.85.1
+python3 -c 'import sys; assert sys.version_info[:3] == (3, 12, 12)'
 rustc --version
 cargo --version
 python3 --version
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
-cp -R examples/rust-python/. "$fixture/"
-if [ "$mode" = candidate ]; then
-python3 - "$fixture/Cargo.toml" <<'PY'
-import pathlib, sys
-p = pathlib.Path(sys.argv[1])
-s = p.read_text()
-assert 'version="=0.23.5"' in s
-p.write_text(s.replace('version="=0.23.5"', 'version="=0.29.0"'))
-PY
-fi
+cp examples/rust-python/Cargo.toml examples/rust-python/Cargo.lock "$fixture/"
+cp -R examples/rust-python/src "$fixture/src"
+export CARGO_TARGET_DIR="$fixture/target"
+python3 - "$fixture" <<'PYPAIR'
+import hashlib, pathlib, sys, tomllib
+root = pathlib.Path(sys.argv[1])
+manifest = tomllib.loads((root / 'Cargo.toml').read_text())
+assert manifest['dependencies']['pyo3'] == {
+    'version': '=0.29.0', 'features': ['extension-module', 'abi3-py312']}
+data = (root / 'Cargo.lock').read_bytes()
+assert len(data) == 3391
+assert hashlib.sha256(data).hexdigest() == 'a3be190006d0345960589c281dc5b913a26325c4dd4efbd2b117a2fe3e948f1a'
+lock = tomllib.loads(data.decode('utf-8'))
+assert lock['version'] == 4
+packages = lock['package']
+family = {'pyo3', 'pyo3-build-config', 'pyo3-ffi', 'pyo3-macros', 'pyo3-macros-backend'}
+assert {x['name'] for x in packages if x['name'].startswith('pyo3')} == family
+assert all(x['version'] == '0.29.0' for x in packages if x['name'] in family)
+assert [x for x in packages if x['name'] == 'appforge_native'] == [
+    {'name': 'appforge_native', 'version': '0.1.0', 'dependencies': ['pyo3']}]
+PYPAIR
 export PYO3_PYTHON
 PYO3_PYTHON=$(command -v python3)
-if [ "$mode" = candidate ]; then
-  cargo update --manifest-path "$fixture/Cargo.toml" -p pyo3 --precise 0.29.0
-fi
 sha256sum "$fixture/Cargo.lock"
 cp "$fixture/Cargo.lock" "$fixture/resolved.lock"
 cargo tree --manifest-path "$fixture/Cargo.toml" --locked
@@ -52,34 +59,3 @@ else:
 print('PyO3 compile/import/runtime PASS; repository pin unchanged')
 PY
 cmp "$fixture/resolved.lock" "$fixture/Cargo.lock"
-if [ "${PYO3_EXPORT_LOCK:-0}" = 1 ]; then
-  # Only the resolver's non-executable lockfile is exported through job logs.
-  # Base64 preserves exact bytes despite GitHub's per-line log timestamps.
-  python3 - "$fixture/Cargo.lock" <<'PYLOCK'
-import base64, hashlib, json, pathlib, re, sys, tomllib
-p = pathlib.Path(sys.argv[1])
-assert p.is_file() and not p.is_symlink()
-data = p.read_bytes()
-assert 0 < len(data) <= 65536
-lock = tomllib.loads(data.decode('utf-8'))
-assert lock['version'] == 4
-packages = lock['package']
-assert len({x['name'] for x in packages}) == len(packages)
-family = {'pyo3', 'pyo3-build-config', 'pyo3-ffi', 'pyo3-macros', 'pyo3-macros-backend'}
-assert {x['name'] for x in packages if x['name'].startswith('pyo3')} == family
-names = {x['name'] for x in packages}
-assert 'appforge_native' in names
-for x in packages:
-    if x['name'] == 'appforge_native':
-        assert x == {'name': 'appforge_native', 'version': '0.1.0', 'dependencies': ['pyo3']}
-        continue
-    assert x['source'] == 'registry+https://github.com/rust-lang/crates.io-index'
-    assert re.fullmatch('[a-f0-9]{64}', x['checksum'])
-    assert set(x.get('dependencies', [])) <= names
-    if x['name'] in family:
-        assert x['version'] == '0.29.0'
-print('APPFORGE_PYO3_CANDIDATE_LOCK_V1=' + json.dumps({
-    'sha256': hashlib.sha256(data).hexdigest(),
-    'size': len(data), 'base64': base64.b64encode(data).decode('ascii')}, separators=(',', ':')))
-PYLOCK
-fi

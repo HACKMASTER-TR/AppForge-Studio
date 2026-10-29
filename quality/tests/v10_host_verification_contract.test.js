@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
 const workflow = fs.readFileSync(new URL('../../.github/workflows/v10-host-verification.yml', import.meta.url), 'utf8');
 test('V10 host verification has an exact push trigger, is branch restricted and cannot publish', () => {
   assert.match(workflow, /on:\n  workflow_dispatch:\n  push:\n    branches:\n      - feat\/v10-oss-unified-20261028\n    tags-ignore:\n      - '\*\*'\n\npermissions:\n  contents: read/);
@@ -65,18 +69,44 @@ test('V10 Windows explicitly installs local Electron before validating packaging
   assert.doesNotMatch(windows, /continue-on-error|--ignore-scripts/);
 });
 
-test('V10 candidate lock export is read-only, opt-in and follows locked runtime acceptance', () => {
+test('V10 promoted pin and authentic lock stay paired before real locked acceptance', () => {
   const rust = fs.readFileSync(new URL('../../scripts/v10/pyo3-host-acceptance.sh', import.meta.url), 'utf8');
-  const python = workflow.slice(workflow.indexOf('  python-extension:'), workflow.indexOf('  windows-native:'));
-  assert.match(python, /PYO3_EXPORT_LOCK: '1'/);
-  assert.match(rust, /test "\$mode" = candidate/);
+  const manifest = fs.readFileSync(new URL('../../examples/rust-python/Cargo.toml', import.meta.url), 'utf8');
+  const lock = fs.readFileSync(new URL('../../examples/rust-python/Cargo.lock', import.meta.url));
+  assert.match(manifest, /pyo3=\{version="=0\.29\.0",features=\["extension-module","abi3-py312"\]\}/);
+  assert.equal(lock.length, 3391);
+  assert.equal(createHash('sha256').update(lock).digest('hex'), 'a3be190006d0345960589c281dc5b913a26325c4dd4efbd2b117a2fe3e948f1a');
+  assert.doesNotMatch(rust, /0\.23\.5|cargo update|cargo generate-lockfile|PYO3_EXPORT_LOCK/);
+  assert.doesNotMatch(workflow, /PYO3_EXPORT_LOCK|pyo3-host-acceptance.sh candidate/);
+  assert.match(workflow, /run: bash scripts\/v10\/pyo3-host-acceptance.sh shipped/);
+  assert.ok(rust.includes('mode=${1:-shipped}'));
+  assert.ok(rust.includes('shipped|candidate'));
   for (const tool of ['rustc', 'cargo']) assert.ok(rust.includes(`$(${tool} --version | cut -d ' ' -f 2)" = 1.85.1`));
   assert.ok(rust.includes('sys.version_info[:3] == (3, 12, 12)'));
+  assert.ok(rust.includes('test "$(uname -m)" = x86_64'));
+  const pair = rust.indexOf("assert manifest['dependencies']['pyo3']");
   const build = rust.indexOf('cargo build ');
   const runtime = rust.indexOf('spec.loader.exec_module(m)');
   const unchanged = rust.indexOf('cmp "$fixture/resolved.lock" "$fixture/Cargo.lock"');
-  const output = rust.indexOf("print('APPFORGE_PYO3_CANDIDATE_LOCK_V1='");
-  assert.ok(build < runtime && runtime < unchanged && unchanged < output);
-  for (const check of ["not p.is_symlink()", "assert 'appforge_native' in names", "len(data) <= 65536", "lock['version'] == 4", "x['version'] == '0.29.0'", "hashlib.sha256(data).hexdigest()", "base64.b64encode(data)"]) assert.ok(rust.includes(check));
-  assert.doesNotMatch(python, /secrets\.|upload-artifact|contents: write|continue-on-error/);
+  assert.ok(pair > 0 && pair < build && build < runtime && runtime < unchanged);
+  assert.ok(rust.includes('export CARGO_TARGET_DIR="$fixture/target"'));
+  assert.ok(rust.includes('cp examples/rust-python/Cargo.toml examples/rust-python/Cargo.lock "$fixture/"'));
+  assert.match(rust, /trap 'rm -rf "\$fixture"' EXIT/);
+  for (const check of ['range(1000)', 'm.answer() == 42', 'm.answer(1)', 'except TypeError:', "raise AssertionError('unexpected argument accepted')"]) assert.ok(rust.includes(check));
+  // Execute the actual pre-build validator against shipped bytes, then mismatches.
+  const validator = rust.split("<<'PYPAIR'\n")[1].split('\nPYPAIR')[0];
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'appforge-pyo3-pair-'));
+  try {
+    fs.writeFileSync(`${dir}/Cargo.toml`, manifest);
+    fs.writeFileSync(`${dir}/Cargo.lock`, lock);
+    const validate = () => spawnSync('python3', ['-c', validator, dir], { encoding: 'utf8' });
+    assert.equal(validate().status, 0);
+    fs.appendFileSync(`${dir}/Cargo.lock`, '\n');
+    assert.notEqual(validate().status, 0);
+    fs.writeFileSync(`${dir}/Cargo.lock`, lock);
+    fs.writeFileSync(`${dir}/Cargo.toml`, manifest.replace('=0.29.0', '=0.28.0'));
+    assert.notEqual(validate().status, 0);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

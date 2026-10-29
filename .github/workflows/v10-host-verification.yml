@@ -93,11 +93,6 @@ jobs:
       - name: Build and import shipped PyO3 with pinned compatible hosts
         shell: bash
         run: bash scripts/v10/pyo3-host-acceptance.sh shipped
-      - name: Test isolated PyO3 candidate without changing shipped pins
-        shell: bash
-        env:
-          PYO3_EXPORT_LOCK: '1'
-        run: bash scripts/v10/pyo3-host-acceptance.sh
   windows-native:
     if: github.ref == 'refs/heads/feat/v10-oss-unified-20261028'
     runs-on: windows-2025
