@@ -263,3 +263,18 @@ promotion is deferred rather than declaring it incompatible or accepted. CLI
 candidate still needs a reviewed native architecture migration. Full details,
 per-advisory decisions and fresh verification are in
 `docs/engineering/v10/phase10-report.md` and `phase10-evidence.json`.
+
+## Phase11 isolated native candidate gate
+
+Phase11 prepares `.github/workflows/v10-phase11-native-candidate.yml` and
+`scripts/v10/phase11-native-candidate.sh` for unsigned compile-only checks on the
+isolated V10 branch. The shipped examples remain unchanged. CLI20.2.0 lock replay,
+Metro and parser/server probes cannot establish native Turbo registration.
+SDK54 New Architecture prebuild preserves the authored Java/C++ registration,
+but `RustJsiModule.install()` still relies on `JavaScriptContextHolder` and
+explicitly excludes bridgeless operation. A supported runtime-executor bridge
+replacement and actual Hermes invocation returning 42 are required before SDK55
+promotion. Compile-only CI is deliberately insufficient for that decision.
+See `docs/engineering/v10/phase11-report.md` for exact evidence and outstanding
+acceptance. Existing five pinned OSV findings remain unsuppressed; no dependency
+or integration policy migration is shipped by this phase.

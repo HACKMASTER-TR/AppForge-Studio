@@ -1,0 +1,520 @@
+{
+  "schema_version": 1,
+  "status": "NATIVE_CI_CANDIDATE_PREPARED",
+  "starting_head": "de0b2ee1c7105140d27900b6f450ec664fe928e6",
+  "final_head": "de0b2ee1c7105140d27900b6f450ec664fe928e6",
+  "branch": "feat/v10-oss-unified-20261028",
+  "recorded_at": "2026-10-29T08:48:45.206344+00:00",
+  "production_manifest_changed": false,
+  "protected_source_unchanged": true,
+  "cli_20_2": "ISOLATED_ONLY_NATIVE_BLOCKED",
+  "fast_xml_parser": "CANDIDATE_5.11.2_NOT_PROMOTED",
+  "sdk54_new_arch_jsi": "PREBUILD_REGISTRATION_PRESERVED_RUNTIME_BLOCKED",
+  "sdk55_image_size": "ISOLATED_LOCK_ZERO_OCCURRENCES_NOT_PROMOTED",
+  "native_acceptance": "NOT_RUN_NO_LOCAL_TOOLCHAIN",
+  "hermes_turbo_acceptance": "NOT_RUN",
+  "checks": {
+    "v10-python": {
+      "stage": "v10-python",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v10_oss_gate.py"
+      ],
+      "exit": 0,
+      "log_sha256": "f2e92f6f11b9465ed8fc8112334f943f0c86cf5997be8dac04bfe6c227fc42a3"
+    },
+    "windows-node": {
+      "stage": "windows-node",
+      "command": [
+        "npm",
+        "--prefix",
+        "windows-host",
+        "test"
+      ],
+      "exit": 0,
+      "log_sha256": "4dee2548b3b66a4999924bde084f2196d775bfa845444639d3ee5298c4aa7659"
+    },
+    "behavior": {
+      "stage": "behavior",
+      "command": [
+        "node",
+        "quality/tests/v10_phase10_real_runtime.cjs",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase6/rust-expo-jsi",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase10/parser-fixture",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/windows-host",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase10/rn-cli-candidate"
+      ],
+      "exit": 0,
+      "log_sha256": "2c99c2aa7918ca32a920ec63ea7df6e1205aa4a0662d652faf0c0e16a7df4e4c"
+    },
+    "v9": {
+      "stage": "v9",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v9_*.py"
+      ],
+      "exit": 0,
+      "log_sha256": "92548633c45b1458592ea0e672ad28e72d6df2ada49df23fe491e88ed17002c9"
+    },
+    "rn-cli-ci": {
+      "stage": "rn-cli-ci",
+      "command": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--offline",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "exit": 0,
+      "log_sha256": "b345ee84a1217497e4821071c971eda3388a94d24bf2213fa1d3a716a427d924"
+    },
+    "sdk54-newarch-ci": {
+      "stage": "sdk54-newarch-ci",
+      "command": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--offline",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "exit": 1,
+      "log_sha256": "5e6ccee4a23ee9871d19b6460bfe3e010de4a8efc71581c09957d42d53691c28"
+    },
+    "sdk55-ci": {
+      "stage": "sdk55-ci",
+      "command": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--offline",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "exit": 1,
+      "log_sha256": "73255a7a4f14f7094e512095d5a6814bb6a3779b6d40f20030ba0d484b1ba30f"
+    },
+    "sdk54-newarch-ci-private": {
+      "stage": "sdk54-newarch-ci-private",
+      "command": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--offline",
+        "--cache",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/npm-cache",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "exit": 0,
+      "log_sha256": "227870c8ddb63beb872d4f9afde840f40facea182c19eb73c905abbda64dc6f9"
+    },
+    "sdk55-ci-private": {
+      "stage": "sdk55-ci-private",
+      "command": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--offline",
+        "--cache",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/npm-cache",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "exit": 0,
+      "log_sha256": "d217fe7517841b28e4c6822b2656851f7723fce3ce096b267b8f067db068c41a"
+    },
+    "cli-config": {
+      "stage": "cli-config",
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase11/rn-cli/node_modules/@react-native-community/cli/build/bin.js",
+        "config"
+      ],
+      "exit": 0,
+      "log_sha256": "d110dd283233b99cc400f18d7f40d9351e85a1489300dc4a8e747186b23f0df1"
+    },
+    "cli-bundle": {
+      "stage": "cli-bundle",
+      "command": [
+        "node",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase11/rn-cli/node_modules/@react-native-community/cli/build/bin.js",
+        "bundle",
+        "--platform",
+        "android",
+        "--dev",
+        "false",
+        "--entry-file",
+        "index.js",
+        "--bundle-output",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase11/cli.bundle",
+        "--max-workers",
+        "1"
+      ],
+      "exit": 0,
+      "log_sha256": "ace555d2eb6e05b61eef33aaa8f25649e6c9f47e8689b07e694be0ff003e3390"
+    },
+    "sdk54-newarch-prebuild": {
+      "stage": "sdk54-newarch-prebuild",
+      "command": [
+        "node",
+        "node_modules/expo/bin/cli",
+        "prebuild",
+        "--platform",
+        "android",
+        "--no-install"
+      ],
+      "exit": 0,
+      "log_sha256": "2c7ed98130fe237bb437ecb89e0494653fece6501df1d4f8705f9b24a9db50ee"
+    },
+    "sdk55-prebuild": {
+      "stage": "sdk55-prebuild",
+      "command": [
+        "node",
+        "node_modules/expo/bin/cli",
+        "prebuild",
+        "--platform",
+        "android",
+        "--no-install"
+      ],
+      "exit": 0,
+      "log_sha256": "d5e4be0a0c10691bffa446716505e068d943d1fca32f0d93d5af6f817e29c4e4"
+    },
+    "normal-offline-ci": {
+      "stage": "normal-offline-ci",
+      "command": [
+        "npm",
+        "ci",
+        "--offline",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "exit": 0,
+      "log_sha256": "93fbeccd5b61fc5f4665d33845305e47d7eb147eb4b7a30db51c370ce3951f61"
+    },
+    "server-final": {
+      "stage": "server-final",
+      "command": [
+        "node",
+        "quality/tests/v10_phase11_server_runtime.cjs",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase11/rn-cli"
+      ],
+      "exit": 0,
+      "log_sha256": "fadd6c8d2ac4150e9dc06b1c0e3832218c9ac967aa9b6dd5633d4956bf07e9d7"
+    },
+    "contracts": {
+      "stage": "contracts",
+      "command": [
+        "node",
+        "--test",
+        "quality/tests/v10_phase11_candidate_contract.test.js",
+        "quality/tests/v10_host_verification_contract.test.js"
+      ],
+      "exit": 0,
+      "log_sha256": "3d3ee4e425e8b79f60039f80fd8fe19f4cdcf70e73a6bc7dd642939dcd19ff04"
+    },
+    "shell-syntax": {
+      "stage": "shell-syntax",
+      "command": [
+        "bash",
+        "-n",
+        "scripts/v10/phase11-native-candidate.sh"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "snapshot-check": {
+      "stage": "snapshot-check",
+      "command": [
+        "python3",
+        "scripts/generate-second-brain-snapshot.py",
+        "--check"
+      ],
+      "exit": 0,
+      "log_sha256": "61fe5f4ab771812b3aae49006342b701cd5688c2e3a37611d58b8e6b933a16fe"
+    },
+    "wiki-audit": {
+      "stage": "wiki-audit",
+      "command": [
+        "node",
+        "scripts/wiki-audit.mjs",
+        "--changed-source-check"
+      ],
+      "exit": 0,
+      "log_sha256": "7998cdef2b9549c3858160ad2ea0532daf3298ceba8eff8106862a6b4b5d4d9a"
+    },
+    "wiki-secret": {
+      "stage": "wiki-secret",
+      "command": [
+        "python3",
+        "scripts/wiki-secret-scan.py"
+      ],
+      "exit": 0,
+      "log_sha256": "4e841cef2bbb9b12c75fa9172407dad3161dae4add910164bec38ec168b927ff"
+    },
+    "stability": {
+      "stage": "stability",
+      "command": [
+        "sh",
+        "scripts/appforge-stability-gate",
+        "ci"
+      ],
+      "exit": 0,
+      "log_sha256": "abf8c001aeea414bdb4e05cff7598b3c2fae42c677a66714946f54898240227e"
+    },
+    "gitleaks-controls": {
+      "stage": "gitleaks-controls",
+      "command": [
+        "python3",
+        "quality/tests/v10_gitleaks_real_scanner.py",
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks"
+      ],
+      "exit": 0,
+      "log_sha256": "4fb6c8fd6a5acf432e51d5667cc02586e7921f9f17171b9a7f2d8e6732c8fbfb"
+    },
+    "diff-check": {
+      "stage": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "quality_full": {
+    "command": [
+      "proot-distro",
+      "login",
+      "ubuntu",
+      "--bind",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+      "--bind",
+      "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+      "--bind",
+      "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+      "--",
+      "/usr/bin/env",
+      "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+      "TMPDIR=/tmp",
+      "SYFT_CHECK_FOR_APP_UPDATE=false",
+      "GOMAXPROCS=2",
+      "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+      "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+      "/bin/bash",
+      "-c",
+      "cd /data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo && /data/data/com.termux/files/usr/bin/node --test quality/tests/*.test.js"
+    ],
+    "exit": 0,
+    "started_at": "2026-10-29T08:44:24.852770+00:00",
+    "finished_at": "2026-10-29T08:47:49.450715+00:00",
+    "log_sha256": "d44b4971fab97fe900eb3f86d9258a2868e9de8ce18d339d6d33a0b49303e70f",
+    "summary_lines": [
+      "\u2139 tests 1156",
+      "\u2139 pass 1156",
+      "\u2139 fail 0",
+      "\u2139 cancelled 0",
+      "\u2139 skipped 0",
+      "\u2139 todo 0"
+    ],
+    "status": "PASS"
+  },
+  "osv": {
+    "status": "HISTORICAL_PHASE10_NOT_FRESH",
+    "production_graph_unchanged": true,
+    "expected_original_ids": 5,
+    "high": 3,
+    "moderate": 1,
+    "low": 1,
+    "suppressed": 0,
+    "candidate_scan": "NOT_RUN_NO_CLEARANCE_CLAIM",
+    "ids": [
+      "GHSA-5p2g-fcmc-qvqq",
+      "GHSA-w3rx-r6r6-pgpr",
+      "GHSA-ch52-4w7c-c8xp",
+      "GHSA-gcqx-w48m-w2h4",
+      "GHSA-gh4j-gqv2-49f6"
+    ]
+  },
+  "gitleaks_source": {
+    "exit": 0,
+    "scope": "unchanged tracked plus nonignored untracked regular files; unchanged configuration"
+  },
+  "phase10_hosted_status": "NOT_VERIFIED",
+  "new_workflow_hosted_status": "NOT_RUN_UNPUSHED_SOURCE",
+  "changed_paths": [
+    ".github/workflows/v10-phase11-native-candidate.yml",
+    "android-app/app/src/main/assets/second_brain_snapshot.json",
+    "docs/engineering/v10/phase11-evidence.json",
+    "docs/engineering/v10/phase11-report.md",
+    "docs/wiki/03_Architecture/V10_OSS_Integration.md",
+    "quality/tests/v10_phase11_candidate_contract.test.js",
+    "quality/tests/v10_phase11_server_runtime.cjs",
+    "scripts/v10/phase11-native-candidate.sh"
+  ],
+  "no_commit": true,
+  "no_push": true,
+  "no_main_play_signing": true,
+  "index_empty": true,
+  "preexisting_t21_preserved": true,
+  "new_t21_directories": "Existing quality tests may create fixtures; none removed",
+  "raw_evidence": [
+    {
+      "path": ".appforge/tmp/v10/phase11/baseline-source-hashes.json",
+      "sha256": "5db21f0bb8afd2ca518289022a36037ee23442a4aec48126d580286ccb7bc358"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/behavior-result.json",
+      "sha256": "ba2758886be3faac68c5b85431c5aca51144ddb448971f83c710ffe5d6f1e16f"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/candidate-inspection.json",
+      "sha256": "57f000e4781738ef75f27c9c3a2260706675da68d50b68b82c06447f7cf02e37"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/cli-bundle-result.json",
+      "sha256": "5f4a94ef48596d9b0b915b5771ddd4217717ac8f17bc810b6545579b0992a793"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/cli-config-result.json",
+      "sha256": "1fae64e472b9f1d98e4805ef60f468f56b6ad84e90001fed384f52ef615d8340"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/cli-lock-delta.json",
+      "sha256": "82370e8963f3dd8a2ff7416e3cf36f68ff249bc503ef1c1bd6696d0cb8e1267b"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/contracts-result.json",
+      "sha256": "918c2b0a6ed5bdd02f699f1a8c9d4be10584c11adacf0ef20334dc6891002c5d"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/diff-check-result.json",
+      "sha256": "43b745ff878e1ebe78b28ae5b18a62e2128f2979df96bc758a93a566fb2f1d37"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/final-integrity-verification.json",
+      "sha256": "685ece3afd0693011907ba4290ba77c8480d425c409aa9e15a51cd1212c3c289"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/final-source-hashes.json",
+      "sha256": "f4ba4c4c0857849a2decb4c221a9f280f5efe6cddf3ef671b5690b6661846ce9"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/gitleaks-controls-result.json",
+      "sha256": "aba92da619feb7145a5b51696705ac297f413e6f70def389dbb22348d6ffc555"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/gitleaks-source-evidence.json",
+      "sha256": "205b0608d60ad28b2007f59eab77eae0c674281842e72b44db1679b806a2ce0d"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/gitleaks-source.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/graph-hashes.json",
+      "sha256": "8ced8675bcc49ffb5f2f0d75772d3416bba0aeba76e302320bc670230326c1c4"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/normal-offline-ci-result.json",
+      "sha256": "5c279db33420a42b1e96983775150baf7ca124d6e38b3254961541ccad5e9fab"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/protected-source-verification.json",
+      "sha256": "d7a839b4db7fdd75ce49669b7ce0d8ac2d8c91bf2e2a1b1700778863bcdea407"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/quality-result.json",
+      "sha256": "87882910b675b7ce655c4c40cd1a45a144209ce64cf1f065ff84b4e2f35b40c0"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/rn-cli-ci-result.json",
+      "sha256": "c0c0e8a504b10faf10b7ddfada12b20a02fdfca97d929b1556aa1080245f3562"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/sdk54-newarch-ci-private-result.json",
+      "sha256": "355a9e8ca067700a53c52c685b19e71261361a75abb78a05c7011a99ed5b2bbc"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/sdk54-newarch-ci-result.json",
+      "sha256": "a3cb905ff5557867a4abc2a565927c3fc70307991245f5b6cdfd160b94fd4103"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/sdk54-newarch-prebuild-result.json",
+      "sha256": "854acaa03d20f56a6f354533ec9c547c275c6908df7d90fb73912ef56c1da715"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/sdk55-ci-private-result.json",
+      "sha256": "5fb12a234f8934ab8df4a335c50d5de11970c0559a412c8082b3f89c9c7a154e"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/sdk55-ci-result.json",
+      "sha256": "1a476c092b9d4c28e226d6a78f1a149344ff7c59a386ce8aad13150325c52172"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/sdk55-prebuild-result.json",
+      "sha256": "fa3bcf80045c40f9aee5331ba861ca0be2bbe7eea5c66828fc39f289fcda8399"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/server-final-result.json",
+      "sha256": "ecd119f9abf81a443dc40bb1c42965634d8e5d83c0de41aa9e7724f675002b88"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/shell-syntax-result.json",
+      "sha256": "ce56f60ff7871a1cc78a1012c37ff3bf9db38a80d19a3b5a206a64e3de210836"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/snapshot-check-result.json",
+      "sha256": "ba923de487f94bab23d6bc3cfb469f43ae0bbfd5864d4d1980e8ef26fcf42264"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/stability-result.json",
+      "sha256": "7ed1f9b87e673c2460abdeadd08aa8cad4ce4fc14b870194d199468cf241fd8f"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/upstream-metadata.json",
+      "sha256": "682209ea4479e0da9d7244e7caf14770a985e94b517d9a575f57ca638eb58e0e"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/v10-python-result.json",
+      "sha256": "9b266a0000d030704ac0a4012fab9182425b8fca4669b9f656743a8f81625237"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/v9-result.json",
+      "sha256": "9a14760130d513dbc80f808859483f4d0278f4623e67aa460b21fbfeea81eb1e"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/wiki-audit-result.json",
+      "sha256": "cb203f08f37c654fa3841d6f938e20d0d7c25861d74d5c6812b2a6a3f90de251"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/wiki-secret-result.json",
+      "sha256": "9732edb46fc3ee64f9336faceddec7cbe64e89379af0c50aedfea6f5bce9681d"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase11/windows-node-result.json",
+      "sha256": "ddd1fea61a5086454c24e7ef8c402833aac8aeba5a01877369195bd5705bd3af"
+    }
+  ],
+  "next_host_action": "After separate explicit commit/push authorization run V10 Phase11 isolated native candidates on new exact source SHA; compile success still requires separate Hermes native registration integration acceptance"
+}

@@ -1,0 +1,50 @@
+name: V10 Phase11 isolated native candidates
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/v10-oss-unified-20261028
+    tags-ignore:
+      - '**'
+
+permissions:
+  contents: read
+
+jobs:
+
+  phase11-native-candidate:
+    if: github.ref == 'refs/heads/feat/v10-oss-unified-20261028'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [rn-cli, sdk54-newarch]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
+        with:
+          gradle-version: '8.14.3'
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: '22.22.0'
+      - name: Install exact candidate native toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
+          rustup toolchain install 1.85.1 --profile minimal --target aarch64-linux-android
+      - name: Isolated unsigned native compile and Hermes bytecode probe
+        shell: bash
+        env:
+          CI: '1'
+          EXPO_NO_TELEMETRY: '1'
+        run: timeout 2100 bash scripts/v10/phase11-native-candidate.sh '${{ matrix.mode }}'
