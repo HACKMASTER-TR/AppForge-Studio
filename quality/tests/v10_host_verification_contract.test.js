@@ -39,3 +39,28 @@ test('V10 host probes retain candidate isolation and bounded native launch', () 
   assert.match(windows, /localStorageCount/);
   assert.doesNotMatch(windows, /upload-artifact|signtool|gh release|CSC_LINK/);
 });
+
+test('V10 Windows explicitly installs local Electron before validating packaging tools', () => {
+  const windows = workflow.slice(workflow.indexOf('  windows-native:'));
+  const required = [
+    'npm ci --prefix windows-host --no-audit --no-fund',
+    "if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed' }",
+    `Push-Location windows-host
+          try {
+            npx --no-install install-electron --no
+            if ($LASTEXITCODE -ne 0) { throw 'Electron binary installation failed' }
+          } finally {
+            Pop-Location
+          }`,
+    `node -e "const fs=require('fs'); for(const p of ['windows-host/node_modules/electron/dist/electron.exe','windows-host/node_modules/.bin/electron-builder.cmd']) { if(!fs.statSync(p).isFile()) throw Error(p); }"`,
+    "if ($LASTEXITCODE -ne 0) { throw 'Packaging tools missing' }",
+    'run: ./scripts/v10/windows-host-acceptance.ps1',
+  ];
+  let previous = -1;
+  for (const fragment of required) {
+    const position = windows.indexOf(fragment);
+    assert.ok(position > previous, `Missing or out-of-order prerequisite: ${fragment}`);
+    previous = position;
+  }
+  assert.doesNotMatch(windows, /continue-on-error|--ignore-scripts/);
+});
