@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "status": "LOCAL_QUALITY_PASS_HOSTED_ABI_NOT_YET_RUN",
+  "recorded_at": "2026-10-29T12:12:36.201669+00:00",
+  "baseline_commit": "a2c998c67b5b9753dd2773aa86833fe61ee9f1da",
+  "target_branch": "feat/v10-oss-unified-20261028",
+  "quality_full": {
+    "tests": 1156,
+    "pass": 1156,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "exit": 0,
+    "log_sha256": "38b5ac12123f9752d2aec8c0710fd0cc6a6a0a2351d7d18a48dbc819530042d7"
+  },
+  "second_brain_check": "PASS",
+  "stability_gate": "PASS",
+  "candidate_native_abi_link": "NOT_RUN_THIS_SCRIPT",
+  "physical_hermes_runtime": "NOT_RUN",
+  "release_gate": "BLOCKED",
+  "historical_osv_findings_unsuppressed": 5,
+  "production_dependencies_promoted": false,
+  "no_main_merge_signing_play": true
+}

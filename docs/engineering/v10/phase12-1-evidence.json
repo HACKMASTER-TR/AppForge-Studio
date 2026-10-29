@@ -1,0 +1,621 @@
+{
+  "schema_version": 1,
+  "status": "PREPARED_BLOCKED_ACCEPTANCE",
+  "recorded_at": "2026-10-29T11:54:47.818161+00:00",
+  "branch": "feat/v10-oss-unified-20261028",
+  "starting_head": "a2c998c67b5b9753dd2773aa86833fe61ee9f1da",
+  "final_head": "a2c998c67b5b9753dd2773aa86833fe61ee9f1da",
+  "bridge_api_review": "SUPPORTED_CXX_RN_0_81_5_HOOK_SOURCE_AND_SYNTAX_ONLY",
+  "bridge_candidate": "ISOLATED_TRACKED_CI_FIXTURE_NOT_PRODUCTION",
+  "abi_link_local": "NOT_RUN_NO_VERIFIED_NDK_RUST_TOOLCHAIN",
+  "abi_link_hosted": "NOT_RUN_UNCOMMITTED_UNPUSHED",
+  "hermes_runtime": "NOT_RUN",
+  "acceptance_label_if_future_link_passes": "ABI_LINK_ONLY",
+  "checks": {
+    "opt-in": {
+      "command": [
+        "python3",
+        "-B",
+        "quality/fixtures/v10/phase12-abi-candidate/test_contract.py"
+      ],
+      "exit": 0,
+      "log_sha256": "c786f5831426be3c8106c3864f02c7b0cf145e40c0b4c14624e64f30ebff4a9c"
+    },
+    "v9": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v9_*.py"
+      ],
+      "exit": 0,
+      "log_sha256": "8848a8d29b1ec06e63cc88e6a90246e7c1d74d70ee1eece3f88911cabb2b42d1"
+    },
+    "v10-python": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "quality/tests",
+        "-p",
+        "test_v10_oss_gate.py"
+      ],
+      "exit": 0,
+      "log_sha256": "cafe0cfabdd0bd5bea908831e74de4d6c4620d36c19330ef2b0207e7625435a9"
+    },
+    "windows-node": {
+      "command": [
+        "npm",
+        "--prefix",
+        "windows-host",
+        "test"
+      ],
+      "exit": 0,
+      "log_sha256": "d234a017359dcb7028f7754703f07564ba00679a803cb83e83041b93a9451e93"
+    },
+    "stability": {
+      "command": [
+        "sh",
+        "scripts/appforge-stability-gate",
+        "ci"
+      ],
+      "exit": 1,
+      "log_sha256": "403d0330f5948c716a85f8270671322d00ef1dca3702e0690082c29897944efd"
+    },
+    "gitleaks-controls": {
+      "command": [
+        "python3",
+        "quality/tests/v10_gitleaks_real_scanner.py",
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/gitleaks-bin/gitleaks"
+      ],
+      "exit": 0,
+      "log_sha256": "4fb6c8fd6a5acf432e51d5667cc02586e7921f9f17171b9a7f2d8e6732c8fbfb"
+    },
+    "wiki-secret": {
+      "command": [
+        "python3",
+        "scripts/wiki-secret-scan.py"
+      ],
+      "exit": 0,
+      "log_sha256": "4e841cef2bbb9b12c75fa9172407dad3161dae4add910164bec38ec168b927ff"
+    },
+    "shell-syntax": {
+      "command": [
+        "bash",
+        "-n",
+        "scripts/v10/phase12-abi-link-candidate.sh"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "quality": {
+      "command": [
+        "proot-distro",
+        "login",
+        "ubuntu",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo:/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo",
+        "--bind",
+        "/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/linux-tmp:/tmp",
+        "--bind",
+        "/data/data/com.termux/files/usr/bin/curl:/usr/bin/curl",
+        "--",
+        "/usr/bin/env",
+        "HOME=/data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo/.appforge/tmp/v10/phase4/home",
+        "TMPDIR=/tmp",
+        "SYFT_CHECK_FOR_APP_UPDATE=false",
+        "GOMAXPROCS=2",
+        "JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-25-openjdk",
+        "PATH=/usr/bin:/bin:/data/data/com.termux/files/usr/bin",
+        "/bin/bash",
+        "-c",
+        "cd /data/data/com.termux/files/home/appforge-v10-oss-work-KHdboLXO/repo && /data/data/com.termux/files/usr/bin/node --test quality/tests/*.test.js"
+      ],
+      "exit": 1,
+      "log_sha256": "6a846b5ac1e502921d059efdb27736c8507070193c4de28974c02f02b7634bac"
+    }
+  },
+  "postchecks": {
+    "snapshot-canonical-check": {
+      "command": [
+        "python3",
+        "scripts/generate-second-brain-snapshot.py",
+        "--check"
+      ],
+      "exit": 1,
+      "log_sha256": "a465927638a7e3cd23eac8a5e3e4fcd62008b2615c29ffbae94ef5e530fd89fa"
+    },
+    "wiki-audit": {
+      "command": [
+        "node",
+        "scripts/wiki-audit.mjs",
+        "--changed-source-check"
+      ],
+      "exit": 0,
+      "log_sha256": "1a9a62ddc26fe9d98aa53941f1111b50ffea926860cd0e6125876717bb07b94c"
+    },
+    "local-link-attempt": {
+      "command": [
+        "bash",
+        "scripts/v10/phase12-abi-link-candidate.sh"
+      ],
+      "exit": 1,
+      "log_sha256": "1b5ddb980d20f3be7d923b020cc3b567b1e582a0b78b4b2629c4715cb40d0d0a"
+    },
+    "opt-in-final": {
+      "command": [
+        "python3",
+        "-B",
+        "quality/fixtures/v10/phase12-abi-candidate/test_contract.py"
+      ],
+      "exit": 0,
+      "count": 8,
+      "log_sha256": "fd4c5e96025e8a8148d0cbcf24d2e7e22f06c33f68bea26dffddfd5b1c634cc6"
+    },
+    "diff-check": {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "snapshot-private-generation-check": {
+      "method": "canonical module main(), ASSET relocated to .appforge/tmp/v10/phase12-1/second-brain-snapshot.json; argv generation then --check",
+      "exit": 0,
+      "sha256": "18ccbe73348abe8269fe78b37daf74bcef581276131f2a0c18bb3a2381a8f1b8"
+    }
+  },
+  "quality_counts": {
+    "tests": 1156,
+    "pass": 1155,
+    "fail": 1,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "provenance": {
+    "resolved": "https://registry.npmjs.org/react-native/-/react-native-0.81.5.tgz",
+    "integrity": "sha512-1w+/oSjEXZjMqsIvmkCRsOc8UBYv163bTWKTI8+1mxztvQPhCRYGTvZ/PL1w16xXHneIj/SLGfxWg2GWN2uexw==",
+    "tarball_sha512_match": true,
+    "files": [
+      {
+        "path": "ReactCommon/runtimeexecutor/ReactCommon/RuntimeExecutor.h",
+        "sha256": "a29b09f7a0cfcda33cba035477cbb3a205f5d30d493ca5741971e4e4f6a9d7e7",
+        "tarball_match": true
+      },
+      {
+        "path": "ReactCommon/callinvoker/ReactCommon/CallInvoker.h",
+        "sha256": "ebaaf2334de54f8a16b4b89455c0add5585efd1d8edf2a109541ff54b17e65ac",
+        "tarball_match": true
+      },
+      {
+        "path": "ReactCommon/react/nativemodule/core/ReactCommon/TurboModuleWithJSIBindings.h",
+        "sha256": "07cd9e5031830bafaa5e82b0d6d4eebb68c94e24e061c077d9f0d8e746b1dc75",
+        "tarball_match": true
+      },
+      {
+        "path": "ReactCommon/react/nativemodule/core/ReactCommon/TurboModuleWithJSIBindings.cpp",
+        "sha256": "c5c409d971eb6c8673a534f943210128693dd4e203aa9efa765204cdd10c8651",
+        "tarball_match": true
+      },
+      {
+        "path": "ReactCommon/react/nativemodule/core/ReactCommon/TurboModuleBinding.cpp",
+        "sha256": "a7d94779424fb0a929db823c42305912f31bd9706aa547653bdaa62dd03e135b",
+        "tarball_match": true
+      },
+      {
+        "path": "ReactAndroid/src/main/jni/react/turbomodule/ReactCommon/BindingsInstallerHolder.h",
+        "sha256": "fdb55161824b2538b4bd111eaf6484acd4dbbf74a715bade85c7ed6dd39ecbee",
+        "tarball_match": true
+      },
+      {
+        "path": "ReactAndroid/src/main/jni/react/turbomodule/ReactCommon/TurboModuleManager.cpp",
+        "sha256": "b56ad4f79c815adf76796e8b42be9b52ee18d701a27cfb33258c4a5a5828bdd6",
+        "tarball_match": true
+      },
+      {
+        "path": "ReactAndroid/cmake-utils/default-app-setup/OnLoad.cpp",
+        "sha256": "d6a4ec88ef1913dfa8d6e849bfacfc340f1dfbcd2add771b8b80d13bad6d616f",
+        "tarball_match": true
+      },
+      {
+        "path": "ReactAndroid/cmake-utils/ReactNative-application.cmake",
+        "sha256": "54b756a8ae204c4ce3ebedf13abab5a0624358fbd4b9dc1d40bca01cc2b285fc",
+        "tarball_match": true
+      },
+      {
+        "path": "ReactCommon/jsi/jsi/jsi.h",
+        "sha256": "ac3714110c8f95d92854d29b511e024cfd7df5b825f7af89bad97182f1e5433d",
+        "tarball_match": true
+      }
+    ],
+    "tools": {
+      "node": {
+        "command": [
+          "node",
+          "--version"
+        ],
+        "exit": 0,
+        "stdout": "v26.3.1\n",
+        "stderr": ""
+      },
+      "python3": {
+        "command": [
+          "python3",
+          "--version"
+        ],
+        "exit": 0,
+        "stdout": "Python 3.13.13\n",
+        "stderr": ""
+      },
+      "clang++": {
+        "command": [
+          "clang++",
+          "--version"
+        ],
+        "exit": 0,
+        "stdout": "clang version 21.1.8\nTarget: aarch64-unknown-linux-android30\nThread model: posix\nInstalledDir: /data/data/com.termux/files/usr/bin\n",
+        "stderr": ""
+      },
+      "gradle": {
+        "command": [
+          "gradle",
+          "--version"
+        ],
+        "exit": -6,
+        "stdout": "",
+        "stderr": "Native registration unable to find class 'com/android/internal/protolog/ProtoLogNative'; aborting...\n"
+      },
+      "rustc": {
+        "available": false
+      },
+      "sdkmanager": {
+        "available": false
+      }
+    }
+  },
+  "source_files": [
+    {
+      "path": ".github/workflows/v10-phase12-1-abi-link-candidate.yml",
+      "sha256": "4e33e3e92cfd225e24b1a097a289a6ff9d97ffb8942c71ad68ea3db6aaf678a3"
+    },
+    {
+      "path": "scripts/v10/phase12-abi-link-candidate.sh",
+      "sha256": "87948a8f8d8f8bc7c7ef4fc76bcc760db2536f43f9719b2ca6b1ce6308c17226"
+    },
+    {
+      "path": "quality/fixtures/v10/phase12-abi-candidate/RustRuntimeModule.h",
+      "sha256": "e1753b1ceb149f7b6995eb7f31d612525f5cf934f42e46247078a74512a74323"
+    },
+    {
+      "path": "quality/fixtures/v10/phase12-abi-candidate/contract.py",
+      "sha256": "58af65b03f6c79b38f88cad590a4e44e7c9789793583e35468779f675f2f671e"
+    },
+    {
+      "path": "quality/fixtures/v10/phase12-abi-candidate/provenance.json",
+      "sha256": "aad24ceeaa557a950a6a0cdd193a2c9d2d62fe6179600811a57b8a18d3bb6581"
+    },
+    {
+      "path": "quality/fixtures/v10/phase12-abi-candidate/test_contract.py",
+      "sha256": "2d5e391a36237128ebb9cc01bbd908ae8eab2fe5fb9e80e7d747d3c6fa328326"
+    }
+  ],
+  "manifest_and_lock_hashes": [
+    {
+      "path": "examples/rust-android-jni/Cargo.lock",
+      "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995"
+    },
+    {
+      "path": "examples/rust-android-jni/Cargo.toml",
+      "sha256": "2d5872cb00cac9bad73881f56a32310591215a864ee9dfaca4151803daa93791"
+    },
+    {
+      "path": "examples/rust-expo-jsi/Cargo.lock",
+      "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f"
+    },
+    {
+      "path": "examples/rust-expo-jsi/Cargo.toml",
+      "sha256": "304f3a5d1b215e089d3c6ab2aa8313180fc3a8175d3183f4386c34215be43527"
+    },
+    {
+      "path": "examples/rust-expo-jsi/package-lock.json",
+      "sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375"
+    },
+    {
+      "path": "examples/rust-expo-jsi/package.json",
+      "sha256": "5b1f050a8956b41c858c8dd74c74d1ae68006b3f42f30650525f151da37ee869"
+    },
+    {
+      "path": "examples/rust-expo-turbo/Cargo.lock",
+      "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f"
+    },
+    {
+      "path": "examples/rust-expo-turbo/Cargo.toml",
+      "sha256": "304f3a5d1b215e089d3c6ab2aa8313180fc3a8175d3183f4386c34215be43527"
+    },
+    {
+      "path": "examples/rust-expo-turbo/package-lock.json",
+      "sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375"
+    },
+    {
+      "path": "examples/rust-expo-turbo/package.json",
+      "sha256": "5b1f050a8956b41c858c8dd74c74d1ae68006b3f42f30650525f151da37ee869"
+    },
+    {
+      "path": "examples/rust-git-bundle/Cargo.lock",
+      "sha256": "9aa6a937765f8ba183ef85da5f3d3369b5714b892521450972ca551743d4289f"
+    },
+    {
+      "path": "examples/rust-git-bundle/Cargo.toml",
+      "sha256": "64754183a52fada2e5388ac8421709fb59077a72d38d32590df6553782afc2c1"
+    },
+    {
+      "path": "examples/rust-node-web/Cargo.lock",
+      "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436"
+    },
+    {
+      "path": "examples/rust-node-web/Cargo.toml",
+      "sha256": "6e0837c73d4acc17ebea211c6363d36a97485e0675d190222b8aa7ee6557e5c4"
+    },
+    {
+      "path": "examples/rust-node-web/package-lock.json",
+      "sha256": "d8ee3b0b08910d198607730ea769830d3b8833e9c80917517396a10a98b3cd83"
+    },
+    {
+      "path": "examples/rust-node-web/package.json",
+      "sha256": "710cc949e5b1a5396804664fa2295445c999c7e6747975661056846b40e1eb13"
+    },
+    {
+      "path": "examples/rust-python/Cargo.lock",
+      "sha256": "a3be190006d0345960589c281dc5b913a26325c4dd4efbd2b117a2fe3e948f1a"
+    },
+    {
+      "path": "examples/rust-python/Cargo.toml",
+      "sha256": "9f8851ff02115b93227ce168e11c6f3f0af7412baecaf5a3374e168d2e7c2609"
+    },
+    {
+      "path": "examples/rust-react-native-turbo/Cargo.lock",
+      "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f"
+    },
+    {
+      "path": "examples/rust-react-native-turbo/Cargo.toml",
+      "sha256": "304f3a5d1b215e089d3c6ab2aa8313180fc3a8175d3183f4386c34215be43527"
+    },
+    {
+      "path": "examples/rust-react-native-turbo/package-lock.json",
+      "sha256": "949e0d9754a53076cc8227e2f6a9ce81ca8b0a7baa0d9219760334fef862bf74"
+    },
+    {
+      "path": "examples/rust-react-native-turbo/package.json",
+      "sha256": "41347c72fe23c48bd59d2e3256abc1708d8cdbf78c4e3a027d5ab596a5d0ccd9"
+    },
+    {
+      "path": "examples/rust-universal/android/Cargo.lock",
+      "sha256": "48392e64d54aaf5edada2b7fc8ba3d36007ba301f06067a4d7500eec49da1995"
+    },
+    {
+      "path": "examples/rust-universal/android/Cargo.toml",
+      "sha256": "2d5872cb00cac9bad73881f56a32310591215a864ee9dfaca4151803daa93791"
+    },
+    {
+      "path": "examples/rust-universal/web/Cargo.lock",
+      "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436"
+    },
+    {
+      "path": "examples/rust-universal/web/Cargo.toml",
+      "sha256": "6e0837c73d4acc17ebea211c6363d36a97485e0675d190222b8aa7ee6557e5c4"
+    },
+    {
+      "path": "examples/rust-wasm/Cargo.lock",
+      "sha256": "1f36022a279c8cbf271f82f6e841a8bdfd06db14df0934a7667fd660d3a98436"
+    },
+    {
+      "path": "examples/rust-wasm/Cargo.toml",
+      "sha256": "6e0837c73d4acc17ebea211c6363d36a97485e0675d190222b8aa7ee6557e5c4"
+    },
+    {
+      "path": "examples/rust-windows-dll/Cargo.lock",
+      "sha256": "5210090e19be6d2eb1861a1c36e2943d9f098f29b7bcc9d37de70d70a6e1abb0"
+    },
+    {
+      "path": "examples/rust-windows-dll/Cargo.toml",
+      "sha256": "3556bac871a7fd7d8d73c2f2512633122604c59dc7b2a86cf590f816fc407d03"
+    },
+    {
+      "path": "examples/rust-windows-native/Cargo.lock",
+      "sha256": "7a8de802df14e5943dc2c58ef07053898dbb93a41342a4e71e703ab5658b568b"
+    },
+    {
+      "path": "examples/rust-windows-native/Cargo.toml",
+      "sha256": "a5b62612eeba1f1bea665901e9aa416331a4caa54f0b65ced7d77831a5dfb959"
+    },
+    {
+      "path": "examples/rust-workspace/Cargo.lock",
+      "sha256": "98c53fc7d5b813dac1a9e2731e2d447e0415bd70cd283afecab27b828bbc1e63"
+    },
+    {
+      "path": "examples/rust-workspace/Cargo.toml",
+      "sha256": "d002df269829a467561fc1e06b14169d8b17803f445867c57fa28df632a7965b"
+    },
+    {
+      "path": "examples/rust-workspace/crates/common/Cargo.toml",
+      "sha256": "c3355094504eab61709986f503f74a5c1b4f954fd2a794989dbbccb0e8fb65cf"
+    },
+    {
+      "path": "examples/rust-workspace/crates/web/Cargo.toml",
+      "sha256": "82ebc56fe2befa8437c0a05fed3d508c6f830b317ead1cf2af27e9375ad65c7c"
+    },
+    {
+      "path": "quality/package.json",
+      "sha256": "32d58fb75cdfb4649895d6f8b81e517a9a327b808f98c0a38b8fbd52cd7ddd93"
+    },
+    {
+      "path": "windows-host/package-lock.json",
+      "sha256": "df9711e4ececc9c9bf7f0941680f5ea062f042fdec483d578d4d4e614b9d2f76"
+    },
+    {
+      "path": "windows-host/package.json",
+      "sha256": "4b4741c680e99f901ff5b010c7c585f862e7686ed6cc82f27b83955f24a5ba7c"
+    }
+  ],
+  "baseline_file_count": 1349,
+  "baseline_all_bytes_preserved": true,
+  "phase12_reports": [
+    {
+      "path": "docs/engineering/v10/phase12-report.md",
+      "sha256": "5c6d96c1b53fd03e62eb1a8eceefba5948e48cfb9b4b12ced674c10c3da98260"
+    },
+    {
+      "path": "docs/engineering/v10/phase12-evidence.json",
+      "sha256": "56a315a2465efb18ea71b3bf40a9085bd7c0d82d95c5f1c773918a6c56205f8d"
+    }
+  ],
+  "preexisting_t21_preserved": true,
+  "phase12_private_preservation": {
+    "method": "recheck all SHA256 rows recorded in Phase12 raw_evidence",
+    "mismatches": []
+  },
+  "historical_not_this_run": {
+    "phase11_candidate_run": 40865913157,
+    "phase11_platform_run": 40865913069,
+    "head_sha": "a2c998c67b5b9753dd2773aa86833fe61ee9f1da",
+    "conclusion": "SUCCESS supplied confirmed baseline and Phase12 logs; no remote query this invocation",
+    "phase12_quality": "1156/1156"
+  },
+  "osv": {
+    "fresh_scan": "NOT_RUN",
+    "original_open": 5,
+    "high": 3,
+    "moderate": 1,
+    "low": 1,
+    "ids": [
+      "GHSA-5p2g-fcmc-qvqq",
+      "GHSA-w3rx-r6r6-pgpr",
+      "GHSA-ch52-4w7c-c8xp",
+      "GHSA-gcqx-w48m-w2h4",
+      "GHSA-gh4j-gqv2-49f6"
+    ],
+    "suppressed": 0,
+    "production_fixes": 0
+  },
+  "blockers": [
+    "Canonical Second Brain snapshot update forbidden by scope; canonical freshness and Stability Gate fail, full quality snapshot contract fails.",
+    "No verified local Android NDK/Rust toolchain; Termux Gradle launcher aborts.",
+    "New workflow not executed; exact-source hosted ABI linking and runtime remain unaccepted."
+  ],
+  "no_commit": true,
+  "no_push": true,
+  "no_main_apk_signing_play": true,
+  "index_empty": true,
+  "rn_cli_20_2_promoted": false,
+  "sdk55_promoted": false,
+  "new_workflow": ".github/workflows/v10-phase12-1-abi-link-candidate.yml",
+  "private_evidence_dir": ".appforge/tmp/v10/phase12-1",
+  "gitleaks": {
+    "source_exit": 0,
+    "controls_exit": 0,
+    "final_scope": "Same Phase12 nonignored source scope excluding .t21 directories, plus Phase12 private authored payload; new fixture/runner/workflow/docs included. Final rerun log retained privately after document generation."
+  },
+  "new_paths": [
+    ".github/workflows/v10-phase12-1-abi-link-candidate.yml",
+    "scripts/v10/phase12-abi-link-candidate.sh",
+    "quality/fixtures/v10/phase12-abi-candidate/RustRuntimeModule.h",
+    "quality/fixtures/v10/phase12-abi-candidate/contract.py",
+    "quality/fixtures/v10/phase12-abi-candidate/provenance.json",
+    "quality/fixtures/v10/phase12-abi-candidate/test_contract.py",
+    "docs/engineering/v10/phase12-1-report.md",
+    "docs/engineering/v10/phase12-1-evidence.json"
+  ],
+  "private_log_hashes": [
+    {
+      "path": ".appforge/tmp/v10/phase12-1/compiler-control-0.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/compiler-control-1.log",
+      "sha256": "8c6c20c798dad91a14ba7f38bdd03bf624fe5ed531ada98cc1ca6fdba7d1cf70"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/compiler-control-2.log",
+      "sha256": "7f57794dddb7f6143d9a82c4d350562d1854290743ccb8944fe1d4d308c7251f"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/diff-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/final-gitleaks-source.log",
+      "sha256": "bbc7459067f5a82f1886788099c9b0b0a44c25fa6bacc3af628e227fc22503ee"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/gitleaks-controls.log",
+      "sha256": "4fb6c8fd6a5acf432e51d5667cc02586e7921f9f17171b9a7f2d8e6732c8fbfb"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/local-link-attempt.log",
+      "sha256": "1b5ddb980d20f3be7d923b020cc3b567b1e582a0b78b4b2629c4715cb40d0d0a"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/opt-in-8.log",
+      "sha256": "b3da6bd20b9c9726cb2dc0c2cba867f7f7803a725a467398724196dd19c89e0d"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/opt-in-final.log",
+      "sha256": "fd4c5e96025e8a8148d0cbcf24d2e7e22f06c33f68bea26dffddfd5b1c634cc6"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/opt-in.log",
+      "sha256": "c786f5831426be3c8106c3864f02c7b0cf145e40c0b4c14624e64f30ebff4a9c"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/quality.log",
+      "sha256": "6a846b5ac1e502921d059efdb27736c8507070193c4de28974c02f02b7634bac"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/shell-syntax.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/snapshot-canonical-check.log",
+      "sha256": "a465927638a7e3cd23eac8a5e3e4fcd62008b2615c29ffbae94ef5e530fd89fa"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/stability.log",
+      "sha256": "403d0330f5948c716a85f8270671322d00ef1dca3702e0690082c29897944efd"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/v10-python.log",
+      "sha256": "cafe0cfabdd0bd5bea908831e74de4d6c4620d36c19330ef2b0207e7625435a9"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/v9.log",
+      "sha256": "8848a8d29b1ec06e63cc88e6a90246e7c1d74d70ee1eece3f88911cabb2b42d1"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/wiki-audit.log",
+      "sha256": "1a9a62ddc26fe9d98aa53941f1111b50ffea926860cd0e6125876717bb07b94c"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/wiki-secret.log",
+      "sha256": "4e841cef2bbb9b12c75fa9172407dad3161dae4add910164bec38ec168b927ff"
+    },
+    {
+      "path": ".appforge/tmp/v10/phase12-1/windows-node.log",
+      "sha256": "d234a017359dcb7028f7754703f07564ba00679a803cb83e83041b93a9451e93"
+    }
+  ]
+}

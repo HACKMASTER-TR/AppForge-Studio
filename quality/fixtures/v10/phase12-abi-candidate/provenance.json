@@ -1,0 +1,102 @@
+{
+  "rn_version": "0.81.5",
+  "expo_version": "54.0.38",
+  "abi": "arm64-v8a",
+  "files": [
+    {
+      "path": "ReactCommon/runtimeexecutor/ReactCommon/RuntimeExecutor.h",
+      "sha256": "a29b09f7a0cfcda33cba035477cbb3a205f5d30d493ca5741971e4e4f6a9d7e7"
+    },
+    {
+      "path": "ReactCommon/callinvoker/ReactCommon/CallInvoker.h",
+      "sha256": "ebaaf2334de54f8a16b4b89455c0add5585efd1d8edf2a109541ff54b17e65ac"
+    },
+    {
+      "path": "ReactCommon/react/nativemodule/core/ReactCommon/TurboModuleWithJSIBindings.h",
+      "sha256": "07cd9e5031830bafaa5e82b0d6d4eebb68c94e24e061c077d9f0d8e746b1dc75"
+    },
+    {
+      "path": "ReactCommon/react/nativemodule/core/ReactCommon/TurboModuleWithJSIBindings.cpp",
+      "sha256": "c5c409d971eb6c8673a534f943210128693dd4e203aa9efa765204cdd10c8651"
+    },
+    {
+      "path": "ReactCommon/react/nativemodule/core/ReactCommon/TurboModuleBinding.cpp",
+      "sha256": "a7d94779424fb0a929db823c42305912f31bd9706aa547653bdaa62dd03e135b"
+    },
+    {
+      "path": "ReactAndroid/src/main/jni/react/turbomodule/ReactCommon/BindingsInstallerHolder.h",
+      "sha256": "fdb55161824b2538b4bd111eaf6484acd4dbbf74a715bade85c7ed6dd39ecbee"
+    },
+    {
+      "path": "ReactAndroid/src/main/jni/react/turbomodule/ReactCommon/TurboModuleManager.cpp",
+      "sha256": "b56ad4f79c815adf76796e8b42be9b52ee18d701a27cfb33258c4a5a5828bdd6"
+    },
+    {
+      "path": "ReactAndroid/cmake-utils/default-app-setup/OnLoad.cpp",
+      "sha256": "d6a4ec88ef1913dfa8d6e849bfacfc340f1dfbcd2add771b8b80d13bad6d616f"
+    },
+    {
+      "path": "ReactAndroid/cmake-utils/ReactNative-application.cmake",
+      "sha256": "54b756a8ae204c4ce3ebedf13abab5a0624358fbd4b9dc1d40bca01cc2b285fc"
+    },
+    {
+      "path": "ReactCommon/jsi/jsi/jsi.h",
+      "sha256": "ac3714110c8f95d92854d29b511e024cfd7df5b825f7af89bad97182f1e5433d"
+    }
+  ],
+  "authored_files": [
+    {
+      "path": "App.js",
+      "sha256": "6f16ede01eca413ddc2182317d443b557b0811a5f45fb5b5d1030da712abd83a"
+    },
+    {
+      "path": "Cargo.lock",
+      "sha256": "b2c564bcc0d08b198881b2de7659e28e8c38ffd00603fba0524a04bfe6d3f33f"
+    },
+    {
+      "path": "Cargo.toml",
+      "sha256": "304f3a5d1b215e089d3c6ab2aa8313180fc3a8175d3183f4386c34215be43527"
+    },
+    {
+      "path": "app.json",
+      "sha256": "5a4a3290c3b30d3da8828ebe8da9409895203fac29c32f6ea720c2d1a4be62e6"
+    },
+    {
+      "path": "appforge-rust-jsi.json",
+      "sha256": "8b8abd1c006ce2a0703305dbb443de0574ac37564b26798a52c8322766f26879"
+    },
+    {
+      "path": "native/CMakeLists.txt",
+      "sha256": "ef5819436aa676b1a39d98ba0919019449ea86c5f9114133186b6db90a0c41c8"
+    },
+    {
+      "path": "native/RustJsi.cpp",
+      "sha256": "1f5b85c003ddb1f59719f04074f43b85e23cac3acaa2c11ffb8ede3accfdecb7"
+    },
+    {
+      "path": "native/RustJsiModule.java",
+      "sha256": "f6f7aecc665eced4afff9c050792f25da492e5cc00a3c681793aeb59a3e4a380"
+    },
+    {
+      "path": "native/RustJsiPackage.java",
+      "sha256": "3e76a364ff4c84cb2cf57359a82b07293d75e52faf0d453219374c37ada51e63"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "73ad88db4be03a3b25415fb85952755ab47e355543a43e5c13809e9276e40375"
+    },
+    {
+      "path": "package.json",
+      "sha256": "5b1f050a8956b41c858c8dd74c74d1ae68006b3f42f30650525f151da37ee869"
+    },
+    {
+      "path": "src/lib.rs",
+      "sha256": "ab6b1fb0a2da95a34efae649c80ff668e1afc6f7d5aea569ba344d18069efa76"
+    },
+    {
+      "path": "withRustJsi.cjs",
+      "sha256": "eeafb8f4dfaf0cded34721cb2e1d7ab9947aefa89293ca5cec4430b14037998a"
+    }
+  ],
+  "candidate_sha256": "e1753b1ceb149f7b6995eb7f31d612525f5cf934f42e46247078a74512a74323"
+}
