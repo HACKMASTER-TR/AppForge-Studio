@@ -1,15 +1,9 @@
-# One-shot, disposable Cloudflare live DO smoke. No public route, no real Google credentials.
+# Exact-parent push-only one-shot Cloudflare Stage 5D smoke; no public route or real credentials.
 name: V9 Stage 5D Live Private Device Admin Smoke
 on:
   push:
     branches: [feat/v9-global-package-distribution-20261027]
     paths: ['.github/workflows/v9-stage5d-live.yml']
-  workflow_dispatch:
-    inputs:
-      confirm_disposable:
-        description: 'Type RUN_PRIVATE_STAGE5D_LIVE to allow only the isolated disposable Worker smoke'
-        required: true
-        type: string
 permissions:
   contents: read
 concurrency:
@@ -20,8 +14,9 @@ jobs:
     if: >-
       github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
       github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027' &&
-      github.event_name == 'workflow_dispatch' &&
-      inputs.confirm_disposable == 'RUN_PRIVATE_STAGE5D_LIVE'
+      github.event_name == 'push' &&
+      github.event.before == '36ecc10bc0bf74bc36a862ffe190f256ff54da22' &&
+      github.event.head_commit.message == 'test(v9): authorize single-use Stage5D private live acceptance'
     runs-on: ubuntu-24.04
     timeout-minutes: 28
     env:
@@ -41,22 +36,16 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git rev-parse HEAD^)" = 'be0bc65e8781eee668dacf20e5160f8958452464'
+          test "$(git rev-parse HEAD^)" = '36ecc10bc0bf74bc36a862ffe190f256ff54da22'
+          test "$(git diff-tree --no-commit-id --name-only -r HEAD)" = '.github/workflows/v9-stage5d-live.yml'
+          test "$GITHUB_EVENT_NAME" = push
           python3 - <<'PY'
           import pathlib, subprocess, tomllib
-          files={
-            '.github/workflows/v9-stage5d-live.yml',
-            '.github/workflows/v9-device-auth-offline.yml',
-            'android-app/app/src/main/java/com/appforge/studio/security/V9AdminNonceWire.kt',
-            'cloudflare/v9-witness/device-auth/stage5d-private.mjs',
-            'cloudflare/v9-witness/stage5d-probe/core.mjs',
-            'cloudflare/v9-witness/stage5d-probe/core.test.mjs',
-            'cloudflare/v9-witness/stage5d-probe/entry.mjs',
-            'cloudflare/v9-witness/stage5d-probe/wrangler.toml',
-            'docs/engineering/appforge-v9-stage5d-acceptance.md',
-          }
-          actual=set(subprocess.check_output(['git','diff-tree','--no-commit-id','--name-only','-r','HEAD'],text=True).splitlines())
-          assert actual==files, ('unexpected scope',actual^files)
+          pins={'.github/workflows/v9-device-auth-offline.yml': 'bbc4622f8ff39c9068ad87128b3aacdf67c86319', 'android-app/app/src/main/java/com/appforge/studio/security/V9AdminNonceWire.kt': 'd216b85fc43390315727c3ad002aa0050a58854b', 'cloudflare/v9-witness/device-auth/stage5d-private.mjs': '537d8167550aca3eebc5de87299efb46b2ff12c7', 'cloudflare/v9-witness/stage5d-probe/core.mjs': '97c387597cdaf3d34bbad9c106d3fc4ed59681c6', 'cloudflare/v9-witness/stage5d-probe/core.test.mjs': 'eaa73150fe9c25170e79a02355dd0d12e34b6183', 'cloudflare/v9-witness/stage5d-probe/entry.mjs': '6ae540aa343d1be5f1aeb675d7a2b485bc732a2d', 'cloudflare/v9-witness/stage5d-probe/wrangler.toml': '48c15997963fd2ad7f9fba8d8c5fbda4f014f29d', 'docs/engineering/appforge-v9-stage5d-acceptance.md': '94a851bce11c1d8911ac23784a337e1472dc0bcd'}
+          for path,expected in pins.items():
+            actual=subprocess.check_output(['git','rev-parse','HEAD:'+path],text=True).strip()
+            assert actual==expected,('Stage5D source modified',path,actual)
+          print('STAGE5D_R1_SOURCE_BLOBS_PINNED=8/8 PASS')
           c=tomllib.loads(pathlib.Path('cloudflare/v9-witness/stage5d-probe/wrangler.toml').read_text())
           assert set(c)=={'name','main','compatibility_date','workers_dev','preview_urls','vars','durable_objects','migrations','triggers'}
           assert c['name']=='appforge-v9-stage5d-live-smoke-20261028'
@@ -110,6 +99,7 @@ jobs:
           names={i.get('id') for i in lst if isinstance(i,dict)}
           assert 'appforge-v9-witness-isolated-staging' in names,'STOP: expected isolated Witness absent'
           assert os.environ['PROBE_NAME'] not in names,'STOP: disposable target preexists'
+          assert not any(isinstance(n,str) and n.startswith('appforge-v9-stage5d-live-smoke-') for n in names),'STOP: prior stage5d disposable Worker remains - manual safety review required'
           original='appforge-v9-witness-isolated-staging'
           script_url='https://api.cloudflare.com/client/v4/accounts/'+aid+'/workers/scripts/'+original
           with urllib.request.urlopen(urllib.request.Request(script_url,headers={'Authorization':'Bearer '+token,'Accept':'application/json'}),timeout=30) as r:
@@ -199,6 +189,7 @@ jobs:
             grep -E 'V9_STAGE5D_|Error|ERROR' "$RUNNER_TEMP/stage5d-tail.jsonl" | tail -25 || true
             exit 1
           fi
+          echo "STAGE5D_LIVE_SOURCE_SHA=$GITHUB_SHA"
           echo 'STAGE5D_LIVE_ACCEPTANCE=PASS'
           echo 'STAGE5D_REAL_SQLITE_AND_RESTART=PASS'
           echo 'STAGE5D_SYNTHETIC_GOOGLE_OIDC=PASS'
