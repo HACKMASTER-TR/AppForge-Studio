@@ -1,0 +1,146 @@
+# R7 REVIEW ONLY. No remote deployment, Cloudflare token, production signer or shared Worker changes.
+# Triggered only when this exact new file is pushed to its protected V9 development branch.
+name: V9 Stage5D R7 Local workerd Cron and DO Diagnosis (No Cloudflare Deploy)
+on:
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - .github/workflows/v9-stage5d-r7-local-workerd.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-stage5d-r7-exact-one-shot
+  cancel-in-progress: false
+jobs:
+  r7-local-workerd:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CI: 'true'
+      WRANGLER_SEND_METRICS: 'false'
+      CLOUDFLARE_SEND_METRICS: 'false'
+      PROBE_CONFIG: cloudflare/v9-witness/stage5d-r3-probe/wrangler.toml
+      EXPECTED_PARENT: fa933025d0c1a2e1127896bd64ace9eacc386b2c
+      EXPECTED_MAIN: 63e496913332cf2e2ae96b2e67ae7414226f09fe
+      WORKFLOW_PATH: .github/workflows/v9-stage5d-r7-local-workerd.yml
+      R7_PORT: '8797'
+    steps:
+      - name: Checkout exact source and one-shot parent
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Deny source drift or extra changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import subprocess,os
+          def git(*a):return subprocess.check_output(['git',*a],text=True).strip()
+          expected=os.environ['EXPECTED_PARENT'];actual=git('rev-parse','HEAD^')
+          assert actual==expected, 'R7_BLOCKED_PARENT_DRIFT'
+          changed=git('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines()
+          assert changed==[os.environ['WORKFLOW_PATH']], 'R7_BLOCKED_FILE_SCOPE'
+          # Immutable, previously reviewed R5 blobs. Do not modify R3 probe or Stage 5D core.
+          pins={
+            'cloudflare/v9-witness/stage5d-r3-probe/entry.mjs':'a13bfba95f5a848cc1a7a58aee7f20b22bbcde04',
+            'cloudflare/v9-witness/stage5d-r3-probe/scheduled.mjs':'e5bff1fd72abaca6e9159d8d8b674c830fb535f1',
+            'cloudflare/v9-witness/stage5d-r3-probe/scheduled.test.mjs':'8a76ff8a27a85d1535825a71e712df5c600d7bb0',
+            'cloudflare/v9-witness/stage5d-r3-probe/wrangler.toml':'fe743d26ea110f9f2a05a00353607cab21b17137',
+            'cloudflare/v9-witness/stage5d-probe/core.mjs':'97c387597cdaf3d34bbad9c106d3fc4ed59681c6',
+            'cloudflare/v9-witness/device-auth/stage5d-private.mjs':'537d8167550aca3eebc5de87299efb46b2ff12c7',
+          }
+          for path,blob in pins.items():
+              assert git('rev-parse','HEAD:'+path)==blob,'R7_BLOCKED_BLOB_PIN'
+              assert git('rev-parse','HEAD^:'+path)==blob,'R7_BLOCKED_PARENT_BLOB_DRIFT'
+          print('R7_SOURCE_PINS=PASS;FILES='+str(len(pins))+';ADDED_WORKFLOWS=1')
+          print('R7_REMOTE_CLOUDFLARE_MUTATIONS=0;PRODUCTION_SIGNER=NOT_PROVIDED')
+          PY
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run original R3 pure Node tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test cloudflare/v9-witness/stage5d-r3-probe/scheduled.test.mjs cloudflare/v9-witness/stage5d-probe/core.test.mjs > "$RUNNER_TEMP/r7-node-tests.log" 2>&1 || { echo 'R7_ORIGINAL_NODE_TESTS=FAIL'; exit 1; }
+          echo 'R7_ORIGINAL_NODE_TESTS=PASS;SUITES=2'
+      - name: Run real local workerd with two scheduled invocations and safe diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No Cloudflare credential passed, and --local forbids remote bindings.
+          # Original synthetic Worker rejects public requests, even in local mode.
+          npx --yes wrangler@4.153.0 dev --local --test-scheduled --config "$PROBE_CONFIG" --ip 127.0.0.1 --port "$R7_PORT" --persist-to "$RUNNER_TEMP/r7-local-storage" --log-level info --show-interactive-dev-session=false > "$RUNNER_TEMP/r7-workerd-private.log" 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          python3 - <<'PY'
+          import json,os,re,time,urllib.request,urllib.error,pathlib,sys
+          p=int(os.environ['R7_PORT']);base=f'http://127.0.0.1:{p}'
+          log=pathlib.Path(os.environ['RUNNER_TEMP'])/'r7-workerd-private.log'
+          # Always suppress raw workerd logs, errors, tokens and backtraces in Actions output.
+          def safe_status():
+              raw=log.read_text(errors='replace')[-3_000_000:] if log.exists() else ''
+              phases=re.findall(r'R3_SCHEDULED_FAILURE=YES;STAGE=(mode-gate|bind-do|read-state|exercise|request-restart|inspect-restart);ERROR_CLASS=(TypeError|Error)',raw)
+              if phases:
+                  phase,klass=phases[-1]
+                  print('R7_SANITIZED_FAILURE=YES;STAGE='+phase+';ERROR_CLASS='+klass)
+              else:
+                  print('R7_SANITIZED_FAILURE=NOT_SEEN')
+              return raw
+          ready=False
+          for attempt in range(80):
+              try:
+                  with urllib.request.urlopen(base+'/',timeout=1) as response:
+                      print('R7_FETCH_GATE=BLOCKED;REASON=UNEXPECTED_HTTP_'+str(response.status))
+                      safe_status();sys.exit(1)
+              except urllib.error.HTTPError as exc:
+                  if exc.code==503:ready=True;break
+              except (urllib.error.URLError,TimeoutError):pass
+              time.sleep(1)
+          if not ready:
+              print('R7_WORKER_READINESS=BLOCKED;REASON=LOCAL_WORKER_NOT_READY')
+              safe_status();sys.exit(1)
+          print('R7_LOCAL_WORKER=READY;PUBLIC_FETCH_DENIED=503_EXPECTED')
+          def trigger(no):
+              # Even HTTP 200 does not prove scheduled-handler success: inspect JSON outcome.
+              url=base+'/cdn-cgi/local/scheduled?cron=%2A+%2A+%2A+%2A+%2A&format=json'
+              try:
+                  with urllib.request.urlopen(url,timeout=90) as response:body=response.read(20480)
+              except urllib.error.HTTPError as exc:
+                  body=exc.read(20480)
+              except Exception:
+                  print('R7_SCHEDULED_'+str(no)+'=NO_RESPONSE');return None
+              try:
+                  value=json.loads(body)
+              except (ValueError,UnicodeDecodeError):
+                  print('R7_SCHEDULED_'+str(no)+'=UNPARSEABLE_RESPONSE');return None
+              result=value.get('outcome') if isinstance(value,dict) else None
+              if result not in ['ok','exception','exceededCpu','exceededMemory','canceled','unknown']:
+                  result='UNRECOGNIZED'
+              print('R7_SCHEDULED_'+str(no)+'_OUTCOME='+str(result))
+              return result
+          first=trigger(1)
+          time.sleep(2)
+          second=trigger(2)
+          time.sleep(2)
+          raw=safe_status()
+          initial='V9_STAGE5D_R3_INITIAL=PASS;ENROLL=PASS;OIDC=PASS;APPROVE=PASS;CHALLENGE=PASS;REVOKE=PASS'
+          restart='R3_RESTART_REQUESTED=YES;CONFIRMATION=PENDING_SECOND_INVOCATION'
+          persist='R3_RESTART_PERSISTENCE=PASS'
+          final='V9_STAGE5D_R3_LIVE=PASS;OIDC=PASS;ENROLL=PASS;APPROVE=PASS;REVOKE=PASS;RESTART=PASS;PERSIST=PASS;DENY=PASS'
+          checks={'initial':initial in raw,'restart':restart in raw,'persistence':persist in raw,'final':final in raw}
+          for name,present in checks.items():print('R7_MARKER_'+name.upper()+'='+('YES' if present else 'NO'))
+          failure=('R3_SCHEDULED_FAILURE=YES' in raw)
+          invocation_count=raw.count('R3_SCHEDULED_RECEIVED=YES;MODE=SYNTHETIC_ONLY')
+          print('R7_SCHEDULED_RECEIVED_COUNT='+str(invocation_count))
+          if first=='ok' and second=='ok' and invocation_count>=2 and all(checks.values()) and not failure:
+              print('R7_LOCAL_WORKERD_ACCEPTANCE=PASS;CRON_INVOCATIONS=2;RESTART_PERSISTENCE=PASS')
+              print('R7_CLOUDFLARE_DEPLOY=NO;LIVE_ACCEPTANCE=NOT_TESTED')
+          else:
+              print('R7_LOCAL_WORKERD_ACCEPTANCE=FAIL;REASON=RUNTIME_OR_MARKER_NOT_VERIFIED')
+              print('R7_CLOUDFLARE_DEPLOY=NO;LIVE_ACCEPTANCE=NOT_TESTED')
+              sys.exit(1)
+          PY
