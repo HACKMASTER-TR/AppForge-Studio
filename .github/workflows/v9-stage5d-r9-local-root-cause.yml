@@ -19,7 +19,7 @@ jobs:
       CI: 'true'
       WRANGLER_SEND_METRICS: 'false'
       CLOUDFLARE_SEND_METRICS: 'false'
-      EXPECTED_PARENT: 99aed575757d50e517ebe49a2a96c93eaa11cf37
+      EXPECTED_PARENT: cc80691cc7b11828d0bac377a4568f8425b14f7f
       R9_WORKFLOW: .github/workflows/v9-stage5d-r9-local-root-cause.yml
     steps:
       - name: Checkout without write credentials
@@ -153,6 +153,7 @@ jobs:
            ("    const signed=await crypto.subtle.sign('Ed25519'", "    mark('OIDC_ED25519_SIGN');\n    const signed=await crypto.subtle.sign('Ed25519'",'OIDC_ED_SIGN'),
           ])
           edit('device-auth/admin-oidc.mjs',[
+           ('  demand(keys.length===1 && keyShape(keys[0]),',"  function r9JwksClass(k){\n    if(!k || typeof k!=='object' || Array.isArray(k)) return 'JWKS_NOT_OBJECT';\n    if(k.kty!=='RSA') return 'JWKS_KTY_REJECTED';\n    if(k.alg!=='RS256') return 'JWKS_ALG_REJECTED';\n    if(k.use!=='sig') return 'JWKS_USE_REJECTED';\n    if(typeof k.kid!=='string' || !kidRe.test(k.kid)) return 'JWKS_KID_REJECTED';\n    if(k.e!=='AQAB') return 'JWKS_EXPONENT_REJECTED';\n    if(typeof k.n!=='string') return 'JWKS_MODULUS_TYPE';\n    try{\n      const nBytes=decodePart(k.n,800);\n      if(nBytes.length<256 || nBytes.length>512) return 'JWKS_MODULUS_SIZE';\n    }catch{return 'JWKS_MODULUS_ENCODING';}\n    if('d' in k) return 'JWKS_PRIVATE_FIELD';\n    return 'JWKS_SHAPE_VALID';\n  }\n  mark(keys.length!==1?'JWKS_MATCH_COUNT':r9JwksClass(keys[0]));\n  demand(keys.length===1 && keyShape(keys[0]),",'JWKS_CLASSIFY'),
            ('  const keys=trustedJwks.keys.filter(',"  mark('OIDC_JWKS_KEY_SELECT');\n  const keys=trustedJwks.keys.filter(",'JWKS_KEY'),
            ("  let key;try {key=await crypto.subtle.importKey('jwk'", "  mark('OIDC_RSA_JWK_IMPORT');\n  let key;try {key=await crypto.subtle.importKey('jwk'",'RSA_IMPORT'),
            ('  const ok=await crypto.subtle.verify({name:',"  mark('OIDC_RSA_SIGNATURE_VERIFY');\n  const ok=await crypto.subtle.verify({name:",'RSA_VERIFY'),
@@ -220,6 +221,7 @@ jobs:
           PY
           node --check "$RUNNER_TEMP/r9-source/cloudflare/v9-witness/stage5d-r3-probe/r9-entry.mjs"
           node --check "$RUNNER_TEMP/r9-source/cloudflare/v9-witness/stage5d-probe/core.mjs"
+          node --check "$RUNNER_TEMP/r9-source/cloudflare/v9-witness/device-auth/admin-oidc.mjs"
           git diff --exit-code -- cloudflare/v9-witness
       - name: Workerd first call and process-restart persistence verification
         shell: bash
