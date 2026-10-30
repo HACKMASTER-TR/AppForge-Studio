@@ -19,7 +19,7 @@ jobs:
       CI: 'true'
       WRANGLER_SEND_METRICS: 'false'
       CLOUDFLARE_SEND_METRICS: 'false'
-      EXPECTED_PARENT: cb384b2e14eb0a641218ee46d09eff66ae9c15ec
+      EXPECTED_PARENT: 99aed575757d50e517ebe49a2a96c93eaa11cf37
       R9_WORKFLOW: .github/workflows/v9-stage5d-r9-local-root-cause.yml
     steps:
       - name: Checkout without write credentials
@@ -116,7 +116,7 @@ jobs:
             "    mark('OIDC_SESSION_REVOKE');const revokedSession=service.beginAdminSession();\n    mark('OIDC_JWT_REVOKE');const revJwt=await fixtureJwt(ga,revokedSession.nonce,this.clock());",'OIDC_REVOKE'),
            ('    const revoked=await service.decideDevice(',"    mark('ADMIN_REVOKE');\n    const revoked=await service.decideDevice(",'ADMIN_REVOKE'),
            ("    insist(revoked.status==='revoked'", "    mark('REVOKE_ASSERT');\n    insist(revoked.status==='revoked'",'REVOKE_ASSERT'),
-           ('    let blocked=false;',"    mark('REVOKED_CHALLENGE_DENY');\n    let blocked=false;",'REVOKED_DENY'),
+           ("    let blocked=false;try{service.beginAuthorizedChallenge({deviceId:req.deviceId,operation:'receipt'});}catch{blocked=true;}","    mark('REVOKED_CHALLENGE_DENY');\n    let blocked=false;try{service.beginAuthorizedChallenge({deviceId:req.deviceId,operation:'receipt'});}catch{blocked=true;}",'REVOKED_DENY'),
            ("    this.storage.kv.put('stage5d:checkpoint'", "    mark('CHECKPOINT_WRITE');\n    this.storage.kv.put('stage5d:checkpoint'",'CHECKPOINT_WRITE'),
           ])
           edit('device-auth/protocol.mjs',[
