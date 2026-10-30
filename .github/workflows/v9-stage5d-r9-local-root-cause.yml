@@ -19,7 +19,7 @@ jobs:
       CI: 'true'
       WRANGLER_SEND_METRICS: 'false'
       CLOUDFLARE_SEND_METRICS: 'false'
-      EXPECTED_PARENT: cc80691cc7b11828d0bac377a4568f8425b14f7f
+      EXPECTED_PARENT: 41ff373e29fff526b6518f13ea40679323badce7
       R9_WORKFLOW: .github/workflows/v9-stage5d-r9-local-root-cause.yml
     steps:
       - name: Checkout without write credentials
@@ -119,6 +119,15 @@ jobs:
            ("    let blocked=false;try{service.beginAuthorizedChallenge({deviceId:req.deviceId,operation:'receipt'});}catch{blocked=true;}","    mark('REVOKED_CHALLENGE_DENY');\n    let blocked=false;try{service.beginAuthorizedChallenge({deviceId:req.deviceId,operation:'receipt'});}catch{blocked=true;}",'REVOKED_DENY'),
            ("    this.storage.kv.put('stage5d:checkpoint'", "    mark('CHECKPOINT_WRITE');\n    this.storage.kv.put('stage5d:checkpoint'",'CHECKPOINT_WRITE'),
           ])
+          # Workerd-only synthetic fixture repair: use an explicit public JWK allowlist.
+          # The repository's core.mjs and strict OIDC verifier remain untouched.
+          fixture_path=dst/'stage5d-probe'/'core.mjs'
+          fixture_source=fixture_path.read_text()
+          fixture_old="  const jwk={...pub,alg:'RS256',use:'sig',kid:'stage5d-issuer-test'};"
+          fixture_new="  const jwk={kty:pub.kty,n:pub.n,e:pub.e,alg:'RS256',use:'sig',kid:'stage5d-issuer-test'};"
+          assert fixture_source.count(fixture_old)==1, 'R9_FIXTURE_JWK_ANCHOR_DRIFT'
+          fixture_path.write_text(fixture_source.replace(fixture_old,fixture_new,1))
+          print('R9_SYNTHETIC_JWKS_PUBLIC_ONLY=PASS;EPHEMERAL_COPY=YES;ORIGINAL_SOURCE_UNCHANGED=YES')
           edit('device-auth/protocol.mjs',[
            ('  const der=strictBase64Url(proof.spkiB64Url,[70,110]);',"  mark('PROOF_DECODE_SPKI');\n  const der=strictBase64Url(proof.spkiB64Url,[70,110]);",'PROOF_SPKI'),
            ("  const pin=hex(new Uint8Array(await crypto.subtle.digest('SHA-256',der)));","  mark('PROOF_SHA256');\n  const pin=hex(new Uint8Array(await crypto.subtle.digest('SHA-256',der)));",'PROOF_HASH'),
