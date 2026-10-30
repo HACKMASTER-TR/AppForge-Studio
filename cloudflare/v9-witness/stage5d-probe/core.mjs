@@ -9,7 +9,7 @@ export const ADMIN_SUB='stage5d-synthetic-google-sub';
 export const CLIENT_ID='123456789012-stage5d-test.apps.googleusercontent.com';
 async function fixtureJwt(key,nonce,now){
   const pub=await crypto.subtle.exportKey('jwk',key.publicKey);
-  const jwk={...pub,alg:'RS256',use:'sig',kid:'stage5d-issuer-test'};
+  const jwk={kty:pub.kty,n:pub.n,e:pub.e,alg:'RS256',use:'sig',kid:'stage5d-issuer-test'};
   const h=b64(enc.encode(JSON.stringify({alg:'RS256',kid:jwk.kid,typ:'JWT'})));
   const p=b64(enc.encode(JSON.stringify({iss:'https://accounts.google.com',aud:CLIENT_ID,
     sub:ADMIN_SUB,nonce,iat:Math.floor(now/1000)-1,exp:Math.floor(now/1000)+60})));

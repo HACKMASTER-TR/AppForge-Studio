@@ -19,7 +19,7 @@ jobs:
       CI: 'true'
       WRANGLER_SEND_METRICS: 'false'
       CLOUDFLARE_SEND_METRICS: 'false'
-      EXPECTED_PARENT: 41ff373e29fff526b6518f13ea40679323badce7
+      EXPECTED_PARENT: b776be8e7d14e7c0d169ccfb3ad189ab22b922f2
       R9_WORKFLOW: .github/workflows/v9-stage5d-r9-local-root-cause.yml
     steps:
       - name: Checkout without write credentials
@@ -35,16 +35,16 @@ jobs:
           import os, subprocess
           g=lambda *a: subprocess.check_output(['git',*a],text=True).strip()
           assert g('rev-parse','HEAD^')==os.environ['EXPECTED_PARENT'],'PARENT_CHANGED'
-          assert g('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines()==[os.environ['R9_WORKFLOW']],'R9_SCOPE_CHANGED'
+          assert g('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines()==sorted([os.environ['R9_WORKFLOW'],'cloudflare/v9-witness/stage5d-probe/core.mjs']),'R9_SCOPE_CHANGED'
           pins={
            'cloudflare/v9-witness/stage5d-r3-probe/entry.mjs':'a13bfba95f5a848cc1a7a58aee7f20b22bbcde04',
            'cloudflare/v9-witness/stage5d-r3-probe/scheduled.mjs':'e5bff1fd72abaca6e9159d8d8b674c830fb535f1',
            'cloudflare/v9-witness/stage5d-r3-probe/wrangler.toml':'fe743d26ea110f9f2a05a00353607cab21b17137',
-           'cloudflare/v9-witness/stage5d-probe/core.mjs':'97c387597cdaf3d34bbad9c106d3fc4ed59681c6',
+           'cloudflare/v9-witness/stage5d-probe/core.mjs':'1605bbafa58780615f1ec66edc483f9fc25828e3',
            'cloudflare/v9-witness/device-auth/stage5d-private.mjs':'537d8167550aca3eebc5de87299efb46b2ff12c7'}
           for p,sha in pins.items():
            assert g('rev-parse','HEAD:'+p)==sha,'R9_SOURCE_PIN_DRIFT'
-          print('R9_PREFLIGHT=PASS;ONE_WORKFLOW_ONLY=YES;SOURCE_PIN=PASS')
+          print('R9_PREFLIGHT=PASS;EXACT_TWO_FILES=YES;SOURCE_PIN=PASS')
           print('R9_REMOTE_DEPLOY=NO;GITHUB_WRITE=NO;PRODUCTION_SECRETS=NOT_USED')
           PY
       - name: Set up Node 22
@@ -119,15 +119,11 @@ jobs:
            ("    let blocked=false;try{service.beginAuthorizedChallenge({deviceId:req.deviceId,operation:'receipt'});}catch{blocked=true;}","    mark('REVOKED_CHALLENGE_DENY');\n    let blocked=false;try{service.beginAuthorizedChallenge({deviceId:req.deviceId,operation:'receipt'});}catch{blocked=true;}",'REVOKED_DENY'),
            ("    this.storage.kv.put('stage5d:checkpoint'", "    mark('CHECKPOINT_WRITE');\n    this.storage.kv.put('stage5d:checkpoint'",'CHECKPOINT_WRITE'),
           ])
-          # Workerd-only synthetic fixture repair: use an explicit public JWK allowlist.
-          # The repository's core.mjs and strict OIDC verifier remain untouched.
-          fixture_path=dst/'stage5d-probe'/'core.mjs'
-          fixture_source=fixture_path.read_text()
-          fixture_old="  const jwk={...pub,alg:'RS256',use:'sig',kid:'stage5d-issuer-test'};"
-          fixture_new="  const jwk={kty:pub.kty,n:pub.n,e:pub.e,alg:'RS256',use:'sig',kid:'stage5d-issuer-test'};"
-          assert fixture_source.count(fixture_old)==1, 'R9_FIXTURE_JWK_ANCHOR_DRIFT'
-          fixture_path.write_text(fixture_source.replace(fixture_old,fixture_new,1))
-          print('R9_SYNTHETIC_JWKS_PUBLIC_ONLY=PASS;EPHEMERAL_COPY=YES;ORIGINAL_SOURCE_UNCHANGED=YES')
+          # Check real repository fixture without another rewrite.
+          source_fixture=(dst/'stage5d-probe'/'core.mjs').read_text()
+          assert source_fixture.count("  const jwk={kty:pub.kty,n:pub.n,e:pub.e,alg:'RS256',use:'sig',kid:'stage5d-issuer-test'};")==1, 'R9_SOURCE_JWK_UNFIXED'
+          assert "  const jwk={...pub,alg:'RS256'" not in source_fixture, 'R9_OLD_JWK_REAPPEARED'
+          print('R9_REPOSITORY_JWKS_PUBLIC_ONLY=PASS;EPHEMERAL_FIXTURE_PATCH=NO')
           edit('device-auth/protocol.mjs',[
            ('  const der=strictBase64Url(proof.spkiB64Url,[70,110]);',"  mark('PROOF_DECODE_SPKI');\n  const der=strictBase64Url(proof.spkiB64Url,[70,110]);",'PROOF_SPKI'),
            ("  const pin=hex(new Uint8Array(await crypto.subtle.digest('SHA-256',der)));","  mark('PROOF_SHA256');\n  const pin=hex(new Uint8Array(await crypto.subtle.digest('SHA-256',der)));",'PROOF_HASH'),
