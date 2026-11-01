@@ -1,0 +1,121 @@
+# AppForge V9 Full Offline Pack: source-only compile gate.
+# On an isolated feature branch only. No APK, release, signing, secrets, uploads,
+# Play or Cloudflare access. Run once only after explicit owner push authorization.
+name: V9 Full Pack Isolated Android Kotlin Compile
+'on':
+  push:
+    branches:
+      - feat/v9-full-offline-pack-compile-20261101
+    paths:
+      - android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt
+      - android-app/app/src/main/java/com/appforge/studio/build/OfflineModulePlan.kt
+      - quality/tests/full_offline_pack_v9_contract.test.js
+      - .github/workflows/v9-full-pack-isolated-compile.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-full-pack-isolated-compile
+  cancel-in-progress: false
+jobs:
+  compile-only:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-full-offline-pack-compile-20261101' &&
+      github.event_name == 'push' &&
+      github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout without write credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Enforce V9 parent and four-file scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYCODE'
+          import os,subprocess,pathlib
+          run=lambda *args:subprocess.check_output(['git',*args],text=True).strip()
+          expected={
+            'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
+            'android-app/app/src/main/java/com/appforge/studio/build/OfflineModulePlan.kt',
+            'quality/tests/full_offline_pack_v9_contract.test.js',
+            '.github/workflows/v9-full-pack-isolated-compile.yml'
+          }
+          assert run('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_MISMATCH'
+          assert run('rev-parse','HEAD^')=='721cfcbaf121631e8b531d8361b6ec7a079aed3f','BASE_MISMATCH'
+          changed=set(run('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines())
+          assert changed==expected,('SCOPE_MISMATCH',sorted(changed))
+          for p in expected:assert pathlib.Path(p).is_file(),('MISSING',p)
+          assert not run('diff','--check','HEAD^','HEAD')
+          print('FULL_PACK_SOURCE_GATE=PASS;FILES=4;BASE_PIN=721cfcbaf121')
+          PYCODE
+      - name: Node test runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Full Pack and existing installer contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test \
+            quality/tests/full_offline_pack_v9_contract.test.js \
+            quality/tests/modular_offline_v3_ui_contract.test.js \
+            quality/tests/device_build_toolchain_scope_contract.test.js \
+            quality/tests/offline_build_pack_v1_contract.test.js
+          echo 'FULL_PACK_NODE_TESTS=PASS'
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Verify license and install x86_64 native SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          test -n "${ANDROID_HOME:-}"
+          test -s "$ANDROID_HOME/licenses/android-sdk-license" || {
+            echo 'SDK_LICENSE_NOT_ACCEPTED_IN_RUNNER'; exit 1;
+          }
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 \
+            'platforms;android-37.0' \
+            'build-tools;36.0.0' \
+            'ndk;28.2.13676358' \
+            'cmake;3.22.1'
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          test -f "$ANDROID_HOME/ndk/28.2.13676358/source.properties"
+          grep -qx 'Pkg.Revision = 28.2.13676358' "$ANDROID_HOME/ndk/28.2.13676358/source.properties" || \
+            grep -Eq '^Pkg\.Revision[[:space:]]*=[[:space:]]*28\.2\.13676358$' "$ANDROID_HOME/ndk/28.2.13676358/source.properties"
+          test -x "$ANDROID_HOME/cmake/3.22.1/bin/cmake"
+          test -x "$ANDROID_HOME/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+          echo 'FULL_PACK_NATIVE_SDK=PASS;HOST=LINUX_X86_64;NDK=28.2.13676358;CMAKE=3.22.1'
+      - name: Compile Kotlin only (no APK)
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app \
+            :app:compileDebugKotlin \
+            :app:compileDebugUnitTestKotlin \
+            --no-daemon --no-parallel --no-configuration-cache --console=plain
+          echo 'FULL_PACK_KOTLIN_COMPILE=PASS;APK=NOT_BUILT'
+      - name: Verify no generated APK or AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Bundled Fast HTML APK/AAB templates are legitimate source assets.
+          # Reject only NEW build-output artifacts, not checked-in templates.
+          test -z "$(find android-app -path '*/build/outputs/*' -type f \( -name '*.apk' -o -name '*.aab' \) -print -quit)"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo 'FULL_PACK_CI=PASS;APK=NO;SIGNING=NO;UPLOAD=NO;DEPLOY=NO;PRODUCTION=UNCHANGED'

@@ -41,17 +41,28 @@ internal object ModuleInstallOperations {
     }
     @Volatile private var pauseRequested=false
     private var downloadControl=DownloadControl()
+    /** Existing single-module entry remains unchanged for users who prefer selective installs. */
     @Synchronized fun start(context:android.content.Context, selected:OfflineModuleId, consent:Boolean) {
+        startSelection(context,setOf(selected),consent)
+    }
+    /** One user-confirmed transaction; manager still installs/attests each module separately. */
+    @Synchronized fun startFullPack(context:android.content.Context, consent:Boolean) {
+        startSelection(context,OfflineModules.fullBuildPack(),consent)
+    }
+    @Synchronized private fun startSelection(context:android.content.Context, selected:Set<OfflineModuleId>, consent:Boolean) {
+        require(selected.isNotEmpty()) { "Kurulacak modül seçilmedi." }
+        val primaryModule=selected.last()
         if(busy.value)return
         try{restore(context)}catch(e:Exception){journalError.value="İndirme kaydı reddedildi; kurulum başlamadı: ${e.message}";DownloadNetwork.restorePreference();return}
         busy.value=true;pauseRequested=false;downloadControl=DownloadControl();stopPending.value=false
         try {ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException) {
             busy.value=false;DownloadNetwork.restorePreference()
-            updates.value=updates.value+(selected to ModuleProgress(selected,"start-denied",ModulePhase.ERROR,detail="Android arka plan hizmetini başlatmadı; uygulama önplandayken yeniden deneyin."))
+            updates.value=updates.value+(primaryModule to ModuleProgress(primaryModule,"start-denied",ModulePhase.ERROR,detail="Android arka plan hizmetini başlatmadı; uygulama önplandayken yeniden deneyin."))
             runCatching{persist()};return
         }
         val operationNetworkContext=DownloadNetwork.takeOperationConsent()
         job=scope.launch(operationNetworkContext) {
+            var failingModule=primaryModule
             val stalledWatch=launch {
                 while(isActive) {
                     delay(1000)
@@ -68,8 +79,8 @@ internal object ModuleInstallOperations {
                 while(true) {
                     val last=java.util.concurrent.atomic.AtomicReference<ModuleProgress?>(null)
                     try {
-                        OfflineBuildPackManager.installModules(context.applicationContext,setOf(selected),consent,downloadControl){event->
-                            last.set(event);publish(event)
+                        OfflineBuildPackManager.installModules(context.applicationContext,selected,consent,downloadControl){event->
+                            last.set(event);failingModule=event.moduleId;publish(event)
                         }
                         break
                     }catch(e:CancellationException){throw e}
@@ -92,11 +103,11 @@ internal object ModuleInstallOperations {
                     }
                 }
             } catch(e:CancellationException) {
-                updates.value=updates.value+(selected to ModuleProgress(selected,"canceled",if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else if(pauseRequested)ModulePhase.PAUSED else ModulePhase.CANCELED,errorCode=if(e is DownloadNetwork.PolicyBlocked)"NETWORK_POLICY" else null,detail=if(e is DownloadNetwork.PolicyBlocked)"Ağ politikası/onay bekleniyor; kısmi dosya korunur. Devam et ile tekrar doğrulayın." else if(pauseRequested)"Duraklatıldı; doğrulanmamış kısmi dosya devam için korunur." else "İptal edildi; çalışan modüller korunur."))
+                updates.value=updates.value+(failingModule to ModuleProgress(failingModule,"canceled",if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else if(pauseRequested)ModulePhase.PAUSED else ModulePhase.CANCELED,errorCode=if(e is DownloadNetwork.PolicyBlocked)"NETWORK_POLICY" else null,detail=if(e is DownloadNetwork.PolicyBlocked)"Ağ politikası/onay bekleniyor; kısmi dosya korunur. Devam et ile tekrar doğrulayın." else if(pauseRequested)"Duraklatıldı; doğrulanmamış kısmi dosya devam için korunur." else "İptal edildi; çalışan modüller korunur."))
             } catch(e:Exception) {
                 // Preserve the manager's connection-wait/error state for this operation.
-                if(updates.value[selected]?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
-                updates.value=updates.value+(selected to ModuleProgress(selected,"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
+                if(updates.value[failingModule]?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
+                updates.value=updates.value+(failingModule to ModuleProgress(failingModule,"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
             } finally {stalledWatch.cancel();try{runCatching{persist()}}finally{activeProgress.value=null;busy.value=false;DownloadNetwork.restorePreference()}}
         }
     }
@@ -154,6 +165,8 @@ internal object ModuleInstallOperations {
     var ready by remember { mutableStateOf<Map<OfflineModuleId,Boolean>>(emptyMap()) }
     var history by remember{mutableStateOf<List<String>>(emptyList())}
     var chosen by remember { mutableStateOf<OfflineModuleId?>(null) }
+    var fullPackChosen by remember { mutableStateOf(false) }
+    var mobileFullPack by remember { mutableStateOf(false) }
     var sdkConsent by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf("") }
     var availableUpdates by remember{mutableStateOf<Set<OfflineModuleId>>(emptySet())}
@@ -181,13 +194,22 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
         if(DownloadNetwork.policy==DownloadNetworkPolicy.WIFI_PREFERRED && !DownloadNetwork.allowed()){mobileModule=id;return}
         ModuleInstallOperations.start(context,id,sdkConsent)
     }
-    if(confirmAnyNetwork || mobileModule!=null)AlertDialog(onDismissRequest={confirmAnyNetwork=false;mobileModule=null},title={Text("Mobil veri kullanım onayı")},text={
+    fun beginFullPack() {
+        if(DownloadNetwork.policy==DownloadNetworkPolicy.WIFI_PREFERRED && !DownloadNetwork.allowed()) {
+            mobileFullPack=true
+            return
+        }
+        ModuleInstallOperations.startFullPack(context,sdkConsent)
+    }
+    if(confirmAnyNetwork || mobileModule!=null || mobileFullPack)AlertDialog(onDismissRequest={confirmAnyNetwork=false;mobileModule=null;mobileFullPack=false},title={Text("Mobil veri kullanım onayı")},text={
         Text("Mobil veri ve ölçümlü bağlantı kullanılabilir. Toplam kalan boyut bilinmiyor; yeni alt bağımlılıklar gerekebilir. Dosya bazındaki doğrulanmış miktarlar indirme geçmişinde gösterilir.")
     },confirmButton={TextButton(enabled=!busy && !preparing,onClick={
-        val id=mobileModule;mobileModule=null;confirmAnyNetwork=false
-        if(id!=null){DownloadNetwork.allowMobileOnce();ModuleInstallOperations.start(context,id,sdkConsent)}
+        val id=mobileModule;val full=mobileFullPack
+        mobileModule=null;mobileFullPack=false;confirmAnyNetwork=false
+        if(full){DownloadNetwork.allowMobileOnce();ModuleInstallOperations.startFullPack(context,sdkConsent)}
+        else if(id!=null){DownloadNetwork.allowMobileOnce();ModuleInstallOperations.start(context,id,sdkConsent)}
         else {networkPolicy=DownloadNetworkPolicy.ALLOW_ANY;DownloadNetwork.select(networkPolicy)}
-    }){Text(if(mobileModule!=null)"Yalnız bu işlem için izin ver" else "Bu ağ tercihini kaydet")}},dismissButton={TextButton(onClick={confirmAnyNetwork=false;mobileModule=null}){Text("Reddet; kaydı koru")}})
+    }){Text(if(mobileModule!=null)"Yalnız bu işlem için izin ver" else "Bu ağ tercihini kaydet")}},dismissButton={TextButton(onClick={confirmAnyNetwork=false;mobileModule=null;mobileFullPack=false}){Text("Reddet; kaydı koru")}})
     pendingLifecycle?.let{(id,action)->
         val permission=if(action=="remove")lifecycleStates[id]?.remove else lifecycleStates[id]?.rollback
         AlertDialog(onDismissRequest={pendingLifecycle=null},title={Text(if(action=="remove")"Modülü kaldırmayı onayla" else "Önceki sürüme dönmeyi onayla")},
@@ -212,9 +234,33 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
         }){Text("Kayıtları bırak • dosyaları koru")}},
         dismissButton={TextButton(onClick={confirmHistoryCleanup=false}){Text("Vazgeç")}}
     )
+    if(fullPackChosen) {
+        val fullSelection=OfflineModules.fullBuildPack()
+        val missing=OfflineModules.resolve(fullSelection).filter { ready[it]!=true }
+        val needsSdk=missing.any {
+            it in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.EXPO_REACT_NATIVE,OfflineModuleId.RUST_ANDROID_NDK)
+        }
+        AlertDialog(
+            onDismissRequest={fullPackChosen=false},
+            title={Text("AppForge Full Offline Build Pack")},
+            text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text("Tüm motorlar tek kurulum işleminde hazırlanır; her modül ayrı SHA-256 ve gerçek araç doğrulamasından geçer.")
+                Text("Eksik modül: ${missing.size}/${fullSelection.size}. Hazır modüller yeniden kurulmaz.")
+                Text("İndirme ve disk toplamı kesin değildir; onaylanan bağımlılıklar internetten indirilir. Bu, taşınabilir tek ZIP dosyası değildir.")
+                Text("Windows Native C/C++ deneysel motor da dahildir. Hata halinde doğrulanmış sürümler korunur.")
+                if(needsSdk) {
+                    Text("Android SDK lisansını inceleyip kabul etmen gerekir.")
+                    TextButton(onClick={android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://developer.android.com/studio/terms")).also{context.startActivity(it)}}) {Text("Android SDK lisansını incele")}
+                    Row {Checkbox(sdkConsent,{sdkConsent=it});Text("SDK lisansını kabul ediyorum")}
+                }
+            }},
+            confirmButton={TextButton(enabled=!busy && !preparing && missing.isNotEmpty() && (!needsSdk || sdkConsent),onClick={fullPackChosen=false;beginFullPack()}) {Text("Tam paketi kur")}},
+            dismissButton={TextButton(onClick={fullPackChosen=false}) {Text("Vazgeç")}}
+        )
+    }
     if(chosen!=null) {
         val id=chosen!!;val missing=OfflineModules.resolve(setOf(id)).filter{ready[it]!=true}
-        val needsSdk=OfflineModuleId.ANDROID_CORE in missing || OfflineModuleId.EXPO_REACT_NATIVE in missing
+        val needsSdk=OfflineModuleId.ANDROID_CORE in missing || OfflineModuleId.EXPO_REACT_NATIVE in missing || OfflineModuleId.RUST_ANDROID_NDK in missing
         AlertDialog(onDismissRequest={chosen=null},title={Text("Kurulumu onayla")},text={Column {
             Text("Yalnız eksik modüller: "+missing.joinToString{OfflineModules.spec(it).title})
             Text("Boyutu doğrulanmamış indirmelerde toplam boyut bilinmiyor gösterilir. Bağımlılıklar ortak kullanılır.")
@@ -287,6 +333,18 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                         OutlinedButton(enabled=!busy && !preparing && record.downloadState!=DownloadState.CANCELLED,onClick={scope.launch{runCatching{withContext(Dispatchers.IO){DownloadCoordinator.cancelRecord(record.operationId,record.artifactId)}}.onFailure{detail=it.message?:"Kayıt güncellenemedi"}}}){Text("Geçmiş kaydını iptal et • dosyaları koru")}
                     }
                 }}
+            }
+            if(section=="modules")item {
+                val fullSelection=OfflineModules.fullBuildPack()
+                val missing=OfflineModules.resolve(fullSelection).count{ready[it]!=true}
+                Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Text("AppForge Full Offline Build Pack",style=MaterialTheme.typography.titleMedium)
+                    Text("Tek kurulum akışı • ${fullSelection.size} modül • $missing eksik. Mevcut doğrulanmış modüller korunur.")
+                    Text("Android, Rust, Node, Python, Expo, Windows Portable ve deneysel Windows Native.")
+                    Button(enabled=recovered && !busy && !preparing && missing>0 && DeviceBuildRuntimeV3.platformError()==null,
+                        onClick={fullPackChosen=true}) {Text(if(missing==0)"Tam paket doğrulandı" else "Tam paketi kur / devam et")}
+                    Text("Paket profilidir: internetten ayrı doğrulanmış indirmeler yapılır; tek ZIP dosyası oluşturulmaz.")
+                } }
             }
             item { Text("İlk açılışta araç indirme zorunluluğu yok. Fast HTML gömülüdür. Yalnız seçtiğiniz motorun araçlarını kurun.") }
             item { Text("Boş alan: ${context.noBackupFilesDir.usableSpace/1024/1024} MiB. APT/Gradle/npm toplamları proje ve mimariye bağlıdır; doğrulanmış toplam yoksa yüzde gösterilmez.") }
