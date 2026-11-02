@@ -59,7 +59,12 @@ public final class V9ReleaseTrustDeepUnitTest {
 
     @Test public void rejectsModifiedSignature() throws Exception {
         byte[] corrupt = signature.clone(); corrupt[0] ^= 1;
-        assertThrows(SecurityException.class, () -> verify(body, corrupt, publicKey, sha256(publicKey)));
+        try {
+            verify(body, corrupt, publicKey, sha256(publicKey));
+            org.junit.Assert.fail("Modified Ed25519 signature was accepted");
+        } catch (SecurityException | java.security.SignatureException expected) {
+            // JCA providers can reject malformed signatures using either exception.
+        }
     }
 
     @Test public void rejectsWrongPublicKeyPin() {
