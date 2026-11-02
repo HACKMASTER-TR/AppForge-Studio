@@ -1,0 +1,91 @@
+# Re-runnable, read-only Android release trust regression. No APK, signing, deployment, or production.
+name: V9 Release Trust Regression (17 Unit Tests)
+'on':
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - android-app/app/src/test/java/com/appforge/studio/security/V9ReleaseTrustDeepUnitTest.java
+      - .github/workflows/v9-release-trust-regression.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: v9-release-trust-regression-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  deep-regression:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Enforce pinned source and production-disabled state
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '9c8dc4e4702495221da46178d67d066bb9903e650965c160201fb4fe5d7d5631  android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java' | sha256sum -c -
+          grep -Fq 'const val PRODUCTION_DISTRIBUTION_ENABLED = false' android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt
+          test -s android-app/app/src/test/java/com/appforge/studio/security/V9ReleaseTrustDeepUnitTest.java
+          test -z "$(git status --porcelain)"
+          echo 'V9_REGRESSION_SOURCE_GUARD=PASS'
+      - name: Configure JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Configure Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install pinned Android SDK 37, NDK, CMake
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'ndk;28.2.13676358' 'cmake;3.22.1' > "$RUNNER_TEMP/v9-sdk-install.log" 2>&1 || { tail -100 "$RUNNER_TEMP/v9-sdk-install.log"; exit 1; }
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          test -d "$ANDROID_HOME/ndk/28.2.13676358"
+          test -d "$ANDROID_HOME/cmake/3.22.1"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Run all 17 isolated V9 release trust unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:testDebugUnitTest \
+            --tests com.appforge.studio.security.V9ReleaseTrustDeepUnitTest \
+            --no-daemon --no-parallel --no-configuration-cache --console=plain \
+            > "$RUNNER_TEMP/v9-deep-regression.log" 2>&1 || {
+              tail -150 "$RUNNER_TEMP/v9-deep-regression.log"
+              exit 1
+            }
+          grep -q 'BUILD SUCCESSFUL' "$RUNNER_TEMP/v9-deep-regression.log"
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          target = 'com.appforge.studio.security.V9ReleaseTrustDeepUnitTest'
+          reports = list(Path('android-app/app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
+          matching = [ET.parse(path).getroot() for path in reports if target in path.name]
+          assert len(matching) == 1, ('MISSING_TEST_REPORT', reports)
+          data = matching[0]
+          assert int(data.attrib['tests']) == 17, ('TEST_COUNT_DRIFT', data.attrib)
+          assert int(data.attrib.get('errors', 0)) == 0
+          assert int(data.attrib.get('failures', 0)) == 0
+          assert int(data.attrib.get('skipped', 0)) == 0
+          print('V9_RELEASE_TRUST_JUNIT=PASS;TESTS=17;SKIPPED=0')
+          PY
+      - name: Confirm no packaged artifact or repository mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! find android-app -type f \( -name '*.apk' -o -name '*.aab' \) -print -quit | grep -q .
+          test -z "$(git status --porcelain)"
+          echo 'V9_RELEASE_TRUST_REGRESSION=PASS;APK=NO;SIGNING=NO;DEPLOY=NO;MAIN=UNCHANGED;PRODUCTION=DISABLED'
