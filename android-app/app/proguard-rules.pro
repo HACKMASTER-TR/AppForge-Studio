@@ -25,3 +25,8 @@
 -dontwarn java.lang.management.**
 -dontwarn javax.management.**
 -dontwarn org.ietf.jgss.**
+
+# AppForge V9: API 26-32 pinned Ed25519 verification fallback.
+# Used via reflection only if the platform JCA Ed25519 provider is unavailable.
+-keep class net.i2p.crypto.eddsa.EdDSAEngine { public <init>(java.security.MessageDigest); }
+-keep class net.i2p.crypto.eddsa.EdDSAPublicKey { public <init>(java.security.spec.X509EncodedKeySpec); }
