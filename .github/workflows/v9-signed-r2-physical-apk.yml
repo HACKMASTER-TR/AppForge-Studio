@@ -1,0 +1,120 @@
+# Separate, user-installed debug-only physical Android acceptance. Never deploy.
+name: V9 Signed R2 Physical Android Acceptance APK (No Deploy)
+'on':
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - android-app/app/build.gradle.kts
+      - android-app/app/src/androidTest/java/com/appforge/studio/build/V9SignedR2PhysicalAcceptanceTest.kt
+      - quality/tools/appforge_v9_physical_acceptance.sh
+      - .github/workflows/v9-signed-r2-physical-apk.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-signed-r2-physical-probe-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  signed-r2-physical-debug-apks:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - name: Checkout pinned development branch without write credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Enforce exact additive scope and production-disabled pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,subprocess,pathlib
+          git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
+          assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
+          assert git('rev-parse','HEAD^')=='5792fb2680e02eefead4c65d96d753af48b3a995','BASE_DRIFT'
+          expected={
+            'android-app/app/build.gradle.kts',
+            'android-app/app/src/androidTest/java/com/appforge/studio/build/V9SignedR2PhysicalAcceptanceTest.kt',
+            'quality/tools/appforge_v9_physical_acceptance.sh',
+            '.github/workflows/v9-signed-r2-physical-apk.yml',
+          }
+          assert set(git('diff','--name-only','HEAD^','HEAD').splitlines())==expected,'SCOPE_DRIFT'
+          pins={
+            'android-app/app/src/main/java/com/appforge/studio/build/V9SelectiveR2ModuleCache.kt':'080e3cdb06602e01d5a64c0cf57473774bda5214',
+            'android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt':'d7be392d2cc38e2e06a317630d0d46e4afff9cd6',
+            'android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt':'55d4ceb7528fab723542336af0b8c4ef11590adb',
+            'android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java':'5c69602b89f16c402b9f3c0dc6327009cfafd9da',
+          }
+          for path,blob in pins.items():
+            assert git('rev-parse','HEAD:'+path)==blob,('TRUST_PIN_DRIFT',path)
+          policy=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt').read_text()
+          assert 'const val PRODUCTION_DISTRIBUTION_ENABLED = false' in policy
+          gradle=pathlib.Path('android-app/app/build.gradle.kts').read_text()
+          assert 'applicationIdSuffix = ".v9r2accept"' in gradle
+          assert 'appforgeV9R2DeviceAcceptance' in gradle
+          test=pathlib.Path('android-app/app/src/androidTest/java/com/appforge/studio/build/V9SignedR2PhysicalAcceptanceTest.kt').read_text()
+          assert '569f7f55cb5fa645935250acaf2e6551d697fee4cfd723799abc92f5b58f5cf5' in test
+          assert '830033663d72419435b99a1e6ced8e51cc582b9f8fd72752f3593c538c316ca7' in test
+          assert 'DownloadNetworkPolicy.WIFI_PREFERRED' in test
+          assert git('status','--porcelain')=='','DIRTY_WORKTREE'
+          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=4;NO_PRODUCTION=YES')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install pinned Android SDK and native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'ndk;28.2.13676358' 'cmake;3.22.1' > "$RUNNER_TEMP/v9-sdk.log" 2>&1 || { tail -90 "$RUNNER_TEMP/v9-sdk.log"; exit 1; }
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"; fi
+      - name: Build separate debug app and instrumented test APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:assembleDebug :app:assembleDebugAndroidTest \
+            -PappforgeV9R2DeviceAcceptance=true --no-daemon --no-parallel \
+            --no-configuration-cache --console=plain \
+            > "$RUNNER_TEMP/v9-physical-build.log" 2>&1 || {
+              tail -160 "$RUNNER_TEMP/v9-physical-build.log"; exit 1
+            }
+          grep -q 'BUILD SUCCESSFUL' "$RUNNER_TEMP/v9-physical-build.log"
+          echo 'V9_PHYSICAL_APK_BUILD=PASS;INSTALL=NOT_RUN;DEVICE=NOT_TESTED'
+      - name: Verify isolated package identity, signatures and artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=$(find android-app/app/build/outputs/apk/debug -name '*.apk' -type f | head -1)
+          TEST=$(find android-app/app/build/outputs/apk/androidTest/debug -name '*.apk' -type f | head -1)
+          test -s "$APP" && test -s "$TEST"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
+          SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          "$AAPT" dump badging "$APP" | grep -Fq "package: name='com.appforge.studio.v9r2accept'"
+          "$AAPT" dump badging "$TEST" | grep -Fq "package: name='com.appforge.studio.v9r2accept.test'"
+          "$SIGNER" verify "$APP"
+          "$SIGNER" verify "$TEST"
+          test -z "$(git status --porcelain)"
+          mkdir -p "$RUNNER_TEMP/v9-physical"
+          cp "$APP" "$RUNNER_TEMP/v9-physical/AppForge-V9-R2-Physical-debug.apk"
+          cp "$TEST" "$RUNNER_TEMP/v9-physical/AppForge-V9-R2-Physical-test.apk"
+          (cd "$RUNNER_TEMP/v9-physical" && sha256sum *.apk > SHA256SUMS && sha256sum -c SHA256SUMS)
+          echo 'V9_PHYSICAL_APK_IDENTITY=PASS;PACKAGE=ISOLATED;SIGNATURE=DEBUG;PRODUCTION=DISABLED'
+      - name: Upload only debug acceptance APKs (never signed manifest or private key)
+        uses: actions/upload-artifact@v4
+        with:
+          name: v9-r2-physical-acceptance-${{ github.sha }}
+          path: ${{ runner.temp }}/v9-physical/
+          retention-days: 3
+          if-no-files-found: error

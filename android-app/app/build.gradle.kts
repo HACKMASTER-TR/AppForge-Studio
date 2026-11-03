@@ -239,6 +239,10 @@ val appforgeIntegrationDebugVersionCode =
             533
         }
 
+val appforgeV9R2DeviceAcceptance =
+    providers.gradleProperty("appforgeV9R2DeviceAcceptance")
+        .orNull == "true"
+
 val appforgePlayIntegrityAcceptance =
     providers.gradleProperty("appforgePlayIntegrityAcceptance")
         .orNull == "true"
@@ -299,6 +303,12 @@ require(
     "Process-death mode must be isolated from other Pro test modes."
 }
 
+require(!appforgeV9R2DeviceAcceptance ||
+    (!appforgeProProcessDeathTest && !appforgeProRecoveryTest && !appforgeProSecondDevice &&
+     !appforgePlayIntegrityAcceptance)) {
+    "V9 R2 physical acceptance must be isolated from all other debug modes."
+}
+
 require(!(appforgeProRecoveryTest && appforgeProSecondDevice)) {
     "Pro recovery and second-device modes cannot be combined."
 }
@@ -323,6 +333,7 @@ android {
             }
 
         versionName = "5.0.34"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     fun oauthClientId(name: String): String {
@@ -424,7 +435,9 @@ android {
     buildTypes {
         getByName("debug") {
             ciDebugSigning?.let { signingConfig = it }
-            if (appforgeProRecoveryTest) {
+            if (appforgeV9R2DeviceAcceptance) {
+                applicationIdSuffix = ".v9r2accept"
+            } else if (appforgeProRecoveryTest) {
                 applicationIdSuffix = ".prorecovery"
             } else if (appforgeProSecondDevice) {
                 applicationIdSuffix = ".prodevice2"
@@ -718,6 +731,8 @@ dependencies {
     // Unified Agent persistence. android.jar only provides throwing stubs
     // for org.json during host-side unit tests, so use the real JVM library.
     testImplementation("org.json:json:20250517")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
 
 
     implementation("androidx.activity:activity-ktx:1.13.0")
