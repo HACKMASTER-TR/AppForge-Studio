@@ -185,6 +185,145 @@ internal object DeviceBuildRuntimeV3 {
         }
 
 
+    /**
+     * Prepares a verified, side-by-side Ubuntu Base candidate.
+     *
+     * Does NOT replace the active runtime, migrate module receipts,
+     * or mark Python/Node as installed in the new environment.
+     * Existing legacy APT provenance remains blocked.
+     */
+    suspend fun prepareIsolatedRecovery(
+        context:Context,
+        onProgress:(String)->Unit={}
+    ):String = installMutex.withLock {
+        val app=context.applicationContext
+        check(platformError()==null) {
+            platformError()?:"Unsupported platform"
+        }
+        val architecture=LinuxArchitecture.fromAndroidAbis(
+            Build.SUPPORTED_ABIS.toList()
+        ) ?: error("Desteklenmeyen mimari")
+
+        val manifest=LinuxRuntimeManifestRegistry.find(
+            LinuxDistribution.UBUNTU,architecture
+        ) ?: error("Doğrulanmış Ubuntu manifesti yok")
+
+        val current=LinuxRuntimeLayout(
+            runtimeBaseDirectory(app),
+            LinuxDistribution.UBUNTU,architecture
+        ).rootfsDirectory
+
+        RecoveryPathAnchor.check(current)
+        check(current.isDirectory) {
+            "Korunacak aktif rootfs bulunamadı."
+        }
+        check(AptSnapshotMigration.blockedReason(current)!=null) {
+            "Legacy APT engeli yok; izole kurtarma gerekmiyor."
+        }
+        check(OfflineBuildPackManager.moduleReady(
+            app,OfflineModuleId.NODE_WEB
+        )) {
+            "Node.js bütünlüğü doğrulanamadı; mevcut ortam korunuyor."
+        }
+
+        val base=RecoveryPathAnchor.androidPlatformPath(
+            File(app.noBackupFilesDir,
+                "device-build/runtime-v9-recovery-candidate")
+        )
+        RecoveryPathAnchor.check(base)
+        check(base.canonicalFile !=
+            runtimeBaseDirectory(app).canonicalFile)
+
+        val layout=LinuxRuntimeLayout(
+            base,LinuxDistribution.UBUNTU,architecture
+        )
+
+        if(layout.runtimeDirectory.exists()) {
+            check(
+                isTrustedRuntime(layout,manifest) &&
+                AndroidRuntimeTrust.ready(layout.rootfsDirectory) &&
+                BaseRuntimeOwnership.paths(
+                    layout.rootfsDirectory
+                ).isNotEmpty() &&
+                File(
+                    layout.rootfsDirectory,
+                    "opt/appforge-device/apt-locks-v5/LINUX_RUNTIME/vendor-v1.json"
+                ).isFile
+            ) {
+                "Önceki izole hazırlık eksik veya doğrulanamıyor. "+
+                "Mevcut ortam korunuyor; hiçbir dosya otomatik silinmedi."
+            }
+            return@withLock "ISOLATED_UBUNTU_ALREADY_VERIFIED"
+        }
+
+        val minimum=maxOf(
+            2L*1024*1024*1024,
+            manifest.maxArchiveBytes*3+
+                512L*1024*1024
+        )
+        check(app.noBackupFilesDir.usableSpace>minimum) {
+            "İzole Ubuntu hazırlığı için yeterli boş alan yok. "+
+            "Aktif runtime ve Node.js değiştirilmedi."
+        }
+
+        check(PackagedLinuxEngine(app).inspect().status==
+            PackagedLinuxEngineStatus.READY) {
+            "Paketli Linux yürütücüsü doğrulanamadı."
+        }
+
+        onProgress("İzole Ubuntu indiriliyor; aktif Node.js korunuyor.")
+
+        VerifiedLinuxRootfsInstaller(app).install(
+            manifest=manifest,
+            layout=layout
+        ) { event ->
+            onProgress(event.detail+
+                (event.percent?.let{" • %$it"}?:""))
+        }
+
+        val mark=marker(layout)
+        RecoveryPathAnchor.check(mark)
+        check(!mark.exists())
+        val part=File(mark.path+".part")
+        RecoveryPathAnchor.check(part)
+
+        java.io.FileOutputStream(part).use {
+            it.write("$REVISION\\n".toByteArray())
+            it.fd.sync()
+        }
+        Files.move(
+            part.toPath(),mark.toPath(),
+            java.nio.file.StandardCopyOption.ATOMIC_MOVE
+        )
+
+        val clean=layout.rootfsDirectory
+        AndroidRuntimeTrust.install(clean)
+        BaseRuntimeOwnership.captureFresh(clean)
+        AptRuntimeBaseline.captureFresh(clean,manifest)
+
+        check(isTrustedRuntime(layout,manifest))
+        check(AndroidRuntimeTrust.ready(clean))
+        check(BaseRuntimeOwnership.paths(clean).isNotEmpty())
+        check(File(
+            clean,
+            "opt/appforge-device/apt-locks-v5/LINUX_RUNTIME/vendor-v1.json"
+        ).isFile)
+
+        check(AptSnapshotMigration.blockedReason(clean)==null)
+        check(AptSnapshotMigration.blockedReason(current)!=null)
+        check(OfflineBuildPackManager.moduleReady(
+            app,OfflineModuleId.NODE_WEB
+        )) {
+            "Eski Node.js bütünlüğü değişmiş; geçiş engellendi."
+        }
+
+        onProgress(
+            "Temiz Ubuntu doğrulandı. Aktif Node.js ve kullanıcı verileri "+
+            "korundu. Yeni ortam henüz etkinleştirilmedi."
+        )
+        "ISOLATED_UBUNTU_PREPARED;ACTIVE_RUNTIME_UNCHANGED"
+    }
+
     internal fun runtimeBaseDirectory(
         context: Context
     ): File = RecoveryPathAnchor.androidPlatformPath(

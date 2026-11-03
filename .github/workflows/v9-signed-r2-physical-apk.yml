@@ -6,7 +6,7 @@ name: V9 Signed R2 Physical Android Acceptance APK (No Deploy)
       - feat/v9-global-package-distribution-20261027
     paths:
       - android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt
-      - android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt
+      - android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt
       - .github/workflows/v9-signed-r2-physical-apk.yml
 permissions:
   contents: read
@@ -35,10 +35,10 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='5accfd1ad8a27fb20e81b79a8851e148eb0a9fcb','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='254b4d6d902c465538dfba74ba9b8100741da885','BASE_DRIFT'
           expected={
             'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
-            'android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt',
+            'android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt',
             '.github/workflows/v9-signed-r2-physical-apk.yml',
           }
           assert set(git('diff','--name-only','HEAD^','HEAD').splitlines())==expected,'SCOPE_DRIFT'
@@ -74,6 +74,16 @@ jobs:
           reader=pathlib.Path('android-app/app/src/test/java/com/appforge/studio/V9R2BundleReaderTest.kt').read_text()
           signing=pathlib.Path('quality/tools/appforge_v9_persistent_debug_signing.sh').read_text()
           assert git('rev-parse','HEAD:android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt')=='c1d1f63a492723d2cadfb94a2c151ce3154dd6fa','R2_UI_PIN_DRIFT'
+          runtime=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt').read_text()
+          assert 'suspend fun prepareIsolatedRecovery(' in runtime
+          assert 'runtime-v9-recovery-candidate' in runtime
+          assert 'VerifiedLinuxRootfsInstaller(app).install(' in runtime
+          assert 'AptSnapshotMigration.blockedReason(current)!=null' in runtime
+          assert 'OfflineBuildPackManager.moduleReady(' in runtime
+          assert 'BaseRuntimeOwnership.captureFresh(clean)' in runtime
+          assert 'ISOLATED_UBUNTU_PREPARED;ACTIVE_RUNTIME_UNCHANGED' in runtime
+          assert 'if(recoveryConfirm) AlertDialog(' in screen
+          assert 'İzole temiz Ubuntu hazırla' in screen
           assert 'val migrationChecked=migrationAudit?.first==selected' in screen
           assert 'migrationReason==null' in screen
           assert 'Güvenli runtime geçişi gerekli' in screen

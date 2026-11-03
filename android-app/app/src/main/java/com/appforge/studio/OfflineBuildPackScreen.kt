@@ -164,6 +164,9 @@ internal object ModuleInstallOperations {
     var moduleMenuOpen by remember { mutableStateOf(false) }
     var prefetchBusy by remember { mutableStateOf(false) }
     var moduleDetails by rememberSaveable { mutableStateOf(false) }
+    var recoveryConfirm by remember { mutableStateOf(false) }
+    var recoveryBusy by remember { mutableStateOf(false) }
+    var recoveryMessage by remember { mutableStateOf("") }
     val liveProgress by ModuleInstallOperations.activeProgress.collectAsState()
     var sdkConsent by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf("") }
@@ -192,6 +195,52 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
         if(DownloadNetwork.policy==DownloadNetworkPolicy.WIFI_PREFERRED && !DownloadNetwork.allowed()){mobileModule=id;return}
         ModuleInstallOperations.start(context,id,sdkConsent)
     }
+    if(recoveryConfirm) AlertDialog(
+        onDismissRequest={recoveryConfirm=false},
+        title={Text("İzole Ubuntu hazırlığını onayla")},
+        text={Text(
+            "Doğrulanmış Ubuntu arşivi indirilebilir ve ek depolama kullanılır. "+
+            "Yeni ortam ayrı dizine kurulur. Mevcut Node.js, R2 paketleri, "+
+            "modül kayıtları ve projeler değiştirilmez. "+
+            "Bu işlem Python kurulumunu henüz etkinleştirmez."
+        )},
+        confirmButton={
+            TextButton(
+                enabled=!busy && !preparing && !recoveryBusy,
+                onClick={
+                    recoveryConfirm=false
+                    recoveryBusy=true
+                    recoveryMessage="İzole Ubuntu hazırlığı başladı."
+                    scope.launch {
+                        try {
+                            val result=withContext(Dispatchers.IO) {
+                                DeviceBuildRuntimeV3.prepareIsolatedRecovery(
+                                    context
+                                ) { progress ->
+                                    scope.launch {
+                                        recoveryMessage=progress
+                                    }
+                                }
+                            }
+                            recoveryMessage=result+
+                                " • Eski Node.js çalışmaya devam ediyor."
+                        } catch(e:Exception) {
+                            recoveryMessage=
+                                "İzole hazırlık engellendi: ${e.message}. "+
+                                "Mevcut ortam değiştirilmedi."
+                        } finally {
+                            recoveryBusy=false
+                        }
+                    }
+                }
+            ){Text("İzole ortamı hazırla")}
+        },
+        dismissButton={
+            TextButton(onClick={recoveryConfirm=false}){
+                Text("Vazgeç")
+            }
+        }
+    )
     if(confirmAnyNetwork || mobileModule!=null)AlertDialog(onDismissRequest={confirmAnyNetwork=false;mobileModule=null},title={Text("Mobil veri kullanım onayı")},text={
         Text("Mobil veri ve ölçümlü bağlantı kullanılabilir. Toplam kalan boyut bilinmiyor; yeni alt bağımlılıklar gerekebilir. Dosya bazındaki doğrulanmış miktarlar indirme geçmişinde gösterilir.")
     },confirmButton={TextButton(enabled=!busy && !preparing,onClick={
@@ -268,7 +317,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                 val event=active ?: events[selected]
                 val updateRequired=selected in availableUpdates
                 val canInstall=known && migrationChecked && migrationReason==null &&
-                    !busy && !preparing && !prefetchBusy && unsupported==null &&
+                    !busy && !preparing && !prefetchBusy && !recoveryBusy && unsupported==null &&
                     (!installed || updateRequired) &&
                     (lifecycle?.installedVersion==null || lifecycle.update.allowed)
 
@@ -319,6 +368,22 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                             Text("Güvenli runtime geçişi gerekli",color=MaterialTheme.colorScheme.error)
                             Text(migrationReason,style=MaterialTheme.typography.bodySmall)
                             Text("Mevcut Node.js ortamı ve R2 önbelleği korunuyor. Kurulum engeli kaldırılmadı.",style=MaterialTheme.typography.bodySmall)
+                            OutlinedButton(
+                                enabled=!recoveryBusy && !busy && !preparing &&
+                                    !prefetchBusy,
+                                onClick={recoveryConfirm=true}
+                            ) {
+                                Text("İzole temiz Ubuntu hazırla")
+                            }
+                            if(recoveryBusy)
+                                LinearProgressIndicator(
+                                    modifier=Modifier.fillMaxWidth()
+                                )
+                            if(recoveryMessage.isNotBlank())
+                                Text(
+                                    recoveryMessage,
+                                    style=MaterialTheme.typography.bodySmall
+                                )
                         }
 
                         Text(
