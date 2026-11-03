@@ -288,7 +288,7 @@ internal object DeviceBuildRuntimeV3 {
         RecoveryPathAnchor.check(part)
 
         java.io.FileOutputStream(part).use {
-            it.write("$REVISION\\n".toByteArray())
+            it.write(REVISION.toByteArray(Charsets.UTF_8))
             it.fd.sync()
         }
         Files.move(
