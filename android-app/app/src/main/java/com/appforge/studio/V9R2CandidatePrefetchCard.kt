@@ -53,7 +53,7 @@ internal object V9R2BundleReader {
 }
 
 /** Debug-only, explicit-consent, SHA-verified prefetch. Does not install or mark READY. */
-@Composable internal fun V9R2CandidatePrefetchCard() {
+@Composable internal fun V9R2CandidatePrefetchCard(onInstall: (OfflineModuleId) -> Unit) {
     if (!BuildConfig.DEBUG) return
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -120,7 +120,7 @@ internal object V9R2BundleReader {
                     Text("İmzalı içerik: ${plan.objects.size} dosya")
                     Text("Önbellekte: ${status.existing.size} dosya")
                     Text("Ağdan gerekli: ${status.networkBytes} bayt (${status.networkGetRequests} tahmini GET)")
-                    Text("Yalnızca doğrulanmış, ölçüsüz ve VPN'siz Wi-Fi kullanılacak. İndirilen dosyalar kurulmaz veya HAZIR sayılmaz.")
+                    Text("Yalnızca doğrulanmış, ölçüsüz ve VPN'siz Wi-Fi kullanılacak. Önce paketler SHA-256 ile doğrulanır, sonra mevcut kurulum motoruna geçilir. Kurulum tamamlanmadan Hazır gösterilmez.")
                 }
             },
             confirmButton = {
@@ -130,7 +130,7 @@ internal object V9R2BundleReader {
                     if (arch == null) return@Button
                     approving = false
                     active = true
-                    result = "İndirme başlatılıyor; bu işlem kurulum değildir."
+                    result = "Paketler indiriliyor ve SHA-256 doğrulanıyor..."
                     scope.launch {
                         val operation = coroutineContext
                         try {
@@ -153,7 +153,8 @@ internal object V9R2BundleReader {
                                 V9SelectiveR2ModuleCache.status(context, plan)
                             }
                             check(finalStatus.missing.isEmpty() && finalStatus.networkGetRequests == 0L)
-                            result = "$count dosya SHA-256 doğrulandı ve özel önbelleğe alındı. Kurulum yapılmadı."
+                            result = "$count dosya SHA-256 doğrulandı; kurulum onayına geçiliyor."
+                            onInstall(chosen)
                         } catch (e: CancellationException) {
                             result = "İndirme durduruldu. Mevcut doğrulanmış dosyalar korunur."
                             throw e
@@ -166,16 +167,16 @@ internal object V9R2BundleReader {
                             proposed = null
                         }
                     }
-                }) { Text("Yalnızca dosyaları indir") }
+                }) { Text("Paketleri indir ve kuruluma geç") }
             },
             dismissButton = { TextButton(onClick = { approving = false }) { Text("Vazgeç") } }
         )
     }
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("V9 İmzalı R2 Paket Önbelleği • Debug", style = MaterialTheme.typography.titleMedium)
-            Text("Ed25519 imzası doğrulanmış aday paketleri kullanıcı onayıyla indirir. Üretim yönlendirmesi, paket kurulumu ve HAZIR geçişi kapalıdır.")
+    Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("İmzalı R2 paketleri • Debug", style = MaterialTheme.typography.titleMedium)
+            Text("Ed25519 imzası ve SHA-256 doğrulanmış R2 paketleri yerel önbellekten yeniden kullanılır. Sonraki kurulum mevcut güvenli APT motoruyla yürütülür; üretim dağıtımı kapalıdır.")
             Text("Mimari: ${arch ?: "DESTEKLENMİYOR"}")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(enabled = !active, onClick = { chooseManifest.launch(arrayOf("*/*")) }) {
@@ -217,7 +218,7 @@ internal object V9R2BundleReader {
                         pending = null; proposed = null
                     } finally { active = false }
                 }
-            }) { Text("İmzayı doğrula ve indirme planını göster") }
+            }) { Text("Paketleri indir, doğrula ve kur") }
             if (active) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             if (progress.isNotBlank()) Text(progress)
             Text(result)

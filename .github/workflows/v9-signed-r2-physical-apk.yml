@@ -5,9 +5,8 @@ name: V9 Signed R2 Physical Android Acceptance APK (No Deploy)
     branches:
       - feat/v9-global-package-distribution-20261027
     paths:
-      - android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt
-      - android-app/app/src/main/java/com/appforge/studio/build/V9R2AptInstallReuse.kt
-      - android-app/app/src/test/java/com/appforge/studio/build/V9R2AptInstallReuseTest.kt
+      - android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt
+      - android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt
       - .github/workflows/v9-signed-r2-physical-apk.yml
 permissions:
   contents: read
@@ -36,11 +35,10 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='8c73bbb9c0e9e3f4de58fe62404945fe69427241','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='1f2dd35d3f1a7d48598817da58ee28ac0fd34a19','BASE_DRIFT'
           expected={
-            'android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt',
-            'android-app/app/src/main/java/com/appforge/studio/build/V9R2AptInstallReuse.kt',
-            'android-app/app/src/test/java/com/appforge/studio/build/V9R2AptInstallReuseTest.kt',
+            'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
+            'android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt',
             '.github/workflows/v9-signed-r2-physical-apk.yml',
           }
           assert set(git('diff','--name-only','HEAD^','HEAD').splitlines())==expected,'SCOPE_DRIFT'
@@ -75,7 +73,11 @@ jobs:
           card=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt').read_text()
           reader=pathlib.Path('android-app/app/src/test/java/com/appforge/studio/V9R2BundleReaderTest.kt').read_text()
           signing=pathlib.Path('quality/tools/appforge_v9_persistent_debug_signing.sh').read_text()
-          assert 'if(section=="modules" && BuildConfig.DEBUG)item { V9R2CandidatePrefetchCard() }' in screen
+          assert 'if(section=="modules")item {' in screen and 'V9R2CandidatePrefetchCard(onInstall =' in screen
+          assert 'if(section=="modules")items(OfflineModules.all.filter' not in screen
+          assert 'Text(if(installed)"Doğrula"' not in screen
+          assert 'Otomatik son bütünlük kontrolü başarısız' in screen
+          assert 'onInstall(chosen)' in card
           assert 'V9SelectiveR2ModuleCache.signedPlan(' in card
           assert 'DownloadNetworkPolicy.WIFI_PREFERRED' in card
           assert 'userApproved = true' in card and 'approving = false' in card
@@ -95,7 +97,7 @@ jobs:
           assert 'RuntimeGenerationStore(root).prepare(' in install
           assert all(k in regression for k in ('repeatedImportsReuseSameCASWithoutRewriting','sameSizeTamperedSourceFailsClosed','corruptExistingTargetIsNeverOverwritten','rejectsSourceAndTargetSymlinks'))
           assert git('status','--porcelain')=='','DIRTY_WORKTREE'
-          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=4;NO_PRODUCTION=YES')
+          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=3;NO_PRODUCTION=YES')
           PY
       - uses: actions/setup-java@v4
         with:
