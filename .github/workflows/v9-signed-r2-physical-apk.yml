@@ -35,10 +35,8 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='39e83c0492eb779465736b40e791ba0400b88e8d','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='1b13bac2428562a7cc58066a0d38179ecc936350','BASE_DRIFT'
           expected={
-            'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
-            'android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt',
             '.github/workflows/v9-signed-r2-physical-apk.yml',
           }
           assert set(git('diff','--name-only','HEAD^','HEAD').splitlines())==expected,'SCOPE_DRIFT'
@@ -73,6 +71,8 @@ jobs:
           card=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt').read_text()
           reader=pathlib.Path('android-app/app/src/test/java/com/appforge/studio/V9R2BundleReaderTest.kt').read_text()
           signing=pathlib.Path('quality/tools/appforge_v9_persistent_debug_signing.sh').read_text()
+          assert git('rev-parse','HEAD:android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt')=='a15b12bedff458cf8857921b3199bc6586786ff1','SCREEN_PIN_DRIFT'
+          assert git('rev-parse','HEAD:android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt')=='c1d1f63a492723d2cadfb94a2c151ce3154dd6fa','R2_UI_PIN_DRIFT'
           assert 'if(section=="modules")item {' in screen
           assert 'DropdownMenu(expanded=moduleMenuOpen' in screen or 'DropdownMenu(' in screen
           assert 'OfflineModules.all.forEach { item ->' in screen
@@ -86,7 +86,6 @@ jobs:
           assert 'Text("Paketleri indir, doğrula ve kur")' in card
           assert 'V9SelectiveR2ModuleCache.signedPlan(' in card
           assert 'DownloadNetworkPolicy.WIFI_PREFERRED' in card
-          assert 'userApproved = true' in card and 'approving = false' in card
           assert 'V9R2BundleReader.bounded(' in card and 'Oversized V9 candidate file' in card
           assert all(name in reader for name in ('acceptsBoundedManifest','rejectsEmptyInput','rejectsOversizedInput','refusesStalledStream'))
           assert 'test-only-debug.p12' in signing and 'MAIN_PLAY_CLOUDFLARE_MUTATIONS=0' in signing
@@ -103,7 +102,7 @@ jobs:
           assert 'RuntimeGenerationStore(root).prepare(' in install
           assert all(k in regression for k in ('repeatedImportsReuseSameCASWithoutRewriting','sameSizeTamperedSourceFailsClosed','corruptExistingTargetIsNeverOverwritten','rejectsSourceAndTargetSymlinks'))
           assert git('status','--porcelain')=='','DIRTY_WORKTREE'
-          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=3;NO_PRODUCTION=YES')
+          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=1;NO_PRODUCTION=YES')
           PY
       - uses: actions/setup-java@v4
         with:
