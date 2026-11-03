@@ -48,6 +48,28 @@ internal object V9SignedR2CandidateDownload {
         return Plan(sha256, record.bytes, url, record.kind, verified.sequence)
     }
 
+    /**
+     * Context.noBackupFilesDir can have Android's /data/user/0 parent alias.
+     * Canonicalize only the trusted platform root. Reject leaf symlinks and escapes.
+     */
+    internal fun privateCacheDirectory(privateRoot: File): File {
+        check(privateRoot.isDirectory && !Files.isSymbolicLink(privateRoot.toPath())) {
+            "Untrusted V9 private root"
+        }
+        val canonicalRoot = privateRoot.canonicalFile
+        check(canonicalRoot.isDirectory && !Files.isSymbolicLink(canonicalRoot.toPath()))
+        val directory = File(canonicalRoot, "v9-signed-r2-canary")
+        if (!directory.exists()) check(directory.mkdir())
+        check(directory.isDirectory && !Files.isSymbolicLink(directory.toPath())) {
+            "Symlinked V9 cache directory"
+        }
+        check(directory.canonicalFile == directory.absoluteFile &&
+              directory.canonicalFile.parentFile == canonicalRoot) {
+            "V9 private cache escaped the Context root"
+        }
+        return directory
+    }
+
     /** Downloads only into app-private canary storage; does not install or set module READY. */
     @Synchronized fun fetchWithConsent(context: Context, manifest: ByteArray, signature: ByteArray,
                          persistedFloor: Long, sha256: String, userApproved: Boolean,
@@ -55,12 +77,7 @@ internal object V9SignedR2CandidateDownload {
                          onProgress: (Long, Long) -> Unit = { _, _ -> }): File {
         check(userApproved) { "Explicit V9 canary download consent required" }
         val plan = planSignedObject(manifest, signature, persistedFloor, sha256)
-        val privateRoot = context.applicationContext.noBackupFilesDir
-        check(privateRoot.isDirectory && !Files.isSymbolicLink(privateRoot.toPath()))
-        val directory = File(privateRoot, "v9-signed-r2-canary")
-        if (!directory.exists()) check(directory.mkdir())
-        check(directory.isDirectory && !Files.isSymbolicLink(directory.toPath()))
-        check(directory.canonicalFile == directory.absoluteFile)
+        val directory = privateCacheDirectory(context.applicationContext.noBackupFilesDir)
         val target = File(directory, plan.sha256)
         val partial = File(directory, plan.sha256 + ".part")
         for (f in listOf(target, partial)) check(!Files.isSymbolicLink(f.toPath()))

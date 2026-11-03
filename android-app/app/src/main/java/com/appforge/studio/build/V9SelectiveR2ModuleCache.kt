@@ -14,7 +14,6 @@ import java.security.MessageDigest
 internal object V9SelectiveR2ModuleCache {
     private const val CATALOG_ASSET = "device-build/apt-module-packages-v1.tsv"
     private const val PROFILE_ASSET = "device-build/apt-snapshot-profile.tsv"
-    private const val CACHE_DIR = "v9-signed-r2-canary"
     private const val MAX_CATALOG_BYTES = 512 * 1024
     private const val MAX_OBJECT_BYTES = 40L * 1024 * 1024
     private const val MAX_SELECTED_BYTES = 400L * 1024 * 1024
@@ -146,15 +145,10 @@ internal object V9SelectiveR2ModuleCache {
         return SignedSelection(verified.sequence, packages, requested)
     }
 
-    private fun directory(context: Context): File {
-        val root = context.applicationContext.noBackupFilesDir
-        require(root.isDirectory && !Files.isSymbolicLink(root.toPath()))
-        val result = File(root, CACHE_DIR)
-        if (!result.exists()) require(result.mkdir())
-        require(result.isDirectory && !Files.isSymbolicLink(result.toPath()))
-        require(result.canonicalFile == result.absoluteFile)
-        return result
-    }
+    private fun directory(context: Context): File =
+        V9SignedR2CandidateDownload.privateCacheDirectory(
+            context.applicationContext.noBackupFilesDir
+        )
 
     /** Revalidates every reused byte. Invalid cache content fails closed, never becomes READY. */
     internal fun inspectCache(cacheDir: File, objects: List<Package>): CacheStatus {

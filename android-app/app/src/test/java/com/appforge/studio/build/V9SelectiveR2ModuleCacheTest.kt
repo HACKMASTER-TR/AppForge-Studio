@@ -143,4 +143,36 @@ class V9SelectiveR2ModuleCacheTest {
         assertThrows(IllegalArgumentException::class.java) { V9SelectiveR2ModuleCache.inspectCache(invalid, listOf(obj)) }
         assertFalse(invalid.exists())
     }
+
+    @Test fun platformParentAliasResolvesInsideCanonicalPrivateRoot() {
+        val realParent = temp.newFolder("data-real")
+        val realApp = java.io.File(realParent, "app-no-backup")
+        assertTrue(realApp.mkdir())
+        val alias = java.io.File(temp.root, "data-alias")
+        java.nio.file.Files.createSymbolicLink(alias.toPath(), realParent.toPath())
+        val platformRoot = java.io.File(alias, "app-no-backup")
+        assertFalse(java.nio.file.Files.isSymbolicLink(platformRoot.toPath()))
+        val cache = V9SignedR2CandidateDownload.privateCacheDirectory(platformRoot)
+        assertEquals(java.io.File(realApp, "v9-signed-r2-canary").canonicalFile, cache)
+        assertEquals(realApp.canonicalFile, cache.parentFile.canonicalFile)
+    }
+
+    @Test fun rejectsDirectSymlinkForPrivateRoot() {
+        val realRoot = temp.newFolder("private-root")
+        val alias = java.io.File(temp.root, "root-symlink")
+        java.nio.file.Files.createSymbolicLink(alias.toPath(), realRoot.toPath())
+        assertThrows(IllegalStateException::class.java) {
+            V9SignedR2CandidateDownload.privateCacheDirectory(alias)
+        }
+    }
+
+    @Test fun rejectsSymlinkedCanaryCacheLeaf() {
+        val realRoot = temp.newFolder("cache-root")
+        val outside = temp.newFolder("outside")
+        java.nio.file.Files.createSymbolicLink(
+            java.io.File(realRoot, "v9-signed-r2-canary").toPath(), outside.toPath())
+        assertThrows(IllegalStateException::class.java) {
+            V9SignedR2CandidateDownload.privateCacheDirectory(realRoot)
+        }
+    }
 }

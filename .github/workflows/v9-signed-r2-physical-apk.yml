@@ -5,8 +5,9 @@ name: V9 Signed R2 Physical Android Acceptance APK (No Deploy)
     branches:
       - feat/v9-global-package-distribution-20261027
     paths:
-      - android-app/app/build.gradle.kts
-      - android-app/app/src/androidTest/java/com/appforge/studio/build/V9SignedR2PhysicalAcceptanceTest.kt
+      - android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt
+      - android-app/app/src/main/java/com/appforge/studio/build/V9SelectiveR2ModuleCache.kt
+      - android-app/app/src/test/java/com/appforge/studio/build/V9SelectiveR2ModuleCacheTest.kt
       - quality/tools/appforge_v9_physical_acceptance.sh
       - .github/workflows/v9-signed-r2-physical-apk.yml
 permissions:
@@ -36,17 +37,18 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='5792fb2680e02eefead4c65d96d753af48b3a995','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='f696dc81d93e19d38df687efd6e65c74f077081c','BASE_DRIFT'
           expected={
-            'android-app/app/build.gradle.kts',
-            'android-app/app/src/androidTest/java/com/appforge/studio/build/V9SignedR2PhysicalAcceptanceTest.kt',
+            'android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt',
+            'android-app/app/src/main/java/com/appforge/studio/build/V9SelectiveR2ModuleCache.kt',
+            'android-app/app/src/test/java/com/appforge/studio/build/V9SelectiveR2ModuleCacheTest.kt',
             'quality/tools/appforge_v9_physical_acceptance.sh',
             '.github/workflows/v9-signed-r2-physical-apk.yml',
           }
           assert set(git('diff','--name-only','HEAD^','HEAD').splitlines())==expected,'SCOPE_DRIFT'
           pins={
-            'android-app/app/src/main/java/com/appforge/studio/build/V9SelectiveR2ModuleCache.kt':'080e3cdb06602e01d5a64c0cf57473774bda5214',
-            'android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt':'d7be392d2cc38e2e06a317630d0d46e4afff9cd6',
+            'android-app/app/src/main/java/com/appforge/studio/build/V9SelectiveR2ModuleCache.kt':'08d17c2281cf5dc6f78f2828b23ba3aa80a19410',
+            'android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt':'11cd62ef3bb7958312d155837e64606c1d503092',
             'android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt':'55d4ceb7528fab723542336af0b8c4ef11590adb',
             'android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java':'5c69602b89f16c402b9f3c0dc6327009cfafd9da',
           }
@@ -61,6 +63,16 @@ jobs:
           assert '569f7f55cb5fa645935250acaf2e6551d697fee4cfd723799abc92f5b58f5cf5' in test
           assert '830033663d72419435b99a1e6ced8e51cc582b9f8fd72752f3593c538c316ca7' in test
           assert 'DownloadNetworkPolicy.WIFI_PREFERRED' in test
+          downloader=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt').read_text()
+          module_cache=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9SelectiveR2ModuleCache.kt').read_text()
+          unit=pathlib.Path('android-app/app/src/test/java/com/appforge/studio/build/V9SelectiveR2ModuleCacheTest.kt').read_text()
+          assert 'privateRoot.canonicalFile' in downloader
+          assert 'directory.canonicalFile.parentFile == canonicalRoot' in downloader
+          assert 'Files.isSymbolicLink(directory.toPath())' in downloader
+          assert 'V9SignedR2CandidateDownload.privateCacheDirectory(' in module_cache
+          assert 'platformParentAliasResolvesInsideCanonicalPrivateRoot' in unit
+          assert 'rejectsDirectSymlinkForPrivateRoot' in unit
+          assert 'rejectsSymlinkedCanaryCacheLeaf' in unit
           assert git('status','--porcelain')=='','DIRTY_WORKTREE'
           print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=4;NO_PRODUCTION=YES')
           PY
@@ -84,7 +96,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gradle -p android-app :app:assembleDebug :app:assembleDebugAndroidTest \
+          gradle -p android-app :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest \
             -PappforgeV9R2DeviceAcceptance=true --no-daemon --no-parallel \
             --no-configuration-cache --console=plain \
             > "$RUNNER_TEMP/v9-physical-build.log" 2>&1 || {

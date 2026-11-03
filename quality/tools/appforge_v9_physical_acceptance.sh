@@ -45,6 +45,10 @@ runner() {
   echo 'MANIFEST_AND_SIGNATURE=PASS'
   local HEAD RUN JSON APK TESTAPK TARGET_TMP
   HEAD="$(git -C "$REPO" rev-parse HEAD)"
+  # Every CI commit must use its own fresh APK download directory.
+  if [ -z "${APPFORGE_V9_APK_OUT:-}" ]; then
+    OUTDIR="$HOME/storage/downloads/AppForge-V9-R2-Physical-$HEAD"
+  fi
   JSON="$(gh run list -R "$GITHUB_REPO" --workflow "$WORKFLOW" --branch 'feat/v9-global-package-distribution-20261027' --limit 10 --json databaseId,headSha,conclusion,status)"
   RUN="$(printf '%s' "$JSON" | python3 -c 'import sys,json;h=sys.argv[1];r=[x for x in json.load(sys.stdin) if x["headSha"]==h and x["conclusion"]=="success"];print(r[0]["databaseId"] if r else "")' "$HEAD")"
   test -n "$RUN" || { echo 'GITHUB_APK_CI=NOT_CONFIRMED_SUCCESS'; return 2; }
