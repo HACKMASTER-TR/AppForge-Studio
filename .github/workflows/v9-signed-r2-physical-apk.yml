@@ -35,7 +35,7 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='1f2dd35d3f1a7d48598817da58ee28ac0fd34a19','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='39e83c0492eb779465736b40e791ba0400b88e8d','BASE_DRIFT'
           expected={
             'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
             'android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt',
@@ -73,11 +73,17 @@ jobs:
           card=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt').read_text()
           reader=pathlib.Path('android-app/app/src/test/java/com/appforge/studio/V9R2BundleReaderTest.kt').read_text()
           signing=pathlib.Path('quality/tools/appforge_v9_persistent_debug_signing.sh').read_text()
-          assert 'if(section=="modules")item {' in screen and 'V9R2CandidatePrefetchCard(onInstall =' in screen
-          assert 'if(section=="modules")items(OfflineModules.all.filter' not in screen
+          assert 'if(section=="modules")item {' in screen
+          assert 'DropdownMenu(expanded=moduleMenuOpen' in screen or 'DropdownMenu(' in screen
+          assert 'OfflineModules.all.forEach { item ->' in screen
+          assert 'OfflineModules.all.forEach { module ->' not in screen
+          assert 'V9R2CandidatePrefetchCard(' in screen
+          assert 'TopAppBar(title={Text("Birleşik Modül Merkezi V9")}' in screen
           assert 'Text(if(installed)"Doğrula"' not in screen
           assert 'Otomatik son bütünlük kontrolü başarısız' in screen
-          assert 'onInstall(chosen)' in card
+          assert 'onInstall(target)' in card
+          assert 'userApproved = true' in card and 'approving=false' in card
+          assert 'Text("Paketleri indir, doğrula ve kur")' in card
           assert 'V9SelectiveR2ModuleCache.signedPlan(' in card
           assert 'DownloadNetworkPolicy.WIFI_PREFERRED' in card
           assert 'userApproved = true' in card and 'approving = false' in card

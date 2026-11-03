@@ -160,6 +160,11 @@ internal object ModuleInstallOperations {
     var ready by remember { mutableStateOf<Map<OfflineModuleId,Boolean>>(emptyMap()) }
     var history by remember{mutableStateOf<List<String>>(emptyList())}
     var chosen by remember { mutableStateOf<OfflineModuleId?>(null) }
+    var selectedName by rememberSaveable { mutableStateOf(OfflineModuleId.NODE_WEB.name) }
+    var moduleMenuOpen by remember { mutableStateOf(false) }
+    var prefetchBusy by remember { mutableStateOf(false) }
+    var moduleDetails by rememberSaveable { mutableStateOf(false) }
+    val liveProgress by ModuleInstallOperations.activeProgress.collectAsState()
     var sdkConsent by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf("") }
     var availableUpdates by remember{mutableStateOf<Set<OfflineModuleId>>(emptySet())}
@@ -227,81 +232,193 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
             if(needsSdk){Text("Android SDK lisansı yalnız bu kurulum için gereklidir. SDK Manager lisansı cihazda ayrıca doğrular.");TextButton(onClick={android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://developer.android.com/studio/terms")).also{context.startActivity(it)}}){Text("Android SDK lisansını incele")};Row{Checkbox(sdkConsent,{sdkConsent=it});Text("SDK lisansını kabul ediyorum")}}
         }},confirmButton={TextButton(enabled=!busy && (!needsSdk||sdkConsent),onClick={chosen=null;begin(id)}){Text("Onayla ve kur")}},dismissButton={TextButton(onClick={chosen=null}){Text("Vazgeç")}})
     }
-    Scaffold(topBar={TopAppBar(title={Text("Modüler Çevrimdışı Derleme V3")},navigationIcon={TextButton(onClick=onBack){Text("Geri")}})}){padding->
+    Scaffold(topBar={TopAppBar(title={Text("Birleşik Modül Merkezi V9")},navigationIcon={TextButton(onClick=onBack){Text("Geri")}})}){padding->
         LazyColumn(modifier=Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             item { ModuleManagerNavigation(section) { section=it } }
             if(section=="modules")item {
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                        Text("Birleşik Modül Merkezi V9",style=MaterialTheme.typography.titleLarge)
-                        Text("Modül seç → doğrulanmış paketleri yeniden kullan / indir → kur → otomatik son bütünlük kontrolü")
-                        if(BuildConfig.DEBUG) V9R2CandidatePrefetchCard(onInstall = { chosen = it })
-                        HorizontalDivider()
-                        Text("Tüm modüller",style=MaterialTheme.typography.titleMedium)
-                        OfflineModules.all.forEach { module ->
-                var expanded by rememberSaveable(module.id.name) { mutableStateOf(false) }
-                val state=events[module.id];val installed=ready[module.id]==true
-                val lifecycle=lifecycleStates[module.id]
-                val unsupported=if(module.id !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE))DeviceBuildRuntimeV3.platformError() else null
-                Column(modifier=Modifier.fillMaxWidth().padding(vertical=8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                    ModuleCompactHeader(module.title, installed, expanded) { expanded=!expanded }
-                    if(expanded)Text(module.version)
-                    Text(when(module.id){
-                        OfflineModuleId.RUST_ANDROID_NDK->"Rust Android hedefleri için NDK/CMake; Node veya Expo kurulmaz"
-                        OfflineModuleId.RUST->"Rust + Cargo, Linux host ve WASM; uygulama entegrasyonları ayrı kabul gerektirir"
-                        OfflineModuleId.FAST_HTML->"Yerel HTML/HTTPS için gömülü Android şablonları"
-                        OfflineModuleId.LINUX_RUNTIME->"Normal motorların ortak, projelerden ayrı Linux ortamı"
-                        OfflineModuleId.ANDROID_CORE->"Gradle tabanlı Android APK/AAB projeleri"
-                        OfflineModuleId.NODE_WEB->"Node tabanlı web kaynaklarının hazırlanması"
-                        OfflineModuleId.PYTHON_ANDROID->"Chaquopy ile Android Python projeleri"
-                        OfflineModuleId.EXPO_REACT_NATIVE->"Desteklenen Expo/React Native Android yolu"
-                        OfflineModuleId.WINDOWS_PORTABLE->"Android SDK gerektirmeyen Portable EXE host'u"
-                        OfflineModuleId.WINDOWS_NATIVE->"Deneysel Windows C/C++ çapraz derleme"
-                    })
-                    if(unsupported!=null)Text(unsupported)
-                    if(expanded)Text("Bağımlılıklar: "+module.dependencies.joinToString{OfflineModules.spec(it).title}.ifBlank{"Yok"})
-                    if(expanded)Text("İndirme: "+(module.downloadBytes?.let{"${it/1024/1024} MiB"}?:"Toplam boyut bilinmiyor"))
-                    if(expanded)Text("Disk: "+(module.diskBytes?.let{"${it/1024/1024} MiB"}?:"Güvenilir toplam tahmin yok"))
-                    Text(if(busy && state!=null && state.phase !in setOf(ModulePhase.READY,ModulePhase.REMOVED))state.phase.turkishLabel() else if(!ready.containsKey(module.id))"Bütünlük doğrulanıyor..." else if(installed)"Hazır • gerçek bütünlük kontrolü geçti" else if(module.id in availableUpdates)"Güncelleme gerekli • kayıtlı ortam korunuyor" else if(state?.phase==ModulePhase.READY)"Kurulu değil / bütünlük doğrulanmadı" else state?.phase?.turkishLabel()?:"Kurulu değil / doğrulanmadı")
-                    if(state!=null && (busy || !installed)) {
-                        if(expanded || state.phase!=ModulePhase.ERROR)Text(state.detail)
-                        else Text("İşlem tamamlanamadı; ayrıntıları açın.")
-                        if(busy && state.errorCode=="APT_DOWNLOAD_CONSENT")Button(enabled=!stopPending,onClick={runCatching{AptDownloadConsent.approve(state.operationId)}.onFailure{detail=it.message?:"APT planı onaylanamadı"}}){Text("Listelenen APT paketlerini indir • Onayla")}
-                        if(state.phase==ModulePhase.DOWNLOADING) {
-                            val pct=state.percent
-                            if(pct!=null) {LinearProgressIndicator(progress={pct/100f},modifier=Modifier.fillMaxWidth());Text("%$pct • ${state.bytesDownloaded/1024/1024} / ${state.bytesTotal!!/1024/1024} MiB")} else {LinearProgressIndicator(modifier=Modifier.fillMaxWidth());Text("${state.bytesDownloaded/1024/1024} MiB • toplam boyut bilinmiyor")}
-                            Text("Hız: "+(state.speedBytesPerSecond?.let{"%.1f MiB/sn".format(it/1024/1024)}?:"Hesaplanıyor..."))
-                            Text("Ortalama: "+(state.averageSpeedBytesPerSecond?.let{"%.1f MiB/sn".format(it/1024/1024)}?:"Hesaplanıyor..."))
-                            Text(if(state.speedBytesPerSecond!=null)"Bağlantı: veri aktarılıyor • hız hareketli ortalamadır" else "Yeni bayt bekleniyor; bağlantı durumu henüz doğrulanmadı")
-                            Text("Kalan: "+(state.estimatedRemainingMs?.let{"${it/1000} sn"}?:"Hesaplanıyor...")+" • Geçen: ${state.elapsedMs/1000} sn")
-                        } else if(busy && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR,ModulePhase.CANCELED))LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
-                    }
-                    Button(enabled=!busy && ready.containsKey(module.id) && unsupported==null && !installed && (lifecycle?.installedVersion==null || lifecycle.update.allowed),onClick={chosen=module.id}){Text(if(state?.phase in setOf(ModulePhase.PAUSED,ModulePhase.WAITING_CONNECTION))"Devam et" else if(state?.phase==ModulePhase.ERROR)"Yeniden dene" else "Paketleri indir ve kur")}
-                    if(busy && state!=null && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR,ModulePhase.REMOVING,ModulePhase.ROLLING_BACK)) {
-                        if(stopPending)Text("Durdurma bekleniyor. Paket yöneticisinin çalışan komutu bitmeden süreç kesilmez.")
-                        val directTransfer=state.phase==ModulePhase.DOWNLOADING && (module.id in setOf(OfflineModuleId.NODE_WEB,OfflineModuleId.WINDOWS_PORTABLE,OfflineModuleId.LINUX_RUNTIME) || state.detail.startsWith("Doğrulanmış native aktarım"))
-                        OutlinedButton(enabled=!stopPending,onClick={ModuleInstallOperations.pause()}){Text(if(directTransfer)"Duraklat" else "Kontrol noktasında duraklat")}
-                        if(!directTransfer)Text("Bu aşamada bayt düzeyinde devam sağlanmaz; paket yöneticisinin doğrulanmış önbelleğiyle güvenli yeniden başlatılır.",style=MaterialTheme.typography.bodySmall)
-                        OutlinedButton(enabled=!stopPending,onClick={ModuleInstallOperations.cancel()}){Text("İptal iste")}
-                    }
-                    if(expanded && lifecycle!=null) {
-                        aptStates[module.id]?.takeIf{it.isNotBlank()}?.let{Text(it,style=MaterialTheme.typography.bodySmall)}
-                        Text("Sahiplik envanteri: ${lifecycle.ownedFiles} dosya • generation: ${lifecycle.generation?:"doğrulanmış kayıt yok"}")
-                        lifecycle.previousVersion?.let{Text("Önceki doğrulanmış sürüm: $it")}
-                        lifecycle.minimumStagingBytes?.let{Text("İzole işlem için en az ${it/1024/1024} MiB boş alan; yeni arşiv boyutu ayrıca gerekir.")}
-                        OutlinedButton(enabled=!busy && lifecycle.remove.allowed,onClick={pendingLifecycle=module.id to "remove"}){Text(if(module.id in setOf(OfflineModuleId.LINUX_RUNTIME,OfflineModuleId.WINDOWS_PORTABLE))"Kaldır • özel arşivde koru" else "Sahiplik doğrulamasıyla kaldır")}
-                        lifecycle.remove.reason?.let{Text("Kaldırma: $it",style=MaterialTheme.typography.bodySmall)}
-                        OutlinedButton(enabled=!busy && lifecycle.rollback.allowed,onClick={pendingLifecycle=module.id to "rollback"}){Text("Doğrulanmış önceki generation'a dön")}
-                        lifecycle.rollback.reason?.let{Text("Geri alma: $it",style=MaterialTheme.typography.bodySmall)}
-                        Text("Kaldırma: ${if(lifecycle.remove.allowed)"güvenli yol mevcut" else "güvenlik nedeniyle kapalı"} • geri alma: ${if(lifecycle.rollback.allowed)"doğrulanmış" else "kapalı"}",style=MaterialTheme.typography.bodySmall)
-                    }
-                    if(expanded)installedVersions[module.id]?.let{Text("Kayıtlı sürüm: $it")}
-                    if(expanded)OutlinedButton(enabled=!busy && lifecycle?.update?.allowed==true,onClick={chosen=module.id}){Text(if(module.id in availableUpdates)"Gömülü doğrulanmış tarif ile güncelle / onar" else "Güncel • doğrulanmış yeni tarif yok")}
-                    if(expanded)lifecycle?.update?.reason?.let{Text("Güncelleme: $it",style=MaterialTheme.typography.bodySmall)}
-                    if(expanded && module.id!=OfflineModuleId.WINDOWS_PORTABLE)Text("Genel dosya silme kapalı. Son doğrulanmış izole sürüm, bağımlılık kullanımı yoksa geri alınabilir; daha eski modüller önce bağımlılık sırasıyla çözülmelidir.",style=MaterialTheme.typography.bodySmall)
+                val selected=OfflineModuleId.entries.firstOrNull{
+                    it.name==selectedName
+                } ?: OfflineModuleId.NODE_WEB
+                val spec=OfflineModules.spec(selected)
+                val installed=ready[selected]==true
+                val known=ready.containsKey(selected)
+                val lifecycle=lifecycleStates[selected]
+                val unsupported=if(selected !in setOf(
+                    OfflineModuleId.FAST_HTML,
+                    OfflineModuleId.WINDOWS_PORTABLE
+                )) DeviceBuildRuntimeV3.platformError() else null
+                val active=liveProgress?.takeIf{
+                    busy && it.moduleId in OfflineModules.resolve(setOf(selected))
                 }
-                HorizontalDivider()
-            }
+                val event=active ?: events[selected]
+                val updateRequired=selected in availableUpdates
+                val canInstall=known && !busy && !preparing &&
+                    !prefetchBusy && unsupported==null &&
+                    (!installed || updateRequired) &&
+                    (lifecycle?.installedVersion==null || lifecycle.update.allowed)
+
+                Card(Modifier.fillMaxWidth()) {
+                    Column(
+                        Modifier.padding(16.dp),
+                        verticalArrangement=Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            "Birleşik Modül Merkezi V9",
+                            style=MaterialTheme.typography.titleLarge
+                        )
+                        Text(
+                            "Tüm modüller tek seçimden yönetilir. İndirme, SHA-256, kurulum ve son bütünlük kontrolü aynı alandadır.",
+                            style=MaterialTheme.typography.bodySmall
+                        )
+                        Text("Modül",style=MaterialTheme.typography.labelLarge)
+                        Box {
+                            OutlinedButton(
+                                enabled=!busy && !prefetchBusy,
+                                onClick={moduleMenuOpen=true},
+                                modifier=Modifier.fillMaxWidth()
+                            ) {
+                                Text(spec.title+"  ▾")
+                            }
+                            DropdownMenu(
+                                expanded=moduleMenuOpen,
+                                onDismissRequest={moduleMenuOpen=false}
+                            ) {
+                                OfflineModules.all.forEach { item ->
+                                    DropdownMenuItem(
+                                        text={Text(item.title)},
+                                        onClick={
+                                            selectedName=item.id.name
+                                            moduleMenuOpen=false
+                                            moduleDetails=false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        if(unsupported!=null)
+                            Text(unsupported,color=MaterialTheme.colorScheme.error)
+
+                        Text(
+                            "Durum: "+when {
+                                !known -> "Bütünlük kontrolü sürüyor"
+                                installed && !updateRequired -> "Doğrulanmış kurulum"
+                                installed && updateRequired -> "Güncelleme mevcut • kurulum korunuyor"
+                                event?.phase==ModulePhase.READY -> "Kurulu değil / bütünlük doğrulanmadı"
+                                event!=null -> event.phase.turkishLabel()
+                                else -> "Kurulu değil"
+                            },
+                            style=MaterialTheme.typography.titleSmall
+                        )
+
+                        installedVersions[selected]?.let {
+                            Text("Sürüm: $it",style=MaterialTheme.typography.bodySmall)
+                        }
+
+                        if(event!=null) {
+                            Text(event.detail,style=MaterialTheme.typography.bodySmall)
+                            if(event.phase==ModulePhase.ERROR)
+                                Text(
+                                    "Hata: "+(event.errorCode?:"Bilinmiyor"),
+                                    color=MaterialTheme.colorScheme.error
+                                )
+
+                            if(busy && event.errorCode=="APT_DOWNLOAD_CONSENT") {
+                                Button(
+                                    enabled=!stopPending,
+                                    onClick={
+                                        runCatching{
+                                            AptDownloadConsent.approve(event.operationId)
+                                        }.onFailure{
+                                            detail=it.message?:"APT onayı başarısız"
+                                        }
+                                    }
+                                ) { Text("APT paket listesini onayla") }
+                            }
+
+                            if(busy && event.phase==ModulePhase.DOWNLOADING) {
+                                val pct=event.percent
+                                if(pct!=null)
+                                    LinearProgressIndicator(
+                                        progress={pct/100f},
+                                        modifier=Modifier.fillMaxWidth()
+                                    )
+                                else
+                                    LinearProgressIndicator(
+                                        modifier=Modifier.fillMaxWidth()
+                                    )
+                                Text(
+                                    "İndirilen: ${event.bytesDownloaded/1024/1024} MiB / "+
+                                    (event.bytesTotal?.let{
+                                        "${it/1024/1024} MiB"
+                                    }?:"toplam bilinmiyor")
+                                )
+                                Text("Hız: "+(
+                                    event.speedBytesPerSecond?.let{
+                                        "%.1f MiB/sn".format(it/1024/1024)
+                                    }?:"hesaplanıyor"
+                                ))
+                            } else if(busy && event.phase !in setOf(
+                                ModulePhase.READY,ModulePhase.ERROR,ModulePhase.CANCELED
+                            )) {
+                                LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
+                            }
+                        }
+
+                        V9R2CandidatePrefetchCard(
+                            selected=selected,
+                            installEnabled=canInstall,
+                            onBusyChange={prefetchBusy=it},
+                            onInstall={chosen=it}
+                        )
+
+                        if(busy && active!=null && active.phase !in setOf(
+                            ModulePhase.READY,ModulePhase.ERROR,ModulePhase.CANCELED
+                        )) {
+                            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(
+                                    enabled=!stopPending,
+                                    onClick={ModuleInstallOperations.pause()}
+                                ){Text("Duraklat")}
+                                OutlinedButton(
+                                    enabled=!stopPending,
+                                    onClick={ModuleInstallOperations.cancel()}
+                                ){Text("İptal iste")}
+                            }
+                        }
+
+                        TextButton(onClick={moduleDetails=!moduleDetails}) {
+                            Text(if(moduleDetails)
+                                "Teknik ayrıntıları gizle"
+                                else "Teknik ayrıntıları göster")
+                        }
+                        if(moduleDetails) {
+                            Text("Bağımlılıklar: "+
+                                spec.dependencies.joinToString{
+                                    OfflineModules.spec(it).title
+                                }.ifBlank{"Yok"})
+                            Text("Disk: "+(
+                                spec.diskBytes?.let{
+                                    "${it/1024/1024} MiB"
+                                }?:"toplam bilinmiyor"
+                            ))
+                            aptStates[selected]?.takeIf{it.isNotBlank()}?.let{
+                                Text(it,style=MaterialTheme.typography.bodySmall)
+                            }
+                            lifecycle?.let{lc->
+                                Text(
+                                    "Sahiplik: ${lc.ownedFiles} dosya • generation: ${lc.generation?:"yok"}"
+                                )
+                                OutlinedButton(
+                                    enabled=!busy && !prefetchBusy && lc.remove.allowed,
+                                    onClick={pendingLifecycle=selected to "remove"}
+                                ){Text("Güvenli kaldır")}
+                                OutlinedButton(
+                                    enabled=!busy && !prefetchBusy && lc.rollback.allowed,
+                                    onClick={pendingLifecycle=selected to "rollback"}
+                                ){Text("Önceki doğrulanmış sürüme dön")}
+                            }
+                        }
                     }
                 }
             }
@@ -369,8 +486,6 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                     }
                 }}
             }
-            item { Text("İlk açılışta araç indirme zorunluluğu yok. Fast HTML gömülüdür. Yalnız seçtiğiniz motorun araçlarını kurun.") }
-            item { Text("Boş alan: ${context.noBackupFilesDir.usableSpace/1024/1024} MiB. APT/Gradle/npm toplamları proje ve mimariye bağlıdır; doğrulanmış toplam yoksa yüzde gösterilmez.") }
             plan?.let{p->item{Text(p.error?:"Bu proje için: "+p.modules.joinToString{OfflineModules.spec(it).title})}}
             if(section=="diagnostics" && ready[OfflineModuleId.LINUX_RUNTIME]==true)item{OutlinedButton(enabled=!busy && BuildModuleUsage.mutationBlockedReason()==null && pruneBytes!=null,onClick={confirmPrune=true}){Text("Eski sürümleri temizle • "+(pruneBytes?.let{"${it/1024/1024} MiB doğrulanmış dosya"}?:"boyut doğrulanamadı"))}}
             if(section=="diagnostics")pruneReason?.let{reason->item{Text("Eski sürüm temizleme kapalı: $reason")}}
