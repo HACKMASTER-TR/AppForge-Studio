@@ -1,0 +1,136 @@
+# V9 cost-optimized selective APT prefetch acceptance. No APK, production signing or deployment.
+name: V9 Selective R2 Modules and Persistent Cache (No Deploy)
+'on':
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - android-app/app/src/main/java/com/appforge/studio/build/V9SelectiveR2ModuleCache.kt
+      - android-app/app/src/test/java/com/appforge/studio/build/V9SelectiveR2ModuleCacheTest.kt
+      - .github/workflows/v9-selective-r2-module-cache.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-selective-r2-cache-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  selective-r2-cache:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027' &&
+      github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout with no persistent credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Guard exact additive scope, trust anchors and production state
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import os,subprocess,hashlib
+          def git(*args):return subprocess.check_output(['git',*args],text=True).strip()
+          assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_MISMATCH'
+          assert git('rev-parse','HEAD^')=='24b2ef110af695d36357fa46c1369f21f2914566','PARENT_MISMATCH'
+          expected={
+              '.github/workflows/v9-selective-r2-module-cache.yml',
+              'android-app/app/src/main/java/com/appforge/studio/build/V9SelectiveR2ModuleCache.kt',
+              'android-app/app/src/test/java/com/appforge/studio/build/V9SelectiveR2ModuleCacheTest.kt',
+          }
+          actual=set(git('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines())
+          assert actual==expected,('FILE_SCOPE_DRIFT',actual^expected)
+          pins={
+            'android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt':'d7be392d2cc38e2e06a317630d0d46e4afff9cd6',
+            'android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt':'55d4ceb7528fab723542336af0b8c4ef11590adb',
+            'android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java':'5c69602b89f16c402b9f3c0dc6327009cfafd9da',
+            'android-app/app/src/main/java/com/appforge/studio/build/AptModuleLocks.kt':'bf58f34183cecf1d9cf7ed4dc55ef3394815be52',
+          }
+          for p,sha in pins.items():
+              actual=git('rev-parse','HEAD:'+p)
+              assert actual==sha,('PIN_DRIFT',p,actual)
+          policy=Path('android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt').read_text()
+          plan=Path('android-app/app/src/main/java/com/appforge/studio/build/V9SelectiveR2ModuleCache.kt').read_text()
+          assert 'const val PRODUCTION_DISTRIBUTION_ENABLED = false' in policy
+          for guard in ['V9ReleaseCandidatePolicy.verify(manifest, signature, persistedFloor)',
+                       'V9ReleaseCandidatePolicy.requireProductionDisabled()',
+                       'V9SignedR2CandidateDownload.fetchWithConsent(',
+                       'V9ReleaseSignatureVerifier.verifyObject(',
+                       'selected.all { it in SUPPORTED }',
+                       'OfflineModules.resolve(selected)',
+                       'noBackupFilesDir',
+                       'chunkCount(it.bytes)']:
+              assert guard in plan,('CODE_GUARD_MISSING',guard)
+          assert git('status','--porcelain')=='','DIRTY_CHECKOUT'
+          print('V9_SELECTIVE_SOURCE_PIN=PASS;FILES=3;PRODUCTION_DISABLED=YES')
+          PY
+      - name: Check pinned APT catalog without network or cloud mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          p=Path('android-app/app/src/main/assets/device-build/apt-module-packages-v1.tsv')
+          content=p.read_bytes()
+          assert hashlib.sha256(content).hexdigest()=='77efb669105e5c17fda85dbd653b78b22b0614eaf70c4db8c7d00a8bb4df9e2f'
+          rows=[x.split('\t') for x in content.decode('utf-8').splitlines()]
+          assert len(rows)==353 and len({x[5] for x in rows})==214
+          assert set(x[0] for x in rows)=={'ANDROID_CORE','NODE_WEB','PYTHON_ANDROID','EXPO_REACT_NATIVE','WINDOWS_NATIVE'}
+          print('V9_CATALOG=PASS;ROWS=353;UNIQUE_DEB=214;MODULES=5')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install pinned Android SDK tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'ndk;28.2.13676358' 'cmake;3.22.1' > "$RUNNER_TEMP/v9-sdk.log" 2>&1 || { tail -90 "$RUNNER_TEMP/v9-sdk.log"; exit 1; }
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"; fi
+      - name: Compile app and execute 42 offline Android tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:testDebugUnitTest \
+            --tests com.appforge.studio.build.V9SelectiveR2ModuleCacheTest \
+            --tests com.appforge.studio.build.V9SignedR2CandidateDownloadTest \
+            --tests com.appforge.studio.security.V9ReleaseTrustDeepUnitTest \
+            --no-daemon --no-parallel --no-configuration-cache --console=plain \
+            > "$RUNNER_TEMP/v9-selective-junit.log" 2>&1 || {
+              tail -160 "$RUNNER_TEMP/v9-selective-junit.log"; exit 1;
+            }
+          grep -q 'BUILD SUCCESSFUL' "$RUNNER_TEMP/v9-selective-junit.log"
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          root=Path('android-app/app/build/test-results/testDebugUnitTest')
+          expected={'com.appforge.studio.build.V9SelectiveR2ModuleCacheTest':15,
+                    'com.appforge.studio.build.V9SignedR2CandidateDownloadTest':10,
+                    'com.appforge.studio.security.V9ReleaseTrustDeepUnitTest':17}
+          for name,count in expected.items():
+              f=root/('TEST-'+name+'.xml')
+              assert f.is_file(),('MISSING_JUNIT',name)
+              t=ET.parse(f).getroot()
+              assert int(t.attrib['tests'])==count,(name,'COUNT_DRIFT',t.attrib)
+              assert all(int(t.attrib.get(k,0))==0 for k in ['errors','failures','skipped']),(name,'TEST_FAILED',t.attrib)
+          print('V9_SELECTIVE_ANDROID_JUNIT=PASS;TESTS=42;SKIPPED=0')
+          PY
+      - name: Verify no production modifications or APK artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! find android-app -type f \( -name '*.apk' -o -name '*.aab' \) -print -quit | grep -q .
+          test -z "$(git status --porcelain)"
+          echo 'V9_SELECTIVE_R2_CACHE_CI=PASS;APK=NO;SIGNING=NO;WORKER_DEPLOY=NO;PRODUCTION=DISABLED'
