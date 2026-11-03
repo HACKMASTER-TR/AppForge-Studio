@@ -5,10 +5,9 @@ name: V9 Signed R2 Physical Android Acceptance APK (No Deploy)
     branches:
       - feat/v9-global-package-distribution-20261027
     paths:
-      - android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt
-      - android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt
-      - android-app/app/src/test/java/com/appforge/studio/V9R2BundleReaderTest.kt
-      - quality/tools/appforge_v9_persistent_debug_signing.sh
+      - android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt
+      - android-app/app/src/main/java/com/appforge/studio/build/V9R2AptInstallReuse.kt
+      - android-app/app/src/test/java/com/appforge/studio/build/V9R2AptInstallReuseTest.kt
       - .github/workflows/v9-signed-r2-physical-apk.yml
 permissions:
   contents: read
@@ -37,12 +36,11 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='cc75a2f6ac9c09d09cb5fb11f58f970670e63c09','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='8c73bbb9c0e9e3f4de58fe62404945fe69427241','BASE_DRIFT'
           expected={
-            'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
-            'android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt',
-            'android-app/app/src/test/java/com/appforge/studio/V9R2BundleReaderTest.kt',
-            'quality/tools/appforge_v9_persistent_debug_signing.sh',
+            'android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt',
+            'android-app/app/src/main/java/com/appforge/studio/build/V9R2AptInstallReuse.kt',
+            'android-app/app/src/test/java/com/appforge/studio/build/V9R2AptInstallReuseTest.kt',
             '.github/workflows/v9-signed-r2-physical-apk.yml',
           }
           assert set(git('diff','--name-only','HEAD^','HEAD').splitlines())==expected,'SCOPE_DRIFT'
@@ -85,8 +83,19 @@ jobs:
           assert all(name in reader for name in ('acceptsBoundedManifest','rejectsEmptyInput','rejectsOversizedInput','refusesStalledStream'))
           assert 'test-only-debug.p12' in signing and 'MAIN_PLAY_CLOUDFLARE_MUTATIONS=0' in signing
           assert 'APPFORGE_RELEASE' not in signing
+          reuse=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9R2AptInstallReuse.kt').read_text()
+          install=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt').read_text()
+          regression=pathlib.Path('android-app/app/src/test/java/com/appforge/studio/build/V9R2AptInstallReuseTest.kt').read_text()
+          assert 'V9SelectiveR2ModuleCache.preview(' in reuse
+          assert 'V9SignedR2CandidateDownload.privateCacheDirectory(' in reuse
+          assert 'BuildConfig.DEBUG' in reuse and 'V9R2AptInstallReuse.seedForDebug(' in install
+          assert 'if(com.appforge.studio.BuildConfig.DEBUG' in install
+          assert 'Existing APT CAS object has different bytes' in reuse
+          assert 'Tampered R2 cache object' in reuse
+          assert 'RuntimeGenerationStore(root).prepare(' in install
+          assert all(k in regression for k in ('repeatedImportsReuseSameCASWithoutRewriting','sameSizeTamperedSourceFailsClosed','corruptExistingTargetIsNeverOverwritten','rejectsSourceAndTargetSymlinks'))
           assert git('status','--porcelain')=='','DIRTY_WORKTREE'
-          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=5;NO_PRODUCTION=YES')
+          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=4;NO_PRODUCTION=YES')
           PY
       - uses: actions/setup-java@v4
         with:

@@ -304,6 +304,19 @@ internal object OfflineBuildPackManager {
                     RuntimeGenerationStore(root).prepare(id,canceled={if(installJob?.isActive==false)throw kotlinx.coroutines.CancellationException("İptal edildi")}).use { generation ->
                     val staged=generation.root
                     DownloadInstrumentation.install(app,staged)
+                    // Candidate-only: share SHA-256 verified Ubuntu packages with APT's
+                    // existing authenticated, no-download installation path.
+                    if(com.appforge.studio.BuildConfig.DEBUG && id in setOf(
+                        OfflineModuleId.NODE_WEB,OfflineModuleId.ANDROID_CORE,
+                        OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE,
+                        OfflineModuleId.WINDOWS_NATIVE
+                    )) {
+                        val reuse=V9R2AptInstallReuse.seedForDebug(app,staged,id)
+                        if(reuse.available>0) phase(id,ModulePhase.PREPARING,
+                            "R2 SHA-256 önbelleği: "+reuse.available+" paket hazır, "+
+                            reuse.missing+" eksik; "+reuse.verifiedBytes+" bayt yeniden indirilmeyecek. "+
+                            "Ubuntu indeksleri ve diğer araç arşivleri ayrı doğrulanır.")
+                    }
                     phase(id,ModulePhase.INSTALLING,"${OfflineModules.spec(id).title}: araç kurulumu; ölçülemeyen aşamada yüzde gösterilmez.")
                     if(id==OfflineModuleId.NODE_WEB) {
                         val arch=if(Build.SUPPORTED_ABIS.any{it=="arm64-v8a"})"arm64" else if(Build.SUPPORTED_ABIS.any{it=="x86_64"})"x64" else error("Bu platform için Node arşivi desteklenmiyor; paket eksikliği değil.")
