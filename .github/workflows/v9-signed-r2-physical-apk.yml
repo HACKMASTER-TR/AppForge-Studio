@@ -35,8 +35,10 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='1b13bac2428562a7cc58066a0d38179ecc936350','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='5accfd1ad8a27fb20e81b79a8851e148eb0a9fcb','BASE_DRIFT'
           expected={
+            'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
+            'android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt',
             '.github/workflows/v9-signed-r2-physical-apk.yml',
           }
           assert set(git('diff','--name-only','HEAD^','HEAD').splitlines())==expected,'SCOPE_DRIFT'
@@ -71,8 +73,10 @@ jobs:
           card=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt').read_text()
           reader=pathlib.Path('android-app/app/src/test/java/com/appforge/studio/V9R2BundleReaderTest.kt').read_text()
           signing=pathlib.Path('quality/tools/appforge_v9_persistent_debug_signing.sh').read_text()
-          assert git('rev-parse','HEAD:android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt')=='a15b12bedff458cf8857921b3199bc6586786ff1','SCREEN_PIN_DRIFT'
           assert git('rev-parse','HEAD:android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt')=='c1d1f63a492723d2cadfb94a2c151ce3154dd6fa','R2_UI_PIN_DRIFT'
+          assert 'val migrationChecked=migrationAudit?.first==selected' in screen
+          assert 'migrationReason==null' in screen
+          assert 'Güvenli runtime geçişi gerekli' in screen
           assert 'if(section=="modules")item {' in screen
           assert 'DropdownMenu(expanded=moduleMenuOpen' in screen or 'DropdownMenu(' in screen
           assert 'OfflineModules.all.forEach { item ->' in screen
@@ -92,6 +96,9 @@ jobs:
           assert 'APPFORGE_RELEASE' not in signing
           reuse=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9R2AptInstallReuse.kt').read_text()
           install=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt').read_text()
+          assert 'fun aptMigrationBlockedReason(context:Context,id:OfflineModuleId)' in install
+          assert 'return AptSnapshotMigration.blockedReason(root)' in install
+          assert 'require(AptSnapshotMigration.blockedReason(root)==null)' in install
           regression=pathlib.Path('android-app/app/src/test/java/com/appforge/studio/build/V9R2AptInstallReuseTest.kt').read_text()
           assert 'V9SelectiveR2ModuleCache.preview(' in reuse
           assert 'V9SignedR2CandidateDownload.privateCacheDirectory(' in reuse
@@ -102,7 +109,7 @@ jobs:
           assert 'RuntimeGenerationStore(root).prepare(' in install
           assert all(k in regression for k in ('repeatedImportsReuseSameCASWithoutRewriting','sameSizeTamperedSourceFailsClosed','corruptExistingTargetIsNeverOverwritten','rejectsSourceAndTargetSymlinks'))
           assert git('status','--porcelain')=='','DIRTY_WORKTREE'
-          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=1;NO_PRODUCTION=YES')
+          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=3;NO_PRODUCTION=YES')
           PY
       - uses: actions/setup-java@v4
         with:

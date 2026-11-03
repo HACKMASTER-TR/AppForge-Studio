@@ -243,6 +243,21 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                 val installed=ready[selected]==true
                 val known=ready.containsKey(selected)
                 val lifecycle=lifecycleStates[selected]
+                var migrationAudit by remember {
+                    mutableStateOf<Pair<OfflineModuleId,String?>?>(null)
+                }
+                LaunchedEffect(selected,recovered,busy) {
+                    migrationAudit=null
+                    if(recovered) migrationAudit=withContext(Dispatchers.IO) {
+                        selected to runCatching {
+                            OfflineBuildPackManager.aptMigrationBlockedReason(context,selected)
+                        }.getOrElse {
+                            "APT güvenlik kontrolü başarısız: ${it.message}"
+                        }
+                    }
+                }
+                val migrationChecked=migrationAudit?.first==selected
+                val migrationReason=migrationAudit?.takeIf{it.first==selected}?.second
                 val unsupported=if(selected !in setOf(
                     OfflineModuleId.FAST_HTML,
                     OfflineModuleId.WINDOWS_PORTABLE
@@ -252,8 +267,8 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                 }
                 val event=active ?: events[selected]
                 val updateRequired=selected in availableUpdates
-                val canInstall=known && !busy && !preparing &&
-                    !prefetchBusy && unsupported==null &&
+                val canInstall=known && migrationChecked && migrationReason==null &&
+                    !busy && !preparing && !prefetchBusy && unsupported==null &&
                     (!installed || updateRequired) &&
                     (lifecycle?.installedVersion==null || lifecycle.update.allowed)
 
@@ -298,11 +313,20 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
 
                         if(unsupported!=null)
                             Text(unsupported,color=MaterialTheme.colorScheme.error)
+                        if(!migrationChecked && !installed)
+                            Text("APT geçiş güvenliği kontrol ediliyor...")
+                        if(migrationReason!=null && (!installed || updateRequired)) {
+                            Text("Güvenli runtime geçişi gerekli",color=MaterialTheme.colorScheme.error)
+                            Text(migrationReason,style=MaterialTheme.typography.bodySmall)
+                            Text("Mevcut Node.js ortamı ve R2 önbelleği korunuyor. Kurulum engeli kaldırılmadı.",style=MaterialTheme.typography.bodySmall)
+                        }
 
                         Text(
                             "Durum: "+when {
                                 !known -> "Bütünlük kontrolü sürüyor"
                                 installed && !updateRequired -> "Doğrulanmış kurulum"
+                                !migrationChecked -> "APT geçiş denetimi sürüyor"
+                                migrationReason!=null -> "Güvenli runtime geçişi gerekli"
                                 installed && updateRequired -> "Güncelleme mevcut • kurulum korunuyor"
                                 event?.phase==ModulePhase.READY -> "Kurulu değil / bütünlük doğrulanmadı"
                                 event!=null -> event.phase.turkishLabel()

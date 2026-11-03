@@ -467,6 +467,12 @@ internal object OfflineBuildPackManager {
         part.writeText(org.json.JSONObject().put("revision",3).put("version",OfflineModules.spec(id).version).put("recipe",recipeDigest(context,id)).put("files",files).toString())
         java.nio.file.Files.move(part.toPath(),target.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING,java.nio.file.StandardCopyOption.ATOMIC_MOVE)
     }
+    /** Read-only UI preflight. Never bless a legacy APT snapshot. */
+    fun aptMigrationBlockedReason(context:Context,id:OfflineModuleId):String? {
+        if(id in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE,OfflineModuleId.LINUX_RUNTIME))return null
+        val root=runtimeRootfs(context)?:return null
+        return AptSnapshotMigration.blockedReason(root)
+    }
     fun aptSummary(context:Context,id:OfflineModuleId):AptModuleLocks.Summary? = runtimeRootfs(context)?.let{AptModuleLocks.inspect(it,id)}
     private fun recordMatches(context:Context,root:File,id:OfflineModuleId):Boolean = runCatching {
         val record=receipt(root,id);require(record.isFile && record.length()<=16384 && !java.nio.file.Files.isSymbolicLink(record.toPath()))
