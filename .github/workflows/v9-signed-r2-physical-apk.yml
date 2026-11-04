@@ -35,8 +35,9 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='719705b6cd36ca613b776d77d2c83dc39fe5b9f5','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='0ca8c292cff7d077965717498166c0b7fcce4b7b','BASE_DRIFT'
           expected={
+            'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
             'android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt',
             '.github/workflows/v9-signed-r2-physical-apk.yml',
           }
@@ -74,6 +75,13 @@ jobs:
           signing=pathlib.Path('quality/tools/appforge_v9_persistent_debug_signing.sh').read_text()
           assert git('rev-parse','HEAD:android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt')=='c1d1f63a492723d2cadfb94a2c151ce3154dd6fa','R2_UI_PIN_DRIFT'
           runtime=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt').read_text()
+          assert 'suspend fun stageIsolatedR2Cache(' in runtime
+          assert 'V9R2AptInstallReuse.seedExisting(' in runtime
+          assert 'V9SelectiveR2ModuleCache.inspectCache(' in runtime
+          assert 'VerifiedModuleDownload.sha(oldReceipt)==oldHash' in runtime
+          assert 'ACTIVE_RUNTIME_UNCHANGED;MODULES_NOT_INSTALLED' in runtime
+          assert 'if(stageConfirm) AlertDialog(' in screen
+          assert 'R2 önbelleğini izole Ubuntu' in screen
           assert 'it.write(REVISION.toByteArray(Charsets.UTF_8))' in runtime
           assert 'suspend fun prepareIsolatedRecovery(' in runtime
           assert 'runtime-v9-recovery-candidate' in runtime
@@ -119,7 +127,7 @@ jobs:
           assert 'RuntimeGenerationStore(root).prepare(' in install
           assert all(k in regression for k in ('repeatedImportsReuseSameCASWithoutRewriting','sameSizeTamperedSourceFailsClosed','corruptExistingTargetIsNeverOverwritten','rejectsSourceAndTargetSymlinks'))
           assert git('status','--porcelain')=='','DIRTY_WORKTREE'
-          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=2;NO_PRODUCTION=YES')
+          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=3;NO_PRODUCTION=YES')
           PY
       - uses: actions/setup-java@v4
         with:

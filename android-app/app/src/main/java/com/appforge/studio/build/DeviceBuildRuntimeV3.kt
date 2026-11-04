@@ -324,6 +324,142 @@ internal object DeviceBuildRuntimeV3 {
         "ISOLATED_UBUNTU_PREPARED;ACTIVE_RUNTIME_UNCHANGED"
     }
 
+    /**
+     * Debug-only and offline: transfer SHA-256 pinned R2 .deb objects into
+     * the isolated Ubuntu candidate's CAS. Never execute dpkg, activate
+     * the candidate, change active receipts or mark modules READY.
+     */
+    suspend fun stageIsolatedR2Cache(context:Context):String =
+        installMutex.withLock {
+        check(com.appforge.studio.BuildConfig.DEBUG) {
+            "İzole R2 hazırlama yalnız test sürümünde kullanılabilir."
+        }
+        val app=context.applicationContext
+        check(platformError()==null) {
+            platformError()?:"Desteklenmeyen platform"
+        }
+        val architecture=LinuxArchitecture.fromAndroidAbis(
+            Build.SUPPORTED_ABIS.toList()
+        ) ?: error("Desteklenmeyen mimari")
+        val arch=architecture.distroArchitecture
+        check(arch=="arm64" || arch=="amd64")
+        val manifest=LinuxRuntimeManifestRegistry.find(
+            LinuxDistribution.UBUNTU,architecture
+        ) ?: error("Sabitlenmiş Ubuntu manifesti bulunamadı")
+
+        val current=LinuxRuntimeLayout(
+            runtimeBaseDirectory(app),
+            LinuxDistribution.UBUNTU,architecture
+        ).rootfsDirectory
+        RecoveryPathAnchor.check(current)
+        check(AptSnapshotMigration.blockedReason(current)!=null) {
+            "Eski runtime güvenlik engeli bekleniyordu."
+        }
+        check(OfflineBuildPackManager.moduleReady(
+            app,OfflineModuleId.NODE_WEB
+        )) {
+            "Aktif Node.js bütünlüğü doğrulanamıyor."
+        }
+        val oldReceipt=File(
+            current,"opt/appforge-device/modules-v3/NODE_WEB.json"
+        )
+        check(oldReceipt.isFile &&
+            !Files.isSymbolicLink(oldReceipt.toPath()))
+        val oldHash=VerifiedModuleDownload.sha(oldReceipt)
+
+        val candidateBase=RecoveryPathAnchor.androidPlatformPath(
+            File(app.noBackupFilesDir,
+                "device-build/runtime-v9-recovery-candidate")
+        )
+        val layout=LinuxRuntimeLayout(
+            candidateBase,LinuxDistribution.UBUNTU,architecture
+        )
+        val root=layout.rootfsDirectory
+        RecoveryPathAnchor.check(root)
+        check(root.canonicalFile!=current.canonicalFile)
+        check(isTrustedRuntime(layout,manifest)) {
+            "İzole Ubuntu sürüm/metadata doğrulaması başarısız."
+        }
+        check(AndroidRuntimeTrust.ready(root)) {
+            "İzole Ubuntu TLS kayıtları doğrulanamadı."
+        }
+        check(BaseRuntimeOwnership.paths(root).isNotEmpty()) {
+            "İzole Ubuntu sahiplik envanteri bulunamadı."
+        }
+        val status=File(root,"var/lib/dpkg/status")
+        val baseline=File(
+            root,
+            "opt/appforge-device/apt-locks-v5/LINUX_RUNTIME/vendor-v1.json"
+        )
+        check(status.isFile && baseline.isFile)
+        check(!Files.isSymbolicLink(status.toPath()) &&
+            !Files.isSymbolicLink(baseline.toPath()))
+        val vendor=org.json.JSONObject(baseline.readText())
+        check(vendor.getInt("schema")==1 &&
+            vendor.getString("release")==manifest.release &&
+            vendor.getString("architecture")==architecture.id &&
+            vendor.getString("rootfsSha256")==manifest.archiveSha256 &&
+            vendor.getString("source")==manifest.archiveUrl &&
+            vendor.getString("statusSha256")==
+                VerifiedModuleDownload.sha(status)) {
+            "İzole Ubuntu APT başlangıç envanteri uyuşmuyor."
+        }
+        val receipts=File(root,"opt/appforge-device/modules-v3")
+        check(!Files.isSymbolicLink(receipts.toPath()) &&
+            receipts.listFiles().orEmpty().none{it.extension=="json"}) {
+            "İzole aday artık kurulum kayıtları içeriyor; işlem reddedildi."
+        }
+        check(AptSnapshotMigration.blockedReason(root)==null) {
+            "İzole adayın APT geçiş güvenliği doğrulanmadı."
+        }
+
+        // Includes Android Core dependencies required by Python.
+        val selected=setOf(
+            OfflineModuleId.NODE_WEB,
+            OfflineModuleId.PYTHON_ANDROID
+        )
+        val plan=V9SelectiveR2ModuleCache.preview(
+            app,selected,arch
+        )
+        val cache=V9SignedR2CandidateDownload.privateCacheDirectory(
+            app.noBackupFilesDir
+        )
+        val available=V9SelectiveR2ModuleCache.inspectCache(
+            cache,plan.packages
+        )
+        check(app.noBackupFilesDir.usableSpace>
+            available.existingBytes+256L*1024*1024) {
+            "İzole R2 hazırlığı için yeterli boş alan yok."
+        }
+
+        val result=V9R2AptInstallReuse.seedExisting(
+            cache,root,arch,plan.packages
+        )
+        check(result.available==available.existing.size &&
+            result.missing==available.missing.size) {
+            "R2 aktarım sayıları tutarsız."
+        }
+
+        check(isTrustedRuntime(layout,manifest) &&
+            AndroidRuntimeTrust.ready(root) &&
+            VerifiedModuleDownload.sha(status)==
+                vendor.getString("statusSha256"))
+        check(AptSnapshotMigration.blockedReason(root)==null)
+        check(OfflineBuildPackManager.moduleReady(
+            app,OfflineModuleId.NODE_WEB
+        ))
+        check(VerifiedModuleDownload.sha(oldReceipt)==oldHash) {
+            "Eski Node.js kaydı değişti; işlem reddedildi."
+        }
+        check(receipts.listFiles().orEmpty().none{
+            it.extension=="json"
+        })
+
+        "ISOLATED_R2_CACHE_STAGED;VERIFIED=${result.available};"+
+        "MISSING=${result.missing};REUSED_BYTES=${result.verifiedBytes};"+
+        "ACTIVE_RUNTIME_UNCHANGED;MODULES_NOT_INSTALLED"
+    }
+
     internal fun runtimeBaseDirectory(
         context: Context
     ): File = RecoveryPathAnchor.androidPlatformPath(

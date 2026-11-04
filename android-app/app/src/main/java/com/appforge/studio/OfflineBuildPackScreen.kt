@@ -165,6 +165,8 @@ internal object ModuleInstallOperations {
     var prefetchBusy by remember { mutableStateOf(false) }
     var moduleDetails by rememberSaveable { mutableStateOf(false) }
     var recoveryConfirm by remember { mutableStateOf(false) }
+    var stageConfirm by remember { mutableStateOf(false) }
+    var stageMessage by remember { mutableStateOf("") }
     var recoveryBusy by remember { mutableStateOf(false) }
     var recoveryMessage by remember { mutableStateOf("") }
     val liveProgress by ModuleInstallOperations.activeProgress.collectAsState()
@@ -237,6 +239,46 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
         },
         dismissButton={
             TextButton(onClick={recoveryConfirm=false}){
+                Text("Vazgeç")
+            }
+        }
+    )
+    if(stageConfirm) AlertDialog(
+        onDismissRequest={stageConfirm=false},
+        title={Text("İzole R2 paket aktarımı")},
+        text={Text(
+            "Mevcut SHA-256 doğrulanmış R2 paketleri temiz Ubuntu "+
+            "önbelleğine kopyalanacak. Ağ indirmesi, dpkg kurulumu, "+
+            "aktif runtime değişikliği ve modül READY işlemi yapılmaz."
+        )},
+        confirmButton={
+            TextButton(
+                enabled=!busy && !preparing && !recoveryBusy &&
+                    !prefetchBusy,
+                onClick={
+                    stageConfirm=false
+                    recoveryBusy=true
+                    stageMessage="R2 paketleri doğrulanıyor..."
+                    scope.launch {
+                        try {
+                            stageMessage=withContext(Dispatchers.IO) {
+                                DeviceBuildRuntimeV3.stageIsolatedR2Cache(
+                                    context
+                                )
+                            }
+                        } catch(e:Exception) {
+                            stageMessage="İzole R2 hazırlığı engellendi: "+
+                                (e.message?:"Bilinmeyen hata")+
+                                " • Aktif runtime değiştirilmedi."
+                        } finally {
+                            recoveryBusy=false
+                        }
+                    }
+                }
+            ){Text("Paketleri doğrula ve aktar")}
+        },
+        dismissButton={
+            TextButton(onClick={stageConfirm=false}){
                 Text("Vazgeç")
             }
         }
@@ -384,6 +426,20 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                                     recoveryMessage,
                                     style=MaterialTheme.typography.bodySmall
                                 )
+                            if(selected==OfflineModuleId.PYTHON_ANDROID) {
+                                OutlinedButton(
+                                    enabled=!recoveryBusy && !busy &&
+                                        !preparing && !prefetchBusy,
+                                    onClick={stageConfirm=true}
+                                ) {
+                                    Text("R2 önbelleğini izole Ubuntu'ya aktar")
+                                }
+                                if(stageMessage.isNotBlank())
+                                    Text(
+                                        stageMessage,
+                                        style=MaterialTheme.typography.bodySmall
+                                    )
+                            }
                         }
 
                         Text(
