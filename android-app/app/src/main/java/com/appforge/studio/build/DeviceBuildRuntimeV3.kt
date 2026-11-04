@@ -904,6 +904,93 @@ internal object DeviceBuildRuntimeV3 {
                         "apt-snapshot-profile.tsv"))==AptModuleLocks.PROFILE)
                     check(VerifiedModuleDownload.sha(File(runtime,
                         "apt-module-packages-v1.tsv"))==AptModuleLocks.CATALOG)
+                    // Bind Android's currently validated network name resolution
+                    // to the isolated Ubuntu candidate. Never touch active rootfs.
+                    val connectivity=app.getSystemService(
+                        ConnectivityManager::class.java
+                    ) ?: error("Android ağ yöneticisi bulunamadı")
+                    val network=connectivity.activeNetwork
+                        ?: error("Etkin Android ağı yok")
+                    val capabilities=connectivity.getNetworkCapabilities(network)
+                    check(capabilities?.hasCapability(
+                        android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET
+                    )==true && capabilities.hasCapability(
+                        android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED
+                    )) { "Android interneti doğrulanmadı" }
+                    val dns=connectivity.getLinkProperties(network)
+                        ?.dnsServers.orEmpty()
+                        .mapNotNull{it.hostAddress}
+                        .filter{it.isNotBlank()}
+                        .distinct()
+                    check(dns.isNotEmpty()) {
+                        "Android etkin ağında DNS sunucusu bulunamadı"
+                    }
+                    configureResolver(app,root)
+                    val resolver=File(root,"etc/resolv.conf")
+                    val nameservers=dns.map{"nameserver $it"}.toSet()
+                    check(!Files.isSymbolicLink(resolver.toPath()) &&
+                        resolver.isFile && resolver.length() in 10L..4096L &&
+                        resolver.readLines().filter{
+                            it.startsWith("nameserver ")
+                        }.toSet()==nameservers) {
+                        "İzole Ubuntu DNS yapılandırması doğrulanamadı"
+                    }
+
+                    // Android may resolve using Private DNS, while glibc inside
+                    // Proot has no access to that resolver. Bridge ONLY the
+                    // verified snapshot hostname using Android's live answer;
+                    // HTTPS still verifies the original hostname and certificate.
+                    val addresses=network.getAllByName(
+                        "snapshot.ubuntu.com"
+                    ).mapNotNull{it.hostAddress}
+                        .map{it.substringBefore('%')}
+                        .filter{it.isNotBlank()}
+                        .distinct().take(4)
+                    check(addresses.isNotEmpty()) {
+                        "Android özel DNS Ubuntu snapshot adresini çözemedi"
+                    }
+                    val hosts=File(root,"etc/hosts")
+                    val etc=File(root,"etc")
+                    check(etc.isDirectory &&
+                        etc.canonicalFile==etc.absoluteFile &&
+                        !Files.isSymbolicLink(hosts.toPath()) &&
+                        (!hosts.exists() || hosts.isFile) &&
+                        (!hosts.exists() || hosts.length()<=65536L) &&
+                        hosts.canonicalFile.parentFile==etc.canonicalFile) {
+                        "İzole Ubuntu hosts yolu güvenli değil"
+                    }
+                    val marker="# appforge-v9-apt-private-dns"
+                    val original=if(hosts.isFile)hosts.readText()
+                        else "127.0.0.1 localhost\n"
+                    val clean=original.lineSequence().filterNot{
+                        it.endsWith(marker)
+                    }.joinToString("\n").trimEnd()
+                    check(clean.lineSequence().none{
+                        !it.trimStart().startsWith('#') &&
+                        Regex("(^|\\s)snapshot\\.ubuntu\\.com(\\s|$)")
+                            .containsMatchIn(it)
+                    }) { "Ubuntu snapshot için beklenmeyen hosts girdisi" }
+                    val bridge=addresses.joinToString("\n"){
+                        "$it snapshot.ubuntu.com $marker"
+                    }
+                    val temp=File(etc,
+                        ".appforge-v9-hosts-"+java.util.UUID.randomUUID())
+                    try {
+                        check(temp.createNewFile())
+                        java.io.FileOutputStream(temp).use{out->
+                            out.write((clean+"\n"+bridge+"\n")
+                                .toByteArray(Charsets.UTF_8))
+                            out.fd.sync()
+                        }
+                        check(temp.setReadable(true,false))
+                        Files.move(temp.toPath(),hosts.toPath(),
+                            java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                    } finally { if(temp.exists())temp.delete() }
+                    check(hosts.isFile &&
+                        !Files.isSymbolicLink(hosts.toPath()) &&
+                        hosts.readText().contains(bridge))
+                    onProgress("İzole Ubuntu DNS yenilendi; HTTPS/GPG doğrulaması başlıyor.")
                     onProgress("APT snapshot imzaları gpgv ile doğrulanıyor; paket kurulmayacak.")
                     val result=com.appforge.studio.terminal.LinuxShellEngine(app)
                         .execute(

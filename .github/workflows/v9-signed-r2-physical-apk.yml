@@ -35,9 +35,8 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='bca069ad044b9aa5f3a94c0613c2f3a2750033de','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='5a991b319025a2760e748f323c7f725e32594b6f','BASE_DRIFT'
           expected={
-            'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
             'android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt',
             '.github/workflows/v9-signed-r2-physical-apk.yml',
           }
@@ -77,6 +76,12 @@ jobs:
           runtime=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt').read_text()
           assert r"val f=line.split('\t')" in runtime
           assert r"!raw.contains('\\')" in runtime
+          assert 'configureResolver(app,root)' in runtime
+          assert 'network.getAllByName(' in runtime
+          assert 'snapshot.ubuntu.com' in runtime
+          assert 'appforge-v9-apt-private-dns' in runtime
+          assert 'StandardCopyOption.ATOMIC_MOVE' in runtime
+          assert 'APT_GPGV=PASS;MODULES_NOT_INSTALLED;' in runtime
           assert 'suspend fun verifyIsolatedAptMetadata(' in runtime
           assert 'appforge_snapshot_apt_get update' in runtime
           assert 'APPFORGE_APT_MANAGED_INSTALL=1' in runtime
@@ -153,7 +158,7 @@ jobs:
           assert 'RuntimeGenerationStore(root).prepare(' in install
           assert all(k in regression for k in ('repeatedImportsReuseSameCASWithoutRewriting','sameSizeTamperedSourceFailsClosed','corruptExistingTargetIsNeverOverwritten','rejectsSourceAndTargetSymlinks'))
           assert git('status','--porcelain')=='','DIRTY_WORKTREE'
-          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=3;NO_PRODUCTION=YES')
+          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=2;NO_PRODUCTION=YES')
           PY
       - uses: actions/setup-java@v4
         with:
