@@ -235,7 +235,12 @@ internal object OfflineBuildPackManager {
         }
         if(pending.any{it==OfflineModuleId.ANDROID_CORE || it==OfflineModuleId.EXPO_REACT_NATIVE || it==OfflineModuleId.RUST_ANDROID_NDK})
             require(sdkConsent){"Yalnız Android SDK gerektiren modüller için SDK lisansı onayı gerekir."}
-        require(hasValidatedInternet(app)){"Kurulum için doğrulanmış internet bağlantısı gerekiyor; mevcut modüller korunur."}
+        // Verified caches are usable with all networks absent. Each actual network
+        // acquisition checks policy; a missing offline artifact fails before activation.
+        val aptModules=pending.filter{it in setOf(OfflineModuleId.ANDROID_CORE,
+            OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE,
+            OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST,OfflineModuleId.RUST_ANDROID_NDK)}
+        val r2Bundle=if(aptModules.isNotEmpty())V9R2ReleaseStore.load(app) else runCatching{V9R2ReleaseStore.load(app)}.getOrNull()
         val minimum=selected.mapNotNull{OfflineModules.spec(it).diskBytes}.sum()
         require(app.noBackupFilesDir.usableSpace>minimum+256L*1024*1024){"Kurulum için yeterli boş alan yok."}
         val workspace=File(app.cacheDir,"offline-module-v3/${UUID.randomUUID()}").apply{mkdirs()}
@@ -262,6 +267,26 @@ internal object OfflineBuildPackManager {
                 phase(active,ModulePhase.READY,"SHA-256 doğrulandı; Windows Portable hazır.")
             }
             control.checkpoint()
+            runtimeRootfs(app)?.takeIf{it.isDirectory}?.let { existing ->
+                if(aptModules.isNotEmpty())require(AptSnapshotMigration.blockedReason(existing)==null) {
+                    AptSnapshotMigration.blockedReason(existing)!!
+                }
+            }
+            if(r2Bundle!=null && aptModules.isNotEmpty()) {
+                val architecture=if(Build.SUPPORTED_ABIS.contains("arm64-v8a"))"arm64" else "amd64"
+                val selection=aptModules.flatMap { id -> when(id) {
+                    OfflineModuleId.RUST->listOf(OfflineModuleId.PYTHON_ANDROID)
+                    OfflineModuleId.RUST_ANDROID_NDK->listOf(OfflineModuleId.EXPO_REACT_NATIVE)
+                    else->listOf(id)
+                }}.toSet()
+                phase(active,ModulePhase.VERIFYING,"Ed25519 sürümü ve R2 paket önbelleği doğrulanıyor.")
+                val transferJob=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
+                V9SelectiveR2ModuleCache.fetchSelectedWithConsent(app,r2Bundle.manifest,r2Bundle.signature,
+                    r2Bundle.sequence,selection,architecture,true,
+                    canceled={transferJob?.isActive==false || control.request!=DownloadControl.Request.NONE},
+                    onProgress={index,total,done,bytes->progress(ModuleProgress(active,operation,ModulePhase.DOWNLOADING,
+                        done,bytes,detail="R2 nesnesi $index/$total • $done/$bytes bayt; kurulum henüz hazır değil."))})
+            }
             val linux=pending.filter{it !in setOf(OfflineModuleId.WINDOWS_PORTABLE,OfflineModuleId.FAST_HTML)}
             if(linux.isNotEmpty()) {
                 phase(OfflineModuleId.LINUX_RUNTIME,ModulePhase.INSTALLING,"Ortak Linux ortamı hazırlanıyor; toplam boyut henüz bilinmiyor.")
@@ -309,7 +334,7 @@ internal object OfflineBuildPackManager {
                     if(com.appforge.studio.BuildConfig.DEBUG && id in setOf(
                         OfflineModuleId.NODE_WEB,OfflineModuleId.ANDROID_CORE,
                         OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE,
-                        OfflineModuleId.WINDOWS_NATIVE
+                        OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST,OfflineModuleId.RUST_ANDROID_NDK
                     )) {
                         val reuse=V9R2AptInstallReuse.seedForDebug(app,staged,id)
                         if(reuse.available>0) phase(id,ModulePhase.PREPARING,
@@ -363,10 +388,10 @@ internal object OfflineBuildPackManager {
                         else -> error("Bilinmeyen modül")
                     }
                     for(command in commands) {
-                        DownloadNetwork.requireExternalConsent()
+                        if(hasValidatedInternet(app))DownloadNetwork.requireExternalConsent()
                         control.checkpoint()
                         execute(shell,staged,workspace,id.name.lowercase(),
-                        "APPFORGE_MODULE_REFRESH=${if(OfflineModules.refreshExistingInstallation(id,installedVersion(app,id)!=null))1 else 0} APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_CORE_PREPARED=${if(id in setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE,OfflineModuleId.RUST_ANDROID_NDK))1 else 0} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 ${if(id==OfflineModuleId.RUST && command.startsWith("install-rust-module.py"))"/usr/bin/python3.12 -I -S" else "/bin/sh"} /workspace/runtime/$command",id,operation,progress,control)
+                        "APPFORGE_MODULE_REFRESH=${if(OfflineModules.refreshExistingInstallation(id,installedVersion(app,id)!=null))1 else 0} APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_CORE_PREPARED=${if(id in setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE,OfflineModuleId.RUST_ANDROID_NDK))1 else 0} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 ${if(id==OfflineModuleId.RUST && command.startsWith("install-rust-module.py"))"/usr/bin/python3.12 -I -S" else "/bin/sh"} /workspace/runtime/$command",id,operation,progress,control,r2Authorized=r2Bundle!=null)
                     }
                     control.checkpoint()
                     phase(id,ModulePhase.OFFLINE_TEST,"Gerçek dosya/sürüm ve çevrimdışı araç kontrolü yapılıyor.")
@@ -381,6 +406,8 @@ internal object OfflineBuildPackManager {
                         else -> error("Geçersiz modül")
                     }
                     execute(shell,staged,workspace,"verify-${id.name.lowercase()}",probe)
+                    execute(shell,staged,workspace,"functional-${id.name.lowercase()}",
+                        "/bin/sh /workspace/runtime/module-functional-test.sh ${id.name}")
                     phase(id,ModulePhase.VERIFYING,"Dosya SHA-256 envanteri atomik kaydediliyor.")
                     val apt=AptModuleLocks.inspect(staged,id)
                     check(apt.transactions>0 || id !in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST)){"Doğrulanmış APT snapshot kilidi eksik; eski kurulum hazır kabul edilmez."}
@@ -404,7 +431,16 @@ internal object OfflineBuildPackManager {
         } catch(e:kotlinx.coroutines.CancellationException) {
             phase(active,if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else ModulePhase.CANCELED,if(e is DownloadNetwork.PolicyBlocked)"Ağ politikası bekleniyor; doğrulanmış modüller korunur." else "İptal edildi; mevcut doğrulanmış modüller korunur.");throw e
         } catch(e:Exception) {
-            progress(ModuleProgress(active,operation,if(!hasValidatedInternet(app))ModulePhase.WAITING_CONNECTION else ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=if(!hasValidatedInternet(app))"Bağlantı bekleniyor; kısmi indirme hazır sayılmaz. Bağlantı gelince Devam et seçin." else e.message?:"Kurulum başarısız."));throw e
+            val networkFailure=e is java.io.IOException && e !is javax.net.ssl.SSLException && !hasValidatedInternet(app)
+            val code=when {
+                e is SecurityException->"INTEGRITY_REJECTED"
+                e is javax.net.ssl.SSLException->"TLS_REJECTED"
+                networkFailure->"NETWORK_LOST"
+                e.message?.contains("APPFORGE_APT_LOCK_ERROR")==true->"APT_ADMISSION_REJECTED"
+                else->e.javaClass.simpleName
+            }
+            progress(ModuleProgress(active,operation,if(networkFailure)ModulePhase.WAITING_CONNECTION else ModulePhase.ERROR,
+                errorCode=code,detail=e.message?:"Kurulum başarısız; önceki generation korunur."));throw e
         } finally { workspace.deleteRecursively() }
         }
     }
@@ -433,7 +469,7 @@ internal object OfflineBuildPackManager {
         file.inputStream().use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;update(b,0,n)}}
         digest().joinToString(""){"%02x".format(it)}
     }
-    private fun recipeDigest(context:Context,id:OfflineModuleId):String {
+    private fun recipeDigest(context:Context,id:OfflineModuleId,historicalNode:Boolean=false):String {
         val names=when(id) {
             OfflineModuleId.RUST_ANDROID_NDK->listOf("install-toolchain.sh","rust-android.py","rust-layout.py","rust-project.py")
             OfflineModuleId.RUST->listOf("install-rust-module.py","install-rust-prerequisites.sh","rust-toolchain-v1.json")
@@ -443,9 +479,15 @@ internal object OfflineBuildPackManager {
         }+listOf("apt-acquire-observer.sh","apt-acquire-observer.awk","apt-acquire-emit.sh","apt-download-telemetry.sh","apt-snapshot-lock.sh","apt-snapshot-profile.tsv","apt-module-packages-v1.tsv","module-download-telemetry.sh","native-download-broker.sh","jvm-telemetry/network-byte-agent.jar","verified-toolchain-sources-v4.json")
         val hash=java.security.MessageDigest.getInstance("SHA-256")
         hash.update("ownership-probe-v8-apt-snapshot".toByteArray())
-        for(name in names.sorted()){hash.update(name.toByteArray());context.assets.open("device-build/$name").use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;hash.update(b,0,n)}}}
+        for(name in names.sorted()){hash.update(name.toByteArray());context.assets.open("device-build/"+(if(historicalNode && name in setOf("apt-snapshot-lock.sh","native-download-broker.sh"))"recipe-history/a9c1739/$name" else name)).use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;hash.update(b,0,n)}}}
+        if(!historicalNode)context.assets.open("device-build/module-functional-test.sh").use { input ->
+            hash.update("module-functional-test.sh".toByteArray());hash.update(input.readBytes())
+        }
         return hash.digest().joinToString(""){"%02x".format(it)}
     }
+    private fun recipeAccepted(context:Context,id:OfflineModuleId,recorded:String):Boolean =
+        ModuleRecipeCompatibility.accepts(id,recorded,recipeDigest(context,id)) ||
+            (id==OfflineModuleId.NODE_WEB && recorded==recipeDigest(context,id,historicalNode=true))
     fun installedVersion(context:Context,id:OfflineModuleId):String?=runCatching {
         val root=runtimeRootfs(context)?:return@runCatching null
         val f=receipt(root,id);require(f.isFile && f.length()<=16384 && !java.nio.file.Files.isSymbolicLink(f.toPath()))
@@ -456,7 +498,7 @@ internal object OfflineBuildPackManager {
         val root=runtimeRootfs(context)?:return@runCatching false
         val f=receipt(root,id);require(f.isFile && f.length()<=16384 && !java.nio.file.Files.isSymbolicLink(f.toPath()))
         val j=org.json.JSONObject(f.readText())
-        j.optString("version")!=OfflineModules.spec(id).version || !ModuleRecipeCompatibility.accepts(id,j.optString("recipe"),recipeDigest(context,id))
+        j.optString("version")!=OfflineModules.spec(id).version || !recipeAccepted(context,id,j.optString("recipe"))
     }.getOrDefault(false)
     private fun receipt(root:File,id:OfflineModuleId)=File(root,"opt/appforge-device/modules-v3/${id.name}.json")
     private fun writeAttestation(context:Context,root:File,id:OfflineModuleId) {
@@ -477,7 +519,7 @@ internal object OfflineBuildPackManager {
     private fun recordMatches(context:Context,root:File,id:OfflineModuleId):Boolean = runCatching {
         val record=receipt(root,id);require(record.isFile && record.length()<=16384 && !java.nio.file.Files.isSymbolicLink(record.toPath()))
         val json=org.json.JSONObject(record.readText());val files=json.getJSONObject("files")
-        json.getInt("revision")==3 && ModuleRecipeCompatibility.accepts(id,json.optString("recipe"),recipeDigest(context,id)) && json.getString("version")==OfflineModules.spec(id).version && files.length()==witnesses.getValue(id).size &&
+        json.getInt("revision")==3 && recipeAccepted(context,id,json.optString("recipe")) && json.getString("version")==OfflineModules.spec(id).version && files.length()==witnesses.getValue(id).size &&
             witnesses.getValue(id).all{path->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==files.optString(path)} && ModuleOwnershipStore(root).verifyNamespace(id) && AptModuleLocks.inspect(root,id).let{it.transactions>0 || id !in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST,OfflineModuleId.RUST_ANDROID_NDK)}
     }.getOrDefault(false)
     fun recoverPending(context:Context) {
@@ -603,7 +645,8 @@ internal object OfflineBuildPackManager {
         module:OfflineModuleId?=null,
         operation:String="",
         progress:(ModuleProgress)->Unit={},
-        control:DownloadControl=DownloadControl()
+        control:DownloadControl=DownloadControl(),
+        r2Authorized:Boolean=false
     ) = kotlinx.coroutines.coroutineScope {
         val sessionId =
             "offline-pack-$suffix-${UUID.randomUUID()}"
@@ -632,7 +675,7 @@ internal object OfflineBuildPackManager {
                 sessionId = sessionId,
                 rootfs = rootfs,
                 workspace = workspace,
-                command = AndroidRuntimeTrust.shellEnvironment + "export APPFORGE_APT_MANAGED_INSTALL=${if(module!=null)1 else 0}; export APPFORGE_APT_REQUIRE_CONSENT=${if(module!=null)1 else 0}; export APPFORGE_NATIVE_DOWNLOAD_BROKER=${if(broker!=null)"/workspace/native-downloads" else ""}; export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; "+command,
+                command = AndroidRuntimeTrust.shellEnvironment + "export APPFORGE_R2_RELEASE_AUTHORIZED=${if(r2Authorized)1 else 0}; export APPFORGE_APT_MANAGED_INSTALL=${if(module!=null)1 else 0}; export APPFORGE_APT_REQUIRE_CONSENT=${if(module!=null)1 else 0}; export APPFORGE_NATIVE_DOWNLOAD_BROKER=${if(broker!=null)"/workspace/native-downloads" else ""}; export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; "+command,
                 confirmed = true,
                 timeoutMs = 1_800_000L
             )

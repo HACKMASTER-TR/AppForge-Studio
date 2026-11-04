@@ -12,6 +12,7 @@ import com.appforge.studio.terminal.LinuxRuntimeManifestRegistry
 import com.appforge.studio.terminal.PackagedLinuxEngine
 import com.appforge.studio.terminal.PackagedLinuxEngineStatus
 import com.appforge.studio.terminal.VerifiedLinuxRootfsInstaller
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
@@ -461,7 +462,7 @@ internal object DeviceBuildRuntimeV3 {
     }
 
     /**
-     * Debug-only official Ubuntu Snapshot package prefetch.
+     * Debug-only R2 package prefetch with Ubuntu Snapshot used only as provenance.
      * This is NOT Ed25519 R2 release authorization or APT installation.
      * All objects are pinned by the APK catalog and SHA-256.
      * No active runtime mutation, dpkg operation or READY receipt.
@@ -475,22 +476,14 @@ internal object DeviceBuildRuntimeV3 {
         }
 
         // Recheck the candidate and the protected Node.js generation.
+        V9R2ReleaseStore.load(context.applicationContext)
         stageIsolatedR2Cache(context)
 
         return installMutex.withLock {
             BuildModuleUsage.mutationLease().use {
                 val app=context.applicationContext
                 DownloadNetwork.configure(app)
-                // User-selected permanent allowance for all validated networks.
-                // This does not bypass TLS, SHA-256 or APT signature checks.
-                DownloadNetwork.select(DownloadNetworkPolicy.ALLOW_ANY)
                 DownloadNetwork.prepareJournal()
-
-                check(DownloadNetwork.allowed(
-                    DownloadNetworkPolicy.ALLOW_ANY
-                )) {
-                    "Doğrulanmış internet bağlantısı gerekli."
-                }
 
                 val architecture=LinuxArchitecture.fromAndroidAbis(
                     Build.SUPPORTED_ABIS.toList()
@@ -684,12 +677,6 @@ internal object DeviceBuildRuntimeV3 {
 
                 for((index,item) in missing.withIndex()) {
                     check(job?.isActive!=false)
-                    check(DownloadNetwork.allowed(
-                        DownloadNetworkPolicy.ALLOW_ANY
-                    )) {
-                        "İnternet bağlantısı kesildi; doğrulanmış paketler korundu."
-                    }
-
                     val target=File(cacheRoot,item.sha256)
                     check(!Files.isSymbolicLink(target.toPath()))
 
@@ -704,34 +691,15 @@ internal object DeviceBuildRuntimeV3 {
                     if(cached) {
                         reused++
                     } else {
-                        val source=urls.getValue(item.sha256)
+                        val source=V9SignedR2CandidateDownload.urlForSha(item.sha256)
                         onProgress(
                             "İndiriliyor: ${index+1}/${missing.size}"
                         )
 
-                        VerifiedModuleDownload.download(
-                            url=source,
-                            expected=item.sha256,
-                            target=target,
-                            module=OfflineModuleId.PYTHON_ANDROID,
-                            operation=operation,
+                        check(source==V9SignedR2CandidateDownload.urlForSha(item.sha256))
+                        V9R2ObjectTransfer.download(target,item.sha256,item.bytes,
                             canceled={job?.isActive==false},
-                            open={address->
-                                DownloadNetwork.withPolicy(
-                                    DownloadNetworkPolicy.ALLOW_ANY
-                                ){
-                                    DownloadNetwork.open(address)
-                                }
-                            },
-                            progress={event->
-                                onProgress(
-                                    "Paket ${index+1}/${missing.size} • "+
-                                    "${event.phase} • "+
-                                    "${event.bytesDownloaded} bayt"
-                                )
-                            },
-                            maxBytes=item.bytes
-                        )
+                            progress={done,total->onProgress("R2 paket ${index+1}/${missing.size} • $done/$total bayt")})
                         downloaded++
                     }
 
@@ -797,13 +765,11 @@ internal object DeviceBuildRuntimeV3 {
         }
         val app=context.applicationContext
         // Revalidate old Node.js, vendor baseline, TLS and R2 trust boundaries.
+        V9R2ReleaseStore.load(context.applicationContext)
         stageIsolatedR2Cache(app)
         return installMutex.withLock {
             BuildModuleUsage.mutationLease().use {
                 DownloadNetwork.configure(app)
-                check(DownloadNetwork.allowed(DownloadNetworkPolicy.ALLOW_ANY)) {
-                    "Doğrulanmış internet bağlantısı bulunamadı."
-                }
                 val architecture=LinuxArchitecture.fromAndroidAbis(
                     Build.SUPPORTED_ABIS.toList()
                 ) ?: error("Desteklenmeyen Ubuntu mimarisi")
@@ -888,7 +854,7 @@ internal object DeviceBuildRuntimeV3 {
                 check(runtime.mkdir())
                 val names=listOf("apt-download-telemetry.sh",
                     "apt-snapshot-lock.sh","apt-snapshot-profile.tsv",
-                    "apt-module-packages-v1.tsv")
+                    "apt-module-packages-v1.tsv","native-download-broker.sh")
                 try {
                     for(name in names){
                         val data=app.assets.open("device-build/$name")
@@ -904,100 +870,18 @@ internal object DeviceBuildRuntimeV3 {
                         "apt-snapshot-profile.tsv"))==AptModuleLocks.PROFILE)
                     check(VerifiedModuleDownload.sha(File(runtime,
                         "apt-module-packages-v1.tsv"))==AptModuleLocks.CATALOG)
-                    // Bind Android's currently validated network name resolution
-                    // to the isolated Ubuntu candidate. Never touch active rootfs.
-                    val connectivity=app.getSystemService(
-                        ConnectivityManager::class.java
-                    ) ?: error("Android ağ yöneticisi bulunamadı")
-                    val network=connectivity.activeNetwork
-                        ?: error("Etkin Android ağı yok")
-                    val capabilities=connectivity.getNetworkCapabilities(network)
-                    check(capabilities?.hasCapability(
-                        android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET
-                    )==true && capabilities.hasCapability(
-                        android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED
-                    )) { "Android interneti doğrulanmadı" }
-                    val dns=connectivity.getLinkProperties(network)
-                        ?.dnsServers.orEmpty()
-                        .mapNotNull{it.hostAddress}
-                        .filter{it.isNotBlank()}
-                        .distinct()
-                    check(dns.isNotEmpty()) {
-                        "Android etkin ağında DNS sunucusu bulunamadı"
-                    }
-                    configureResolver(app,root)
-                    val resolver=File(root,"etc/resolv.conf")
-                    val nameservers=dns.map{"nameserver $it"}.toSet()
-                    check(!Files.isSymbolicLink(resolver.toPath()) &&
-                        resolver.isFile && resolver.length() in 10L..4096L &&
-                        resolver.readLines().filter{
-                            it.startsWith("nameserver ")
-                        }.toSet()==nameservers) {
-                        "İzole Ubuntu DNS yapılandırması doğrulanamadı"
-                    }
-
-                    // Android may resolve using Private DNS, while glibc inside
-                    // Proot has no access to that resolver. Bridge ONLY the
-                    // verified snapshot hostname using Android's live answer;
-                    // HTTPS still verifies the original hostname and certificate.
-                    val addresses=network.getAllByName(
-                        "snapshot.ubuntu.com"
-                    ).mapNotNull{it.hostAddress}
-                        .map{it.substringBefore('%')}
-                        .filter{it.isNotBlank()}
-                        .distinct().take(4)
-                    check(addresses.isNotEmpty()) {
-                        "Android özel DNS Ubuntu snapshot adresini çözemedi"
-                    }
-                    val hosts=File(root,"etc/hosts")
-                    val etc=File(root,"etc")
-                    check(etc.isDirectory &&
-                        etc.canonicalFile==etc.absoluteFile &&
-                        !Files.isSymbolicLink(hosts.toPath()) &&
-                        (!hosts.exists() || hosts.isFile) &&
-                        (!hosts.exists() || hosts.length()<=65536L) &&
-                        hosts.canonicalFile.parentFile==etc.canonicalFile) {
-                        "İzole Ubuntu hosts yolu güvenli değil"
-                    }
-                    val marker="# appforge-v9-apt-private-dns"
-                    val original=if(hosts.isFile)hosts.readText()
-                        else "127.0.0.1 localhost\n"
-                    val clean=original.lineSequence().filterNot{
-                        it.endsWith(marker)
-                    }.joinToString("\n").trimEnd()
-                    check(clean.lineSequence().none{
-                        !it.trimStart().startsWith('#') &&
-                        Regex("(^|\\s)snapshot\\.ubuntu\\.com(\\s|$)")
-                            .containsMatchIn(it)
-                    }) { "Ubuntu snapshot için beklenmeyen hosts girdisi" }
-                    val bridge=addresses.joinToString("\n"){
-                        "$it snapshot.ubuntu.com $marker"
-                    }
-                    val temp=File(etc,
-                        ".appforge-v9-hosts-"+java.util.UUID.randomUUID())
-                    try {
-                        check(temp.createNewFile())
-                        java.io.FileOutputStream(temp).use{out->
-                            out.write((clean+"\n"+bridge+"\n")
-                                .toByteArray(Charsets.UTF_8))
-                            out.fd.sync()
-                        }
-                        check(temp.setReadable(true,false))
-                        Files.move(temp.toPath(),hosts.toPath(),
-                            java.nio.file.StandardCopyOption.ATOMIC_MOVE,
-                            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                    } finally { if(temp.exists())temp.delete() }
-                    check(hosts.isFile &&
-                        !Files.isSymbolicLink(hosts.toPath()) &&
-                        hosts.readText().contains(bridge))
-                    onProgress("İzole Ubuntu DNS yenilendi; HTTPS/GPG doğrulaması başlıyor.")
-                    onProgress("APT snapshot imzaları gpgv ile doğrulanıyor; paket kurulmayacak.")
-                    val result=com.appforge.studio.terminal.LinuxShellEngine(app)
-                        .execute(
+                    // R2 transport uses Android native HTTPS and its live DNS, not
+                    // glibc Snapshot resolution. No hosts override or TLS bypass.
+                    onProgress("R2 kaynaklı Ubuntu GPG ve 16 Packages indeksi doğrulanıyor.")
+                    val result=kotlinx.coroutines.coroutineScope {
+                        val broker=ModuleArtifactBroker(workspace,File(root.parentFile,".module-archive-cache-v5"),
+                            OfflineModuleId.PYTHON_ANDROID,"v9-apt-metadata",{onProgress(it.detail)})
+                        val brokerJob=launch(kotlinx.coroutines.Dispatchers.IO){broker.serve()}
+                        try { com.appforge.studio.terminal.LinuxShellEngine(app).execute(
                             sessionId="v9-apt-metadata-"+java.util.UUID.randomUUID(),
                             rootfs=root,
                             workspace=workspace,
-                            command="export APPFORGE_APT_MANAGED_INSTALL=1 "+
+                            command="export APPFORGE_R2_RELEASE_AUTHORIZED=1 APPFORGE_NATIVE_DOWNLOAD_BROKER=/workspace/native-downloads APPFORGE_APT_MANAGED_INSTALL=1 "+
                                 "APPFORGE_MODULE_ID=PYTHON_ANDROID "+
                                 "APPFORGE_APT_SNAPSHOT=1 "+
                                 "APPFORGE_DOWNLOAD_TELEMETRY=/workspace/apt-metadata.json; "+
@@ -1007,6 +891,8 @@ internal object DeviceBuildRuntimeV3 {
                             confirmed=true,
                             timeoutMs=1_800_000L
                         )
+                        } finally {brokerJob.cancel()}
+                    }
                     check(!result.timedOut && result.exitCode==0){
                         "İmzalı APT indeks doğrulaması başarısız: "+
                             result.output.takeLast(1200)
@@ -1047,7 +933,7 @@ internal object DeviceBuildRuntimeV3 {
                         VerifiedModuleDownload.sha(oldReceipt)==originalNode)
                     "ISOLATED_APT_SIGNED_METADATA_VERIFIED;SUITES=4;"+
                         "PACKAGES_SHA256=${packages.size}/${packages.size};"+
-                        "APT_GPGV=PASS;MODULES_NOT_INSTALLED;"+
+                        "APT_GPGV=PASS;SIGNED_PACKAGES_INDEXES=16/16;MODULES_NOT_INSTALLED;"+
                         "ACTIVE_RUNTIME_UNCHANGED"
                 } finally {
                     // Only a newly created private verification workspace.

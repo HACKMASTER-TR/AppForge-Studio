@@ -313,6 +313,12 @@ require(!(appforgeProRecoveryTest && appforgeProSecondDevice)) {
     "Pro recovery and second-device modes cannot be combined."
 }
 
+// A new test identity never replaces production or an earlier acceptance APK/data.
+val appforgeV9R2Issue78Acceptance = providers.gradleProperty("appforgeV9R2Issue78Acceptance").orNull == "true"
+require(!appforgeV9R2Issue78Acceptance || (!appforgeV9R2DeviceAcceptance &&
+    !appforgeProProcessDeathTest && !appforgeProRecoveryTest && !appforgeProSecondDevice &&
+    !appforgePlayIntegrityAcceptance)) { "Issue78 acceptance must use its own package identity" }
+
 android {
     namespace = "com.appforge.studio"
     compileSdk = 37
@@ -435,7 +441,9 @@ android {
     buildTypes {
         getByName("debug") {
             ciDebugSigning?.let { signingConfig = it }
-            if (appforgeV9R2DeviceAcceptance) {
+            if (appforgeV9R2Issue78Acceptance) {
+                applicationIdSuffix = ".v9r2issue78"
+            } else if (appforgeV9R2DeviceAcceptance) {
                 applicationIdSuffix = ".v9r2accept"
             } else if (appforgeProRecoveryTest) {
                 applicationIdSuffix = ".prorecovery"

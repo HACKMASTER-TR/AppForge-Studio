@@ -7,6 +7,8 @@ import org.junit.Assert.*
 import org.junit.Test
 
 internal class AptSnapshotLockTest {
+    private val testAnchors=linkedMapOf<String,String>()
+    private fun inspect(root:File)=AptModuleLocks.inspectWithMetadataAnchors(root,OfflineModuleId.ANDROID_CORE,testAnchors)
     private fun fixture(test:(File,File)->Unit) {
         val root=Files.createTempDirectory("apt-lock").toFile()
         try {
@@ -16,7 +18,16 @@ internal class AptSnapshotLockTest {
             val store=File(root,"opt/appforge-device/apt-snapshot-v1/amd64-${AptModuleLocks.SNAPSHOT}").apply{mkdirs()}
             val lists=File(store,"lists").apply{mkdirs()}
             for(suite in listOf("noble","noble-updates","noble-security","noble-backports")) {
-                File(lists,"snapshot.ubuntu.com_ubuntu_${AptModuleLocks.SNAPSHOT}_dists_${suite}_InRelease").writeBytes(javaClass.getResourceAsStream("/apt-snapshot/${suite}_InRelease.asc")!!.readBytes())
+                // Synthetic pinned bytes for the hash/inventory primitive only.
+                // Real Ubuntu GPG admission is separately exercised by runtime tests.
+                val payload="Package: hello\nArchitecture: amd64\n\n"
+                val hash=java.security.MessageDigest.getInstance("SHA-256").digest(payload.toByteArray()).joinToString(""){"%02x".format(it.toInt() and 255)}
+                val prefix="snapshot.ubuntu.com_ubuntu_${AptModuleLocks.SNAPSHOT}_dists_${suite}_"
+                val release=File(lists,prefix+"InRelease")
+                release.writeText("Origin: Ubuntu\nCodename: noble\nSuite: $suite\nDate: Sun, 18 Oct 2026 00:00:00 UTC\nArchitectures: amd64\nComponents: main restricted universe multiverse\nSHA256:\n"+
+                    listOf("main","restricted","universe","multiverse").joinToString(""){" $hash ${payload.toByteArray().size} $it/binary-amd64/Packages\n"})
+                testAnchors[suite]=VerifiedModuleDownload.sha(release)
+                for(component in listOf("main","restricted","universe","multiverse"))File(lists,prefix+"${component}_binary-amd64_Packages").writeText(payload)
             }
             File(store,"indexes.sha256").writeText(lists.listFiles()!!.sortedBy{it.name}.joinToString(""){VerifiedModuleDownload.sha(it)+"  "+it.name+"\n"})
             write("var/lib/dpkg/status","Package: hello\nVersion: 2.10-3build1\nArchitecture: amd64\nStatus: install ok installed\n\n")
@@ -38,55 +49,82 @@ internal class AptSnapshotLockTest {
         }finally{root.deleteRecursively()}
     }
     private fun seal(lock:File) {File(lock,"manifest.sha256").writeText(lock.listFiles()!!.filter{it.name!="manifest.sha256"}.sortedBy{it.name}.joinToString(""){VerifiedModuleDownload.sha(it)+"  "+it.name+"\n"})}
+    @Test fun productionAnchorsRejectSyntheticFixture()=fixture{root,_->
+        assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
+    }
+    @Test fun readinessRejectsMissingPackagesEvenAfterLocalReseal()=fixture{root,lock->
+        val store=File(root,"opt/appforge-device/apt-snapshot-v1/amd64-${AptModuleLocks.SNAPSHOT}")
+        val lists=File(store,"lists")
+        lists.listFiles()!!.first{it.name.endsWith("main_binary-amd64_Packages")}.delete()
+        File(lists,"replacement").writeText("not a signed index")
+        File(store,"indexes.sha256").writeText(lists.listFiles()!!.joinToString(""){VerifiedModuleDownload.sha(it)+"  "+it.name+"\n"})
+        File(lock,"metadata.sha256").writeText(VerifiedModuleDownload.sha(File(store,"indexes.sha256")));seal(lock)
+        assertThrows(IllegalArgumentException::class.java){inspect(root)}
+    }
+    @Test fun transformedLz4StillRequiresTheSignedUncompressedSizeAndDigest()=fixture{root,lock->
+        val store=File(root,"opt/appforge-device/apt-snapshot-v1/amd64-${AptModuleLocks.SNAPSHOT}")
+        val lists=File(store,"lists")
+        val raw=lists.listFiles()!!.first{it.name.endsWith("main_binary-amd64_Packages")}
+        val compressed=File(raw.path+".lz4")
+        org.apache.commons.compress.compressors.lz4.FramedLZ4CompressorOutputStream(compressed.outputStream()).use{it.write(raw.readBytes())}
+        raw.delete()
+        fun reseal() {
+            File(store,"indexes.sha256").writeText(lists.listFiles()!!.joinToString(""){VerifiedModuleDownload.sha(it)+"  "+it.name+"\n"})
+            File(lock,"metadata.sha256").writeText(VerifiedModuleDownload.sha(File(store,"indexes.sha256")));seal(lock)
+        }
+        reseal();assertEquals(1,inspect(root).transactions)
+        org.apache.commons.compress.compressors.lz4.FramedLZ4CompressorOutputStream(compressed.outputStream()).use{it.write("tampered".toByteArray())}
+        reseal();assertThrows(IllegalArgumentException::class.java){inspect(root)}
+    }
     @Test fun sameLockSamePackagesAndUniqueBytes()=fixture{root,lock->
-        val first=AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)
-        assertEquals(first,AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE))
+        val first=inspect(root)
+        assertEquals(first,inspect(root))
         val duplicate=File(lock.parentFile,"b".repeat(64));lock.copyRecursively(duplicate)
         File(duplicate,"requests.txt").appendText("--no-upgrade\n");seal(duplicate)
         assertTrue(duplicate.renameTo(File(duplicate.parentFile,VerifiedModuleDownload.sha(File(duplicate,"requests.txt")))))
-        val second=AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)
+        val second=inspect(root)
         assertEquals(2,second.transactions);assertEquals(first.archiveBytes,second.archiveBytes);assertEquals(1,second.packages)
     }
     @Test fun alteredDistributionArchitectureAndProfileRejected()=fixture{root,lock->
         val f=File(lock,"identity");val valid=f.readText()
         for(change in listOf(valid.replace("noble","jammy"),valid.replace("amd64","arm64"),valid.replace("20261018","20261019"))) {
-            f.writeText(change);seal(lock);assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
+            f.writeText(change);seal(lock);assertThrows(IllegalArgumentException::class.java){inspect(root)}
         }
         f.writeText(valid);File(lock,"profile.sha256").writeText("0".repeat(64));seal(lock)
-        assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
+        assertThrows(IllegalArgumentException::class.java){inspect(root)}
     }
     @Test fun missingAndWrongArchiveHashRejected()=fixture{root,_->
         val cache=File(root,"opt/appforge-device/apt-snapshot-v1/amd64-${AptModuleLocks.SNAPSHOT}/archives").listFiles()!!.single()
-        cache.writeText("corrupted");assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
-        cache.delete();assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
+        cache.writeText("corrupted");assertThrows(IllegalArgumentException::class.java){inspect(root)}
+        cache.delete();assertThrows(IllegalArgumentException::class.java){inspect(root)}
     }
     @Test fun metadataAndInstalledFileTamperingRejected()=fixture{root,_->
         val file=File(root,"usr/bin/hello");file.writeText("modified")
-        assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
+        assertThrows(IllegalArgumentException::class.java){inspect(root)}
     }
     @Test fun signedRepositoryIdentityCannotBeReplacedByLocalChecksum()=fixture{root,lock->
         val store=File(root,"opt/appforge-device/apt-snapshot-v1/amd64-${AptModuleLocks.SNAPSHOT}")
         val release=File(store,"lists").listFiles()!!.first();release.appendText("altered signed data")
         File(store,"indexes.sha256").writeText(File(store,"lists").listFiles()!!.joinToString(""){VerifiedModuleDownload.sha(it)+"  "+it.name+"\n"})
         File(lock,"metadata.sha256").writeText(VerifiedModuleDownload.sha(File(store,"indexes.sha256")));seal(lock)
-        assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
+        assertThrows(IllegalArgumentException::class.java){inspect(root)}
     }
     @Test fun missingDependencyAndVersionConflictRejected()=fixture{root,_->
         val status=File(root,"var/lib/dpkg/status");val body=status.readText()
-        status.writeText(body.replace("2.10-3build1","2.10-4"));assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
-        status.writeText("");assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
+        status.writeText(body.replace("2.10-3build1","2.10-4"));assertThrows(IllegalArgumentException::class.java){inspect(root)}
+        status.writeText("");assertThrows(IllegalArgumentException::class.java){inspect(root)}
     }
     @Test fun symlinksAndTraversalRejected()=fixture{root,lock->
         val f=File(root,"usr/bin/hello");val outside=File(root.parentFile,"apt-outside-${root.name}").apply{writeText("user key fixture")}
-        try {f.delete();Files.createSymbolicLink(f.toPath(),outside.toPath());assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
+        try {f.delete();Files.createSymbolicLink(f.toPath(),outside.toPath());assertThrows(IllegalArgumentException::class.java){inspect(root)}
             f.delete();File(lock,"installed-files.sha256").writeText(VerifiedModuleDownload.sha(outside)+"  /../${outside.name}\n");seal(lock)
-            assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
+            assertThrows(IllegalArgumentException::class.java){inspect(root)}
             assertEquals("user key fixture",outside.readText())
         }finally{outside.delete()}
     }
     @Test fun markerAloneAndInterruptedLockRejected()=fixture{root,lock->
-        File(lock,"packages.tsv").delete();assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
-        lock.renameTo(File(lock.path+".part"));assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
+        File(lock,"packages.tsv").delete();assertThrows(IllegalArgumentException::class.java){inspect(root)}
+        lock.renameTo(File(lock.path+".part"));assertThrows(IllegalArgumentException::class.java){inspect(root)}
     }
     @Test fun importedPlanDoesNotGrantConsentAndExactOperationRequired() {
         val workspace=Files.createTempDirectory("apt-consent").toFile()
@@ -103,7 +141,7 @@ internal class AptSnapshotLockTest {
     }
     @Test fun actualUbuntuReleaseMismatchRejected()=fixture{root,_->
         File(root,"usr/lib/os-release").writeText("ID=ubuntu\nVERSION_CODENAME=jammy\n")
-        assertThrows(IllegalArgumentException::class.java){AptModuleLocks.inspect(root,OfflineModuleId.ANDROID_CORE)}
+        assertThrows(IllegalArgumentException::class.java){inspect(root)}
     }
     @Test fun legacyMigrationBlockedWithoutBlessingReceipts() {
         val root=Files.createTempDirectory("legacy-apt").toFile()

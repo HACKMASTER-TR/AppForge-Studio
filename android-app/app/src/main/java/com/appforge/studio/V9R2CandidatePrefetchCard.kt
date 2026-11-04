@@ -52,286 +52,118 @@ internal object V9R2BundleReader {
     }
 }
 
-/** Optional signed R2 prefetch feeds the existing installer; never marks READY. */
+/** One service-owned workflow: source selection -> download -> verify -> install -> test. */
 @Composable internal fun V9R2CandidatePrefetchCard(
-    selected: OfflineModuleId,
-    installEnabled: Boolean,
-    onBusyChange: (Boolean)->Unit,
-    onInstall: (OfflineModuleId)->Unit
+    selected: OfflineModuleId, installEnabled: Boolean,
+    onBusyChange: (Boolean)->Unit, onInstall: (OfflineModuleId)->Unit
 ) {
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
-    val arch=remember {
-        when {
-            Build.SUPPORTED_ABIS.contains("arm64-v8a") -> "arm64"
-            Build.SUPPORTED_ABIS.contains("x86_64") -> "amd64"
-            else -> null
-        }
+    val architecture=remember {
+        if(Build.SUPPORTED_ABIS.contains("arm64-v8a"))"arm64"
+        else if(Build.SUPPORTED_ABIS.contains("x86_64"))"amd64" else null
     }
-    val eligible=BuildConfig.DEBUG && selected in setOf(
-        OfflineModuleId.NODE_WEB,OfflineModuleId.ANDROID_CORE,
-        OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE,
-        OfflineModuleId.WINDOWS_NATIVE
-    ) && arch!=null
-
-    var showSignedOptions by remember { mutableStateOf(false) }
+    val aptSource=selected !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE,OfflineModuleId.LINUX_RUNTIME)
+    val previewModule=when(selected) {
+        OfflineModuleId.RUST->OfflineModuleId.PYTHON_ANDROID
+        OfflineModuleId.RUST_ANDROID_NDK->OfflineModuleId.EXPO_REACT_NATIVE
+        else->selected
+    }
     var manifest by remember { mutableStateOf<ByteArray?>(null) }
     var signature by remember { mutableStateOf<ByteArray?>(null) }
     var active by remember { mutableStateOf(false) }
-    var approving by remember { mutableStateOf(false) }
-    var planned by remember {
-        mutableStateOf<V9SelectiveR2ModuleCache.SignedSelection?>(null)
-    }
-    var proposed by remember {
-        mutableStateOf<V9SelectiveR2ModuleCache.CacheStatus?>(null)
-    }
-    var plannedTarget by remember { mutableStateOf<OfflineModuleId?>(null) }
-    var cacheStatus by remember { mutableStateOf("R2 önbelleği kontrol ediliyor...") }
+    var sourceReady by remember { mutableStateOf(false) }
+    var showSource by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
-    var progress by remember { mutableStateOf("") }
-
+    var cacheStatus by remember { mutableStateOf("") }
     LaunchedEffect(active) { onBusyChange(active) }
-    LaunchedEffect(selected) {
-        status=""
-        planned=null
-        proposed=null
-        approving=false
-    }
+    DisposableEffect(Unit) { onDispose { onBusyChange(false) } }
     LaunchedEffect(selected,active) {
-        if(!eligible) {
-            cacheStatus="Bu modül için R2 APT paket önbelleği kullanılmıyor."
-            return@LaunchedEffect
+        if(active || !aptSource || architecture==null)return@LaunchedEffect
+        val result=withContext(Dispatchers.IO) {
+            val authorized=runCatching{com.appforge.studio.build.V9R2ReleaseStore.load(context)}.isSuccess
+            val counts=runCatching {
+                val selection=V9SelectiveR2ModuleCache.preview(context,setOf(previewModule),architecture)
+                val dir=com.appforge.studio.build.V9SignedR2CandidateDownload.privateCacheDirectory(context.noBackupFilesDir)
+                val found=V9SelectiveR2ModuleCache.inspectCache(dir,selection.packages)
+                "Paket önbelleği: ${found.existing.size}/${selection.packages.size} doğrulanmış .deb; ${found.missing.size} eksik."
+            }.getOrElse{"Önbellek engeli: ${it.message}"}
+            authorized to counts
         }
-        cacheStatus="R2 önbelleği SHA-256 ile kontrol ediliyor..."
-        cacheStatus=withContext(Dispatchers.IO) {
-            runCatching {
-                val selection=V9SelectiveR2ModuleCache.preview(
-                    context,setOf(selected),arch!!
-                )
-                val directory=com.appforge.studio.build
-                    .V9SignedR2CandidateDownload.privateCacheDirectory(
-                        context.noBackupFilesDir
-                    )
-                val found=V9SelectiveR2ModuleCache.inspectCache(
-                    directory,selection.packages
-                )
-                "R2: ${found.existing.size}/${selection.packages.size} doğrulanmış paket; eksik ${found.missing.size}. İndirilmiş paketler yeniden alınmaz."
-            }.getOrElse{
-                "R2 önbellek doğrulaması başarısız: ${it.message}"
-            }
+        sourceReady=result.first
+        cacheStatus=result.second
+    }
+    LaunchedEffect(manifest,signature) {
+        val m=manifest;val sig=signature
+        if(m!=null && sig!=null) {
+            active=true
+            try {
+                withContext(Dispatchers.IO){com.appforge.studio.build.V9R2ReleaseStore.save(context,m,sig)}
+                sourceReady=true
+                status="Ed25519 R2 kaynağı doğrulandı ve kaydedildi; indirme başlamadı."
+            } catch(e:Exception){sourceReady=false;status="R2 kaynağı reddedildi: ${e.message}"}
+            finally{active=false}
         }
     }
-
-    val chooseManifest=rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if(uri!=null && !active) scope.launch {
-            manifest=null
-            status="Manifest okunuyor..."
-            runCatching{
-                withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.use {
-                        V9R2BundleReader.bounded(
-                            it,V9R2BundleReader.MAX_MANIFEST
-                        )
-                    } ?: error("Manifest okunamadı")
+    val chooseManifest=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if(uri!=null && !active)scope.launch {
+            active=true;manifest=null
+            try {
+                manifest=withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use{V9R2BundleReader.bounded(it,V9R2BundleReader.MAX_MANIFEST)}
+                        ?:error("Manifest okunamadı")
                 }
-            }.onSuccess{
-                manifest=it
-                status="Manifest alındı; Ed25519 imzası kurulum öncesi doğrulanacak."
-            }.onFailure{
-                status="Manifest reddedildi: ${it.message}"
-            }
+                status="Manifest seçildi; özgün baytlar Ed25519 ile doğrulanacak."
+            } catch(e:Exception){status="Manifest reddedildi: ${e.message}"}
+            finally{active=false}
         }
     }
-
-    val chooseSignature=rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if(uri!=null && !active) scope.launch {
-            signature=null
-            status="İmza okunuyor..."
-            runCatching{
-                withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.use {
-                        V9R2BundleReader.bounded(
-                            it,V9R2BundleReader.SIGNATURE_BYTES
-                        )
-                    } ?: error("İmza okunamadı")
-                }.also{
-                    require(it.size==V9R2BundleReader.SIGNATURE_BYTES)
+    val chooseSignature=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if(uri!=null && !active)scope.launch {
+            active=true;signature=null
+            try {
+                signature=withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use{V9R2BundleReader.bounded(it,V9R2BundleReader.SIGNATURE_BYTES)}
+                        ?.also{require(it.size==64)}?:error("64 baytlık imza okunamadı")
                 }
-            }.onSuccess{
-                signature=it
-                status="İmza dosyası alındı."
-            }.onFailure{
-                status="İmza reddedildi: ${it.message}"
-            }
+                status="İmza seçildi."
+            } catch(e:Exception){status="İmza reddedildi: ${e.message}"}
+            finally{active=false}
         }
     }
-
-    if(approving && planned!=null &&
-       proposed!=null && plannedTarget!=null) {
-        val p=planned!!
-        val q=proposed!!
-        val target=plannedTarget!!
-        AlertDialog(
-            onDismissRequest={if(!active)approving=false},
-            title={Text("İmzalı R2 paket aktarımını onayla")},
-            text={
-                Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Text("Modül: ${OfflineModules.spec(target).title}")
-                    Text("Önbellekte doğrulanan: ${q.existing.size}/${p.objects.size} paket")
-                    Text("Ağdan alınacak: ${q.missing.size} paket • ${q.networkBytes} bayt")
-                    Text("Yalnız doğrulanmış VPN'siz ve ölçüsüz Wi-Fi. İmza/SHA-256 kontrolü ve normal APT kurulumu ayrı doğrulanır.")
-                }
-            },
-            confirmButton={
-                Button(enabled=!active,onClick={
-                    val m=manifest?:return@Button
-                    val sig=signature?:return@Button
-                    val architecture=arch?:return@Button
-                    approving=false
-                    active=true
-                    status="İmzalı R2 paketleri indiriliyor ve doğrulanıyor..."
-                    scope.launch {
-                        val work=coroutineContext
-                        try {
-                            val count=withContext(Dispatchers.IO) {
-                                check(DownloadNetwork.allowed(
-                                    DownloadNetworkPolicy.WIFI_PREFERRED
-                                )) {
-                                    "R2 için ölçüsüz, VPN'siz doğrulanmış Wi-Fi gerekli"
-                                }
-                                DownloadNetwork.withPolicy(
-                                    DownloadNetworkPolicy.WIFI_PREFERRED
-                                ) {
-                                    V9SelectiveR2ModuleCache.fetchSelectedWithConsent(
-                                        context,m,sig,2026101801L,
-                                        setOf(target),architecture,
-                                        userApproved = true,
-                                        canceled = {!work.isActive},
-                                        onProgress={index,total,done,bytes->
-                                            scope.launch{
-                                                progress="Paket $index/$total • $done/$bytes bayt"
-                                            }
-                                        }
-                                    ).size
-                                }
-                            }
-                            val after=withContext(Dispatchers.IO) {
-                                V9SelectiveR2ModuleCache.status(context,p)
-                            }
-                            check(after.missing.isEmpty() &&
-                                  after.networkGetRequests==0L)
-                            status="$count R2 paketi SHA-256 doğrulandı. Kurulum onayı açılıyor."
-                            onInstall(target)
-                        } catch(e:CancellationException) {
-                            status="R2 indirme durdu; doğrulanmış paketler korunuyor."
-                            throw e
-                        } catch(e:Exception) {
-                            status="R2 aktarımı engellendi: ${e.message}"
-                        } finally {
-                            active=false
-                            planned=null
-                            proposed=null
-                            plannedTarget=null
-                            progress=""
-                        }
+    if(aptSource) {
+        Text(cacheStatus,style=MaterialTheme.typography.bodySmall)
+        Text("Kaynak: R2 ve doğrulanmış yerel önbellek. Ubuntu Snapshot yalnız sabit köken kaydıdır.",style=MaterialTheme.typography.bodySmall)
+        Text("APT için ayrıca 4 Ubuntu imzası ve 16 Packages indeksi doğrulanır. Eksik metadata kurulumu engeller; paket sayısı READY anlamına gelmez.",style=MaterialTheme.typography.bodySmall)
+        TextButton(enabled=!active,onClick={showSource=!showSource}) {
+            Text(if(sourceReady)"İmzalı R2 kaynağını değiştir" else "İmzalı R2 kaynağını seç")
+        }
+        if(showSource || !sourceReady)Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(enabled=!active,onClick={chooseManifest.launch(arrayOf("*/*"))}){Text(if(manifest==null)"Manifest seç" else "Manifest ✓")}
+            OutlinedButton(enabled=!active,onClick={chooseSignature.launch(arrayOf("*/*"))}){Text(if(signature==null)"İmza seç" else "İmza ✓")}
+        }
+    }
+    val partial=(manifest!=null || signature!=null) && (manifest==null || signature==null)
+    val requiresSource=aptSource && selected!=OfflineModuleId.NODE_WEB
+    Button(enabled=installEnabled && !active && !partial &&
+        (!requiresSource || sourceReady || manifest!=null && signature!=null),
+        modifier=Modifier.fillMaxWidth(),onClick={
+            val target=selected;val m=manifest;val sig=signature
+            active=true
+            scope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        if(m!=null && sig!=null)com.appforge.studio.build.V9R2ReleaseStore.save(context,m,sig)
+                        else if(requiresSource)com.appforge.studio.build.V9R2ReleaseStore.load(context)
                     }
-                }){Text("Paketleri indir ve kuruluma geç")}
-            },
-            dismissButton={
-                TextButton(onClick={approving=false}){Text("Vazgeç")}
+                    status="Kaynak doğrulandı. Tek işlem indirme, doğrulama, kurulum ve fonksiyon testini yürütecek."
+                    onInstall(target)
+                } catch(e:Exception){status="R2 kaynağı reddedildi: ${e.message}"}
+                finally{active=false}
             }
-        )
-    }
-
-    Text(cacheStatus,style=MaterialTheme.typography.bodySmall)
-
-    if(eligible) {
-        TextButton(
-            enabled=!active,
-            onClick={showSignedOptions=!showSignedOptions}
-        ) {
-            Text(if(showSignedOptions)
-                "İmzalı R2 kaynaklarını gizle"
-                else "İmzalı R2 kaynakları (isteğe bağlı)")
-        }
-        if(showSignedOptions) {
-            Text(
-                "Yeni R2 nesnelerini indirmek için imzalı manifest ve 64 baytlık imza seçin. Dosyalar yoksa mevcut imzalı APT kurulum yolu çalışır.",
-                style=MaterialTheme.typography.bodySmall
-            )
-            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    enabled=!active,
-                    onClick={chooseManifest.launch(arrayOf("*/*"))}
-                ){Text(if(manifest==null)"Manifest seç" else "Manifest ✓")}
-                OutlinedButton(
-                    enabled=!active,
-                    onClick={chooseSignature.launch(arrayOf("*/*"))}
-                ){Text(if(signature==null)"İmza seç" else "İmza ✓")}
-            }
-        }
-    }
-
-    val incompleteR2=eligible &&
-        (manifest!=null || signature!=null) &&
-        (manifest==null || signature==null)
-
-    Button(
-        enabled=installEnabled && !active && !incompleteR2,
-        modifier=Modifier.fillMaxWidth(),
-        onClick={
-            val target=selected
-            val m=manifest
-            val sig=signature
-            val architecture=arch
-
-            if(eligible && m!=null && sig!=null &&
-               architecture!=null) {
-                active=true
-                status="Ed25519 imzası, SHA-256 katalog ve R2 önbelleği doğrulanıyor..."
-                scope.launch {
-                    try {
-                        val pair=withContext(Dispatchers.IO) {
-                            val p=V9SelectiveR2ModuleCache.signedPlan(
-                                context,m,sig,2026101801L,
-                                setOf(target),architecture
-                            )
-                            p to V9SelectiveR2ModuleCache.status(context,p)
-                        }
-                        if(pair.second.missing.isEmpty()) {
-                            status="İmzalı R2 önbelleği doğrulandı; yeni indirme yok."
-                            onInstall(target)
-                        } else {
-                            planned=pair.first
-                            proposed=pair.second
-                            plannedTarget=target
-                            approving=true
-                            status="İmza doğrulandı; ${pair.second.missing.size} eksik paket için ağ izni bekleniyor."
-                        }
-                    } catch(e:Exception) {
-                        status="R2 imza veya paket kontrolü başarısız: ${e.message}"
-                    } finally {
-                        active=false
-                    }
-                }
-            } else onInstall(target)
-        }
-    ){Text("Paketleri indir, doğrula ve kur")}
-
-    if(incompleteR2)
-        Text(
-            "R2 için manifest ve imza birlikte seçilmeli.",
-            color=MaterialTheme.colorScheme.error
-        )
-
-    if(active)
-        LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
-    if(progress.isNotBlank())
-        Text(progress,style=MaterialTheme.typography.bodySmall)
-    if(status.isNotBlank())
-        Text(status,style=MaterialTheme.typography.bodySmall)
+        }){Text("Paketleri indir, doğrula ve kur")}
+    if(partial)Text("Manifest ve imza birlikte seçilmeli.",color=MaterialTheme.colorScheme.error)
+    if(requiresSource && !sourceReady && manifest==null)Text("İmzalı R2 sürümü gerekli. Eksik Packages indeksleri varsa işlem güvenle durur.",style=MaterialTheme.typography.bodySmall)
+    if(active)LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
+    if(status.isNotBlank())Text(status,style=MaterialTheme.typography.bodySmall)
 }

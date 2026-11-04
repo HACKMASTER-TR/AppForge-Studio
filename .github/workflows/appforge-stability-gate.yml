@@ -91,10 +91,15 @@ jobs:
 
           test -x "$SDKMANAGER"
 
-          "$SDKMANAGER" \
+          "$SDKMANAGER" --channel=3 \
+            "platforms;android-37.0" \
             "ndk;28.2.13676358" \
             "cmake;3.22.1"
 
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
           test -d "$ANDROID_HOME/ndk/28.2.13676358"
           test -d "$ANDROID_HOME/cmake/3.22.1"
 

@@ -14,6 +14,8 @@ related:
   - "[[Modular_Offline_V3]]"
   - "[[Device_Build_Runtime_V3]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/PinnedAptMetadata.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/V9R2ObjectTransfer.kt"
   - "android-app/app/src/main/assets/device-build/apt-snapshot-lock.sh"
   - "android-app/app/src/main/assets/device-build/apt-snapshot-profile.tsv"
   - "android-app/app/src/main/assets/device-build/apt-module-packages-v1.tsv"
@@ -71,3 +73,20 @@ root. ARM64 signed metadata and dependency resolution were exercised, not native
 execution. Physical Android lifecycle, ARM64 installation, real ENOSPC and new CI
 are separate NOT_RUN boundaries. The proof does not establish arbitrary project
 Maven/npm/Chaquopy caches or full Android/Expo build acceptance.
+
+## Issue 78: R2 acquisition and complete admission (2026-11-04)
+
+On `codex/v9-offline-module-center-r2`, the managed adapter supersedes live
+Snapshot acquisition with native R2 content-addressed acquisition and verified
+local reuse. Snapshot URIs remain pinned solver/provenance identities. No live
+Snapshot fallback is permitted. Four genuine InRelease signatures without all
+sixteen signed native-architecture Packages indexes no longer pass admission.
+Signed size, hash, architecture, Date and published Valid-Until are rechecked on
+reuse. The four exact Ubuntu releases omit Valid-Until; no field is fabricated.
+APT installs exact catalog-approved packages with networking disabled, then
+checks dpkg state, package files, file hashes, functional probes and generation
+ownership before activation. See
+[the issue 78 report](../../reports/v9-offline-module-center-r2-20261104.md) for
+32 authenticated index references, host evidence and external/device blockers.
+This branch record does not claim remote metadata publication, physical Android
+acceptance, an independent rollback witness or production enablement.
