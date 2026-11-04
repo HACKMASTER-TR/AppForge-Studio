@@ -166,6 +166,8 @@ internal object ModuleInstallOperations {
     var moduleDetails by rememberSaveable { mutableStateOf(false) }
     var recoveryConfirm by remember { mutableStateOf(false) }
     var stageConfirm by remember { mutableStateOf(false) }
+    var ubuntuFetchConfirm by remember { mutableStateOf(false) }
+    var ubuntuFetchStatus by remember { mutableStateOf("") }
     var stageMessage by remember { mutableStateOf("") }
     var recoveryBusy by remember { mutableStateOf(false) }
     var recoveryMessage by remember { mutableStateOf("") }
@@ -239,6 +241,54 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
         },
         dismissButton={
             TextButton(onClick={recoveryConfirm=false}){
+                Text("Vazgeç")
+            }
+        }
+    )
+    if(ubuntuFetchConfirm) AlertDialog(
+        onDismissRequest={ubuntuFetchConfirm=false},
+        title={Text("Eksik Ubuntu paketlerini indir")},
+        text={Text(
+            "Yalnız doğrulanmış ölçüsüz Wi-Fi kullanılacak. "+
+            "APK içindeki sabit SHA-256 ve resmî Ubuntu Snapshot "+
+            "adreslerinden yalnız eksik paketler indirilecek. "+
+            "APT imzaları doğrulanmadan kurulum veya runtime "+
+            "geçişi yapılmayacak."
+        )},
+        confirmButton={
+            TextButton(
+                enabled=!busy && !preparing &&
+                    !recoveryBusy && !prefetchBusy,
+                onClick={
+                    ubuntuFetchConfirm=false
+                    recoveryBusy=true
+                    ubuntuFetchStatus="Ubuntu indirmesi hazırlanıyor..."
+                    scope.launch {
+                        try {
+                            ubuntuFetchStatus=withContext(Dispatchers.IO) {
+                                DeviceBuildRuntimeV3
+                                    .prefetchIsolatedUbuntuPackages(
+                                        context
+                                    ){status->
+                                        scope.launch{
+                                            ubuntuFetchStatus=status
+                                        }
+                                    }
+                            }
+                        } catch(e:Exception) {
+                            ubuntuFetchStatus=
+                                "Ubuntu indirme engellendi: "+
+                                (e.message?:"Bilinmeyen hata")+
+                                " • Aktif Node.js korunuyor."
+                        } finally {
+                            recoveryBusy=false
+                        }
+                    }
+                }
+            ){Text("Eksik paketleri indir")}
+        },
+        dismissButton={
+            TextButton(onClick={ubuntuFetchConfirm=false}){
                 Text("Vazgeç")
             }
         }
@@ -437,6 +487,18 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                                 if(stageMessage.isNotBlank())
                                     Text(
                                         stageMessage,
+                                        style=MaterialTheme.typography.bodySmall
+                                    )
+                                OutlinedButton(
+                                    enabled=!recoveryBusy && !busy &&
+                                        !preparing && !prefetchBusy,
+                                    onClick={ubuntuFetchConfirm=true}
+                                ) {
+                                    Text("Eksik Ubuntu paketlerini indir")
+                                }
+                                if(ubuntuFetchStatus.isNotBlank())
+                                    Text(
+                                        ubuntuFetchStatus,
                                         style=MaterialTheme.typography.bodySmall
                                     )
                             }

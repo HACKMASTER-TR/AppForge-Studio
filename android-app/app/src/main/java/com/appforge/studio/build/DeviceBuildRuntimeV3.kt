@@ -460,6 +460,326 @@ internal object DeviceBuildRuntimeV3 {
         "ACTIVE_RUNTIME_UNCHANGED;MODULES_NOT_INSTALLED"
     }
 
+    /**
+     * Debug-only official Ubuntu Snapshot package prefetch.
+     * This is NOT Ed25519 R2 release authorization or APT installation.
+     * All objects are pinned by the APK catalog and SHA-256.
+     * No active runtime mutation, dpkg operation or READY receipt.
+     */
+    suspend fun prefetchIsolatedUbuntuPackages(
+        context:Context,
+        onProgress:(String)->Unit={}
+    ):String {
+        check(com.appforge.studio.BuildConfig.DEBUG) {
+            "Ubuntu önbellek hazırlığı yalnız debug sürümünde."
+        }
+
+        // Recheck the candidate and the protected Node.js generation.
+        stageIsolatedR2Cache(context)
+
+        return installMutex.withLock {
+            BuildModuleUsage.mutationLease().use {
+                val app=context.applicationContext
+                DownloadNetwork.configure(app)
+                DownloadNetwork.prepareJournal()
+
+                check(DownloadNetwork.allowed(
+                    DownloadNetworkPolicy.WIFI_PREFERRED
+                )) {
+                    "Doğrulanmış, ölçüsüz, VPN'siz Wi-Fi gerekli."
+                }
+
+                val architecture=LinuxArchitecture.fromAndroidAbis(
+                    Build.SUPPORTED_ABIS.toList()
+                ) ?: error("Desteklenmeyen mimari")
+                val arch=architecture.distroArchitecture
+                check(arch=="arm64" || arch=="amd64")
+
+                val manifest=LinuxRuntimeManifestRegistry.find(
+                    LinuxDistribution.UBUNTU,architecture
+                ) ?: error("Ubuntu manifesti bulunamadı")
+
+                val active=LinuxRuntimeLayout(
+                    runtimeBaseDirectory(app),
+                    LinuxDistribution.UBUNTU,architecture
+                ).rootfsDirectory
+
+                val oldReceipt=File(active,
+                    "opt/appforge-device/modules-v3/NODE_WEB.json")
+                check(oldReceipt.isFile &&
+                    !Files.isSymbolicLink(oldReceipt.toPath()))
+                val oldHash=VerifiedModuleDownload.sha(oldReceipt)
+
+                check(AptSnapshotMigration.blockedReason(active)!=null)
+                check(OfflineBuildPackManager.moduleReady(
+                    app,OfflineModuleId.NODE_WEB
+                ))
+
+                val base=RecoveryPathAnchor.androidPlatformPath(
+                    File(app.noBackupFilesDir,
+                        "device-build/runtime-v9-recovery-candidate")
+                )
+                val layout=LinuxRuntimeLayout(
+                    base,LinuxDistribution.UBUNTU,architecture
+                )
+                val root=layout.rootfsDirectory
+
+                RecoveryPathAnchor.check(root)
+                check(root.canonicalFile!=active.canonicalFile)
+                check(isTrustedRuntime(layout,manifest) &&
+                    AndroidRuntimeTrust.ready(root))
+                check(BaseRuntimeOwnership.paths(root).isNotEmpty())
+
+                val status=File(root,"var/lib/dpkg/status")
+                val baseline=File(root,
+                    "opt/appforge-device/apt-locks-v5/LINUX_RUNTIME/vendor-v1.json")
+                check(status.isFile && baseline.isFile)
+                val baselineJson=org.json.JSONObject(
+                    baseline.readText()
+                )
+                val originalStatusHash=
+                    baselineJson.getString("statusSha256")
+                check(originalStatusHash==
+                    VerifiedModuleDownload.sha(status))
+
+                val selected=setOf(
+                    OfflineModuleId.NODE_WEB,
+                    OfflineModuleId.PYTHON_ANDROID
+                )
+                val plan=V9SelectiveR2ModuleCache.preview(
+                    app,selected,arch
+                )
+                val expected=plan.packages.associateBy{
+                    it.sha256
+                }
+                val closure=OfflineModules.resolve(selected).toSet()
+
+                val catalog=app.assets.open(
+                    "device-build/apt-module-packages-v1.tsv"
+                ).use{it.readBytes()}
+                check(catalog.isNotEmpty() &&
+                    catalog.size<=512*1024)
+
+                val catalogHash=MessageDigest.getInstance(
+                    "SHA-256"
+                ).digest(catalog).joinToString("") {
+                    "%02x".format(it.toInt() and 255)
+                }
+                check(catalogHash==AptModuleLocks.CATALOG) {
+                    "APK Ubuntu katalog SHA-256 uyuşmuyor."
+                }
+
+                val urls=linkedMapOf<String,String>()
+
+                for(line in catalog.toString(
+                    Charsets.UTF_8
+                ).lineSequence().filter{it.isNotBlank()}) {
+                    val f=line.split('\\t')
+                    check(f.size in 8..10)
+                    val id=OfflineModuleId.valueOf(f[0])
+                    if(id !in closure || f[1]!=arch)continue
+
+                    val sha=f[5]
+                    val record=expected[sha]
+                        ?: error("Beklenmeyen katalog paketi")
+                    check(f[6].toLong()==record.bytes)
+                    check(f[4]=="all" || f[4]==arch)
+
+                    val url=f[7]
+                    val uri=java.net.URI(url)
+                    val raw=uri.rawPath.orEmpty()
+                    val lower=raw.lowercase(java.util.Locale.ROOT)
+
+                    check(uri.scheme=="https" &&
+                        uri.host=="snapshot.ubuntu.com" &&
+                        uri.port==-1 &&
+                        uri.userInfo==null &&
+                        uri.rawQuery==null &&
+                        uri.rawFragment==null &&
+                        uri.rawAuthority=="snapshot.ubuntu.com" &&
+                        raw.startsWith(
+                            "/ubuntu/${AptModuleLocks.SNAPSHOT}/pool/"
+                        ) &&
+                        raw.endsWith(".deb") &&
+                        !raw.contains("//") &&
+                        !raw.contains("/./") &&
+                        !raw.contains("/../") &&
+                        !raw.contains('\\\\') &&
+                        !lower.contains("%2e") &&
+                        !lower.contains("%2f") &&
+                        !lower.contains("%5c") &&
+                        !lower.contains("%00") &&
+                        !lower.contains("%25") &&
+                        uri.normalize().rawPath==raw) {
+                        "Güvenilmeyen Ubuntu snapshot adresi."
+                    }
+
+                    val previous=urls.putIfAbsent(sha,url)
+                    check(previous==null || previous==url) {
+                        "Aynı SHA için farklı kaynak tanımlandı."
+                    }
+                }
+
+                check(urls.keys==expected.keys) {
+                    "Sabitlenmiş paket kataloğu eksik."
+                }
+
+                val cas=File(root,
+                    "opt/appforge-device/apt-snapshot-v1/"+
+                    "$arch-${AptModuleLocks.SNAPSHOT}/archives"
+                )
+                check(cas.isDirectory &&
+                    !Files.isSymbolicLink(cas.toPath()) &&
+                    cas.canonicalFile.toPath().startsWith(
+                        root.canonicalFile.toPath()
+                    ))
+
+                val cacheRoot=RecoveryPathAnchor.androidPlatformPath(
+                    File(app.noBackupFilesDir,
+                        "v9-ubuntu-pinned-prefetch-v1")
+                )
+                RecoveryPathAnchor.check(cacheRoot)
+                check(!Files.isSymbolicLink(cacheRoot.toPath()))
+                if(!cacheRoot.exists())check(cacheRoot.mkdir())
+                check(cacheRoot.isDirectory &&
+                    cacheRoot.canonicalFile.parentFile==
+                        app.noBackupFilesDir.canonicalFile)
+
+                val missing=plan.packages.filter{item->
+                    val f=File(cas,item.sha256+".deb")
+                    check(!Files.isSymbolicLink(f.toPath()))
+                    if(f.exists()) {
+                        check(f.isFile &&
+                            f.length()==item.bytes &&
+                            VerifiedModuleDownload.sha(f)==item.sha256) {
+                            "İzole APT önbelleği değişmiş."
+                        }
+                        false
+                    } else true
+                }
+
+                val required=missing.sumOf{it.bytes}
+                check(app.noBackupFilesDir.usableSpace>
+                    required*2+256L*1024*1024) {
+                    "Paket önbelleği için depolama yetersiz."
+                }
+
+                val job=kotlin.coroutines.coroutineContext[
+                    kotlinx.coroutines.Job
+                ]
+                val operation="v9-ubuntu-prefetch-"+
+                    java.util.UUID.randomUUID().toString()
+                var downloaded=0
+                var reused=0
+
+                onProgress(
+                    "Sabitlenmiş Ubuntu paketleri: "+
+                    "${plan.packages.size-missing.size}/"+
+                    "${plan.packages.size} mevcut; "+
+                    "${missing.size} eksik."
+                )
+
+                for((index,item) in missing.withIndex()) {
+                    check(job?.isActive!=false)
+                    check(DownloadNetwork.allowed(
+                        DownloadNetworkPolicy.WIFI_PREFERRED
+                    )) {
+                        "Wi-Fi kesildi; doğrulanmış paketler korundu."
+                    }
+
+                    val target=File(cacheRoot,item.sha256)
+                    check(!Files.isSymbolicLink(target.toPath()))
+
+                    val cached=target.isFile &&
+                        target.length()==item.bytes &&
+                        VerifiedModuleDownload.sha(target)==item.sha256
+
+                    check(!target.exists() || cached) {
+                        "Bozuk önbellek nesnesi otomatik değiştirilmez."
+                    }
+
+                    if(cached) {
+                        reused++
+                    } else {
+                        val source=urls.getValue(item.sha256)
+                        onProgress(
+                            "İndiriliyor: ${index+1}/${missing.size}"
+                        )
+
+                        VerifiedModuleDownload.download(
+                            url=source,
+                            expected=item.sha256,
+                            target=target,
+                            module=OfflineModuleId.PYTHON_ANDROID,
+                            operation=operation,
+                            canceled={job?.isActive==false},
+                            open={address->
+                                DownloadNetwork.withPolicy(
+                                    DownloadNetworkPolicy.WIFI_PREFERRED
+                                ){
+                                    DownloadNetwork.open(address)
+                                }
+                            },
+                            progress={event->
+                                onProgress(
+                                    "Paket ${index+1}/${missing.size} • "+
+                                    "${event.phase} • "+
+                                    "${event.bytesDownloaded} bayt"
+                                )
+                            },
+                            maxBytes=item.bytes
+                        )
+                        downloaded++
+                    }
+
+                    check(target.length()==item.bytes &&
+                        VerifiedModuleDownload.sha(target)==item.sha256)
+
+                    val staged=V9R2AptInstallReuse.seedExisting(
+                        cacheRoot,root,arch,listOf(item)
+                    )
+                    check(staged.available==1 &&
+                        staged.missing==0)
+                }
+
+                for(item in plan.packages) {
+                    val file=File(cas,item.sha256+".deb")
+                    check(file.isFile &&
+                        !Files.isSymbolicLink(file.toPath()) &&
+                        file.length()==item.bytes &&
+                        VerifiedModuleDownload.sha(file)==item.sha256) {
+                        "İzole Ubuntu CAS tamlığı sağlanamadı."
+                    }
+                }
+
+                check(VerifiedModuleDownload.sha(status)==
+                    originalStatusHash)
+                check(AndroidRuntimeTrust.ready(root))
+                check(isTrustedRuntime(layout,manifest))
+                check(AptSnapshotMigration.blockedReason(root)==null)
+                check(AptSnapshotMigration.blockedReason(active)!=null)
+                check(OfflineBuildPackManager.moduleReady(
+                    app,OfflineModuleId.NODE_WEB
+                ))
+                check(VerifiedModuleDownload.sha(oldReceipt)==oldHash)
+
+                val receipts=File(root,
+                    "opt/appforge-device/modules-v3")
+                check(receipts.listFiles().orEmpty().none{
+                    it.extension=="json"
+                })
+
+                "ISOLATED_UBUNTU_CATALOG_CACHE_READY;"+
+                "VERIFIED=${plan.packages.size};"+
+                "DOWNLOADED=$downloaded;"+
+                "REUSED=$reused;"+
+                "APT_SIGNATURES_NOT_VERIFIED;"+
+                "MODULES_NOT_INSTALLED;"+
+                "ACTIVE_RUNTIME_UNCHANGED"
+            }
+        }
+    }
+
     internal fun runtimeBaseDirectory(
         context: Context
     ): File = RecoveryPathAnchor.androidPlatformPath(

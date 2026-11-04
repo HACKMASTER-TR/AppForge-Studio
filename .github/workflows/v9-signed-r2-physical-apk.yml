@@ -35,7 +35,7 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='0ca8c292cff7d077965717498166c0b7fcce4b7b','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='2892bfe419215eae47736d0ebc6fd08c02bdc208','BASE_DRIFT'
           expected={
             'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
             'android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt',
@@ -75,6 +75,17 @@ jobs:
           signing=pathlib.Path('quality/tools/appforge_v9_persistent_debug_signing.sh').read_text()
           assert git('rev-parse','HEAD:android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt')=='c1d1f63a492723d2cadfb94a2c151ce3154dd6fa','R2_UI_PIN_DRIFT'
           runtime=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt').read_text()
+          assert 'suspend fun prefetchIsolatedUbuntuPackages(' in runtime
+          assert 'stageIsolatedR2Cache(context)' in runtime
+          assert 'catalogHash==AptModuleLocks.CATALOG' in runtime
+          assert 'uri.host=="snapshot.ubuntu.com"' in runtime
+          assert 'DownloadNetworkPolicy.WIFI_PREFERRED' in runtime
+          assert 'VerifiedModuleDownload.download(' in runtime
+          assert 'V9R2AptInstallReuse.seedExisting(' in runtime
+          assert 'APT_SIGNATURES_NOT_VERIFIED' in runtime
+          assert 'ACTIVE_RUNTIME_UNCHANGED' in runtime
+          assert 'if(ubuntuFetchConfirm) AlertDialog(' in screen
+          assert 'Eksik Ubuntu paketlerini indir' in screen
           assert 'suspend fun stageIsolatedR2Cache(' in runtime
           assert 'V9R2AptInstallReuse.seedExisting(' in runtime
           assert 'V9SelectiveR2ModuleCache.inspectCache(' in runtime
