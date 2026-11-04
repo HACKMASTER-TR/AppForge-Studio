@@ -574,7 +574,7 @@ internal object DeviceBuildRuntimeV3 {
                 for(line in catalog.toString(
                     Charsets.UTF_8
                 ).lineSequence().filter{it.isNotBlank()}) {
-                    val f=line.split('\\t')
+                    val f=line.split('\t')
                     check(f.size in 8..10)
                     val id=OfflineModuleId.valueOf(f[0])
                     if(id !in closure || f[1]!=arch)continue
@@ -604,7 +604,7 @@ internal object DeviceBuildRuntimeV3 {
                         !raw.contains("//") &&
                         !raw.contains("/./") &&
                         !raw.contains("/../") &&
-                        !raw.contains('\\\\') &&
+                        !raw.contains('\\') &&
                         !lower.contains("%2e") &&
                         !lower.contains("%2f") &&
                         !lower.contains("%5c") &&

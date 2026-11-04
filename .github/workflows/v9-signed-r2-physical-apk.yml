@@ -35,9 +35,8 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='2892bfe419215eae47736d0ebc6fd08c02bdc208','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='bb1ff2916223dfb77de7b5d395dc4a6dc5bdb9cf','BASE_DRIFT'
           expected={
-            'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
             'android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt',
             '.github/workflows/v9-signed-r2-physical-apk.yml',
           }
@@ -75,6 +74,8 @@ jobs:
           signing=pathlib.Path('quality/tools/appforge_v9_persistent_debug_signing.sh').read_text()
           assert git('rev-parse','HEAD:android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt')=='c1d1f63a492723d2cadfb94a2c151ce3154dd6fa','R2_UI_PIN_DRIFT'
           runtime=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt').read_text()
+          assert r"val f=line.split('\t')" in runtime
+          assert r"!raw.contains('\\')" in runtime
           assert 'suspend fun prefetchIsolatedUbuntuPackages(' in runtime
           assert 'stageIsolatedR2Cache(context)' in runtime
           assert 'catalogHash==AptModuleLocks.CATALOG' in runtime
@@ -138,7 +139,7 @@ jobs:
           assert 'RuntimeGenerationStore(root).prepare(' in install
           assert all(k in regression for k in ('repeatedImportsReuseSameCASWithoutRewriting','sameSizeTamperedSourceFailsClosed','corruptExistingTargetIsNeverOverwritten','rejectsSourceAndTargetSymlinks'))
           assert git('status','--porcelain')=='','DIRTY_WORKTREE'
-          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=3;NO_PRODUCTION=YES')
+          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=2;NO_PRODUCTION=YES')
           PY
       - uses: actions/setup-java@v4
         with:
