@@ -783,6 +783,196 @@ internal object DeviceBuildRuntimeV3 {
         }
     }
 
+    /**
+     * Debug-only signed Ubuntu repository metadata verification in the isolated
+     * candidate. Replays the bundled APT lock's gpgv and signed Packages checks.
+     * This must never install packages, switch rootfs or mark modules READY.
+     */
+    suspend fun verifyIsolatedAptMetadata(
+        context:Context,
+        onProgress:(String)->Unit={}
+    ):String {
+        check(com.appforge.studio.BuildConfig.DEBUG) {
+            "İzole APT kabulü yalnız test sürümünde."
+        }
+        val app=context.applicationContext
+        // Revalidate old Node.js, vendor baseline, TLS and R2 trust boundaries.
+        stageIsolatedR2Cache(app)
+        return installMutex.withLock {
+            BuildModuleUsage.mutationLease().use {
+                DownloadNetwork.configure(app)
+                check(DownloadNetwork.allowed(DownloadNetworkPolicy.ALLOW_ANY)) {
+                    "Doğrulanmış internet bağlantısı bulunamadı."
+                }
+                val architecture=LinuxArchitecture.fromAndroidAbis(
+                    Build.SUPPORTED_ABIS.toList()
+                ) ?: error("Desteklenmeyen Ubuntu mimarisi")
+                val arch=architecture.distroArchitecture
+                check(arch=="arm64" || arch=="amd64")
+                val manifest=LinuxRuntimeManifestRegistry.find(
+                    LinuxDistribution.UBUNTU,architecture
+                ) ?: error("Sabit Ubuntu rootfs manifesti eksik")
+                val active=LinuxRuntimeLayout(
+                    runtimeBaseDirectory(app),
+                    LinuxDistribution.UBUNTU,architecture
+                ).rootfsDirectory
+                val oldReceipt=File(active,
+                    "opt/appforge-device/modules-v3/NODE_WEB.json")
+                check(oldReceipt.isFile &&
+                    !Files.isSymbolicLink(oldReceipt.toPath()))
+                val originalNode=VerifiedModuleDownload.sha(oldReceipt)
+                check(AptSnapshotMigration.blockedReason(active)!=null &&
+                    OfflineBuildPackManager.moduleReady(
+                        app,OfflineModuleId.NODE_WEB
+                    ))
+                val candidateBase=RecoveryPathAnchor.androidPlatformPath(
+                    File(app.noBackupFilesDir,
+                        "device-build/runtime-v9-recovery-candidate")
+                )
+                val layout=LinuxRuntimeLayout(
+                    candidateBase,LinuxDistribution.UBUNTU,architecture
+                )
+                val root=layout.rootfsDirectory
+                RecoveryPathAnchor.check(root)
+                check(root.canonicalFile!=active.canonicalFile)
+                check(isTrustedRuntime(layout,manifest) &&
+                    AndroidRuntimeTrust.ready(root))
+                check(BaseRuntimeOwnership.paths(root).isNotEmpty())
+                check(AptSnapshotMigration.blockedReason(root)==null)
+                val receipts=File(root,"opt/appforge-device/modules-v3")
+                check(!Files.isSymbolicLink(receipts.toPath()) &&
+                    receipts.listFiles().orEmpty().none{it.extension=="json"})
+                val status=File(root,"var/lib/dpkg/status")
+                val baseline=File(root,
+                    "opt/appforge-device/apt-locks-v5/LINUX_RUNTIME/vendor-v1.json")
+                check(status.isFile && baseline.isFile &&
+                    !Files.isSymbolicLink(status.toPath()) &&
+                    !Files.isSymbolicLink(baseline.toPath()))
+                val baselineJson=org.json.JSONObject(baseline.readText())
+                val statusHash=baselineJson.getString("statusSha256")
+                check(statusHash==VerifiedModuleDownload.sha(status))
+
+                // All 69 expected .deb objects are hash-verified again, before
+                // any remote metadata is requested.
+                val packages=V9SelectiveR2ModuleCache.preview(
+                    app,setOf(OfflineModuleId.NODE_WEB,
+                        OfflineModuleId.PYTHON_ANDROID),arch
+                ).packages
+                val store=File(root,
+                    "opt/appforge-device/apt-snapshot-v1/"+
+                    "$arch-${AptModuleLocks.SNAPSHOT}")
+                val archives=File(store,"archives")
+                check(archives.isDirectory &&
+                    !Files.isSymbolicLink(archives.toPath()) &&
+                    archives.canonicalFile.toPath().startsWith(
+                        root.canonicalFile.toPath()))
+                for(pkg in packages){
+                    val file=File(archives,pkg.sha256+".deb")
+                    check(file.isFile &&
+                        !Files.isSymbolicLink(file.toPath()) &&
+                        file.length()==pkg.bytes &&
+                        VerifiedModuleDownload.sha(file)==pkg.sha256){
+                        "Sabitlenmiş izole Ubuntu arşivi eksik/bozuk"
+                    }
+                }
+                onProgress("Ubuntu paketleri doğrulandı: ${packages.size}/${packages.size}; imzalı indeksler hazırlanıyor.")
+
+                // Only APK-bundled scripts; no user-supplied shell code.
+                val workspace=File(app.cacheDir,
+                    "v9-apt-metadata-"+java.util.UUID.randomUUID())
+                check(!Files.isSymbolicLink(workspace.toPath()) &&
+                    workspace.mkdir())
+                check(workspace.canonicalFile.parentFile==
+                    app.cacheDir.canonicalFile)
+                val runtime=File(workspace,"runtime")
+                check(runtime.mkdir())
+                val names=listOf("apt-download-telemetry.sh",
+                    "apt-snapshot-lock.sh","apt-snapshot-profile.tsv",
+                    "apt-module-packages-v1.tsv")
+                try {
+                    for(name in names){
+                        val data=app.assets.open("device-build/$name")
+                            .use{it.readBytes()}
+                        check(data.size in 1..(512*1024))
+                        val file=File(runtime,name)
+                        check(file.createNewFile())
+                        java.io.FileOutputStream(file).use{out->
+                            out.write(data);out.fd.sync()
+                        }
+                    }
+                    check(VerifiedModuleDownload.sha(File(runtime,
+                        "apt-snapshot-profile.tsv"))==AptModuleLocks.PROFILE)
+                    check(VerifiedModuleDownload.sha(File(runtime,
+                        "apt-module-packages-v1.tsv"))==AptModuleLocks.CATALOG)
+                    onProgress("APT snapshot imzaları gpgv ile doğrulanıyor; paket kurulmayacak.")
+                    val result=com.appforge.studio.terminal.LinuxShellEngine(app)
+                        .execute(
+                            sessionId="v9-apt-metadata-"+java.util.UUID.randomUUID(),
+                            rootfs=root,
+                            workspace=workspace,
+                            command="export APPFORGE_APT_MANAGED_INSTALL=1 "+
+                                "APPFORGE_MODULE_ID=PYTHON_ANDROID "+
+                                "APPFORGE_APT_SNAPSHOT=1 "+
+                                "APPFORGE_DOWNLOAD_TELEMETRY=/workspace/apt-metadata.json; "+
+                                ". /workspace/runtime/apt-download-telemetry.sh; "+
+                                ". /workspace/runtime/apt-snapshot-lock.sh; "+
+                                "appforge_snapshot_apt_get update",
+                            confirmed=true,
+                            timeoutMs=1_800_000L
+                        )
+                    check(!result.timedOut && result.exitCode==0){
+                        "İmzalı APT indeks doğrulaması başarısız: "+
+                            result.output.takeLast(1200)
+                    }
+                    val profile=File(runtime,"apt-snapshot-profile.tsv")
+                        .readLines().filter{it.isNotBlank()}
+                    check(profile.size==4)
+                    val lists=File(store,"lists")
+                    check(lists.isDirectory &&
+                        !Files.isSymbolicLink(lists.toPath()))
+                    for(row in profile){
+                        val parts=row.split('\t')
+                        check(parts.size==2 &&
+                            parts[0] in setOf("noble","noble-updates",
+                                "noble-security","noble-backports"))
+                        val release=File(lists,
+                            "snapshot.ubuntu.com_ubuntu_${AptModuleLocks.SNAPSHOT}_"+
+                            "dists_${parts[0]}_InRelease")
+                        check(release.isFile &&
+                            !Files.isSymbolicLink(release.toPath()) &&
+                            VerifiedModuleDownload.sha(release)==parts[1]){
+                            "İmzalı Ubuntu InRelease kimliği uyuşmuyor"
+                        }
+                    }
+                    val indexes=File(store,"indexes.sha256")
+                    check(indexes.isFile &&
+                        !Files.isSymbolicLink(indexes.toPath()) &&
+                        indexes.length() in 1..(256L*1024))
+                    check(VerifiedModuleDownload.sha(status)==statusHash)
+                    check(isTrustedRuntime(layout,manifest) &&
+                        AndroidRuntimeTrust.ready(root) &&
+                        AptSnapshotMigration.blockedReason(root)==null)
+                    check(receipts.listFiles().orEmpty().none{
+                        it.extension=="json"
+                    })
+                    check(OfflineBuildPackManager.moduleReady(
+                        app,OfflineModuleId.NODE_WEB) &&
+                        VerifiedModuleDownload.sha(oldReceipt)==originalNode)
+                    "ISOLATED_APT_SIGNED_METADATA_VERIFIED;SUITES=4;"+
+                        "PACKAGES_SHA256=${packages.size}/${packages.size};"+
+                        "APT_GPGV=PASS;MODULES_NOT_INSTALLED;"+
+                        "ACTIVE_RUNTIME_UNCHANGED"
+                } finally {
+                    // Only a newly created private verification workspace.
+                    if(workspace.canonicalFile.parentFile==
+                        app.cacheDir.canonicalFile){
+                        workspace.deleteRecursively()
+                    }
+                }
+            }
+        }
+    }
+
     internal fun runtimeBaseDirectory(
         context: Context
     ): File = RecoveryPathAnchor.androidPlatformPath(

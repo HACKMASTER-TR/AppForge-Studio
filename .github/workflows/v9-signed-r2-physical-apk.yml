@@ -35,7 +35,7 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='96381fea00903406cfb1248cdbc8422730e58a5c','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='bca069ad044b9aa5f3a94c0613c2f3a2750033de','BASE_DRIFT'
           expected={
             'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
             'android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt',
@@ -77,6 +77,16 @@ jobs:
           runtime=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt').read_text()
           assert r"val f=line.split('\t')" in runtime
           assert r"!raw.contains('\\')" in runtime
+          assert 'suspend fun verifyIsolatedAptMetadata(' in runtime
+          assert 'appforge_snapshot_apt_get update' in runtime
+          assert 'APPFORGE_APT_MANAGED_INSTALL=1' in runtime
+          assert 'APT_GPGV=PASS;MODULES_NOT_INSTALLED;' in runtime
+          assert 'VerifiedModuleDownload.sha(oldReceipt)==originalNode' in runtime
+          assert 'verifyIsolatedAptMetadata(context)' in screen
+          aptlock=pathlib.Path('android-app/app/src/main/assets/device-build/apt-snapshot-lock.sh').read_text()
+          assert 'gpgv --status-fd=1' in aptlock
+          assert 'as_verify_indices()' in aptlock
+          assert git('rev-parse','HEAD:android-app/app/src/main/assets/device-build/apt-snapshot-lock.sh')=='31f4569bca4f7fb6a8d96cbb8c86af3f561237e6'
           assert 'suspend fun prefetchIsolatedUbuntuPackages(' in runtime
           assert 'stageIsolatedR2Cache(context)' in runtime
           assert 'catalogHash==AptModuleLocks.CATALOG' in runtime

@@ -253,8 +253,9 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
             "hotspot, mobil veri ve VPN. "+
             "APK içindeki sabit SHA-256 ve resmî Ubuntu Snapshot "+
             "adreslerinden yalnız eksik paketler indirilecek. "+
-            "APT imzaları doğrulanmadan kurulum veya runtime "+
-            "geçişi yapılmayacak."
+            "İndirmeden sonra imzalı Ubuntu APT indeksleri de "+
+            "doğrulanacak. Modül kurulumu veya runtime geçişi "+
+            "yapılmayacak."
         )},
         confirmButton={
             TextButton(
@@ -267,18 +268,19 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                     scope.launch {
                         try {
                             ubuntuFetchStatus=withContext(Dispatchers.IO) {
-                                DeviceBuildRuntimeV3
-                                    .prefetchIsolatedUbuntuPackages(
-                                        context
-                                    ){status->
-                                        scope.launch{
-                                            ubuntuFetchStatus=status
-                                        }
+                                val packageResult=DeviceBuildRuntimeV3
+                                    .prefetchIsolatedUbuntuPackages(context){status->
+                                        scope.launch{ubuntuFetchStatus=status}
                                     }
+                                val signedResult=DeviceBuildRuntimeV3
+                                    .verifyIsolatedAptMetadata(context){status->
+                                        scope.launch{ubuntuFetchStatus=status}
+                                    }
+                                packageResult+"\n"+signedResult
                             }
                         } catch(e:Exception) {
                             ubuntuFetchStatus=
-                                "Ubuntu indirme engellendi: "+
+                                "Ubuntu paket/İmzalı APT doğrulaması engellendi: "+
                                 (e.message?:"Bilinmeyen hata")+
                                 " • Aktif Node.js korunuyor."
                         } finally {
@@ -286,7 +288,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                         }
                     }
                 }
-            ){Text("Eksik paketleri indir")}
+            ){Text("Paketleri ve APT imzalarını doğrula")}
         },
         dismissButton={
             TextButton(onClick={ubuntuFetchConfirm=false}){
@@ -502,6 +504,11 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                                         ubuntuFetchStatus,
                                         style=MaterialTheme.typography.bodySmall
                                     )
+                                Text(
+                                    "Aşağıdaki R2 sayacı ayrı özel önbelleğe aittir; "+
+                                    "izole Ubuntu paket sayısını göstermez.",
+                                    style=MaterialTheme.typography.bodySmall
+                                )
                             }
                         }
 
