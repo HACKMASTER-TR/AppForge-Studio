@@ -35,8 +35,9 @@ jobs:
           import os,subprocess,pathlib
           git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
-          assert git('rev-parse','HEAD^')=='bb1ff2916223dfb77de7b5d395dc4a6dc5bdb9cf','BASE_DRIFT'
+          assert git('rev-parse','HEAD^')=='96381fea00903406cfb1248cdbc8422730e58a5c','BASE_DRIFT'
           expected={
+            'android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt',
             'android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt',
             '.github/workflows/v9-signed-r2-physical-apk.yml',
           }
@@ -80,7 +81,10 @@ jobs:
           assert 'stageIsolatedR2Cache(context)' in runtime
           assert 'catalogHash==AptModuleLocks.CATALOG' in runtime
           assert 'uri.host=="snapshot.ubuntu.com"' in runtime
-          assert 'DownloadNetworkPolicy.WIFI_PREFERRED' in runtime
+          assert 'DownloadNetwork.select(DownloadNetworkPolicy.ALLOW_ANY)' in runtime
+          assert runtime.count('DownloadNetworkPolicy.ALLOW_ANY')>=4
+          assert 'DownloadNetworkPolicy.WIFI_PREFERRED' not in runtime
+          assert 'Doğrulanmış tüm bağlantılar' in screen
           assert 'VerifiedModuleDownload.download(' in runtime
           assert 'V9R2AptInstallReuse.seedExisting(' in runtime
           assert 'APT_SIGNATURES_NOT_VERIFIED' in runtime
@@ -139,7 +143,7 @@ jobs:
           assert 'RuntimeGenerationStore(root).prepare(' in install
           assert all(k in regression for k in ('repeatedImportsReuseSameCASWithoutRewriting','sameSizeTamperedSourceFailsClosed','corruptExistingTargetIsNeverOverwritten','rejectsSourceAndTargetSymlinks'))
           assert git('status','--porcelain')=='','DIRTY_WORKTREE'
-          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=2;NO_PRODUCTION=YES')
+          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=3;NO_PRODUCTION=YES')
           PY
       - uses: actions/setup-java@v4
         with:

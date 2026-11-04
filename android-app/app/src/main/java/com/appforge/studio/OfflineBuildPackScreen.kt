@@ -249,7 +249,8 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
         onDismissRequest={ubuntuFetchConfirm=false},
         title={Text("Eksik Ubuntu paketlerini indir")},
         text={Text(
-            "Yalnız doğrulanmış ölçüsüz Wi-Fi kullanılacak. "+
+            "Doğrulanmış tüm bağlantılar kullanılabilir: Wi-Fi, "+
+            "hotspot, mobil veri ve VPN. "+
             "APK içindeki sabit SHA-256 ve resmî Ubuntu Snapshot "+
             "adreslerinden yalnız eksik paketler indirilecek. "+
             "APT imzaları doğrulanmadan kurulum veya runtime "+

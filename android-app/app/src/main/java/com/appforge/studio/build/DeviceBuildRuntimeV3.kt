@@ -481,12 +481,15 @@ internal object DeviceBuildRuntimeV3 {
             BuildModuleUsage.mutationLease().use {
                 val app=context.applicationContext
                 DownloadNetwork.configure(app)
+                // User-selected permanent allowance for all validated networks.
+                // This does not bypass TLS, SHA-256 or APT signature checks.
+                DownloadNetwork.select(DownloadNetworkPolicy.ALLOW_ANY)
                 DownloadNetwork.prepareJournal()
 
                 check(DownloadNetwork.allowed(
-                    DownloadNetworkPolicy.WIFI_PREFERRED
+                    DownloadNetworkPolicy.ALLOW_ANY
                 )) {
-                    "Doğrulanmış, ölçüsüz, VPN'siz Wi-Fi gerekli."
+                    "Doğrulanmış internet bağlantısı gerekli."
                 }
 
                 val architecture=LinuxArchitecture.fromAndroidAbis(
@@ -682,9 +685,9 @@ internal object DeviceBuildRuntimeV3 {
                 for((index,item) in missing.withIndex()) {
                     check(job?.isActive!=false)
                     check(DownloadNetwork.allowed(
-                        DownloadNetworkPolicy.WIFI_PREFERRED
+                        DownloadNetworkPolicy.ALLOW_ANY
                     )) {
-                        "Wi-Fi kesildi; doğrulanmış paketler korundu."
+                        "İnternet bağlantısı kesildi; doğrulanmış paketler korundu."
                     }
 
                     val target=File(cacheRoot,item.sha256)
@@ -715,7 +718,7 @@ internal object DeviceBuildRuntimeV3 {
                             canceled={job?.isActive==false},
                             open={address->
                                 DownloadNetwork.withPolicy(
-                                    DownloadNetworkPolicy.WIFI_PREFERRED
+                                    DownloadNetworkPolicy.ALLOW_ANY
                                 ){
                                     DownloadNetwork.open(address)
                                 }
