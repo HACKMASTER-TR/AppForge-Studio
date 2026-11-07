@@ -180,6 +180,16 @@ internal object DeviceBuildRuntimeV3 {
                 "Device Build Runtime V3 bütünlük kontrolünden geçmedi."
             }
 
+            // Fresh vendor provenance is captured before any Node receipt.
+            // Never repair an existing legacy root with this path.
+            if (freshVendorRoot) {
+                AptSnapshotMigration.captureFreshRoot(
+                    layout.rootfsDirectory,
+                    manifest.architecture.id,
+                    manifest.archiveSha256
+                )
+            }
+
             layout
                 .rootfsDirectory
                 .canonicalFile
