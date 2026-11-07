@@ -31,12 +31,47 @@ internal object V9R2AptInstallReuse {
             else -> error("Unsupported Ubuntu R2 architecture")
         }
         val eligible = V9SelectiveR2ModuleCache.preview(
-            context.applicationContext, setOf(module), architecture
+            context.applicationContext, setOf(when(module){
+                OfflineModuleId.RUST->OfflineModuleId.PYTHON_ANDROID
+                OfflineModuleId.RUST_ANDROID_NDK->OfflineModuleId.EXPO_REACT_NATIVE
+                else->module
+            }), architecture
         ).packages
         val privateCache = V9SignedR2CandidateDownload.privateCacheDirectory(
             context.applicationContext.noBackupFilesDir
         )
-        return seedExisting(privateCache, stagedRoot, architecture, eligible)
+        val result=seedExisting(privateCache, stagedRoot, architecture, eligible)
+        seedInRelease(context,privateCache,stagedRoot,architecture)
+        return result
+    }
+
+    private fun seedInRelease(context:Context,cache:File,root:File,arch:String) {
+        val profile=context.applicationContext.assets.open("device-build/apt-snapshot-profile.tsv").use{it.readBytes()}
+        require(java.security.MessageDigest.getInstance("SHA-256").digest(profile)
+            .joinToString(""){"%02x".format(it.toInt() and 255)}==AptModuleLocks.PROFILE)
+        val store=makeArchives(root.canonicalFile,arch).parentFile!!
+        val lists=File(store,"lists")
+        require(!Files.isSymbolicLink(lists.toPath()))
+        if(!lists.exists())require(lists.mkdir())
+        require(lists.isDirectory && lists.canonicalFile.parentFile==store.canonicalFile)
+        for(line in profile.toString(Charsets.UTF_8).lineSequence().filter{it.isNotBlank()}) {
+            val fields=line.split('\t');require(fields.size==2)
+            val source=File(cache,fields[1]);require(!Files.isSymbolicLink(source.toPath()))
+            if(!source.exists())continue
+            require(source.isFile && sha256(source)==fields[1])
+            val target=File(lists,"snapshot.ubuntu.com_ubuntu_${AptModuleLocks.SNAPSHOT}_dists_${fields[0]}_InRelease")
+            require(!Files.isSymbolicLink(target.toPath()))
+            if(target.exists())require(target.isFile && sha256(target)==fields[1])
+            else {
+                val temp=File(lists,".inrelease-"+UUID.randomUUID())
+                try {
+                    require(temp.createNewFile())
+                    FileOutputStream(temp).use{out->source.inputStream().use{it.copyTo(out)};out.fd.sync()}
+                    require(sha256(temp)==fields[1])
+                    Files.move(temp.toPath(),target.toPath(),StandardCopyOption.ATOMIC_MOVE)
+                } finally {temp.delete()}
+            }
+        }
     }
 
     /** Package-level test seam. Caller MUST first obtain expected records from pinned APK catalog. */

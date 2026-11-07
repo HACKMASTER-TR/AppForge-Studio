@@ -10,6 +10,8 @@ related:
   - "[[Fast_HTML_V2]]"
   - "[[Device_Build_Runtime_V3]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/PinnedAptMetadata.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/V9R2ObjectTransfer.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/ExternalTelemetryChannels.kt"
   - "android-app/app/src/main/assets/device-build/apt-acquire-observer.sh"
   - "android-app/app/src/main/assets/device-build/apt-acquire-observer.awk"
@@ -289,3 +291,20 @@ Managed APT now uses a fixed authenticated Ubuntu snapshot, a packaged per-modul
 artifact allowlist, exact replay manifests and a separate package-download consent
 step. See [[APT_Snapshot_Offline_Toolchain]] for integrity, legacy migration blocks
 and host-versus-device acceptance boundaries.
+
+## Issue 78: one service-owned R2 installation flow (2026-11-04)
+
+The R2 source card imports and persists original signed release bytes; it hands
+installation to the existing foreground operation/service rather than starting
+a second screen-owned download. The manager verifies Ed25519 and the local
+sequence floor, acquires selected catalog objects once, stages installation,
+runs real module functional probes and validates ownership/receipts before READY.
+A cached object or restored UI state never proves installation. SHA-256 and the
+8 MiB range transport protect pause/resume and offline reuse. Metadata or trust
+failures remain errors even when the device has no network; they are not
+misreported as transient connection waits. The baseline Node recipe has a narrow
+byte-exact compatibility path so an installer security update does not mark an
+unchanged working Node broken. All file/ownership/version checks still apply.
+The issue-specific debug APK uses `com.appforge.studio.v9r2issue78`, preserving
+existing app data and signing identities. See
+[the evidence and device procedure](../../reports/v9-offline-module-center-r2-20261104.md).

@@ -249,10 +249,9 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
         onDismissRequest={ubuntuFetchConfirm=false},
         title={Text("Eksik Ubuntu paketlerini indir")},
         text={Text(
-            "Doğrulanmış tüm bağlantılar kullanılabilir: Wi-Fi, "+
-            "hotspot, mobil veri ve VPN. "+
-            "APK içindeki sabit SHA-256 ve resmî Ubuntu Snapshot "+
-            "adreslerinden yalnız eksik paketler indirilecek. "+
+            "Kaydedilmiş ağ politikanız uygulanır. "+
+            "Ed25519 sürümü ve APK SHA-256 kataloğuyla yalnız eksik R2 paketleri alınacak. "+
+            "Ubuntu Snapshot ağına başvurulmaz. "+
             "İndirmeden sonra imzalı Ubuntu APT indeksleri de "+
             "doğrulanacak. Modül kurulumu veya runtime geçişi "+
             "yapılmayacak."
@@ -479,7 +478,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                                     recoveryMessage,
                                     style=MaterialTheme.typography.bodySmall
                                 )
-                            if(selected==OfflineModuleId.PYTHON_ANDROID) {
+                            if(moduleDetails && selected==OfflineModuleId.PYTHON_ANDROID) {
                                 OutlinedButton(
                                     enabled=!recoveryBusy && !busy &&
                                         !preparing && !prefetchBusy,
@@ -573,6 +572,9 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                                         "%.1f MiB/sn".format(it/1024/1024)
                                     }?:"hesaplanıyor"
                                 ))
+                                event.averageSpeedBytesPerSecond?.let { average ->
+                                    Text("Ortalama hız: %.1f MiB/sn".format(average/1024/1024),style=MaterialTheme.typography.bodySmall)
+                                }
                             } else if(busy && event.phase !in setOf(
                                 ModulePhase.READY,ModulePhase.ERROR,ModulePhase.CANCELED
                             )) {
@@ -711,7 +713,9 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
             if(journalError.isNotBlank())item{Text(journalError)}
             if(section=="diagnostics" && history.isNotEmpty())item{Column {Text("Son işlem kayıtları (hazır olma kanıtı değildir)");history.takeLast(8).forEach{Text(it)}}}
             if(detail.isNotBlank())item{Text(detail)}
-            if(firstRun)item{Button(onClick={onFirstRunComplete?.invoke(true)}){Text("Araç indirmeden devam et")}}
+            if(firstRun)item{Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text("İlk açılışta araç indirme zorunluluğu yok. Fast HTML gömülüdür; diğer modüller ihtiyaç olduğunda kurulur.")
+                Button(onClick={onFirstRunComplete?.invoke(true)}){Text("Araç indirmeden devam et")}}}
         }
     }
 }

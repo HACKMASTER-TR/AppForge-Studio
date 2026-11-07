@@ -1,14 +1,8 @@
 package com.appforge.studio.build
 
 import android.content.Context
-import com.appforge.studio.security.V9ReleaseSignatureVerifier
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 
 /** Explicit-consent, read-only V9 canary. This never authorizes package installation. */
 internal object V9SignedR2CandidateDownload {
@@ -78,76 +72,8 @@ internal object V9SignedR2CandidateDownload {
         check(userApproved) { "Explicit V9 canary download consent required" }
         val plan = planSignedObject(manifest, signature, persistedFloor, sha256)
         val directory = privateCacheDirectory(context.applicationContext.noBackupFilesDir)
-        val target = File(directory, plan.sha256)
-        val partial = File(directory, plan.sha256 + ".part")
-        for (f in listOf(target, partial)) check(!Files.isSymbolicLink(f.toPath()))
-
-        // A previously completed object is reusable only after an exact size+digest check.
-        if (target.exists()) {
-            check(target.isFile && target.length() == plan.bytes)
-            target.inputStream().use { V9ReleaseSignatureVerifier.verifyObject(it, plan.bytes, plan.sha256) }
-            return target
-        }
-        check(!partial.exists() || partial.isFile && partial.length() <= plan.bytes)
-        while (partial.length() < plan.bytes) {
-            if (canceled()) throw java.util.concurrent.CancellationException("V9 canary paused")
-            DownloadNetwork.check()
-            check(directory.usableSpace > minOf(CHUNK_BYTES, plan.bytes - partial.length()) + 64L * 1024 * 1024) {
-                "Insufficient private storage for V9 canary"
-            }
-            val chunk = nextChunk(partial.length(), plan.bytes)
-            val connection = DownloadNetwork.open(URL(plan.url))
-            try {
-                connection.instanceFollowRedirects = false
-                connection.connectTimeout = 20_000
-                connection.readTimeout = 20_000
-                connection.setRequestProperty("Accept-Encoding", "identity")
-                connection.setRequestProperty("Range", "bytes=${chunk.start}-${chunk.end}")
-                val status = connection.responseCode
-                if (status != HttpURLConnection.HTTP_PARTIAL) throw IOException("V9 expected HTTP 206; got $status")
-                check(connection.getHeaderField("Content-Range") ==
-                    "bytes ${chunk.start}-${chunk.end}/${plan.bytes}") { "V9 Content-Range mismatch" }
-                check(connection.contentLengthLong == chunk.length) { "V9 Content-Length mismatch" }
-                check(connection.getHeaderField("Content-Encoding") in listOf(null, "identity")) {
-                    "V9 compressed range prohibited"
-                }
-                FileOutputStream(partial, true).use { out ->
-                    var remaining = chunk.length
-                    var zeroReads = 0
-                    val buffer = ByteArray(64 * 1024)
-                    connection.inputStream.use { input ->
-                        while (remaining > 0) {
-                            if (canceled()) throw java.util.concurrent.CancellationException("V9 canary paused")
-                            DownloadNetwork.check()
-                            val n = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
-                            if (n < 0) throw IOException("V9 incomplete chunk")
-                            if (n == 0) {
-                                if (++zeroReads > 32) throw IOException("V9 stalled response")
-                                continue
-                            }
-                            zeroReads = 0
-                            out.write(buffer, 0, n)
-                            remaining -= n
-                        }
-                        check(input.read() == -1) { "V9 extra response body" }
-                    }
-                    out.fd.sync()
-                }
-                onProgress(partial.length(), plan.bytes)
-            } finally {
-                connection.disconnect()
-                DownloadNetwork.release(connection)
-            }
-        }
-        check(partial.length() == plan.bytes)
-        try {
-            partial.inputStream().use { V9ReleaseSignatureVerifier.verifyObject(it, plan.bytes, plan.sha256) }
-        } catch (failure: Exception) {
-            partial.delete() // Never retain an invalid complete object as resumable data.
-            throw failure
-        }
-        check(!target.exists())
-        Files.move(partial.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE)
-        return target
+        V9R2ObjectTransfer.quarantineDamaged(File(directory,plan.sha256),plan.sha256,plan.bytes,userApproved)
+        return V9R2ObjectTransfer.download(File(directory, plan.sha256), plan.sha256, plan.bytes,
+            canceled = canceled, progress = onProgress)
     }
 }

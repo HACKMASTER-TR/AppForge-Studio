@@ -71,13 +71,13 @@ test("first-run screen explains consequences and requires explicit skip", () => 
   assert.match(pack, /İlk açılışta araç indirme zorunluluğu yok/);
   assert.match(pack, /Araç indirmeden devam et/);
   assert.match(pack, /onFirstRunComplete\?\.invoke\(true\)/);
-  assert.match(pack, /if\(firstRun\)/);
+  assert.match(pack, /if\(firstRun\)item/);
   assert.match(pack, /Fast HTML gömülüdür/);
 });
 
 test("ready first-run pack exposes continue action", () => {
   assert.match(pack, /moduleReady\(context,it.id\)/);
-  assert.match(pack, /installed=ready\[module.id\]==true/);
+  assert.match(pack, /installed=ready\[selected\]==true/);
   assert.match(pack, /"Araç indirmeden devam et"/);
 });
 

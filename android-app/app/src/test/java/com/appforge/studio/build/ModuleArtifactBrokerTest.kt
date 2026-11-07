@@ -6,6 +6,30 @@ import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
 class ModuleArtifactBrokerTest {
+    private suspend fun awaitBrokerOutcome(
+        directory: File,
+        id: String,
+        expected: String,
+        service: Job
+    ) {
+        val result = File(directory, "$id.$expected")
+        val unexpected = File(
+            directory,
+            "$id.${if (expected == "ok") "error" else "ok"}"
+        )
+        withTimeout(20_000) {
+            while (!result.exists()) {
+                check(!unexpected.exists()) {
+                    "Unexpected broker result: ${unexpected.name}: " +
+                        unexpected.readText().take(300)
+                }
+                check(service.isActive) {
+                    "Broker service stopped before ${result.name}"
+                }
+                delay(20)
+            }
+        }
+    }
     private class Connection(url:URL,private val bytes:ByteArray,private val code:Int=200,private val location:String?=null):HttpURLConnection(url) {
         override fun getResponseCode()=code
         override fun getContentLengthLong()=bytes.size.toLong()
@@ -24,12 +48,12 @@ class ModuleArtifactBrokerTest {
             val service=launch(Dispatchers.IO){broker.serve()}
             try {
                 repeat(2){n->val id=(if(n==0)"a" else "b").repeat(64);File(directory,"$id.request").writeText("https://dl.google.com/android/repository/fixture.zip\t$sha\n")
-                    withTimeout(5000){while(!File(directory,"$id.ok").exists())delay(10)}
+                    awaitBrokerOutcome(directory,id,"ok",service)
                     assertEquals(source.readText(),File(directory,"$id.archive").readText())
                 }
                 assertEquals(1,opens)
                 val bad="c".repeat(64);File(directory,"$bad.request").writeText("https://example.invalid/arbitrary\t$sha\n")
-                withTimeout(5000){while(!File(directory,"$bad.error").exists())delay(10)}
+                awaitBrokerOutcome(directory,bad,"error",service)
                 assertFalse(File(directory,"$bad.ok").exists());assertEquals(1,opens)
             }finally{service.cancelAndJoin()}
         }finally{base.deleteRecursively()}
@@ -56,7 +80,7 @@ class ModuleArtifactBrokerTest {
             val service=launch(Dispatchers.IO){broker.serve()}
             try {
                 File(directory,"$id.request").writeText("https://dl.google.com/android/repository/test.zip\t${VerifiedModuleDownload.sha(source)}\n")
-                withTimeout(5000){while(!File(directory,"$id.error").exists())delay(10)}
+                awaitBrokerOutcome(directory,id,"error",service)
                 assertFalse(File(directory,"$id.ok").exists());assertTrue(service.isActive)
             }finally{service.cancelAndJoin()}
         }finally{base.deleteRecursively()}

@@ -351,7 +351,7 @@ test(
 
     assert.match(
       screen,
-      /Kurulum ayrıntıları/
+      /Teknik ayrıntıları göster/
     );
   }
 );
