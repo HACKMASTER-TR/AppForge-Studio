@@ -132,6 +132,13 @@ internal object V9R2BundleReader {
         }
     }
     if(aptSource) {
+        if(sourceReady) {
+            Text(
+                "İmzalı R2 kaynağı hazır • Ed25519 doğrulandı. " +
+                    "Manuel manifest ve imza seçimi gerekmiyor.",
+                style=MaterialTheme.typography.bodySmall
+            )
+        }
         Text(cacheStatus,style=MaterialTheme.typography.bodySmall)
         Text("Kaynak: R2 ve doğrulanmış yerel önbellek. Ubuntu Snapshot yalnız sabit köken kaydıdır.",style=MaterialTheme.typography.bodySmall)
         Text("APT için ayrıca 4 Ubuntu imzası ve 16 Packages indeksi doğrulanır. Eksik metadata kurulumu engeller; paket sayısı READY anlamına gelmez.",style=MaterialTheme.typography.bodySmall)

@@ -43,13 +43,36 @@ internal object V9R2ReleaseStore {
     @Synchronized fun load(context: Context): Bundle {
         check(BuildConfig.DEBUG) { "Staging R2 source is disabled in release" }
         val target = file(context)
-        require(target.isFile && target.length() in 1..MAX) {
-            "R2_RELEASE_REQUIRED: İmzalı R2 manifestini ve 64 baytlık Ed25519 imzasını Modül Merkezi'nden seçin. Snapshot yedeği kullanılmaz."
+        val manifest: ByteArray
+        val signature: ByteArray
+
+        if (target.exists()) {
+            require(target.isFile &&
+                !Files.isSymbolicLink(target.toPath()) &&
+                target.length() in 1..MAX) {
+                "Geçersiz kayıtlı R2 sürüm dosyası."
+            }
+            val json = JSONObject(target.readText())
+            manifest = Base64.getDecoder().decode(json.getString("manifest"))
+            signature = Base64.getDecoder().decode(json.getString("signature"))
+        } else {
+            // Debug-only signed release bundled in the APK.
+            // Do not persist a fake verification flag.
+            val assets = context.applicationContext.assets
+            manifest = assets.open("v9-r2/release-v1.json").use {
+                it.readBytes()
+            }
+            signature = assets.open("v9-r2/release-v1.sig").use {
+                it.readBytes()
+            }
+            require(manifest.size in 1..(12 * 1024 * 1024))
+            require(signature.size == 64)
         }
-        val json = JSONObject(target.readText())
-        val manifest = Base64.getDecoder().decode(json.getString("manifest"))
-        val signature = Base64.getDecoder().decode(json.getString("signature"))
-        val verified = V9ReleaseCandidatePolicy.verify(manifest, signature, floor(context))
+
+        // Always verify the pinned Ed25519 signature and release policy.
+        val verified = V9ReleaseCandidatePolicy.verify(
+            manifest, signature, floor(context)
+        )
         return Bundle(manifest, signature, verified.sequence)
     }
 }
