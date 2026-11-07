@@ -19,7 +19,7 @@ function fixture(body){
   // OpenPGP signatures without importing keys or modifying the user's keyring.
   if(spawnSync('gpgv',['--version']).error?.code==='ENOENT'){
    const home=path.join(dir,'gpg-home');fs.mkdirSync(home,{mode:0o700});
-   source=source.replace('gpgv --status-fd=1',`gpg --batch --no-default-keyring --no-auto-key-retrieve --homedir '${home}' --verify --status-fd=1`);
+   source=source.replace('gpgv --status-fd=1',`gpg --batch --no-default-keyring --no-auto-key-retrieve --homedir '${home}' --decrypt --status-fd=1`);
   }
   fs.writeFileSync(helper,source);
   function seal(){fs.writeFileSync(path.join(store,'indexes.sha256'),fs.readdirSync(path.join(store,'lists')).sort().map(n=>`${sha(fs.readFileSync(path.join(store,'lists',n)))}  ${n}\n`).join(''));}seal();
@@ -27,7 +27,13 @@ function fixture(body){
   body({dir,store,helper,profile,seal,run});
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 }
-test('fixed Ubuntu signed snapshot verifies all four real InRelease signatures',()=>fixture(({run})=>{const r=run('as_verify_indices');assert.equal(r.status,0,r.stderr);}));
+test('fixed Ubuntu signed snapshot verifies all four real InRelease signatures independently of missing Packages',()=>fixture(({profile,run})=>{
+ const r=run(`while IFS="$(printf '\\t')" read -r as_suite as_hash;do as_verify_release || exit 60;done < '${profile}'`);
+ assert.equal(r.status,0,r.stderr);
+}));
+test('all four genuine signed InRelease files cannot authorize installation without sixteen signed Packages indexes',()=>fixture(({run})=>{
+ assert.notEqual(run('as_verify_indices').status,0,'incomplete metadata must never pass admission');
+}));
 test('signed metadata hash mismatch fails closed',()=>fixture(({store,run})=>{fs.appendFileSync(path.join(store,'lists','snapshot.ubuntu.com_ubuntu_20261018T000000Z_dists_noble_InRelease'),'corrupt');assert.notEqual(run('as_verify_indices').status,0);}));
 test('locally replacing checksum cannot make an invalid repository signature trusted',()=>fixture(({store,profile,seal,run})=>{
  const file=path.join(store,'lists','snapshot.ubuntu.com_ubuntu_20261018T000000Z_dists_noble_InRelease');

@@ -11,7 +11,10 @@ internal object AptModuleLocks {
     private val releases=mapOf("noble" to "cdb2f31d809f589719a53c6ad15f255b27569c4059542ada282aaa21b8e164b0","noble-updates" to "f8db4261891aad2963b51de65b6f2a7f52250df02109b8a16fcfe5692d2187c3","noble-security" to "f444994ac2ed9f6a64365d5baee6f9540f2cad3320d7f574b0efd4c0d514c32c","noble-backports" to "9bb3c4bace14bf88014e5a66c8d431e65da66fd055dc7fdb45423305cf132cce")
     private val required=setOf("identity","profile.sha256","catalog.sha256","requests.txt","baseline.tsv","plan.tsv","packages.tsv","dependencies.tsv","installed.tsv","installed-files.sha256","verification","metadata.sha256")
     data class Summary(val transactions:Int,val packages:Int,val archiveBytes:Long,val versions:List<String>,val detail:String)
-    fun inspect(root:File,id:OfflineModuleId):Summary {
+    fun inspect(root:File,id:OfflineModuleId):Summary=inspectWithMetadataAnchors(root,id,releases)
+    /** Testable pin primitive, like verifyWithAnchor in the release verifier.
+     * Production callers MUST use inspect(), never remotely supplied anchors. */
+    internal fun inspectWithMetadataAnchors(root:File,id:OfflineModuleId,anchors:Map<String,String>):Summary {
         if(id==OfflineModuleId.LINUX_RUNTIME) {
             val vendor=File(root,"opt/appforge-device/apt-locks-v5/LINUX_RUNTIME/vendor-v1.json")
             if(!vendor.exists())return Summary(0,0,0,emptyList(),"Eski runtime: özgün vendor APT envanteri yok; migration zorlanmaz.")
@@ -43,8 +46,11 @@ internal object AptModuleLocks {
             require(read(root,prefix+"verification").trim()=="APT_NO_DOWNLOAD_INSTALLED")
             val store="opt/appforge-device/apt-snapshot-v1/$arch-$SNAPSHOT/"
             require(read(root,prefix+"metadata.sha256").trim()==VerifiedModuleDownload.sha(safe(root,store+"indexes.sha256")))
-            for((suite,hash) in releases)require(VerifiedModuleDownload.sha(safe(root,store+"lists/snapshot.ubuntu.com_ubuntu_${SNAPSHOT}_dists_${suite}_InRelease"))==hash){"İmzalı Ubuntu repository kimliği uyuşmuyor."}
-            for((path,hash) in checksumRecords(read(root,store+"indexes.sha256")))require(VerifiedModuleDownload.sha(safe(root,store+"lists/"+path))==hash){"APT metadata değişmiş."}
+            for((suite,hash) in anchors)require(VerifiedModuleDownload.sha(safe(root,store+"lists/snapshot.ubuntu.com_ubuntu_${SNAPSHOT}_dists_${suite}_InRelease"))==hash){"İmzalı Ubuntu repository kimliği uyuşmuyor."}
+            val indexManifest=checksumRecords(read(root,store+"indexes.sha256"))
+            require(indexManifest.size==20){"All four signed releases and sixteen Packages indexes are required"}
+            PinnedAptMetadata.verify(safe(root,store+"lists",false),arch,anchors)
+            for((path,hash) in indexManifest)require(VerifiedModuleDownload.sha(safe(root,store+"lists/"+path))==hash){"APT metadata değişmiş."}
             for(line in read(root,prefix+"installed.tsv").lineSequence().filter{it.isNotBlank()}) {
                 val f=line.split('\t');require(f.size==3 && installed[f[0]]==Pair(f[1],f[2])){"Ortak APT sürüm çakışması: ${f.firstOrNull()}"}
             }

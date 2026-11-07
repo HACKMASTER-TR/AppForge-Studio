@@ -1,0 +1,307 @@
+name: V9 Offline Module Center R2 (No Deploy)
+'on':
+  push:
+    branches: [codex/v9-offline-module-center-r2]
+  pull_request:
+    branches: [feat/v9-global-package-distribution-20261027]
+permissions:
+  contents: read
+concurrency:
+  group: v9-offline-center-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Guard base, production scope and unchanged release trust anchor
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor a9c1739b025a939b120888220d827a82f1538467 HEAD
+          test -z "$(git diff --name-only a9c1739b025a939b120888220d827a82f1538467 HEAD -- cloudflare android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java .github/workflows/android-play-release.yml)"
+          grep -Fq 'const val PRODUCTION_DISTRIBUTION_ENABLED = false' android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt
+          command -v gpgv
+      - name: Run all V9 security unit tests without skips
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s quality/tests -p 'test_v9_*.py' -v > /tmp/v9-python.log 2>&1 || { tail -120 /tmp/v9-python.log; exit 1; }
+          ! grep -Eq 'skipped=|\.\.\. skipped ' /tmp/v9-python.log
+          tail -5 /tmp/v9-python.log
+      - name: Test actual APT admission, failure paths and R2 gateway
+        run: |
+          set -euo pipefail
+          node --test quality/tests/apt_snapshot_lock_runtime.test.js quality/tests/v9_r2_offline_metadata_runtime.test.js cloudflare/package-distribution/worker.test.mjs
+          python3 quality/tools/v9_r2_metadata_inventory.py --output /tmp/v9-metadata-inventory.json
+      - name: Real APT install and replay in a disposable network-disabled Ubuntu container
+        run: |
+          set -euo pipefail
+          docker pull ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852
+          python3 quality/tools/v9_r2_offline_install_host.py > /tmp/v9-host-apt.log 2>&1 || { cat /tmp/v9-host-apt.log; exit 1; }
+          cat /tmp/v9-host-apt.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v9-r2-security-${{ github.sha }}
+          path: |
+            /tmp/v9-host-apt.log
+            /tmp/v9-python.log
+            /tmp/v9-metadata-inventory.json
+          retention-days: 14
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install pinned SDK, NDK and CMake
+        run: |
+          set -euo pipefail
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"; fi
+      - name: Run every Android unit test and build isolated installable debug APK
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:testDebugUnitTest :app:assembleDebug \
+            -PappforgeV9R2Issue78Acceptance=true --no-daemon --no-parallel --max-workers=2 \
+            --no-configuration-cache --console=plain > /tmp/v9-android.log 2>&1 || { tail -180 /tmp/v9-android.log; exit 1; }
+      - name: Verify unit results, APK identity, signature and SHA-256
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import xml.etree.ElementTree as E
+          from pathlib import Path
+          files=list(Path('android-app/app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
+          assert files, 'Missing actual JUnit XML'
+          totals={k:0 for k in ('tests','failures','errors','skipped')}
+          for f in files:
+              root=E.parse(f).getroot()
+              for k in totals: totals[k]+=int(root.get(k,0))
+          assert totals['tests']>0 and all(totals[k]==0 for k in ('failures','errors','skipped')),totals
+          print(totals)
+          PY
+          APK=$(find android-app/app/build/outputs/apk/debug -name '*.apk' -type f | head -1)
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
+          SIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | grep -F "package: name='com.appforge.studio.v9r2issue78'"
+          "$SIGNER" verify --verbose --print-certs "$APK" > /tmp/v9-apk-signature.txt
+          mkdir -p /tmp/v9-apk
+          cp "$APK" /tmp/v9-apk/AppForge-V9-Offline-Module-Center-R2-debug.apk
+          (cd /tmp/v9-apk && sha256sum *.apk > SHA256SUMS && sha256sum -c SHA256SUMS)
+          printf 'SOURCE_SHA=%s\nPHYSICAL_DEVICE=NOT_RUN\nPRODUCTION_MUTATIONS=0\n' "$GITHUB_SHA" > /tmp/v9-apk/EVIDENCE.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v9-offline-center-apk-${{ github.sha }}
+          path: /tmp/v9-apk/
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v9-offline-center-build-evidence-${{ github.sha }}
+          path: |
+            /tmp/v9-android.log
+            /tmp/v9-apk-signature.txt
+            android-app/app/build/test-results/testDebugUnitTest/
+          retention-days: 14
+  isolated2:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/codex/v9-offline-module-center-r2'
+    needs: [security, android]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    permissions:
+      contents: read
+    env:
+      APPFORGE_DEBUG_KEY_ALIAS: appforge-v9r2-isolated
+      APPFORGE_DEBUG_STORE_PASSWORD: ${{ secrets.APPFORGE_V9R2_ISOLATED2_KEYSTORE_PASSWORD }}
+      APPFORGE_DEBUG_KEY_PASSWORD: ${{ secrets.APPFORGE_V9R2_ISOLATED2_KEYSTORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install pinned SDK and NDK
+        run: |
+          set -euo pipefail
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Restore test-only signing keystore
+        env:
+          TEST_KEYSTORE_B64: ${{ secrets.APPFORGE_V9R2_ISOLATED2_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$TEST_KEYSTORE_B64"
+          test -n "$APPFORGE_DEBUG_STORE_PASSWORD"
+          umask 077
+          mkdir -p "$RUNNER_TEMP/appforge-v9-isolated2"
+          KEYFILE="$RUNNER_TEMP/appforge-v9-isolated2/signing.p12"
+          printf '%s' "$TEST_KEYSTORE_B64" | base64 -d > "$KEYFILE"
+          test -s "$KEYFILE"
+          CERT=$(openssl pkcs12 -in "$KEYFILE" -nokeys -clcerts \
+            -passin env:APPFORGE_DEBUG_STORE_PASSWORD |
+            openssl x509 -outform DER | sha256sum | awk '{print $1}')
+          test "$CERT" = "dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082"
+          keytool -list -storetype PKCS12 -keystore "$KEYFILE" \
+            -storepass "$APPFORGE_DEBUG_STORE_PASSWORD" \
+            -alias "$APPFORGE_DEBUG_KEY_ALIAS" >/dev/null
+          echo "APPFORGE_DEBUG_KEYSTORE_PATH=$KEYFILE" >> "$GITHUB_ENV"
+          echo "ISOLATED_SIGNING_CERT=PASS"
+      - name: Build separately identified test APK
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:assembleDebug \
+            -PappforgeV9R2Isolated2Acceptance=true \
+            --no-daemon --no-parallel --max-workers=2 \
+            --no-configuration-cache --console=plain \
+            > /tmp/v9-isolated2-build.log 2>&1 || {
+              tail -160 /tmp/v9-isolated2-build.log
+              exit 1
+            }
+      - name: Verify APK package identity signature and hash
+        run: |
+          set -euo pipefail
+          APK=$(find android-app/app/build/outputs/apk/debug -name '*.apk' -type f | head -1)
+          test -s "$APK"
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
+          SIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | grep -F "package: name='com.appforge.studio.v9r2isolated2'"
+          "$SIGNER" verify --verbose --print-certs "$APK" > /tmp/v9-isolated2-signature.txt
+          grep -Fiq "dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082" /tmp/v9-isolated2-signature.txt
+          mkdir -p /tmp/v9-isolated2-apk
+          cp "$APK" /tmp/v9-isolated2-apk/AppForge-V9-R2-Isolated2-debug.apk
+          (cd /tmp/v9-isolated2-apk && sha256sum *.apk > SHA256SUMS && sha256sum -c SHA256SUMS)
+          printf 'SOURCE_SHA=%s\nPACKAGE=com.appforge.studio.v9r2isolated2\nCERT_SHA256=dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082\nPHYSICAL_DEVICE=NOT_RUN\nPRODUCTION_MUTATIONS=0\n' \
+            "$GITHUB_SHA" > /tmp/v9-isolated2-apk/EVIDENCE.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v9-isolated2-apk-${{ github.sha }}
+          path: /tmp/v9-isolated2-apk/
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v9-isolated2-evidence-${{ github.sha }}
+          path: |
+            /tmp/v9-isolated2-build.log
+            /tmp/v9-isolated2-signature.txt
+          retention-days: 14
+  isolated3:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/codex/v9-offline-module-center-r2'
+    needs: [security, android]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    permissions:
+      contents: read
+    env:
+      APPFORGE_DEBUG_KEY_ALIAS: appforge-v9r2-isolated
+      APPFORGE_DEBUG_STORE_PASSWORD: ${{ secrets.APPFORGE_V9R2_ISOLATED2_KEYSTORE_PASSWORD }}
+      APPFORGE_DEBUG_KEY_PASSWORD: ${{ secrets.APPFORGE_V9R2_ISOLATED2_KEYSTORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install pinned SDK and NDK
+        run: |
+          set -euo pipefail
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Restore test-only signing keystore
+        env:
+          TEST_KEYSTORE_B64: ${{ secrets.APPFORGE_V9R2_ISOLATED2_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$TEST_KEYSTORE_B64"
+          test -n "$APPFORGE_DEBUG_STORE_PASSWORD"
+          umask 077
+          mkdir -p "$RUNNER_TEMP/appforge-v9-isolated3"
+          KEYFILE="$RUNNER_TEMP/appforge-v9-isolated3/signing.p12"
+          printf '%s' "$TEST_KEYSTORE_B64" | base64 -d > "$KEYFILE"
+          test -s "$KEYFILE"
+          CERT=$(openssl pkcs12 -in "$KEYFILE" -nokeys -clcerts \
+            -passin env:APPFORGE_DEBUG_STORE_PASSWORD |
+            openssl x509 -outform DER | sha256sum | awk '{print $1}')
+          test "$CERT" = "dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082"
+          keytool -list -storetype PKCS12 -keystore "$KEYFILE" \
+            -storepass "$APPFORGE_DEBUG_STORE_PASSWORD" \
+            -alias "$APPFORGE_DEBUG_KEY_ALIAS" >/dev/null
+          echo "APPFORGE_DEBUG_KEYSTORE_PATH=$KEYFILE" >> "$GITHUB_ENV"
+          echo "ISOLATED_SIGNING_CERT=PASS"
+      - name: Build separately identified test APK
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:assembleDebug \
+            -PappforgeV9R2Isolated3Acceptance=true \
+            --no-daemon --no-parallel --max-workers=2 \
+            --no-configuration-cache --console=plain \
+            > /tmp/v9-isolated3-build.log 2>&1 || {
+              tail -160 /tmp/v9-isolated3-build.log
+              exit 1
+            }
+      - name: Verify APK package identity signature and hash
+        run: |
+          set -euo pipefail
+          APK=$(find android-app/app/build/outputs/apk/debug -name '*.apk' -type f | head -1)
+          test -s "$APK"
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
+          SIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | grep -F "package: name='com.appforge.studio.v9r2isolated3'"
+          "$SIGNER" verify --verbose --print-certs "$APK" > /tmp/v9-isolated3-signature.txt
+          grep -Fiq "dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082" /tmp/v9-isolated3-signature.txt
+          mkdir -p /tmp/v9-isolated3-apk
+          cp "$APK" /tmp/v9-isolated3-apk/AppForge-V9-R2-Isolated3-debug.apk
+          (cd /tmp/v9-isolated3-apk && sha256sum *.apk > SHA256SUMS && sha256sum -c SHA256SUMS)
+          printf 'SOURCE_SHA=%s\nPACKAGE=com.appforge.studio.v9r2isolated3\nCERT_SHA256=dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082\nPHYSICAL_DEVICE=NOT_RUN\nPRODUCTION_MUTATIONS=0\n' \
+            "$GITHUB_SHA" > /tmp/v9-isolated3-apk/EVIDENCE.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v9-isolated3-apk-${{ github.sha }}
+          path: /tmp/v9-isolated3-apk/
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v9-isolated3-evidence-${{ github.sha }}
+          path: |
+            /tmp/v9-isolated3-build.log
+            /tmp/v9-isolated3-signature.txt
+          retention-days: 14

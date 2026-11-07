@@ -14,9 +14,8 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
             if(url.protocol!="https" || url.userInfo!=null || url.ref!=null || url.query!=null || url.port !in setOf(-1,443))return false
             return when(url.host.lowercase()) {
                 "dl.google.com"->url.path.startsWith("/android/repository/")
-                "ports.ubuntu.com"->url.path.startsWith("/ubuntu-ports/")
-                "archive.ubuntu.com","security.ubuntu.com"->url.path.startsWith("/ubuntu/")
-                "snapshot.ubuntu.com"->url.path.startsWith("/ubuntu/")
+                // Snapshot URLs are provenance only; no live request is permitted.
+                "appforge-v9-packages-readonly.28550040284a.workers.dev"->Regex("/v9/objects/sha256/([a-f0-9]{2})/([a-f0-9]{64})").matchEntire(url.path)?.let{it.groupValues[2].startsWith(it.groupValues[1])}==true
                 "nodejs.org"->url.path.startsWith("/dist/")
                 "services.gradle.org","downloads.gradle.org"->url.path.startsWith("/distributions/")
                 "github.com"->listOf("/adoptium/temurin17-binaries/releases/download/","/Commit451/android-arm-build-tools/releases/download/","/gradle/gradle-distributions/releases/download/").any{url.path.startsWith(it)}
@@ -59,14 +58,22 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
                 require(!Files.isSymbolicLink(request.toPath()) && request.length()<=4096)
                 val id=request.name.removeSuffix(".request")
                 try {
-                    val fields=request.readText().trimEnd('\n').split('\t');require(fields.size==2)
+                    val fields=request.readText().trimEnd('\n').split('\t');require(fields.size in 2..3)
                     val url=URL(fields[0]);require(allowed(url));val sha=fields[1];require(sha.matches(Regex("[a-f0-9]{64}")))
                     transferring=true
                     val component=url.path.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._+-]"),"_").take(150)
                     progress(ModuleProgress(module,operation,ModulePhase.CONNECTING,detail="Doğrulanmış native aktarım • $component"))
                     val job=currentCoroutineContext()[Job]!!
                     val target=File(cache,"$sha.archive")
-                    VerifiedModuleDownload.download(url.toString(),sha,target,module,operation,canceled={!job.isActive || stopRequested()},open=open,progress={progress(it.copy(detail="Doğrulanmış native aktarım • $component • "+it.detail))},maxBytes=2L*1024*1024*1024)
+                    val isR2=url.host=="appforge-v9-packages-readonly.28550040284a.workers.dev"
+                    if(isR2) {
+                        require(url.toString()==V9SignedR2CandidateDownload.urlForSha(sha) && fields.size==3)
+                        val expectedBytes=fields[2].toLong()
+                        V9R2ObjectTransfer.quarantineDamaged(target,sha,expectedBytes,true)
+                        V9R2ObjectTransfer.download(target,sha,expectedBytes,canceled={!job.isActive || stopRequested()},open=open,
+                            progress={done,total->progress(ModuleProgress(module,operation,ModulePhase.DOWNLOADING,done,total,
+                                detail="R2 • $component • SHA-256 doğrulaması bekleniyor"))})
+                    } else VerifiedModuleDownload.download(url.toString(),sha,target,module,operation,canceled={!job.isActive || stopRequested()},open=open,progress={progress(it.copy(detail="Doğrulanmış native aktarım • $component • "+it.detail))},maxBytes=2L*1024*1024*1024)
                     job.ensureActive();require(directory.usableSpace>target.length()+64L*1024*1024){"Arşiv aktarımı için boş alan yetersiz."}
                     val result=File(directory,"$id.archive");require(!Files.isSymbolicLink(result.toPath()))
                     val part=File(directory,"$id.archive.part");require(!Files.isSymbolicLink(part.toPath()))

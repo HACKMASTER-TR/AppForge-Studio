@@ -8,7 +8,9 @@ appforge_native_download() {
  nb_id=$(printf '%s\n%s\n%s\n%s' "$nb_url" "$nb_sha" "$nb_output" "$$" | sha256sum | cut -d ' ' -f 1)
  nb_prefix="$APPFORGE_NATIVE_DOWNLOAD_BROKER/$nb_id"
  rm -f "$nb_prefix.ok" "$nb_prefix.error"
- printf '%s\t%s\n' "$nb_url" "$nb_sha" > "$nb_prefix.request.part"
+ if [ -n "${4:-}" ];then
+  printf '%s\t%s\t%s\n' "$nb_url" "$nb_sha" "$4" > "$nb_prefix.request.part"
+ else printf '%s\t%s\n' "$nb_url" "$nb_sha" > "$nb_prefix.request.part";fi
  mv "$nb_prefix.request.part" "$nb_prefix.request"
  while [ ! -f "$nb_prefix.ok" ]; do
   if [ -f "$nb_prefix.error" ]; then cat "$nb_prefix.error" >&2;return 43;fi

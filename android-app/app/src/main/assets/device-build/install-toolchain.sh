@@ -1103,10 +1103,40 @@ accept_android_sdk_license() {
   if [ -n "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ] && [ -f /workspace/runtime/jvm-telemetry/network-byte-agent.jar ]; then
     SDK_JAVA_OPTIONS="$SDK_JAVA_OPTIONS -javaagent:/workspace/runtime/jvm-telemetry/network-byte-agent.jar"
   fi
-  yes |
+  # The SDK Manager may report all licenses accepted after failing
+  # to retrieve remote manifests. Require the actual license file.
+  if ! yes |
     JAVA_TOOL_OPTIONS="$SDK_JAVA_OPTIONS" "$SDK/cmdline-tools/latest/bin/sdkmanager" \
       --sdk_root="$SDK" \
-      --licenses
+      --licenses --verbose; then
+    echo "APPFORGE_ANDROID_SDK_LICENSE_PRIMARY_COMMAND_FAILED" >&2
+  fi
+
+  if [ ! -s "$SDK/licenses/android-sdk-license" ]; then
+    echo "APPFORGE_ANDROID_SDK_LICENSE_PRIMARY_FILE_MISSING" >&2
+
+    # Retry with the existing JDK certificate store, preserving TLS
+    # verification and explicit application-level license consent.
+    if [ -s "$JAVA_HOME/lib/security/cacerts" ]; then
+      FALLBACK_JAVA_OPTIONS="-Djavax.net.ssl.trustStore=$JAVA_HOME/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+
+      if [ -n "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ] &&
+         [ -f /workspace/runtime/jvm-telemetry/network-byte-agent.jar ]; then
+        FALLBACK_JAVA_OPTIONS="$FALLBACK_JAVA_OPTIONS -javaagent:/workspace/runtime/jvm-telemetry/network-byte-agent.jar"
+      fi
+
+      echo "APPFORGE_ANDROID_SDK_LICENSE_JDK_CACERTS_RETRY"
+
+      if ! yes |
+        JAVA_TOOL_OPTIONS="$FALLBACK_JAVA_OPTIONS" "$SDK/cmdline-tools/latest/bin/sdkmanager" \
+          --sdk_root="$SDK" \
+          --licenses --verbose; then
+        echo "APPFORGE_ANDROID_SDK_LICENSE_FALLBACK_COMMAND_FAILED" >&2
+      fi
+    else
+      echo "APPFORGE_ANDROID_SDK_JDK_CACERTS_MISSING" >&2
+    fi
+  fi
 
   test -s \
     "$SDK/licenses/android-sdk-license" || {
