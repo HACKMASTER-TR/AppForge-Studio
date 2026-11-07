@@ -431,6 +431,11 @@ internal object OfflineBuildPackManager {
         } catch(e:kotlinx.coroutines.CancellationException) {
             phase(active,if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else ModulePhase.CANCELED,if(e is DownloadNetwork.PolicyBlocked)"Ağ politikası bekleniyor; doğrulanmış modüller korunur." else "İptal edildi; mevcut doğrulanmış modüller korunur.");throw e
         } catch(e:Exception) {
+            val gradleDiagnostic=runCatching {
+                GradleFailureDiagnostics.capture(
+                    app.noBackupFilesDir,workspace,active
+                )
+            }.getOrNull()
             val networkFailure=e is java.io.IOException && e !is javax.net.ssl.SSLException && !hasValidatedInternet(app)
             val code=when {
                 e is SecurityException->"INTEGRITY_REJECTED"
@@ -440,7 +445,8 @@ internal object OfflineBuildPackManager {
                 else->e.javaClass.simpleName
             }
             progress(ModuleProgress(active,operation,if(networkFailure)ModulePhase.WAITING_CONNECTION else ModulePhase.ERROR,
-                errorCode=code,detail=e.message?:"Kurulum başarısız; önceki generation korunur."));throw e
+                errorCode=code,detail=(e.message?:"Kurulum başarısız; önceki generation korunur.")+
+                    (gradleDiagnostic?.let{" | GRADLE_DIAGNOSTIC=$it"}?:"")));throw e
         } finally { workspace.deleteRecursively() }
         }
     }

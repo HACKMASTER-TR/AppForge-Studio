@@ -47,6 +47,74 @@ sdk.dir=/opt/appforge-device/android-sdk
 EOF
 }
 
+
+# Retry only bounded, recognizable transient network failures.
+# Never bypass TLS, integrity, authentication or offline policy.
+gradle_warmup() {
+  gw_project="$1"
+  gw_log="$2"
+  gw_kind="$3"
+  gw_exit="$4"
+  gw_attempt=1
+  gw_max=3
+
+  case "$gw_kind" in
+    ANDROID)
+      gw_failed="APPFORGE_OFFLINE_PREWARM_FAILED:ANDROID"
+      gw_pass="APPFORGE_OFFLINE_ANDROID_PREWARM=PASS"
+      ;;
+    PYTHON)
+      gw_failed="APPFORGE_OFFLINE_PREWARM_FAILED:PYTHON"
+      gw_pass="APPFORGE_OFFLINE_PYTHON_PREWARM=PASS"
+      ;;
+    *) return 61 ;;
+  esac
+
+  if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = 1 ]; then
+    gw_max=1
+  fi
+
+  while [ "$gw_attempt" -le "$gw_max" ]; do
+    set --
+    if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = 1 ]; then
+      set -- --offline
+    fi
+
+    if "$GRADLE" "$@" \
+      -p "$gw_project" \
+      --no-daemon --no-configuration-cache \
+      --console=plain \
+      :app:assembleDebug >"$gw_log" 2>&1
+    then
+      tail -80 "$gw_log"
+      echo "$gw_pass"
+      return 0
+    fi
+
+    gw_unsafe='PKIX|certification path|SSLHandshakeException|certificate verify failed|checksum mismatch|hash mismatch|signature invalid|401 Unauthorized|403 Forbidden|404 Not Found'
+
+    gw_transient='Read timed out|Connection reset|Connection timed out|SocketTimeoutException|ConnectException|Temporary failure in name resolution|502 Bad Gateway|503 Service Unavailable|504 Gateway Timeout|429 Too Many Requests'
+
+    if [ "$gw_attempt" -lt "$gw_max" ] &&
+       ! grep -Eiq "$gw_unsafe" "$gw_log" &&
+       grep -Eiq "$gw_transient" "$gw_log"; then
+      echo "APPFORGE_GRADLE_TRANSIENT_RETRY:$gw_kind:$gw_attempt/$gw_max"
+      sleep "$((gw_attempt * 2))"
+      gw_attempt=$((gw_attempt+1))
+      continue
+    fi
+
+    echo "$gw_failed"
+    echo "APPFORGE_GRADLE_ATTEMPTS=$gw_attempt"
+    echo "----- GRADLE FAILURE -----"
+    sed -n '/FAILURE:/,$p' "$gw_log" |
+      grep -v '^[[:space:]]*at org\.gradle\.' |
+      tail -120 || true
+    echo "----- END GRADLE FAILURE -----"
+    return "$gw_exit"
+  done
+}
+
 case "$MODE" in
 
   android)
@@ -121,29 +189,7 @@ EOF
       "$PROJECT"
 
     LOG="$BASE/android-gradle.log"
-
-    if ! "$GRADLE" "$@" \
-      -p "$PROJECT" \
-      --no-daemon --no-configuration-cache \
-      --console=plain \
-      :app:assembleDebug \
-      >"$LOG" 2>&1
-    then
-      echo "APPFORGE_OFFLINE_PREWARM_FAILED:ANDROID"
-      echo "----- GRADLE FAILURE -----"
-
-      sed -n '/FAILURE:/,$p' "$LOG" \
-        | grep -v '^[[:space:]]*at org\.gradle\.' \
-        | tail -120 \
-        || true
-
-      echo "----- END GRADLE FAILURE -----"
-      exit 62
-    fi
-
-    tail -80 "$LOG"
-
-    echo "APPFORGE_OFFLINE_ANDROID_PREWARM=PASS"
+    gradle_warmup "$PROJECT" "$LOG" "ANDROID" 62
     ;;
 
 
@@ -191,29 +237,7 @@ EOF
       "$PROJECT"
 
     LOG="$BASE/python-gradle.log"
-
-    if ! "$GRADLE" "$@" \
-      -p "$PROJECT" \
-      --no-daemon --no-configuration-cache \
-      --console=plain \
-      :app:assembleDebug \
-      >"$LOG" 2>&1
-    then
-      echo "APPFORGE_OFFLINE_PREWARM_FAILED:PYTHON"
-      echo "----- GRADLE FAILURE -----"
-
-      sed -n '/FAILURE:/,$p' "$LOG" \
-        | grep -v '^[[:space:]]*at org\.gradle\.' \
-        | tail -120 \
-        || true
-
-      echo "----- END GRADLE FAILURE -----"
-      exit 63
-    fi
-
-    tail -80 "$LOG"
-
-    echo "APPFORGE_OFFLINE_PYTHON_PREWARM=PASS"
+    gradle_warmup "$PROJECT" "$LOG" "PYTHON" 63
     ;;
 
 
