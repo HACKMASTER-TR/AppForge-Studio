@@ -319,6 +319,15 @@ require(!appforgeV9R2Issue78Acceptance || (!appforgeV9R2DeviceAcceptance &&
     !appforgeProProcessDeathTest && !appforgeProRecoveryTest && !appforgeProSecondDevice &&
     !appforgePlayIntegrityAcceptance)) { "Issue78 acceptance must use its own package identity" }
 
+val appforgeV9R2Isolated2Acceptance =
+    providers.gradleProperty("appforgeV9R2Isolated2Acceptance").orNull == "true"
+require(!appforgeV9R2Isolated2Acceptance ||
+    (!appforgeV9R2Issue78Acceptance && !appforgeV9R2DeviceAcceptance &&
+     !appforgeProProcessDeathTest && !appforgeProRecoveryTest &&
+     !appforgeProSecondDevice && !appforgePlayIntegrityAcceptance)) {
+    "Isolated2 must not share any other acceptance identity"
+}
+
 android {
     namespace = "com.appforge.studio"
     compileSdk = 37
@@ -441,7 +450,9 @@ android {
     buildTypes {
         getByName("debug") {
             ciDebugSigning?.let { signingConfig = it }
-            if (appforgeV9R2Issue78Acceptance) {
+            if (appforgeV9R2Isolated2Acceptance) {
+                applicationIdSuffix = ".v9r2isolated2"
+            } else if (appforgeV9R2Issue78Acceptance) {
                 applicationIdSuffix = ".v9r2issue78"
             } else if (appforgeV9R2DeviceAcceptance) {
                 applicationIdSuffix = ".v9r2accept"
