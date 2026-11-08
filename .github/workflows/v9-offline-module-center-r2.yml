@@ -76,11 +76,16 @@ jobs:
           "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
           test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
           if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"; fi
+      - name: Prepare SHA-256 pinned Kotlin compiler (CI only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 quality/tools/v9_pinned_kotlin_compiler.py "$RUNNER_TEMP/appforge-pinned-kotlin-maven"
       - name: Run every Android unit test and build isolated installable debug APK
         run: |
           set -euo pipefail
           gradle -p android-app :app:testDebugUnitTest :app:assembleDebug \
-            -PappforgeV9R2Issue78Acceptance=true --no-daemon --no-parallel --max-workers=2 \
+            -PappforgeV9R2Issue78Acceptance=true -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/appforge-pinned-kotlin-maven" --no-daemon --no-parallel --max-workers=2 \
             --no-configuration-cache --console=plain > /tmp/v9-android.log 2>&1 || { tail -180 /tmp/v9-android.log; exit 1; }
       - name: Verify unit results, APK identity, signature and SHA-256
         run: |
@@ -173,11 +178,17 @@ jobs:
             -alias "$APPFORGE_DEBUG_KEY_ALIAS" >/dev/null
           echo "APPFORGE_DEBUG_KEYSTORE_PATH=$KEYFILE" >> "$GITHUB_ENV"
           echo "ISOLATED_SIGNING_CERT=PASS"
+      - name: Prepare SHA-256 pinned Kotlin compiler (CI only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 quality/tools/v9_pinned_kotlin_compiler.py "$RUNNER_TEMP/appforge-pinned-kotlin-maven"
       - name: Build separately identified test APK
         run: |
           set -euo pipefail
           gradle -p android-app :app:assembleDebug \
             -PappforgeV9R2Isolated2Acceptance=true \
+            -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/appforge-pinned-kotlin-maven" \
             --no-daemon --no-parallel --max-workers=2 \
             --no-configuration-cache --console=plain \
             > /tmp/v9-isolated2-build.log 2>&1 || {
@@ -265,11 +276,17 @@ jobs:
             -alias "$APPFORGE_DEBUG_KEY_ALIAS" >/dev/null
           echo "APPFORGE_DEBUG_KEYSTORE_PATH=$KEYFILE" >> "$GITHUB_ENV"
           echo "ISOLATED_SIGNING_CERT=PASS"
+      - name: Prepare SHA-256 pinned Kotlin compiler (CI only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 quality/tools/v9_pinned_kotlin_compiler.py "$RUNNER_TEMP/appforge-pinned-kotlin-maven"
       - name: Build separately identified test APK
         run: |
           set -euo pipefail
           gradle -p android-app :app:assembleDebug \
             -PappforgeV9R2Isolated3Acceptance=true \
+            -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/appforge-pinned-kotlin-maven" \
             --no-daemon --no-parallel --max-workers=2 \
             --no-configuration-cache --console=plain \
             > /tmp/v9-isolated3-build.log 2>&1 || {
