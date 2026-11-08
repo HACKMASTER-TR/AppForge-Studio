@@ -17,6 +17,14 @@ internal class GradleFailureDiagnosticsTest {
             GradleFailureDiagnostics.classify("Could not GET resource"))
     }
 
+    @Test fun classifiesAgpAndChaquopyPluginFailures() {
+        val agp = """Plugin [id: 'com.android.application', version: '9.1.1', apply: false] was not found in any of the following sources"""
+        val python = """Plugin [id: 'com.chaquo.python', version: '17.0.0', apply: false] was not found"""
+        assertEquals("AGP_PLUGIN_UNRESOLVED", GradleFailureDiagnostics.classify(agp))
+        assertEquals("CHAQUOPY_PLUGIN_UNRESOLVED", GradleFailureDiagnostics.classify(python))
+        assertEquals("TLS_TRUST", GradleFailureDiagnostics.classify("PKIX " + agp))
+    }
+
     @Test fun persistedResultNeverContainsRawUrl() {
         val base=Files.createTempDirectory("gradle-diag").toFile()
         try {

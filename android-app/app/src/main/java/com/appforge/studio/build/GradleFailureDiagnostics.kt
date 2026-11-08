@@ -28,6 +28,13 @@ internal object GradleFailureDiagnostics {
             log.contains("TimeoutException",true) -> "NETWORK_TIMEOUT"
         log.contains("Connection reset",true) ||
             log.contains("ConnectException",true) -> "NETWORK_RESET"
+        log.contains("No cached version of",true) &&
+            log.contains("offline",true) -> "GRADLE_OFFLINE_CACHE_MISS"
+        log.contains("Plugin [id: 'com.android.application'",true) &&
+            log.contains("was not found",true) -> "AGP_PLUGIN_UNRESOLVED"
+        log.contains("Plugin [id: 'com.chaquo.python'",true) &&
+            log.contains("was not found",true) -> "CHAQUOPY_PLUGIN_UNRESOLVED"
+        log.contains("Could not resolve com.android.tools.build:gradle",true) -> "AGP_ARTIFACT_UNRESOLVED"
         log.contains("Could not GET",true) ||
             log.contains("Could not HEAD",true) ||
             log.contains("Could not get resource",true) -> "RESOURCE_READ"

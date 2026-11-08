@@ -50,6 +50,29 @@ EOF
 
 # Retry only bounded, recognizable transient network failures.
 # Never bypass TLS, integrity, authentication or offline policy.
+# Inspect the exact public AGP marker from INSIDE the packaged Ubuntu environment.
+# This is a read-only TLS-verified diagnostic, not an unpinned artifact installer.
+agp_marker_reachable() {
+  if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = 1 ]; then
+    echo 'APPFORGE_AGP_MAVEN_PROBE=OFFLINE'
+    return 1
+  fi
+  if ! command -v curl >/dev/null 2>&1; then
+    echo 'APPFORGE_AGP_MAVEN_PROBE=CURL_UNAVAILABLE'
+    return 1
+  fi
+  if curl --fail --location --silent --show-error \
+      --connect-timeout 8 --max-time 25 --retry 0 \
+      --output /dev/null \
+      'https://dl.google.com/dl/android/maven2/com/android/application/com.android.application.gradle.plugin/9.1.1/com.android.application.gradle.plugin-9.1.1.pom' \
+      2>/dev/null; then
+    echo 'APPFORGE_AGP_MAVEN_PROBE=REACHABLE'
+    return 0
+  fi
+  echo 'APPFORGE_AGP_MAVEN_PROBE=UNREACHABLE'
+  return 1
+}
+
 gradle_warmup() {
   gw_project="$1"
   gw_log="$2"
@@ -57,6 +80,7 @@ gradle_warmup() {
   gw_exit="$4"
   gw_attempt=1
   gw_max=3
+  gw_refresh=0
 
   case "$gw_kind" in
     ANDROID)
@@ -79,6 +103,9 @@ gradle_warmup() {
     if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = 1 ]; then
       set -- --offline
     fi
+    if [ "$gw_refresh" -eq 1 ]; then
+      set -- "$@" --refresh-dependencies
+    fi
 
     if "$GRADLE" "$@" \
       -p "$gw_project" \
@@ -94,6 +121,27 @@ gradle_warmup() {
     gw_unsafe='PKIX|certification path|SSLHandshakeException|certificate verify failed|checksum mismatch|hash mismatch|signature invalid|401 Unauthorized|403 Forbidden|404 Not Found'
 
     gw_transient='Read timed out|Connection reset|Connection timed out|SocketTimeoutException|ConnectException|Temporary failure in name resolution|502 Bad Gateway|503 Service Unavailable|504 Gateway Timeout|429 Too Many Requests'
+
+    # A missing AGP marker can be a stale negative Gradle cache, but only
+    # retry if Google's official marker is reachable from the Ubuntu runtime.
+    # Never mask TLS, integrity, authentication, or explicit HTTP errors.
+    if grep -Eq "Plugin \[id: 'com\.android\.application'.*version: '9\.1\.1'.*was not found" "$gw_log"; then
+      if [ -d "$GRADLE_USER_HOME/caches/modules-2/files-2.1/com.android.tools.build/gradle/9.1.1" ]; then
+        echo 'APPFORGE_AGP_CACHE_ENTRY=PRESENT_NOT_YET_VERIFIED'
+      else
+        echo 'APPFORGE_AGP_CACHE_ENTRY=MISSING'
+      fi
+      if [ "$gw_attempt" -eq 1 ] &&
+         [ "${APPFORGE_DEVICE_OFFLINE:-0}" != 1 ] &&
+         ! grep -Eiq "$gw_unsafe" "$gw_log" &&
+         agp_marker_reachable; then
+        gw_refresh=1
+        gw_attempt=$((gw_attempt + 1))
+        echo 'APPFORGE_AGP_RESOLUTION_RETRY=REFRESH_DEPENDENCIES'
+        continue
+      fi
+      echo 'APPFORGE_AGP_RESOLUTION=UNRESOLVED'
+    fi
 
     if [ "$gw_attempt" -lt "$gw_max" ] &&
        ! grep -Eiq "$gw_unsafe" "$gw_log" &&
