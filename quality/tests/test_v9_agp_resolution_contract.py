@@ -1,4 +1,6 @@
 import pathlib
+import subprocess
+import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -17,6 +19,65 @@ class AgpResolutionContract(unittest.TestCase):
         self.assertIn('! grep -Eiq "$gw_unsafe"', SCRIPT)
         self.assertIn('"${APPFORGE_DEVICE_OFFLINE:-0}" != 1', SCRIPT)
         self.assertNotIn("--insecure", SCRIPT)
+
+    def test_probe_classifies_curl_failures_without_persisting_raw_output(self):
+        probe = SCRIPT[SCRIPT.index("agp_marker_reachable()"):SCRIPT.index("gradle_warmup()")]
+        for status, http, expected in [
+            (0, "200", "REACHABLE"), (6, "000", "DNS"), (7, "000", "CONNECT"),
+            (28, "000", "TIMEOUT"), (60, "000", "TLS"), (22, "403", "HTTP_403"),
+            (22, "404", "HTTP_404"), (22, "503", "HTTP_503"),
+            (0, "raw response", "UNREACHABLE"),
+        ]:
+            with self.subTest(status=status, http=http):
+                result = subprocess.run(
+                    ["sh", "-eu", "-c", probe + """
+                    curl() { printf '%s' "$http"; return "$status"; }
+                    status=$1; http=$2
+                    agp_marker_reachable
+                    """, "probe", str(status), http],
+                    env={"PATH": "/usr/bin:/bin", "APPFORGE_DEVICE_OFFLINE": "0"},
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.stdout, f"APPFORGE_AGP_MAVEN_PROBE={expected}\n")
+                self.assertEqual(result.returncode, int(expected != "REACHABLE"))
+
+    def test_warmup_records_probe_only_online_and_preserves_failure_exit(self):
+        functions = SCRIPT[SCRIPT.index("agp_marker_reachable()"):SCRIPT.index('case "$MODE"')]
+        for offline, status, http, attempts in [
+            ("0", 60, "000", 1), ("1", 0, "200", 1), ("0", 0, "200", 2),
+        ]:
+            with self.subTest(offline=offline, status=status), tempfile.TemporaryDirectory() as temp:
+                result = subprocess.run(
+                    ["sh", "-eu", "-c", functions + """
+                    gradle() {
+                        printf '%s\n' "FAILURE: Gradle warmup failed" \
+                          "Plugin [id: 'com.android.application', version: '9.1.1'] was not found"
+                        return 1
+                    }
+                    curl() {
+                        touch "$probe_file"
+                        printf '%s' "$http"
+                        return "$status"
+                    }
+                    agp_jvm_probe() {
+                        echo 'APPFORGE_AGP_JVM_MARKER=TLS'
+                    }
+                    GRADLE=gradle
+                    GRADLE_USER_HOME=$1
+                    probe_file=$1/probe
+                    status=$2; http=$3
+                    gradle_warmup "$1" "$1/gradle.log" ANDROID 62
+                    """, "warmup", temp, str(status), http],
+                    env={"PATH": "/usr/bin:/bin", "APPFORGE_DEVICE_OFFLINE": offline},
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 62, result.stderr)
+                self.assertEqual((pathlib.Path(temp) / "probe").exists(), offline == "0")
+                log = (pathlib.Path(temp) / "gradle.log").read_text()
+                self.assertEqual("APPFORGE_AGP_MAVEN_PROBE=TLS" in log, status == 60)
+                self.assertEqual(result.stdout.count("APPFORGE_AGP_RESOLUTION_RETRY="), attempts - 1)
+                self.assertIn(f"APPFORGE_GRADLE_ATTEMPTS={attempts}", result.stdout)
+                self.assertEqual("APPFORGE_AGP_JVM_MARKER=TLS" in log, attempts == 2)
 
     def test_precise_secret_safe_failure_codes(self):
         self.assertIn('"AGP_PLUGIN_UNRESOLVED"', DIAGNOSTICS)

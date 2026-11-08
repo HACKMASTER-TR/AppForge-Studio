@@ -31,7 +31,7 @@ internal object GradleFailureDiagnostics {
         log.contains("No cached version of",true) &&
             log.contains("offline",true) -> "GRADLE_OFFLINE_CACHE_MISS"
         log.contains("Plugin [id: 'com.android.application'",true) &&
-            log.contains("was not found",true) -> "AGP_PLUGIN_UNRESOLVED"
+            log.contains("was not found",true) -> agpProbeFailure(log) ?: "AGP_PLUGIN_UNRESOLVED"
         log.contains("Plugin [id: 'com.chaquo.python'",true) &&
             log.contains("was not found",true) -> "CHAQUOPY_PLUGIN_UNRESOLVED"
         log.contains("Could not resolve com.android.tools.build:gradle",true) -> "AGP_ARTIFACT_UNRESOLVED"
@@ -40,6 +40,34 @@ internal object GradleFailureDiagnostics {
             log.contains("Could not get resource",true) -> "RESOURCE_READ"
         else -> "UNKNOWN"
     }
+
+    private fun agpProbeFailure(log: String): String? =
+        log.lineSequence().mapNotNull { line ->
+            when (line) {
+                "APPFORGE_AGP_JVM_MARKER=TLS",
+                "APPFORGE_AGP_JVM_POM=TLS" -> "AGP_JVM_TLS"
+                "APPFORGE_AGP_JVM_MARKER=DNS",
+                "APPFORGE_AGP_JVM_POM=DNS" -> "AGP_JVM_DNS"
+                "APPFORGE_AGP_JVM_MARKER=TIMEOUT",
+                "APPFORGE_AGP_JVM_POM=TIMEOUT" -> "AGP_JVM_TIMEOUT"
+                "APPFORGE_AGP_JVM_MARKER=CONNECT",
+                "APPFORGE_AGP_JVM_POM=CONNECT" -> "AGP_JVM_CONNECT"
+                "APPFORGE_AGP_JVM_MARKER=IO",
+                "APPFORGE_AGP_JVM_POM=IO" -> "AGP_JVM_IO"
+                "APPFORGE_AGP_MAVEN_PROBE=DNS" -> "AGP_MAVEN_DNS"
+                "APPFORGE_AGP_MAVEN_PROBE=CONNECT" -> "AGP_MAVEN_CONNECT"
+                "APPFORGE_AGP_MAVEN_PROBE=TIMEOUT" -> "AGP_MAVEN_TIMEOUT"
+                "APPFORGE_AGP_MAVEN_PROBE=TLS" -> "AGP_MAVEN_TLS"
+                "APPFORGE_AGP_MAVEN_PROBE=HTTP_401",
+                "APPFORGE_AGP_MAVEN_PROBE=HTTP_403" -> "AGP_MAVEN_HTTP_AUTH"
+                "APPFORGE_AGP_MAVEN_PROBE=HTTP_404" -> "AGP_MAVEN_HTTP_NOT_FOUND"
+                "APPFORGE_AGP_MAVEN_PROBE=HTTP_429" -> "AGP_MAVEN_HTTP_RATE_LIMIT"
+                "APPFORGE_AGP_MAVEN_PROBE=HTTP_502",
+                "APPFORGE_AGP_MAVEN_PROBE=HTTP_503",
+                "APPFORGE_AGP_MAVEN_PROBE=HTTP_504" -> "AGP_MAVEN_HTTP_UPSTREAM"
+                else -> null
+            }
+        }.lastOrNull()
 
     fun capture(
         privateRoot: File,

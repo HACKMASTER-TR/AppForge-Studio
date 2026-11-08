@@ -23,6 +23,14 @@ internal class GradleFailureDiagnosticsTest {
         assertEquals("AGP_PLUGIN_UNRESOLVED", GradleFailureDiagnostics.classify(agp))
         assertEquals("CHAQUOPY_PLUGIN_UNRESOLVED", GradleFailureDiagnostics.classify(python))
         assertEquals("TLS_TRUST", GradleFailureDiagnostics.classify("PKIX " + agp))
+        assertEquals("AGP_JVM_TLS",
+            GradleFailureDiagnostics.classify("$agp\nAPPFORGE_AGP_JVM_MARKER=TLS"))
+        assertEquals("AGP_MAVEN_TLS",
+            GradleFailureDiagnostics.classify("$agp\nAPPFORGE_AGP_MAVEN_PROBE=TLS"))
+        assertEquals("AGP_PLUGIN_UNRESOLVED",
+            GradleFailureDiagnostics.classify("$agp\nAPPFORGE_AGP_MAVEN_PROBE=REACHABLE"))
+        assertEquals("TLS_TRUST",
+            GradleFailureDiagnostics.classify("PKIX $agp\nAPPFORGE_AGP_MAVEN_PROBE=DNS"))
     }
 
     @Test fun persistedResultNeverContainsRawUrl() {
