@@ -268,7 +268,7 @@ repair_stale_node_packages() {
   # previously interrupted universal Node installation.
   dpkg --audit || true
 
-  apt-get \
+  /bin/sh /opt/appforge-device/telemetry-bin/apt-get \
     -f install \
     -y \
     --no-install-recommends \
@@ -278,9 +278,9 @@ repair_stale_node_packages() {
 
 repair_stale_node_packages
 
-apt-get update
+/bin/sh /opt/appforge-device/telemetry-bin/apt-get update
 if [ "$REUSE_ANDROID_CORE" != 1 ]; then
-apt-get install -y --no-install-recommends \
+/bin/sh /opt/appforge-device/telemetry-bin/apt-get install -y --no-install-recommends \
   ca-certificates curl unzip zip xz-utils tar \
   git file \
   libstdc++6 zlib1g libpng16-16 \
@@ -290,7 +290,7 @@ fi
 if [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ]; then
   case "$HOST_ARCH" in
     aarch64|arm64)
-      apt-get install -y --no-install-recommends \
+      /bin/sh /opt/appforge-device/telemetry-bin/apt-get install -y --no-install-recommends \
         cmake \
         ninja-build \
         clang \
@@ -302,10 +302,10 @@ fi
 
 case "$ENGINE" in
   node-web)
-    apt-get install -y --no-install-recommends nodejs npm
+    /bin/sh /opt/appforge-device/telemetry-bin/apt-get install -y --no-install-recommends nodejs npm
     ;;
   python-android)
-    apt-get install -y --no-install-recommends       python3       python3-pip       python3-venv python3.12 python3.12-minimal libpython3.12-minimal libpython3.12-stdlib
+    /bin/sh /opt/appforge-device/telemetry-bin/apt-get install -y --no-install-recommends       python3       python3-pip       python3-venv python3.12 python3.12-minimal libpython3.12-minimal libpython3.12-stdlib
 
     test -x /usr/bin/python3.12
 

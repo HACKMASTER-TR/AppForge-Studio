@@ -406,7 +406,7 @@ OPTS
  printf 'APT_NO_DOWNLOAD_INSTALLED\n' > "$as_transaction/verification"
  (cd "$as_transaction" && sha256sum identity profile.sha256 catalog.sha256 requests.txt baseline.tsv plan.tsv packages.tsv dependencies.tsv installed.tsv installed-files.sha256 verification metadata.sha256) > "$as_transaction/manifest.sha256"
  as_verify_lock "$as_transaction" || return 60
- mv "$as_transaction" "$as_locks/$as_id"
+ mv -T "$as_transaction" "$as_locks/$as_id" || { as_fail "verified lock could not be published";return 60; }
  echo "APPFORGE_APT_NO_DOWNLOAD_VERIFIED:$as_owner:$as_id"
  rm -f /workspace/apt-phase.json
 }

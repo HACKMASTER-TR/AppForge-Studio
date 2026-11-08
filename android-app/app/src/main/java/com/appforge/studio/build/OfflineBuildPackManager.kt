@@ -392,6 +392,12 @@ internal object OfflineBuildPackManager {
                         control.checkpoint()
                         execute(shell,staged,workspace,id.name.lowercase(),
                         "APPFORGE_MODULE_REFRESH=${if(OfflineModules.refreshExistingInstallation(id,installedVersion(app,id)!=null))1 else 0} APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_CORE_PREPARED=${if(id in setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE,OfflineModuleId.RUST_ANDROID_NDK))1 else 0} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 ${if(id==OfflineModuleId.RUST && command.startsWith("install-rust-module.py"))"/usr/bin/python3.12 -I -S" else "/bin/sh"} /workspace/runtime/$command",id,operation,progress,control,r2Authorized=r2Bundle!=null)
+                        if(command.startsWith("install-toolchain.sh ") &&
+                            id in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID)) {
+                            check(AptModuleLocks.inspect(staged,id).transactions>0) {
+                                "APPFORGE_APT_LOCK_MISSING_AFTER_TOOLCHAIN:${id.name} • Doğrulanmış APT snapshot kilidi yazılmadı."
+                            }
+                        }
                     }
                     control.checkpoint()
                     phase(id,ModulePhase.OFFLINE_TEST,"Gerçek dosya/sürüm ve çevrimdışı araç kontrolü yapılıyor.")
