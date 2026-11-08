@@ -95,7 +95,7 @@ test('APT mutation outside the modular installer is rejected before touching the
  const result=run('APPFORGE_APT_MANAGED_INSTALL=0;as_configure');assert.equal(result.status,60);assert(result.stderr.includes('approved modular installer'));
 }));
 
-test('only absent, explicitly excluded documents are allowed for the reviewed Perl archive', () => fixture(({dir, helper, run}) => {
+test('only absent Ubuntu Base documentation exclusions pass package verification', () => fixture(({dir, helper, run}) => {
  const config = path.join(dir, 'excludes');
  const doc = path.join(dir, 'usr/share/doc');
  const man = path.join(dir, 'usr/share/man');
@@ -104,13 +104,15 @@ test('only absent, explicitly excluded documents are allowed for the reviewed Pe
   .replaceAll('/usr/share/doc', doc)
   .replaceAll('/usr/share/man', man));
  fs.writeFileSync(config, `path-exclude=${doc}/*\npath-exclude=${man}/*\n`);
- const digest = '52ff69555911c8ef4350a80b12bbdc823b6c096cb15eb39c540cd84e6c726cc0';
- const check = (output, hash = digest) => run(`as_expected_perl_exclusions perl-base '${hash}' '${output}'`);
+ const check = output => run(`as_expected_doc_exclusions '${output}'`);
  const authors = path.join(doc, 'perl/AUTHORS.gz');
  assert.equal(check(`missing     ${authors}\nmissing     ${man}/man1/perl.1.gz`).status, 0);
  assert.notEqual(check('missing     /usr/bin/perl5.38.2').status, 0);
  assert.notEqual(check(`?M???????   ${authors}`).status, 0);
- assert.notEqual(check(`missing     ${authors}`, '0'.repeat(64)).status, 0);
+ assert.equal(check(`missing     ${doc}/tar/NEWS.gz`).status, 0);
+ assert.notEqual(check(`missing     ${doc}/tar/copyright`).status, 0);
+ assert.notEqual(check(`missing     ${doc}/tar/changelog.Debian.gz`).status, 0);
+ assert.notEqual(check(`missing     ${doc}/../bin/perl`).status, 0);
  fs.mkdirSync(path.dirname(authors), {recursive: true});
  fs.symlinkSync('missing-target', authors);
  assert.notEqual(check(`missing     ${authors}`).status, 0);

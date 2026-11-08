@@ -257,25 +257,25 @@ as_repair_perl_hardlink() (
  echo 'APPFORGE_APT_PERL_HARDLINK_REPAIRED'
 )
 
-# Ubuntu Base deliberately omits these four paths in the reviewed perl-base.
-# Other missing files, broken links, and digest/mode differences remain fatal.
-as_expected_perl_exclusions() (
- [ "$1" = perl-base ] &&
- [ "$2" = 52ff69555911c8ef4350a80b12bbdc823b6c096cb15eb39c540cd84e6c726cc0 ] || return 1
- as_perl_excludes=/etc/dpkg/dpkg.cfg.d/excludes
- [ -f "$as_perl_excludes" ] && [ ! -L "$as_perl_excludes" ] || return 1
+# Recognize only absent documentation excluded by the Ubuntu Base profile.
+# Package archive, installed version, and all other dpkg checks still apply.
+as_expected_doc_exclusions() (
+ as_doc_excludes=/etc/dpkg/dpkg.cfg.d/excludes
+ [ -f "$as_doc_excludes" ] && [ ! -L "$as_doc_excludes" ] || return 1
  while read -r as_kind as_path as_extra;do
   [ "$as_kind" = missing ] && [ -z "$as_extra" ] &&
   [ ! -e "$as_path" ] && [ ! -L "$as_path" ] || return 1
+  case "$as_path/" in */../*|*/./*|*//*) return 1;; esac
   case "$as_path" in
-   /usr/share/doc/perl/AUTHORS.gz|/usr/share/doc/perl/Documentation)
-    grep -Fxq 'path-exclude=/usr/share/doc/*' "$as_perl_excludes" || return 1 ;;
-   /usr/share/man/man1/perl.1.gz|/usr/share/man/man1/perl5.38.2.1.gz)
-    grep -Fxq 'path-exclude=/usr/share/man/*' "$as_perl_excludes" || return 1 ;;
+   /usr/share/doc/*/copyright|/usr/share/doc/*/changelog.*) return 1 ;;
+   /usr/share/doc/*)
+    grep -Fxq 'path-exclude=/usr/share/doc/*' "$as_doc_excludes" || return 1 ;;
+   /usr/share/man/*)
+    grep -Fxq 'path-exclude=/usr/share/man/*' "$as_doc_excludes" || return 1 ;;
    *) return 1 ;;
   esac
  done <<VERIFY
-$3
+$1
 VERIFY
 )
 
@@ -443,7 +443,7 @@ OPTS
   [ "$(dpkg-query -W -f='${Version}:${Architecture}:${db:Status-Abbrev}' "$as_pkg")" = "$as_ver:$as_cpu:ii " ] || return 60
   as_repair_perl_hardlink "$as_pkg" "$as_sha" || { as_fail "verified Perl hardlink repair failed";return 60; }
   as_verify_output=$(dpkg --verify "$as_pkg") || { as_fail "installed package verification failed: $as_pkg";return 60; }
-  if [ -n "$as_verify_output" ] && ! as_expected_perl_exclusions "$as_pkg" "$as_sha" "$as_verify_output";then
+  if [ -n "$as_verify_output" ] && ! as_expected_doc_exclusions "$as_verify_output";then
    printf '%s\n' "$as_verify_output" | tail -12 >&2
    as_fail "installed package files differ from authenticated package: $as_pkg";return 60
   fi
