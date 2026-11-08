@@ -196,9 +196,25 @@ val prepareAppForgeProrootRuntime =
                         cache.parentFile.mkdirs()
                         val part=File(cache.path+".download-"+UUID.randomUUID())
                         try {
-                            appForgeDownloadPinnedAsset(
-                                initialUrl = "https://github.com/coderredlab/proroot/releases/download/$appForgeProrootVersion/${asset.name}",
-                                destination = part,expectedSize = asset.size,expectedSha256 = asset.sha256)
+                            // Retry only explicitly transient GitHub HTTP responses.
+                            // HTTPS, trusted-host, size and SHA-256 checks stay unchanged.
+                            var attempt = 1
+                            while (true) {
+                                try {
+                                    appForgeDownloadPinnedAsset(
+                                        initialUrl = "https://github.com/coderredlab/proroot/releases/download/$appForgeProrootVersion/${asset.name}",
+                                        destination = part,expectedSize = asset.size,expectedSha256 = asset.sha256)
+                                    break
+                                } catch (failure: IllegalStateException) {
+                                    val match = Regex("""^Proroot indirme HTTP (429|502|503|504) ile başarısız\.$""")
+                                        .matchEntire(failure.message.orEmpty())
+                                    if (match == null || attempt >= 4) throw failure
+                                    val code = match.groupValues[1]
+                                    logger.warn("APPFORGE_PROROOT_HTTP_RETRY=$attempt/4 STATUS=$code")
+                                    Thread.sleep(2_000L * attempt)
+                                    attempt++
+                                }
+                            }
                             promote(part,cache)
                         }finally{part.delete()}
                     }
