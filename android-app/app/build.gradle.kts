@@ -154,6 +154,7 @@ fun appForgeDownloadPinnedAsset(
 
 val appForgeOfflineBuild = gradle.startParameter.isOffline
 val appForgeProrootCache = File(gradle.gradleUserHomeDir,"appforge/proroot/$appForgeProrootVersion/arm64-v8a")
+val appForgeVendoredProrootRoot = layout.projectDirectory.dir("src/main/proroot-pinned/arm64-v8a").asFile
 
 val appForgeProrootJniRoot = layout.buildDirectory.dir("generated/proroot/jniLibs")
 
@@ -189,6 +190,14 @@ val prepareAppForgeProrootRuntime =
                         Files.move(part.toPath(),destination.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
                     }finally{part.delete()}
                 }
+                // Prefer the exact upstream SHA-256 pinned Proroot assets from the last verified CI APK.
+                // An invalid vendored asset fails closed; a valid one populates the usual Gradle cache.
+                val vendored=appForgeVendoredProrootRoot.resolve(asset.name)
+                require(vendored.isFile && !Files.isSymbolicLink(vendored.toPath()) && verified(vendored)) {
+                    "APPFORGE_PROROOT_PINNED_SOURCE_INVALID: ${asset.name}"
+                }
+                if(!verified(cache)) promote(vendored,cache)
+                logger.lifecycle("APPFORGE_PROROOT_PINNED=PASS: ${asset.name}")
                 if(validExisting && !verified(cache))promote(target,cache)
                 if(!validExisting) {
                     if(!verified(cache)) {
