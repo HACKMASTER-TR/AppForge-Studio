@@ -237,6 +237,48 @@ as_cache_archive() {
  if [ -f "$as_cache_file" ];then printf '%s  %s\n' "$2" "$as_cache_file" | sha256sum -c - >/dev/null || return 60
  else cp "$1" "$as_cache_file.part" || return 60;printf '%s  %s\n' "$2" "$as_cache_file.part" | sha256sum -c - >/dev/null || return 60;mv "$as_cache_file.part" "$as_cache_file";fi
 }
+# Proroot can turn this reviewed hardlink into a dangling dpkg staging link.
+# Materialize the original executable bytes before normal dpkg verification.
+as_repair_perl_hardlink() (
+ [ "$1" = perl-base ] &&
+ [ "$2" = 52ff69555911c8ef4350a80b12bbdc823b6c096cb15eb39c540cd84e6c726cc0 ] ||
+  return 0
+ as_perl_alias=/usr/bin/perl5.38.2
+ [ -L "$as_perl_alias" ] && [ ! -e "$as_perl_alias" ] &&
+ [ "$(readlink "$as_perl_alias")" = ../../usr/bin/perl.dpkg-new ] || return 0
+ as_perl_archive="$as_store/archives/$2.deb"
+ printf '%s  %s\n' "$2" "$as_perl_archive" | sha256sum -c - >/dev/null || return 60
+ [ -f /usr/bin/perl ] && [ ! -L /usr/bin/perl ] && [ -x /usr/bin/perl ] || return 60
+ as_perl_temp=$(mktemp /usr/bin/.appforge-perl.XXXXXXXX) || return 60
+ trap 'rm -f "$as_perl_temp"' 0
+ dpkg-deb --fsys-tarfile "$as_perl_archive" | tar -xOf - ./usr/bin/perl > "$as_perl_temp" || return 60
+ cmp -s "$as_perl_temp" /usr/bin/perl || return 60
+ chmod 0755 "$as_perl_temp" && mv -fT "$as_perl_temp" "$as_perl_alias" || return 60
+ echo 'APPFORGE_APT_PERL_HARDLINK_REPAIRED'
+)
+
+# Ubuntu Base deliberately omits these four paths in the reviewed perl-base.
+# Other missing files, broken links, and digest/mode differences remain fatal.
+as_expected_perl_exclusions() (
+ [ "$1" = perl-base ] &&
+ [ "$2" = 52ff69555911c8ef4350a80b12bbdc823b6c096cb15eb39c540cd84e6c726cc0 ] || return 1
+ as_perl_excludes=/etc/dpkg/dpkg.cfg.d/excludes
+ [ -f "$as_perl_excludes" ] && [ ! -L "$as_perl_excludes" ] || return 1
+ while read -r as_kind as_path as_extra;do
+  [ "$as_kind" = missing ] && [ -z "$as_extra" ] &&
+  [ ! -e "$as_path" ] && [ ! -L "$as_path" ] || return 1
+  case "$as_path" in
+   /usr/share/doc/perl/AUTHORS.gz|/usr/share/doc/perl/Documentation)
+    grep -Fxq 'path-exclude=/usr/share/doc/*' "$as_perl_excludes" || return 1 ;;
+   /usr/share/man/man1/perl.1.gz|/usr/share/man/man1/perl5.38.2.1.gz)
+    grep -Fxq 'path-exclude=/usr/share/man/*' "$as_perl_excludes" || return 1 ;;
+   *) return 1 ;;
+  esac
+ done <<VERIFY
+$3
+VERIFY
+)
+
 as_install_files() {
  # Install exact package versions with APT networking disabled, using verified CAS.
  set -- install -y --no-install-recommends --no-download --no-remove
@@ -295,6 +337,9 @@ OPTS
   cmp "$as_store/current.tsv.tmp" "$as_transaction/baseline.tsv" || { as_fail 'baseline or shared package version conflict; old lock retained';return 60; }
   as_phase INSTALLING "Kilitli APT sürümleri indirmesiz yeniden kuruluyor." || return 60
   as_install_files || return $?
+  while IFS="$(printf '\t')" read -r as_pkg as_ver as_cpu as_sha as_size as_url;do
+   as_repair_perl_hardlink "$as_pkg" "$as_sha" || return 60
+  done < "$as_transaction/packages.tsv"
   as_phase OFFLINE_TEST "İndirmesiz kurulum dosyaları doğrulanıyor." || return 60
   as_current_matches "$as_transaction/installed.tsv" || return 60
   sha256sum -c "$as_transaction/installed-files.sha256" >/dev/null || return 60
@@ -396,7 +441,12 @@ OPTS
  : > "$as_transaction/installed-files.sha256"
  while IFS="$(printf '\t')" read -r as_pkg as_ver as_cpu as_sha as_size as_url;do
   [ "$(dpkg-query -W -f='${Version}:${Architecture}:${db:Status-Abbrev}' "$as_pkg")" = "$as_ver:$as_cpu:ii " ] || return 60
-  [ -z "$(dpkg --verify "$as_pkg")" ] || { as_fail "installed package files differ from authenticated package: $as_pkg";return 60; }
+  as_repair_perl_hardlink "$as_pkg" "$as_sha" || { as_fail "verified Perl hardlink repair failed";return 60; }
+  as_verify_output=$(dpkg --verify "$as_pkg") || { as_fail "installed package verification failed: $as_pkg";return 60; }
+  if [ -n "$as_verify_output" ] && ! as_expected_perl_exclusions "$as_pkg" "$as_sha" "$as_verify_output";then
+   printf '%s\n' "$as_verify_output" | tail -12 >&2
+   as_fail "installed package files differ from authenticated package: $as_pkg";return 60
+  fi
   dpkg-query -L "$as_pkg" | while IFS= read -r as_installed_file;do
    [ ! -f "$as_installed_file" ] || [ -L "$as_installed_file" ] || sha256sum "$as_installed_file"
   done >> "$as_transaction/installed-files.sha256"

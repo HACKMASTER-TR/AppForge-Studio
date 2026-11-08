@@ -94,3 +94,26 @@ test('actual snapshot transaction rejects insufficient download space before acq
 test('APT mutation outside the modular installer is rejected before touching the root',()=>fixture(({run})=>{
  const result=run('APPFORGE_APT_MANAGED_INSTALL=0;as_configure');assert.equal(result.status,60);assert(result.stderr.includes('approved modular installer'));
 }));
+
+test('only absent, explicitly excluded documents are allowed for the reviewed Perl archive', () => fixture(({dir, helper, run}) => {
+ const config = path.join(dir, 'excludes');
+ const doc = path.join(dir, 'usr/share/doc');
+ const man = path.join(dir, 'usr/share/man');
+ fs.writeFileSync(helper, fs.readFileSync(helper, 'utf8')
+  .replaceAll('/etc/dpkg/dpkg.cfg.d/excludes', config)
+  .replaceAll('/usr/share/doc', doc)
+  .replaceAll('/usr/share/man', man));
+ fs.writeFileSync(config, `path-exclude=${doc}/*\npath-exclude=${man}/*\n`);
+ const digest = '52ff69555911c8ef4350a80b12bbdc823b6c096cb15eb39c540cd84e6c726cc0';
+ const check = (output, hash = digest) => run(`as_expected_perl_exclusions perl-base '${hash}' '${output}'`);
+ const authors = path.join(doc, 'perl/AUTHORS.gz');
+ assert.equal(check(`missing     ${authors}\nmissing     ${man}/man1/perl.1.gz`).status, 0);
+ assert.notEqual(check('missing     /usr/bin/perl5.38.2').status, 0);
+ assert.notEqual(check(`?M???????   ${authors}`).status, 0);
+ assert.notEqual(check(`missing     ${authors}`, '0'.repeat(64)).status, 0);
+ fs.mkdirSync(path.dirname(authors), {recursive: true});
+ fs.symlinkSync('missing-target', authors);
+ assert.notEqual(check(`missing     ${authors}`).status, 0);
+ fs.writeFileSync(config, '');
+ assert.notEqual(check(`missing     ${man}/man1/perl.1.gz`).status, 0);
+}));
