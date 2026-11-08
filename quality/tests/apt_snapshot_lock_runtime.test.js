@@ -119,3 +119,41 @@ test('only absent Ubuntu Base documentation exclusions pass package verification
  fs.writeFileSync(config, '');
  assert.notEqual(check(`missing     ${man}/man1/perl.1.gz`).status, 0);
 }));
+
+test('reviewed dangling dpkg links are repaired only with matching archive link and bytes', () => fixture(({dir, store, helper, run}) => {
+ const bin = path.join(dir, 'bin');
+ const tree = path.join(dir, 'payload');
+ const payloadBin = path.join(tree, 'usr/bin');
+ const archives = path.join(store, 'archives');
+ for (const folder of [bin, payloadBin, archives]) fs.mkdirSync(folder, {recursive: true});
+ const reader = path.join(dir, 'read-fixture-package');
+ fs.writeFileSync(reader, '#!/bin/sh\ncase "$1" in --contents) exec tar -tvf "$2";; --fsys-tarfile) exec cat "$2";; esac\n', {mode: 0o700});
+ fs.writeFileSync(helper, fs.readFileSync(helper, 'utf8')
+  .replace('as_alias_path="/usr/bin/', `as_alias_path="${bin}/`)
+  .replace('as_target_path="/usr/bin/', `as_target_path="${bin}/`)
+  .replace('mktemp /usr/bin/', `mktemp ${bin}/`)
+  .replaceAll('dpkg-deb', reader)
+  .replaceAll('".$as_alias_path"', '"./usr/bin/$as_alias"')
+  .replaceAll('".$as_target_path"', '"./usr/bin/$as_target"'));
+ for (const [pkg, alias, target] of [
+  ['perl-base', 'perl5.38.2', 'perl'], ['perl', 'perlthanks', 'perlbug'], ['unzip', 'zipinfo', 'unzip'],
+ ]) {
+  fs.writeFileSync(path.join(payloadBin, target), pkg, {mode: 0o755});
+  fs.linkSync(path.join(payloadBin, target), path.join(payloadBin, alias));
+  const tar = spawnSync('tar', ['-cf', '-', '-C', tree, `./usr/bin/${target}`, `./usr/bin/${alias}`]);
+  assert.equal(tar.status, 0, String(tar.stderr));
+  const digest = sha(tar.stdout);
+  fs.writeFileSync(path.join(archives, `${digest}.deb`), tar.stdout);
+  const link = path.join(bin, alias);
+  fs.symlinkSync(`../../usr/bin/${target}.dpkg-new`, link);
+  fs.writeFileSync(path.join(bin, target), 'different', {mode: 0o755});
+  const command = `as_repair_dpkg_hardlink '${pkg}' '${digest}'`;
+  assert.equal(run(command).status, 60);
+  assert(fs.lstatSync(link).isSymbolicLink());
+  fs.writeFileSync(path.join(bin, target), pkg);
+  const result = run(command);
+  assert.equal(result.status, 0, result.stderr);
+  assert(fs.lstatSync(link).isFile());
+  assert.equal(fs.readFileSync(link, 'utf8'), pkg);
+ }
+}));

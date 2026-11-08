@@ -237,24 +237,33 @@ as_cache_archive() {
  if [ -f "$as_cache_file" ];then printf '%s  %s\n' "$2" "$as_cache_file" | sha256sum -c - >/dev/null || return 60
  else cp "$1" "$as_cache_file.part" || return 60;printf '%s  %s\n' "$2" "$as_cache_file.part" | sha256sum -c - >/dev/null || return 60;mv "$as_cache_file.part" "$as_cache_file";fi
 }
-# Proroot can turn this reviewed hardlink into a dangling dpkg staging link.
-# Materialize the original executable bytes before normal dpkg verification.
-as_repair_perl_hardlink() (
- [ "$1" = perl-base ] &&
- [ "$2" = 52ff69555911c8ef4350a80b12bbdc823b6c096cb15eb39c540cd84e6c726cc0 ] ||
-  return 0
- as_perl_alias=/usr/bin/perl5.38.2
- [ -L "$as_perl_alias" ] && [ ! -e "$as_perl_alias" ] &&
- [ "$(readlink "$as_perl_alias")" = ../../usr/bin/perl.dpkg-new ] || return 0
- as_perl_archive="$as_store/archives/$2.deb"
- printf '%s  %s\n' "$2" "$as_perl_archive" | sha256sum -c - >/dev/null || return 60
- [ -f /usr/bin/perl ] && [ ! -L /usr/bin/perl ] && [ -x /usr/bin/perl ] || return 60
- as_perl_temp=$(mktemp /usr/bin/.appforge-perl.XXXXXXXX) || return 60
- trap 'rm -f "$as_perl_temp"' 0
- dpkg-deb --fsys-tarfile "$as_perl_archive" | tar -xOf - ./usr/bin/perl > "$as_perl_temp" || return 60
- cmp -s "$as_perl_temp" /usr/bin/perl || return 60
- chmod 0755 "$as_perl_temp" && mv -fT "$as_perl_temp" "$as_perl_alias" || return 60
- echo 'APPFORGE_APT_PERL_HARDLINK_REPAIRED'
+# Recover only reviewed executable hardlinks converted into dangling dpkg
+# staging links. Authenticate the archive and check its link and target bytes.
+as_repair_dpkg_hardlink() (
+ case "$1" in
+  perl-base) as_alias=perl5.38.2; as_target=perl ;;
+  perl) as_alias=perlthanks; as_target=perlbug ;;
+  unzip) as_alias=zipinfo; as_target=unzip ;;
+  *) return 0 ;;
+ esac
+ as_alias_path="/usr/bin/$as_alias"
+ as_target_path="/usr/bin/$as_target"
+ [ -L "$as_alias_path" ] && [ ! -e "$as_alias_path" ] &&
+ [ "$(readlink "$as_alias_path")" = "../../usr/bin/$as_target.dpkg-new" ] || return 0
+ as_link_archive="$as_store/archives/$2.deb"
+ printf '%s  %s\n' "$2" "$as_link_archive" | sha256sum -c - >/dev/null || return 60
+ [ -f "$as_target_path" ] && [ ! -L "$as_target_path" ] && [ -x "$as_target_path" ] || return 60
+ as_link_listing=$(dpkg-deb --contents "$as_link_archive") || return 60
+ printf '%s\n' "$as_link_listing" | awk -v alias=".$as_alias_path" -v target=".$as_target_path" '
+  substr($1,1,1)=="h" && $(NF-3)==alias && $(NF-2)=="link" && $(NF-1)=="to" && $NF==target {found++}
+  END {exit found!=1}
+ ' || return 60
+ as_link_temp=$(mktemp /usr/bin/.appforge-hardlink.XXXXXXXX) || return 60
+ trap 'rm -f "$as_link_temp"' 0
+ dpkg-deb --fsys-tarfile "$as_link_archive" | tar -xOf - ".$as_target_path" > "$as_link_temp" || return 60
+ cmp -s "$as_link_temp" "$as_target_path" || return 60
+ chmod 0755 "$as_link_temp" && mv -fT "$as_link_temp" "$as_alias_path" || return 60
+ printf 'APPFORGE_APT_DPKG_HARDLINK_REPAIRED:%s:%s\n' "$1" "$as_alias_path"
 )
 
 # Recognize only absent documentation excluded by the Ubuntu Base profile.
@@ -338,7 +347,7 @@ OPTS
   as_phase INSTALLING "Kilitli APT sürümleri indirmesiz yeniden kuruluyor." || return 60
   as_install_files || return $?
   while IFS="$(printf '\t')" read -r as_pkg as_ver as_cpu as_sha as_size as_url;do
-   as_repair_perl_hardlink "$as_pkg" "$as_sha" || return 60
+   as_repair_dpkg_hardlink "$as_pkg" "$as_sha" || return 60
   done < "$as_transaction/packages.tsv"
   as_phase OFFLINE_TEST "İndirmesiz kurulum dosyaları doğrulanıyor." || return 60
   as_current_matches "$as_transaction/installed.tsv" || return 60
@@ -441,7 +450,7 @@ OPTS
  : > "$as_transaction/installed-files.sha256"
  while IFS="$(printf '\t')" read -r as_pkg as_ver as_cpu as_sha as_size as_url;do
   [ "$(dpkg-query -W -f='${Version}:${Architecture}:${db:Status-Abbrev}' "$as_pkg")" = "$as_ver:$as_cpu:ii " ] || return 60
-  as_repair_perl_hardlink "$as_pkg" "$as_sha" || { as_fail "verified Perl hardlink repair failed";return 60; }
+  as_repair_dpkg_hardlink "$as_pkg" "$as_sha" || { as_fail "verified package hardlink repair failed: $as_pkg";return 60; }
   as_verify_output=$(dpkg --verify "$as_pkg") || { as_fail "installed package verification failed: $as_pkg";return 60; }
   if [ -n "$as_verify_output" ] && ! as_expected_doc_exclusions "$as_verify_output";then
    printf '%s\n' "$as_verify_output" | tail -12 >&2
