@@ -663,6 +663,11 @@ internal object OfflineBuildPackManager {
         val sessionId =
             "offline-pack-$suffix-${UUID.randomUUID()}"
 
+        // SDK preferences and the warmup debug key belong to this operation.
+        // Keep them out of the protected build runtime's /root directory.
+        val sdkUserHome=File(workspace.canonicalFile,".appforge-sdk-user/.android")
+        require(sdkUserHome.canonicalFile==sdkUserHome.absoluteFile)
+        check(sdkUserHome.isDirectory || sdkUserHome.mkdirs())
         val telemetry=File(workspace,"module-download.json")
         ExternalTelemetryChannels.clear(telemetry)
         File(workspace,"apt-phase.json").let{require(!java.nio.file.Files.isSymbolicLink(it.toPath()));it.delete()}
@@ -687,7 +692,8 @@ internal object OfflineBuildPackManager {
                 sessionId = sessionId,
                 rootfs = rootfs,
                 workspace = workspace,
-                command = "export APPFORGE_R2_RELEASE_AUTHORIZED=${if(r2Authorized)1 else 0}; export APPFORGE_APT_MANAGED_INSTALL=${if(module!=null)1 else 0}; export APPFORGE_APT_REQUIRE_CONSENT=${if(module!=null)1 else 0}; export APPFORGE_NATIVE_DOWNLOAD_BROKER=${if(broker!=null)"/workspace/native-downloads" else ""}; export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; "+command,
+                command = "export ANDROID_USER_HOME=/workspace/.appforge-sdk-user/.android ANDROID_SDK_HOME=/workspace/.appforge-sdk-user; " +
+                    "export APPFORGE_R2_RELEASE_AUTHORIZED=${if(r2Authorized)1 else 0}; export APPFORGE_APT_MANAGED_INSTALL=${if(module!=null)1 else 0}; export APPFORGE_APT_REQUIRE_CONSENT=${if(module!=null)1 else 0}; export APPFORGE_NATIVE_DOWNLOAD_BROKER=${if(broker!=null)"/workspace/native-downloads" else ""}; export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; "+command,
                 confirmed = true,
                 timeoutMs = 1_800_000L
             )

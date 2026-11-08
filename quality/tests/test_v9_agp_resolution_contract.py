@@ -96,6 +96,13 @@ class AgpResolutionContract(unittest.TestCase):
         for setting in ("CaInfo", "Verify-Peer", "Verify-Host"):
             self.assertIn("Acquire::https::" + setting, trust)
 
+    def test_module_sdk_preferences_and_debug_key_stay_in_operation_workspace(self):
+        source = (ROOT / "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt").read_text()
+        execute = source.split("private suspend fun execute(", 1)[1]
+        self.assertIn('File(workspace.canonicalFile,".appforge-sdk-user/.android")', execute)
+        self.assertIn("ANDROID_USER_HOME=/workspace/.appforge-sdk-user/.android", execute)
+        self.assertIn("ANDROID_SDK_HOME=/workspace/.appforge-sdk-user", execute)
+
     def test_new_branch_has_full_push_gates(self):
         self.assertIn('codex/v9-r2-agp-resolution-fix-20261108', WORKFLOW)
         self.assertEqual(WORKFLOW.count("github.event_name == 'push' && ("), 2)
