@@ -681,7 +681,7 @@ internal object OfflineBuildPackManager {
                 sessionId = sessionId,
                 rootfs = rootfs,
                 workspace = workspace,
-                command = AndroidRuntimeTrust.shellEnvironment + "export APPFORGE_R2_RELEASE_AUTHORIZED=${if(r2Authorized)1 else 0}; export APPFORGE_APT_MANAGED_INSTALL=${if(module!=null)1 else 0}; export APPFORGE_APT_REQUIRE_CONSENT=${if(module!=null)1 else 0}; export APPFORGE_NATIVE_DOWNLOAD_BROKER=${if(broker!=null)"/workspace/native-downloads" else ""}; export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; "+command,
+                command = "export APPFORGE_R2_RELEASE_AUTHORIZED=${if(r2Authorized)1 else 0}; export APPFORGE_APT_MANAGED_INSTALL=${if(module!=null)1 else 0}; export APPFORGE_APT_REQUIRE_CONSENT=${if(module!=null)1 else 0}; export APPFORGE_NATIVE_DOWNLOAD_BROKER=${if(broker!=null)"/workspace/native-downloads" else ""}; export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; "+command,
                 confirmed = true,
                 timeoutMs = 1_800_000L
             )

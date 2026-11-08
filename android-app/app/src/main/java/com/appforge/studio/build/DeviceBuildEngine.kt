@@ -2806,7 +2806,7 @@ object DeviceBuildEngine {
             sessionId = sessionId,
             rootfs = rootfs,
             workspace = workspace,
-            command = AndroidRuntimeTrust.shellEnvironment + "export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; " + command,
+            command = "export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; " + command,
             confirmed = true,
             timeoutMs = timeoutMs
         )

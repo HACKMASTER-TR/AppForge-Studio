@@ -85,6 +85,17 @@ class AgpResolutionContract(unittest.TestCase):
         self.assertIn('"GRADLE_OFFLINE_CACHE_MISS"', DIAGNOSTICS)
         self.assertIn('"TLS_TRUST"', DIAGNOSTICS)
 
+    def test_build_jvm_uses_jdk_trust_and_apt_keeps_explicit_verification(self):
+        sources = ROOT / "android-app/app/src/main/java/com/appforge/studio/build"
+        for name in ("AndroidRuntimeTrust.kt", "OfflineBuildPackManager.kt",
+                     "ProjectDependencyPreparation.kt", "DeviceBuildEngine.kt"):
+            source = (sources / name).read_text()
+            self.assertNotIn("AndroidRuntimeTrust.shellEnvironment", source)
+            self.assertNotIn("-Djavax.net.ssl.trustStore=", source)
+        trust = (sources / "AndroidRuntimeTrust.kt").read_text()
+        for setting in ("CaInfo", "Verify-Peer", "Verify-Host"):
+            self.assertIn("Acquire::https::" + setting, trust)
+
     def test_new_branch_has_full_push_gates(self):
         self.assertIn('codex/v9-r2-agp-resolution-fix-20261108', WORKFLOW)
         self.assertEqual(WORKFLOW.count("github.event_name == 'push' && ("), 2)

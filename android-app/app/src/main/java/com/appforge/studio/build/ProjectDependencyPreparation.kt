@@ -161,7 +161,7 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                 suspend fun trustedTool(command:String) {
                     control.checkpoint()
                     if(offlineVerification)require(!networkSeen.get() && connectivity.allNetworks.isEmpty()){"Ağ açıldı; Rust hazırlığı durdu."}
-                    val result=shell.execute(operation,stage!!.root,workspace,AndroidRuntimeTrust.shellEnvironment+command,confirmed=true,timeoutMs=1_800_000L)
+                    val result=shell.execute(operation,stage!!.root,workspace,command,confirmed=true,timeoutMs=1_800_000L)
                     require(!result.timedOut && result.exitCode==0){"Rust bağımlılık verisi/cache doğrulanamadı (exit ${result.exitCode}). "+com.appforge.studio.terminal.TerminalSecretMasker.redact(result.output.takeLast(1500))}
                 }
                 for((targetIndex,pair) in projects.withIndex()) {
@@ -264,7 +264,7 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                     if(native)require(compilerSnapshot==RuntimeGenerationStore(File(workspace,compilerName)).snapshot()){"Özel Rust derleyicisi değişti"}
                     RustPreparationIntegrity.requireUnchangedRuntime(trustedRuntime,RuntimeGenerationStore(stage!!.root).snapshot())
                     control.checkpoint();require(!networkSeen.get() && connectivity.allNetworks.isEmpty()){"Ağ açıldı; Rust çıktısı kabul edilmedi."}
-                    val result=shell.execute(operation,stage!!.root,workspace,AndroidRuntimeTrust.shellEnvironment+step,confirmed=true,timeoutMs=1_800_000L)
+                    val result=shell.execute(operation,stage!!.root,workspace,step,confirmed=true,timeoutMs=1_800_000L)
                     require(!result.timedOut && result.exitCode==0){"Rust derlemesi başarısız; cache/target eksik olabilir. "+com.appforge.studio.terminal.TerminalSecretMasker.redact(result.output.takeLast(2000))}
                 }
                 control.checkpoint();currentCoroutineContext().ensureActive()
