@@ -54,7 +54,7 @@ internal object V9R2BundleReader {
 
 /** One service-owned workflow: source selection -> download -> verify -> install -> test. */
 @Composable internal fun V9R2CandidatePrefetchCard(
-    selected: OfflineModuleId, installEnabled: Boolean,
+    selected: OfflineModuleId, installEnabled: Boolean, showCacheDetails: Boolean,
     onBusyChange: (Boolean)->Unit, onInstall: (OfflineModuleId)->Unit
 ) {
     val context=LocalContext.current
@@ -75,23 +75,25 @@ internal object V9R2BundleReader {
     var sourceReady by remember { mutableStateOf(false) }
     var showSource by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
-    var cacheStatus by remember { mutableStateOf("") }
+    var cacheStatus by remember(selected) { mutableStateOf("") }
     LaunchedEffect(active) { onBusyChange(active) }
     DisposableEffect(Unit) { onDispose { onBusyChange(false) } }
-    LaunchedEffect(selected,active) {
-        if(active || !aptSource || architecture==null)return@LaunchedEffect
-        val result=withContext(Dispatchers.IO) {
-            val authorized=runCatching{com.appforge.studio.build.V9R2ReleaseStore.load(context)}.isSuccess
-            val counts=runCatching {
+    LaunchedEffect(aptSource,active) {
+        if(active || !aptSource)return@LaunchedEffect
+        sourceReady=withContext(Dispatchers.IO) {
+            runCatching{com.appforge.studio.build.V9R2ReleaseStore.load(context)}.isSuccess
+        }
+    }
+    LaunchedEffect(selected,showCacheDetails,active) {
+        if(active || !showCacheDetails || !aptSource || architecture==null)return@LaunchedEffect
+        cacheStatus=withContext(Dispatchers.IO) {
+            runCatching {
                 val selection=V9SelectiveR2ModuleCache.preview(context,setOf(previewModule),architecture)
                 val dir=com.appforge.studio.build.V9SignedR2CandidateDownload.privateCacheDirectory(context.noBackupFilesDir)
                 val found=V9SelectiveR2ModuleCache.inspectCache(dir,selection.packages)
                 "Paket önbelleği: ${found.existing.size}/${selection.packages.size} doğrulanmış .deb; ${found.missing.size} eksik."
             }.getOrElse{"Önbellek engeli: ${it.message}"}
-            authorized to counts
         }
-        sourceReady=result.first
-        cacheStatus=result.second
     }
     LaunchedEffect(manifest,signature) {
         val m=manifest;val sig=signature
@@ -139,7 +141,7 @@ internal object V9R2BundleReader {
                 style=MaterialTheme.typography.bodySmall
             )
         }
-        Text(cacheStatus,style=MaterialTheme.typography.bodySmall)
+        if(showCacheDetails)Text(cacheStatus.ifBlank{"Paket önbelleği denetleniyor…"},style=MaterialTheme.typography.bodySmall)
         Text("Kaynak: R2 ve doğrulanmış yerel önbellek. Ubuntu Snapshot yalnız sabit köken kaydıdır.",style=MaterialTheme.typography.bodySmall)
         Text("APT için ayrıca 4 Ubuntu imzası ve 16 Packages indeksi doğrulanır. Eksik metadata kurulumu engeller; paket sayısı READY anlamına gelmez.",style=MaterialTheme.typography.bodySmall)
         TextButton(enabled=!active,onClick={showSource=!showSource}) {

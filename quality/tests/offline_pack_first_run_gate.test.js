@@ -75,9 +75,11 @@ test("first-run screen explains consequences and requires explicit skip", () => 
   assert.match(pack, /Fast HTML gömülüdür/);
 });
 
-test("ready first-run pack exposes continue action", () => {
-  assert.match(pack, /moduleReady\(context,it.id\)/);
-  assert.match(pack, /installed=ready\[selected\]==true/);
+test("first-run pack defers installation and cleanup verification to their actions", () => {
+  assert.doesNotMatch(pack, /OfflineModules\.all\.associate/);
+  assert.match(pack, /LaunchedEffect\(chosen\)[\s\S]*?OfflineModules\.resolve\(setOf\(id\)\)\.filterNot/);
+  assert.match(pack, /LaunchedEffect\(confirmPrune\) \{\s*if\(!confirmPrune\)return@LaunchedEffect\s*val result=.*prunableSnapshotBytes/);
+  assert.match(pack, /LaunchedEffect\(section,selected,moduleDetails,recovered,busy,usageRevision\)[\s\S]*?if\(moduleDetails\) \{[\s\S]*?lifecycleStatus/);
   assert.match(pack, /"Araç indirmeden devam et"/);
 });
 

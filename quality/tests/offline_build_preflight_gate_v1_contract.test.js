@@ -162,7 +162,7 @@ test(
 
     assert.match(
       screen,
-      /ready\[selected\]/
+      /OfflineModules\.resolve\(setOf\(id\)\)\.filterNot \{\s*OfflineBuildPackManager\.moduleReady\(context,it\)/
     );
   }
 );

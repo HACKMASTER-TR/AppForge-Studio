@@ -16,7 +16,7 @@ test('V3 installer scopes SDK consent and never defaults to installing every mod
   const screen=read(base+'java/com/appforge/studio/OfflineBuildPackScreen.kt');
   assert.match(manager,/OfflineModules\.resolve\(selected\)/);
   assert.match(manager,/pending\.filterNot|plan\.filterNot/);
-  assert.match(screen,/val needsSdk=OfflineModuleId.ANDROID_CORE in missing/);
+  assert.match(screen,/val needsSdk=missing\?\.any \{ it==OfflineModuleId\.ANDROID_CORE \|\| it==OfflineModuleId\.EXPO_REACT_NATIVE \}/);
   assert.match(screen,/Onayla ve kur/);
   assert.match(screen,/Araç indirmeden devam et/);
 });

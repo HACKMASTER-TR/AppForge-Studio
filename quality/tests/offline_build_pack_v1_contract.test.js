@@ -441,7 +441,7 @@ test(
 
     assert.match(
       screen,
-      /ready\[OfflineModuleId\.WINDOWS_PORTABLE\]/
+      /selected==OfflineModuleId\.WINDOWS_PORTABLE && portableReady/
     );
   }
 );
