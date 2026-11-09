@@ -110,6 +110,13 @@ test('only absent Ubuntu Base documentation exclusions pass package verification
  assert.notEqual(check('missing     /usr/bin/perl5.38.2').status, 0);
  assert.notEqual(check(`?M???????   ${authors}`).status, 0);
  assert.equal(check(`missing     ${doc}/tar/NEWS.gz`).status, 0);
+ const spacedDoc = path.join(doc, 'python3-setuptools/python 2 sunset.rst');
+ assert.equal(check(`missing     ${spacedDoc}`).status, 0);
+ assert.notEqual(check(`missing     ${spacedDoc} (Permission denied)`).status, 0);
+ assert.notEqual(check(`missing     ${spacedDoc}\nmissing     /usr/bin/python3`).status, 0);
+ fs.mkdirSync(path.dirname(spacedDoc), {recursive: true});
+ fs.symlinkSync('missing-target', spacedDoc);
+ assert.notEqual(check(`missing     ${spacedDoc}`).status, 0);
  assert.notEqual(check(`missing     ${doc}/tar/copyright`).status, 0);
  assert.notEqual(check(`missing     ${doc}/tar/changelog.Debian.gz`).status, 0);
  assert.notEqual(check(`missing     ${doc}/../bin/perl`).status, 0);

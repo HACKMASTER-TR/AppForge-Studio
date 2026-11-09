@@ -271,10 +271,11 @@ as_repair_dpkg_hardlink() (
 as_expected_doc_exclusions() (
  as_doc_excludes=/etc/dpkg/dpkg.cfg.d/excludes
  [ -f "$as_doc_excludes" ] && [ ! -L "$as_doc_excludes" ] || return 1
- while read -r as_kind as_path as_extra;do
-  [ "$as_kind" = missing ] && [ -z "$as_extra" ] &&
+ # The last read variable receives the entire path, including spaces.
+ while read -r as_kind as_path;do
+  [ "$as_kind" = missing ] &&
   [ ! -e "$as_path" ] && [ ! -L "$as_path" ] || return 1
-  case "$as_path/" in */../*|*/./*|*//*) return 1;; esac
+  case "$as_path/" in */../*|*/./*|*//*|*" ("*) return 1;; esac
   case "$as_path" in
    /usr/share/doc/*/copyright|/usr/share/doc/*/changelog.*) return 1 ;;
    /usr/share/doc/*)
