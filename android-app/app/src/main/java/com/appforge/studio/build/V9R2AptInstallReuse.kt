@@ -32,7 +32,7 @@ internal object V9R2AptInstallReuse {
         }
         val eligible = V9SelectiveR2ModuleCache.preview(
             context.applicationContext, when(module){
-                OfflineModuleId.RUST->if(architecture=="arm64") setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE) else setOf(OfflineModuleId.PYTHON_ANDROID)
+                OfflineModuleId.RUST->setOf(OfflineModuleId.PYTHON_ANDROID)
                 OfflineModuleId.RUST_ANDROID_NDK->setOf(OfflineModuleId.EXPO_REACT_NATIVE)
                 else->setOf(module)
             }, architecture

@@ -49,22 +49,45 @@ PY
   RUST_BIN="$ROOT/rust-1.85.1/bin"
   if [ ! -x "$RUST_BIN/rustc" ]; then echo 'APPFORGE_RUSTC_MISSING_OR_NOT_EXECUTABLE' >&2; exit 66; fi
   if ! "$RUST_BIN/rustc" -vV >/dev/null; then echo 'APPFORGE_RUSTC_EXECUTION_FAILED' >&2; exit 67; fi
-  # Host target is explicit: Cargo must use the signed Ubuntu ARM64 Clang
-  # driver, not the unavailable default 'cc' or PRoot's inherited PATH.
+  # This module promises the official host Rust compiler/standard library and
+  # wasm32-unknown-unknown target. It does NOT promise a glibc-native host
+  # executable linker: the V4 Clang path would have upgraded locked libc6.
+  # Prove genuine native ELF code generation without a C linker, then prove
+  # Cargo+rust-lld can link a real WebAssembly artifact offline.
   rust_host=$("$RUST_BIN/rustc" -vV | sed -n 's/^host: //p')
   case "$rust_host" in
-    aarch64-unknown-linux-gnu) linker=/usr/bin/clang ;;
-    x86_64-unknown-linux-gnu) linker=/usr/bin/cc ;;
+    aarch64-unknown-linux-gnu|x86_64-unknown-linux-gnu) ;;
     *) echo 'APPFORGE_RUST_HOST_UNSUPPORTED' >&2; exit 68 ;;
   esac
-  if [ ! -x "$linker" ]; then echo 'APPFORGE_RUST_LINKER_MISSING' >&2; exit 68; fi
-  if ! "$linker" --version >/dev/null; then echo 'APPFORGE_RUST_LINKER_EXECUTION_FAILED' >&2; exit 69; fi
-  RUSTC="$RUST_BIN/rustc" CC="$linker" CARGO_NET_OFFLINE=true \
-  CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="$linker" \
-  CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="$linker" \
-  PATH="$RUST_BIN:$PATH" \
-      "$RUST_BIN/cargo" build --offline --target "$rust_host" --manifest-path "$WORK/Cargo.toml"
-  [ "$("$WORK/target/$rust_host/debug/offline_probe")" = 42 ]
+  printf '%s\n' 'pub fn appforge_native_answer() -> i32 { 6 * 7 }' > "$WORK/native.rs"
+  "$RUST_BIN/rustc" --crate-name appforge_native_probe --edition=2021 \
+      --crate-type=lib --target "$rust_host" --emit=obj \
+      -o "$WORK/native.o" "$WORK/native.rs"
+  [ -s "$WORK/native.o" ] || { echo 'APPFORGE_RUST_HOST_OBJECT_MISSING' >&2; exit 69; }
+  [ "$(head -c 4 "$WORK/native.o" | od -An -tx1 | tr -d ' \n')" = '7f454c46' ] || {
+    echo 'APPFORGE_RUST_HOST_OBJECT_NOT_ELF' >&2; exit 69;
+  }
+  rm -f "$WORK/src/main.rs"  # Discard previous host-binary Cargo target.
+  printf '%s\n' '[package]' 'name = "offline_probe"' 'version = "0.1.0"' \
+      'edition = "2021"' '[lib]' 'crate-type = ["cdylib"]' > "$WORK/Cargo.toml"
+  printf '%s\n' '#[no_mangle] pub extern "C" fn appforge_answer() -> i32 { 6 * 7 }' > "$WORK/src/lib.rs"
+  RUSTC="$RUST_BIN/rustc" CARGO_NET_OFFLINE=true PATH="$RUST_BIN:$PATH" \
+      "$RUST_BIN/cargo" generate-lockfile --offline --manifest-path "$WORK/Cargo.toml"
+  RUSTC="$RUST_BIN/rustc" CARGO_NET_OFFLINE=true PATH="$RUST_BIN:$PATH" \
+      "$RUST_BIN/cargo" build --frozen --offline --release \
+      --target wasm32-unknown-unknown --manifest-path "$WORK/Cargo.toml"
+  wasm="$WORK/target/wasm32-unknown-unknown/release/offline_probe.wasm"
+  [ -s "$wasm" ] || { echo 'APPFORGE_RUST_WASM_OUTPUT_MISSING' >&2; exit 69; }
+  [ "$(head -c 8 "$wasm" | od -An -tx1 | tr -d ' \n')" = '0061736d01000000' ] || {
+    echo 'APPFORGE_RUST_WASM_HEADER_INVALID' >&2; exit 69;
+  }
+  # The second frozen/offline build confirms a real cache replay.
+  RUSTC="$RUST_BIN/rustc" CARGO_NET_OFFLINE=true PATH="$RUST_BIN:$PATH" \
+      "$RUST_BIN/cargo" build --frozen --offline --release \
+      --target wasm32-unknown-unknown --manifest-path "$WORK/Cargo.toml"
+  echo 'APPFORGE_RUST_HOST_NATIVE_OBJECT=PASS'
+  echo 'APPFORGE_RUST_CARGO_WASM_LINK=PASS'
+  echo 'APPFORGE_RUST_HOST_ELF_EXECUTION=NOT_TESTED_LINKER_NOT_BUNDLED'
   ;;
  RUST_ANDROID_NDK|EXPO_REACT_NATIVE)
   printf '%s\n' 'int appforge_offline_answer(void) { return 42; }' > "$WORK/probe.c"
