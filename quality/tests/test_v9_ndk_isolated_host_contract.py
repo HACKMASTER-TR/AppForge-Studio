@@ -36,7 +36,7 @@ class NdkIsolationContract(unittest.TestCase):
         for tool in ('clang','ld.lld','cmake','ninja','llvm-ar'):
             self.assertIn('"$BIN/'+tool+'" --version',s)
         self.assertIn('APPFORGE_NDK_HOST_EXECUTION_FAILED',s)
-        self.assertIn('exec "$executable" "$@"',s)
+        self.assertIn('exec "$interpreter" --library-path "$libpath" "$executable" "$@"',s)
         self.assertIn('APPFORGE_NDK_HOST_PRIVATE_TOOLS=PASS',s)
         self.assertIn('LD_LIBRARY_PATH=',s)
         self.assertNotIn('LD_PRELOAD=',s)

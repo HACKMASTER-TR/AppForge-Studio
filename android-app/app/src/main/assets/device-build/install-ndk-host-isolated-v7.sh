@@ -125,10 +125,10 @@ case "$name" in
  *) echo 'APPFORGE_NDK_HOST_TOOL_NOT_ALLOWED' >&2;exit 66;;
 esac
 [ -x "$executable" ] || { echo "APPFORGE_NDK_HOST_EXE_MISSING:$name" >&2;exit 66; }
-# Use the verified host glibc loader through the ELF PT_INTERP normally.
-# Invoking ld.so as a command changes /proc/self/exe to the loader; that
-# breaks CMake module discovery and Clang subprocess/path resolution.
-# The V8 verified, private libedit.so.2 SONAME copy remains mandatory.
+# This pinned PRoot linker cannot resolve private libedit on ordinary ELF exec.
+# V8 proved explicit glibc --library-path locates the verified ARM64 libraries.
+# Preserve guest self-executable introspection for CMake and Clang via the
+# PRoot guest executable override, without modifying shared /usr or libc6.
 interpreter=/lib/ld-linux-aarch64.so.1
 [ -x "$interpreter" ] || { echo 'APPFORGE_NDK_HOST_GLIBC_LOADER_MISSING' >&2;exit 66; }
 libpath="$sysroot/usr/lib/llvm-18/lib:$sysroot/usr/lib/aarch64-linux-gnu:$sysroot/lib/aarch64-linux-gnu"
@@ -137,7 +137,8 @@ libpath="$sysroot/usr/lib/llvm-18/lib:$sysroot/usr/lib/aarch64-linux-gnu:$sysroo
 }
 export LD_LIBRARY_PATH="$libpath"
 export PATH="$prefix/bin:$PATH"
-exec "$executable" "$@"
+export PROROOT_GUEST_EXE="$executable"
+exec "$interpreter" --library-path "$libpath" "$executable" "$@"
 WRAPPER
 chmod 0755 "$STAGE/bin/host-tool"
 for name in clang clang++ ld.lld llvm-ar llvm-ranlib llvm-strip llvm-nm llvm-objcopy llvm-readelf cmake ninja;do
@@ -194,5 +195,5 @@ printf 'APPFORGE_NDK_HOST_CLANG_SOURCE_READ=PASS\n'
 rm -rf -- "$probe_dir"
 trap - 0 HUP INT TERM
 [ "$(dpkg-query -W -f='${Version}' libc6)" = '2.39-0ubuntu8.7' ] || exit 67
-printf 'APPFORGE_NDK_HOST_DIRECT_ELF_EXEC=PASS\n'
+printf 'APPFORGE_NDK_HOST_EXPLICIT_LOADER_WITH_GUEST_EXE=PASS\n'
 printf 'APPFORGE_NDK_HOST_PRIVATE_TOOLS=PASS\nAPPFORGE_NDK_HOST_GLIBC_2_39_8_7_PRESERVED=PASS\nAPPFORGE_NDK_HOST_SIGNED_PACKAGES=69\n'

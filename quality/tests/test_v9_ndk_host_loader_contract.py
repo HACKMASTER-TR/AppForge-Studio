@@ -28,7 +28,7 @@ class NdkHostLoaderContract(unittest.TestCase):
                         'PREFIX=/opt/appforge-device/ndk-host-v7',
                         'libpath="$sysroot/usr/lib/llvm-18/lib:',
                         'interpreter=/lib/ld-linux-aarch64.so.1',
-                        'exec "$executable" "$@"'):
+                        'exec "$interpreter" --library-path "$libpath" "$executable" "$@"'):
             self.assertIn(snippet,s)
         for forbidden in ('apt-get install','dpkg -i','dpkg --force','LD_PRELOAD=',
                           'Acquire::https::Verify-Peer=false'):

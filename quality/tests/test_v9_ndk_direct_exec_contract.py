@@ -1,4 +1,4 @@
-"""V9 regression: real ELF exec preserves /proc/self/exe and keeps NDK compile/link tests strict."""
+"""V10 regression: explicit private loader preserves guest self-exe discovery."""
 from pathlib import Path
 import unittest
 
@@ -35,14 +35,15 @@ class NdkDirectExecContract(unittest.TestCase):
         self.assertIn('mv -f "$LIBDIR/.libedit.so.2.v8.$$" "$LIBEDIT_SONAME"', s)
         self.assertLess(s.index('dpkg-deb -x'), s.index('LIBEDIT_REAL='))
 
-    def test_exec_real_elf_not_loader_as_program(self):
+    def test_explicit_loader_preserves_guest_executable(self):
         s = HOST.read_text()
         self.assertIn('interpreter=/lib/ld-linux-aarch64.so.1', s)
         self.assertIn('export LD_LIBRARY_PATH="$libpath"', s)
-        self.assertIn('exec "$executable" "$@"', s)
-        self.assertNotIn('exec "$interpreter" --library-path', s)
+        self.assertIn('export PROROOT_GUEST_EXE="$executable"', s)
+        self.assertIn('exec "$interpreter" --library-path "$libpath" "$executable" "$@"', s)
+        self.assertNotIn('exec "$executable" "$@"', s)
         self.assertNotIn('APPFORGE_NDK_HOST_EXPLICIT_LOADER=PASS', s)
-        self.assertIn('APPFORGE_NDK_HOST_DIRECT_ELF_EXEC=PASS', s)
+        self.assertIn('APPFORGE_NDK_HOST_EXPLICIT_LOADER_WITH_GUEST_EXE=PASS', s)
 
     def test_cmake_modules_and_source_file_are_actually_exercised(self):
         s = HOST.read_text()
@@ -55,7 +56,7 @@ class NdkDirectExecContract(unittest.TestCase):
                        'APPFORGE_NDK_HOST_CLANG_SOURCE_READ=PASS'):
             self.assertIn(needle, s)
         self.assertLess(s.index('APPFORGE_NDK_HOST_CMAKE_MODULES=PASS'),
-                        s.index('APPFORGE_NDK_HOST_DIRECT_ELF_EXEC=PASS'))
+                        s.index('APPFORGE_NDK_HOST_EXPLICIT_LOADER_WITH_GUEST_EXE=PASS'))
 
     def test_real_android_target_c_cpp_link_probes_remain_required(self):
         s = TOOLS.read_text()
