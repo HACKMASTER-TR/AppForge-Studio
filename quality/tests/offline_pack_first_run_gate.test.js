@@ -77,11 +77,13 @@ test("first-run screen explains consequences and requires explicit skip", () => 
 
 test("first-run pack defers installation and cleanup verification to their actions", () => {
   assert.doesNotMatch(pack, /OfflineModules\.all\.associate/);
+  const confirmationPlan = pack.split("LaunchedEffect(chosen)")[1].split("LaunchedEffect(confirmPrune)")[0];
+  assert.doesNotMatch(confirmationPlan, /moduleReady|verifyNamespace|sha256/);
   assert.match(pack, /active.phase==ModulePhase.READY -> "Kurulum devam ediyor"/);
   assert.match(pack, /!busy && completedInstall==selected/);
   assert.match(pack, /diagnosticOperation\.value=null[\s\S]*?busy\.value=true/);
   assert.match(pack, /it\.parentOperationId==null && it\.operationId in rootIds/);
-  assert.match(pack, /LaunchedEffect\(chosen\)[\s\S]*?OfflineModules\.resolve\(setOf\(id\)\)\.filterNot/);
+  assert.match(pack, /LaunchedEffect\(chosen\)[\s\S]*?blocked to OfflineModules\.resolve\(setOf\(id\)\)/);
   assert.match(pack, /LaunchedEffect\(confirmPrune\) \{\s*if\(!confirmPrune\)return@LaunchedEffect\s*val result=.*prunableSnapshotBytes/);
   assert.match(pack, /LaunchedEffect\(section,selected,moduleDetails,recovered,busy,usageRevision\)[\s\S]*?if\(moduleDetails\) \{[\s\S]*?lifecycleStatus/);
   assert.match(pack, /"Araç indirmeden devam et"/);

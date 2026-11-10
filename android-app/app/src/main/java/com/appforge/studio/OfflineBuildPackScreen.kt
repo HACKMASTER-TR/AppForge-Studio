@@ -250,19 +250,16 @@ internal object ModuleInstallOperations {
         val result=withContext(Dispatchers.IO) {
             runCatching {
                 val blocked=OfflineBuildPackManager.aptMigrationBlockedReason(context,id)
-                blocked to if(blocked==null) OfflineModules.resolve(setOf(id)).filterNot {
-                    OfflineBuildPackManager.moduleReady(context,it) &&
-                        !OfflineBuildPackManager.hasPendingLifecycle(context,it)
-                } else emptyList()
+                blocked to OfflineModules.resolve(setOf(id))
             }
         }
-        result.fold({ (blocked,missing) ->
+        result.fold({ (blocked,modules) ->
             if(blocked!=null) {
                 if(selected==id && section=="modules")migrationReason=blocked else detail=blocked
                 chosen=null
             } else {
                 migrationReason=null
-                installPlan=missing
+                installPlan=modules
             }
         }, {
             detail="Kurulum ön kontrolü başarısız: ${it.message}"
@@ -462,17 +459,23 @@ internal object ModuleInstallOperations {
     )
     if(chosen!=null) {
         val id=chosen!!
-        val missing=installPlan
-        val needsSdk=missing?.any { it==OfflineModuleId.ANDROID_CORE || it==OfflineModuleId.EXPO_REACT_NATIVE }==true
+        val modules=installPlan
+        val needsSdk=modules?.any {
+            it==OfflineModuleId.ANDROID_CORE || it==OfflineModuleId.EXPO_REACT_NATIVE ||
+                it==OfflineModuleId.RUST_ANDROID_NDK
+        }==true
         AlertDialog(onDismissRequest={chosen=null},title={Text("Kurulumu onayla")},text={Column {
-            Text(when {
-                missing==null -> "Seçilen modül ve bağımlılıkları kontrol ediliyor…"
-                missing.isEmpty() -> "Seçilen modül ve bağımlılıkları doğrulandı."
-                else -> "Kurulum gereken modüller: "+missing.joinToString{OfflineModules.spec(it).title}
-            })
-            Text("Boyutu doğrulanmamış indirmelerde toplam boyut bilinmiyor gösterilir. Bağımlılıklar ortak kullanılır.")
-            if(needsSdk){Text("Android SDK lisansı yalnız bu kurulum için gereklidir. SDK Manager lisansı cihazda ayrıca doğrular.");TextButton(onClick={android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://developer.android.com/studio/terms")).also{context.startActivity(it)}}){Text("Android SDK lisansını incele")};Row{Checkbox(sdkConsent,{sdkConsent=it});Text("SDK lisansını kabul ediyorum")}}
-        }},confirmButton={TextButton(enabled=!busy && !preparing && missing!=null && (!needsSdk||sdkConsent),onClick={chosen=null;if(missing?.isNotEmpty()==true)begin(id)}){Text(if(missing?.isEmpty()==true)"Tamam" else "Onayla ve kur")}},dismissButton={TextButton(onClick={chosen=null}){Text("Vazgeç")}})
+            Text(if(modules==null)"Kurulum planı hazırlanıyor…" else
+                "Seçilen modül: "+OfflineModules.spec(id).title)
+            if(needsSdk){
+                Text("Bu işlemde Android SDK kurulumu veya güncellemesi gerekirse lisans onayı kullanılır.")
+                TextButton(onClick={android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://developer.android.com/studio/terms")).also{context.startActivity(it)}}){Text("Android SDK lisansını incele")}
+                Row{Checkbox(sdkConsent,{sdkConsent=it});Text("SDK lisansını kabul ediyorum")}
+            }
+        }},confirmButton={TextButton(
+            enabled=!busy && !preparing && modules!=null && (!needsSdk||sdkConsent),
+            onClick={chosen=null;begin(id)}
+        ){Text("Onayla ve kur")}},dismissButton={TextButton(onClick={chosen=null}){Text("Vazgeç")}})
     }
     Scaffold(topBar={TopAppBar(title={Text("Birleşik Modül Merkezi V9")},navigationIcon={TextButton(onClick=onBack){Text("Geri")}})}){padding->
         LazyColumn(modifier=Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -598,10 +601,9 @@ internal object ModuleInstallOperations {
                                 !recovered -> "Önceki işlemler kontrol ediliyor"
                                 migrationReason!=null -> "Güvenli runtime geçişi gerekli"
                                 event?.phase==ModulePhase.READY -> "Doğrulanmış kurulum"
-                                event!=null -> event.phase.turkishLabel()
                                 updateRequired -> "Güncelleme mevcut"
-                                recordedVersion!=null ->
-                                    "Kurulum kaydı var • kurulum öncesi yeniden doğrulanır"
+                                recordedVersion!=null -> "Kurulum kaydı var"
+                                event!=null -> event.phase.turkishLabel()
                                 else -> "Kurulum kaydı bulunamadı"
                             },
                             style=MaterialTheme.typography.titleSmall
@@ -620,7 +622,8 @@ internal object ModuleInstallOperations {
                         }
 
                         if(event!=null) {
-                            if(moduleDetails || event.phase in setOf(ModulePhase.ERROR,ModulePhase.AWAITING_CONSENT,ModulePhase.WAITING_CONNECTION))
+                            if(moduleDetails || (recordedVersion==null || active!=null) &&
+                                event.phase in setOf(ModulePhase.ERROR,ModulePhase.AWAITING_CONSENT,ModulePhase.WAITING_CONNECTION))
                                 Text(event.detail,style=MaterialTheme.typography.bodySmall)
                             if(moduleDetails && event.phase==ModulePhase.ERROR)
                                 Text(
