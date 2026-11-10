@@ -1,7 +1,7 @@
 name: V9 Offline Module Center R2 (No Deploy)
 'on':
   push:
-    branches: [codex/v9-offline-module-center-r2, codex/v9-r2-agp-resolution-fix-20261108, codex/v9-r2-rustc-timing-20261110, codex/v9-r2-rust-linker-20261110, codex/v9-r2-rust-wasm-baseline-20261110, codex/v9-r2-rust-home-isolation-20261110]
+    branches: [codex/v9-offline-module-center-r2, codex/v9-r2-agp-resolution-fix-20261108, codex/v9-r2-rustc-timing-20261110, codex/v9-r2-rust-linker-20261110, codex/v9-r2-rust-wasm-baseline-20261110, codex/v9-r2-rust-home-isolation-20261110, codex/v9-r2-ndk-isolated-host-20261110]
   pull_request:
     branches: [feat/v9-global-package-distribution-20261027]
 permissions:
@@ -127,7 +127,7 @@ jobs:
             android-app/app/build/test-results/testDebugUnitTest/
           retention-days: 14
   isolated2:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/codex/v9-offline-module-center-r2' || github.ref == 'refs/heads/codex/v9-r2-agp-resolution-fix-20261108' || github.ref == 'refs/heads/codex/v9-r2-rustc-timing-20261110' || github.ref == 'refs/heads/codex/v9-r2-rust-linker-20261110' || github.ref == 'refs/heads/codex/v9-r2-rust-wasm-baseline-20261110' || github.ref == 'refs/heads/codex/v9-r2-rust-home-isolation-20261110')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/codex/v9-offline-module-center-r2' || github.ref == 'refs/heads/codex/v9-r2-agp-resolution-fix-20261108' || github.ref == 'refs/heads/codex/v9-r2-rustc-timing-20261110' || github.ref == 'refs/heads/codex/v9-r2-rust-linker-20261110' || github.ref == 'refs/heads/codex/v9-r2-rust-wasm-baseline-20261110' || github.ref == 'refs/heads/codex/v9-r2-rust-home-isolation-20261110' || github.ref == 'refs/heads/codex/v9-r2-ndk-isolated-host-20261110')
     needs: [security, android]
     runs-on: ubuntu-24.04
     timeout-minutes: 55
@@ -225,7 +225,7 @@ jobs:
             /tmp/v9-isolated2-signature.txt
           retention-days: 14
   isolated3:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/codex/v9-offline-module-center-r2' || github.ref == 'refs/heads/codex/v9-r2-agp-resolution-fix-20261108' || github.ref == 'refs/heads/codex/v9-r2-rustc-timing-20261110' || github.ref == 'refs/heads/codex/v9-r2-rust-linker-20261110' || github.ref == 'refs/heads/codex/v9-r2-rust-wasm-baseline-20261110' || github.ref == 'refs/heads/codex/v9-r2-rust-home-isolation-20261110')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/codex/v9-offline-module-center-r2' || github.ref == 'refs/heads/codex/v9-r2-agp-resolution-fix-20261108' || github.ref == 'refs/heads/codex/v9-r2-rustc-timing-20261110' || github.ref == 'refs/heads/codex/v9-r2-rust-linker-20261110' || github.ref == 'refs/heads/codex/v9-r2-rust-wasm-baseline-20261110' || github.ref == 'refs/heads/codex/v9-r2-rust-home-isolation-20261110' || github.ref == 'refs/heads/codex/v9-r2-ndk-isolated-host-20261110')
     needs: [security, android]
     runs-on: ubuntu-24.04
     timeout-minutes: 55

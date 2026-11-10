@@ -473,7 +473,7 @@ internal object OfflineBuildPackManager {
     }
 
     private val witnesses=mapOf(
-        OfflineModuleId.RUST_ANDROID_NDK to listOf("opt/appforge-device/android-sdk/ndk/27.1.12297006/source.properties","opt/appforge-device/android-sdk/cmake/3.22.1/bin/cmake","opt/appforge-device/.rust-android-ndk-ready"),
+        OfflineModuleId.RUST_ANDROID_NDK to listOf("opt/appforge-device/android-sdk/ndk/27.1.12297006/source.properties","opt/appforge-device/android-sdk/cmake/3.22.1/bin/cmake","opt/appforge-device/.rust-android-ndk-ready","opt/appforge-device/ndk-host-v7/verified.tsv"),
         OfflineModuleId.ANDROID_CORE to listOf("opt/appforge-device/android-sdk/platforms/android-37.0/android.jar","opt/appforge-device/android-sdk/build-tools/36.0.0/aapt2","opt/appforge-device/jdk-17/bin/java","opt/appforge-device/jdk-17/bin/javac","opt/appforge-device/gradle-9.3.1/lib/gradle-launcher-9.3.1.jar"),
         OfflineModuleId.RUST to listOf("usr/bin/git","usr/bin/python3.12","opt/appforge-device/rust-1.85.1/bin/rustc","opt/appforge-device/rust-1.85.1/bin/cargo","opt/appforge-device/rust-1.85.1/.offline-probe.json"),
         OfflineModuleId.NODE_WEB to listOf("opt/appforge-device/node-22.23.3/bin/node","opt/appforge-device/node-22.23.3/lib/node_modules/npm/bin/npm-cli.js"),
@@ -487,7 +487,7 @@ internal object OfflineBuildPackManager {
     }
     private fun recipeDigest(context:Context,id:OfflineModuleId,historicalNode:Boolean=false):String {
         val names=when(id) {
-            OfflineModuleId.RUST_ANDROID_NDK->listOf("install-toolchain.sh","rust-android.py","rust-layout.py","rust-project.py")
+            OfflineModuleId.RUST_ANDROID_NDK->listOf("install-toolchain.sh","install-ndk-host-isolated-v7.sh","rust-android.py","rust-layout.py","rust-project.py")
             OfflineModuleId.RUST->listOf("install-rust-module.py","install-rust-prerequisites.sh","rust-toolchain-v1.json")
             OfflineModuleId.NODE_WEB->listOf("install-node-module.sh")
             OfflineModuleId.WINDOWS_NATIVE->listOf("install-windows-native-toolchain.sh")

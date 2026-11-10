@@ -41,8 +41,8 @@ class RustHomeIsolationContract(unittest.TestCase):
 
     def test_ci_jobs_both_included(self):
         s=FLOW.read_text()
-        self.assertIn('codex/v9-r2-rust-home-isolation-20261110]',s)
-        self.assertEqual(s.count("github.ref == 'refs/heads/codex/v9-r2-rust-home-isolation-20261110')"),2)
+        self.assertIn('codex/v9-r2-rust-home-isolation-20261110',s)
+        self.assertEqual(s.count("github.ref == 'refs/heads/codex/v9-r2-rust-home-isolation-20261110'"),2)
         self.assertIn("github.ref == 'refs/heads/codex/v9-r2-rust-wasm-baseline-20261110'",s)
 
 if __name__=='__main__':unittest.main()
