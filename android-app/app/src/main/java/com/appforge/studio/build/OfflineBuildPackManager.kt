@@ -275,7 +275,7 @@ internal object OfflineBuildPackManager {
             if(r2Bundle!=null && aptModules.isNotEmpty()) {
                 val architecture=if(Build.SUPPORTED_ABIS.contains("arm64-v8a"))"arm64" else "amd64"
                 val selection=aptModules.flatMap { id -> when(id) {
-                    OfflineModuleId.RUST->listOf(OfflineModuleId.PYTHON_ANDROID)
+                    OfflineModuleId.RUST->if(architecture=="arm64") listOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE) else listOf(OfflineModuleId.PYTHON_ANDROID)
                     OfflineModuleId.RUST_ANDROID_NDK->listOf(OfflineModuleId.EXPO_REACT_NATIVE)
                     else->listOf(id)
                 }}.toSet()

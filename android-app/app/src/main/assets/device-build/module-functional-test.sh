@@ -49,10 +49,22 @@ PY
   RUST_BIN="$ROOT/rust-1.85.1/bin"
   if [ ! -x "$RUST_BIN/rustc" ]; then echo 'APPFORGE_RUSTC_MISSING_OR_NOT_EXECUTABLE' >&2; exit 66; fi
   if ! "$RUST_BIN/rustc" -vV >/dev/null; then echo 'APPFORGE_RUSTC_EXECUTION_FAILED' >&2; exit 67; fi
-  # Cargo must not depend on a PRoot shell's inherited PATH for rustc -vV.
-  RUSTC="$RUST_BIN/rustc" CARGO_NET_OFFLINE=true PATH="$RUST_BIN:$PATH" \
-      "$RUST_BIN/cargo" build --offline --manifest-path "$WORK/Cargo.toml"
-  [ "$("$WORK/target/debug/offline_probe")" = 42 ]
+  # Host target is explicit: Cargo must use the signed Ubuntu ARM64 Clang
+  # driver, not the unavailable default 'cc' or PRoot's inherited PATH.
+  rust_host=$("$RUST_BIN/rustc" -vV | sed -n 's/^host: //p')
+  case "$rust_host" in
+    aarch64-unknown-linux-gnu) linker=/usr/bin/clang ;;
+    x86_64-unknown-linux-gnu) linker=/usr/bin/cc ;;
+    *) echo 'APPFORGE_RUST_HOST_UNSUPPORTED' >&2; exit 68 ;;
+  esac
+  if [ ! -x "$linker" ]; then echo 'APPFORGE_RUST_LINKER_MISSING' >&2; exit 68; fi
+  if ! "$linker" --version >/dev/null; then echo 'APPFORGE_RUST_LINKER_EXECUTION_FAILED' >&2; exit 69; fi
+  RUSTC="$RUST_BIN/rustc" CC="$linker" CARGO_NET_OFFLINE=true \
+  CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="$linker" \
+  CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="$linker" \
+  PATH="$RUST_BIN:$PATH" \
+      "$RUST_BIN/cargo" build --offline --target "$rust_host" --manifest-path "$WORK/Cargo.toml"
+  [ "$("$WORK/target/$rust_host/debug/offline_probe")" = 42 ]
   ;;
  RUST_ANDROID_NDK|EXPO_REACT_NATIVE)
   printf '%s\n' 'int appforge_offline_answer(void) { return 42; }' > "$WORK/probe.c"

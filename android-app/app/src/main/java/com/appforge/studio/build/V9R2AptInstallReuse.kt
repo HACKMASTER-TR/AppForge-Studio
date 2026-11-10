@@ -31,11 +31,11 @@ internal object V9R2AptInstallReuse {
             else -> error("Unsupported Ubuntu R2 architecture")
         }
         val eligible = V9SelectiveR2ModuleCache.preview(
-            context.applicationContext, setOf(when(module){
-                OfflineModuleId.RUST->OfflineModuleId.PYTHON_ANDROID
-                OfflineModuleId.RUST_ANDROID_NDK->OfflineModuleId.EXPO_REACT_NATIVE
-                else->module
-            }), architecture
+            context.applicationContext, when(module){
+                OfflineModuleId.RUST->if(architecture=="arm64") setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE) else setOf(OfflineModuleId.PYTHON_ANDROID)
+                OfflineModuleId.RUST_ANDROID_NDK->setOf(OfflineModuleId.EXPO_REACT_NATIVE)
+                else->setOf(module)
+            }, architecture
         ).packages
         val privateCache = V9SignedR2CandidateDownload.privateCacheDirectory(
             context.applicationContext.noBackupFilesDir
