@@ -1,5 +1,5 @@
 #!/bin/sh
-# V7: signed, pinned Ubuntu ARM64 host tools in a private prefix.
+# V8: signed, pinned Ubuntu ARM64 host tools with explicit glibc loader.
 # NEVER apt-install, dpkg-install or overwrite shared libc. Fail closed on any unverified byte.
 set -eu
 [ "${APPFORGE_MODULE_ID:-}" = RUST_ANDROID_NDK ] || exit 60
@@ -83,6 +83,32 @@ while IFS="$TAB" read -r pkg ver arch sha size url;do
 done < "$STAGE/selected.tsv"
 [ "$skipped" = 4 ] && [ "$(wc -l < "$STAGE/verified.tsv" | tr -d ' ')" = 69 ] || exit 65
 
+# V8: libedit2's signed package provides the real ARM64 ELF and its SONAME
+# symlink. Ensure the loader can open an ordinary file at the exact SONAME,
+# inside this PRIVATE stage only. Do not create /usr or /lib host aliases.
+LIBDIR="$STAGE/sysroot/usr/lib/aarch64-linux-gnu"
+LIBEDIT_REAL="$LIBDIR/libedit.so.2.0.72"
+LIBEDIT_SONAME="$LIBDIR/libedit.so.2"
+[ -f "$LIBEDIT_REAL" ] && [ ! -L "$LIBEDIT_REAL" ] || {
+  echo 'APPFORGE_NDK_LIBEDIT_SIGNED_PAYLOAD_MISSING' >&2;exit 66;
+}
+[ -L "$LIBEDIT_SONAME" ] || {
+  echo 'APPFORGE_NDK_LIBEDIT_SONAME_LINK_MISSING' >&2;exit 66;
+}
+[ "$(readlink "$LIBEDIT_SONAME")" = libedit.so.2.0.72 ] || {
+  echo 'APPFORGE_NDK_LIBEDIT_SONAME_LINK_UNEXPECTED' >&2;exit 66;
+}
+file -L "$LIBEDIT_REAL" | grep -Eqi 'aarch64|ARM aarch64' || {
+  echo 'APPFORGE_NDK_LIBEDIT_ARM64_ABI_MISMATCH' >&2;exit 66;
+}
+# The bytes were verified against the pinned Ubuntu archive before extract.
+# Replace only this private link with a byte-identical regular file.
+cp -p "$LIBEDIT_REAL" "$LIBDIR/.libedit.so.2.v8.$$"
+cmp -s "$LIBEDIT_REAL" "$LIBDIR/.libedit.so.2.v8.$$" || exit 66
+mv -f "$LIBDIR/.libedit.so.2.v8.$$" "$LIBEDIT_SONAME"
+[ -f "$LIBEDIT_SONAME" ] && [ ! -L "$LIBEDIT_SONAME" ] || exit 66
+printf 'APPFORGE_NDK_LIBEDIT_PRIVATE_SONAME=PASS\n'
+
 # Wrapper resolves only executables extracted from the verified Ubuntu payload.
 # Child processes see the same isolated library path, but never an alternate libc.
 cat > "$STAGE/bin/host-tool" <<'WRAPPER'
@@ -99,11 +125,19 @@ case "$name" in
  *) echo 'APPFORGE_NDK_HOST_TOOL_NOT_ALLOWED' >&2;exit 66;;
 esac
 [ -x "$executable" ] || { echo "APPFORGE_NDK_HOST_EXE_MISSING:$name" >&2;exit 66; }
-# Intentionally excludes extracted libc6: the private tree does not contain it.
+# Force the verified host glibc 2.39 loader to search this private prefix.
+# A plain environment variable was insufficient on the proot ARM64 device;
+# --library-path makes the dependency lookup explicit for this executable.
+# The private prefix never includes a second libc6 or dynamic interpreter.
+interpreter=/lib/ld-linux-aarch64.so.1
+[ -x "$interpreter" ] || { echo 'APPFORGE_NDK_HOST_GLIBC_LOADER_MISSING' >&2;exit 66; }
 libpath="$sysroot/usr/lib/llvm-18/lib:$sysroot/usr/lib/aarch64-linux-gnu:$sysroot/lib/aarch64-linux-gnu"
-export LD_LIBRARY_PATH="$libpath${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+[ -f "$sysroot/usr/lib/aarch64-linux-gnu/libedit.so.2" ] || {
+ echo 'APPFORGE_NDK_HOST_LIBEDIT_MISSING_AT_RUNTIME' >&2;exit 66;
+}
+export LD_LIBRARY_PATH="$libpath"
 export PATH="$prefix/bin:$PATH"
-exec "$executable" "$@"
+exec "$interpreter" --library-path "$libpath" "$executable" "$@"
 WRAPPER
 chmod 0755 "$STAGE/bin/host-tool"
 for name in clang clang++ ld.lld llvm-ar llvm-ranlib llvm-strip llvm-nm llvm-objcopy llvm-readelf cmake ninja;do
@@ -124,8 +158,17 @@ if ! "$BIN/clang" --version >/dev/null ||
    ! "$BIN/cmake" --version >/dev/null ||
    ! "$BIN/ninja" --version >/dev/null ||
    ! "$BIN/llvm-ar" --version >/dev/null;then
-  echo 'APPFORGE_NDK_HOST_EXECUTION_FAILED: private signed ARM64 host toolchain was retained for diagnosis; installation blocked' >&2
+  echo 'APPFORGE_NDK_HOST_EXECUTION_FAILED: signed ARM64 toolchain retained in staging for diagnosis; installation blocked' >&2
+  # Report file types and symlink targets, not file contents or secrets.
+  if [ -L "$PREFIX/sysroot/usr/lib/aarch64-linux-gnu/libedit.so.2" ];then
+    echo 'APPFORGE_NDK_LIBEDIT_RUNTIME=SYMLINK' >&2
+  elif [ -f "$PREFIX/sysroot/usr/lib/aarch64-linux-gnu/libedit.so.2" ];then
+    echo 'APPFORGE_NDK_LIBEDIT_RUNTIME=REGULAR_FILE' >&2
+  else
+    echo 'APPFORGE_NDK_LIBEDIT_RUNTIME=MISSING' >&2
+  fi
   exit 67
 fi
 [ "$(dpkg-query -W -f='${Version}' libc6)" = '2.39-0ubuntu8.7' ] || exit 67
+printf 'APPFORGE_NDK_HOST_EXPLICIT_LOADER=PASS\n'
 printf 'APPFORGE_NDK_HOST_PRIVATE_TOOLS=PASS\nAPPFORGE_NDK_HOST_GLIBC_2_39_8_7_PRESERVED=PASS\nAPPFORGE_NDK_HOST_SIGNED_PACKAGES=69\n'

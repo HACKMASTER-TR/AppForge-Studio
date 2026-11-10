@@ -36,7 +36,7 @@ class NdkIsolationContract(unittest.TestCase):
         for tool in ('clang','ld.lld','cmake','ninja','llvm-ar'):
             self.assertIn('"$BIN/'+tool+'" --version',s)
         self.assertIn('APPFORGE_NDK_HOST_EXECUTION_FAILED',s)
-        self.assertIn('exec "$executable" "$@"',s)
+        self.assertIn('exec "$interpreter" --library-path "$libpath" "$executable" "$@"',s)
         self.assertIn('APPFORGE_NDK_HOST_PRIVATE_TOOLS=PASS',s)
         self.assertIn('LD_LIBRARY_PATH=',s)
         self.assertNotIn('LD_PRELOAD=',s)
@@ -63,7 +63,7 @@ class NdkIsolationContract(unittest.TestCase):
 
     def test_v7_ci_runs_both_apks(self):
         s=(R/'.github/workflows/v9-offline-module-center-r2.yml').read_text()
-        self.assertIn('codex/v9-r2-ndk-isolated-host-20261110]',s)
-        self.assertEqual(s.count("github.ref == 'refs/heads/codex/v9-r2-ndk-isolated-host-20261110')"),2)
+        self.assertIn('codex/v9-r2-ndk-isolated-host-20261110',s)
+        self.assertEqual(s.count("github.ref == 'refs/heads/codex/v9-r2-ndk-isolated-host-20261110'"),2)
 
 if __name__=='__main__':unittest.main()
