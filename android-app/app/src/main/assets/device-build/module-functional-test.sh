@@ -46,7 +46,12 @@ PY
   mkdir -p "$WORK/src"
   printf '%s\n' '[package]' 'name = "offline_probe"' 'version = "0.1.0"' 'edition = "2021"' > "$WORK/Cargo.toml"
   printf '%s\n' 'fn main() { assert_eq!(6*7,42); println!("42"); }' > "$WORK/src/main.rs"
-  PATH="$ROOT/rust-1.85.1/bin:$PATH" "$ROOT/rust-1.85.1/bin/cargo" build --offline --manifest-path "$WORK/Cargo.toml"
+  RUST_BIN="$ROOT/rust-1.85.1/bin"
+  if [ ! -x "$RUST_BIN/rustc" ]; then echo 'APPFORGE_RUSTC_MISSING_OR_NOT_EXECUTABLE' >&2; exit 66; fi
+  if ! "$RUST_BIN/rustc" -vV >/dev/null; then echo 'APPFORGE_RUSTC_EXECUTION_FAILED' >&2; exit 67; fi
+  # Cargo must not depend on a PRoot shell's inherited PATH for rustc -vV.
+  RUSTC="$RUST_BIN/rustc" CARGO_NET_OFFLINE=true PATH="$RUST_BIN:$PATH" \
+      "$RUST_BIN/cargo" build --offline --manifest-path "$WORK/Cargo.toml"
   [ "$("$WORK/target/debug/offline_probe")" = 42 ]
   ;;
  RUST_ANDROID_NDK|EXPO_REACT_NATIVE)

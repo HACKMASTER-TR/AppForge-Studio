@@ -26,6 +26,7 @@ internal object ModuleInstallOperations {
     val busy=kotlinx.coroutines.flow.MutableStateFlow(false)
     val stopPending=kotlinx.coroutines.flow.MutableStateFlow(false)
     private var job:Job?=null
+    private val elapsedTracker=ModuleElapsedTracker()
     private var journal:ModuleOperationJournal?=null
     @Synchronized fun restore(context:android.content.Context) {
         if(journal!=null)return
@@ -40,8 +41,10 @@ internal object ModuleInstallOperations {
     private fun persist(){try{journal?.save(updates.value);journalError.value=""}catch(e:Exception){journalError.value="İşlem günlüğü yazılamadı; güvenli devam garantisi yok. Depolamayı kontrol edin.";throw e}}
     @Volatile private var lastEventAt=0L
     @Synchronized private fun publish(event:ModuleProgress) {
-        lastEventAt=android.os.SystemClock.elapsedRealtime()
-        activeProgress.value=event;updates.value=updates.value+(event.moduleId to event);persist()
+        val now=android.os.SystemClock.elapsedRealtime()
+        lastEventAt=now
+        val timed=elapsedTracker.observe(event,now)
+        activeProgress.value=timed;updates.value=updates.value+(timed.moduleId to timed);persist()
     }
     @Volatile private var pauseRequested=false
     private var downloadControl=DownloadControl()
@@ -109,11 +112,12 @@ internal object ModuleInstallOperations {
                     }
                 }
             } catch(e:CancellationException) {
-                updates.value=updates.value+(selected to ModuleProgress(selected,"canceled",if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else if(pauseRequested)ModulePhase.PAUSED else ModulePhase.CANCELED,errorCode=if(e is DownloadNetwork.PolicyBlocked)"NETWORK_POLICY" else null,detail=if(e is DownloadNetwork.PolicyBlocked)"Ağ politikası/onay bekleniyor; kısmi dosya korunur. Devam et ile tekrar doğrulayın." else if(pauseRequested)"Duraklatıldı; doğrulanmamış kısmi dosya devam için korunur." else "İptal edildi; çalışan modüller korunur."))
+                val previous=activeProgress.value?.takeIf{it.moduleId==selected}
+                publish(ModuleProgress(selected,previous?.operationId?:"canceled",if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else if(pauseRequested)ModulePhase.PAUSED else ModulePhase.CANCELED,errorCode=if(e is DownloadNetwork.PolicyBlocked)"NETWORK_POLICY" else null,detail=if(e is DownloadNetwork.PolicyBlocked)"Ağ politikası/onay bekleniyor; kısmi dosya korunur. Devam et ile tekrar doğrulayın." else if(pauseRequested)"Duraklatıldı; doğrulanmamış kısmi dosya devam için korunur." else "İptal edildi; çalışan modüller korunur."))
             } catch(e:Exception) {
                 // Preserve the manager's connection-wait/error state for this operation.
                 if(activeProgress.value?.takeIf { it.moduleId==selected }?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
-                updates.value=updates.value+(selected to ModuleProgress(selected,"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
+                publish(ModuleProgress(selected,activeProgress.value?.takeIf{it.moduleId==selected}?.operationId?:"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
             } finally {stalledWatch.cancel();try{runCatching{persist()}}finally{activeProgress.value=null;busy.value=false;DownloadNetwork.restorePreference()}}
         }
     }
@@ -620,6 +624,19 @@ internal object ModuleInstallOperations {
                             LinearProgressIndicator(progress={1f},modifier=Modifier.fillMaxWidth())
                             Text("Kurulum tamamlandı · %100")
                         }
+                        if(!installingSelected && event!=null && event.elapsedMs>0L) {
+                            val total=event.elapsedMs/1000L
+                            Text("Son işlem süresi: ${total/60} dk ${total%60} sn",style=MaterialTheme.typography.bodySmall)
+                            Text("İndirme: ${event.downloadElapsedMs/1000L} sn • "+
+                                "Doğrulama: ${event.verificationElapsedMs/1000L} sn • "+
+                                "Kurulum: ${event.installationElapsedMs/1000L} sn",
+                                style=MaterialTheme.typography.bodySmall)
+                            val other=(event.elapsedMs-event.downloadElapsedMs-
+                                event.verificationElapsedMs-event.installationElapsedMs).coerceAtLeast(0L)
+                            Text("Hazırlık / bekleme: ${other/1000L} sn",style=MaterialTheme.typography.bodySmall)
+                            Text("Süreler işlem günlüğünde saklanır; geçmiş kayıt tek başına modülün hazır olduğunu kanıtlamaz.",
+                                style=MaterialTheme.typography.bodySmall)
+                        }
 
                         if(event!=null) {
                             if(moduleDetails || (recordedVersion==null || active!=null) &&
@@ -814,7 +831,7 @@ internal object ModuleInstallOperations {
             if(section=="modules" && selected==OfflineModuleId.WINDOWS_PORTABLE && portableReady)item { WindowsModuleSmokeCard() }
             item { Text("Kullanıcının başlattığı kurulum Android veri aktarımı servisiyle izlenir. Android zaman sınırı veya süreç ölümü işlemi durdurabilir. Yeniden açınca kayıt geri yüklenir; devam için onay gerekir, dosyalar yeniden doğrulanır.") }
             if(journalError.isNotBlank())item{Text(journalError)}
-            if(section=="diagnostics" && history.isNotEmpty())item{Column {Text("Son işlem kayıtları (hazır olma kanıtı değildir)");history.takeLast(8).forEach{Text(it)}}}
+            if(section in setOf("diagnostics","history") && history.isNotEmpty())item{Column {Text("Son işlem kayıtları (hazır olma kanıtı değildir)");history.takeLast(8).forEach{Text(it)}}}
             if(detail.isNotBlank())item{Text(detail)}
             if(firstRun)item{Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text("İlk açılışta araç indirme zorunluluğu yok. Fast HTML gömülüdür; diğer modüller ihtiyaç olduğunda kurulur.")
