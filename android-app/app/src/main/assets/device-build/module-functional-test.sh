@@ -47,6 +47,11 @@ PY
   printf '%s\n' '[package]' 'name = "offline_probe"' 'version = "0.1.0"' 'edition = "2021"' > "$WORK/Cargo.toml"
   printf '%s\n' 'fn main() { assert_eq!(6*7,42); println!("42"); }' > "$WORK/src/main.rs"
   RUST_BIN="$ROOT/rust-1.85.1/bin"
+  # Use a disposable HOME for the real native/WASM probe. Cargo's default
+  # CARGO_HOME (/root/.cargo) would change protected user settings in the
+  # staged Linux rootfs. All probe files must disappear with WORK's trap.
+  mkdir -p "$WORK/home" "$WORK/cargo-home" "$WORK/rustup-home"
+  export HOME="$WORK/home" CARGO_HOME="$WORK/cargo-home" RUSTUP_HOME="$WORK/rustup-home"
   if [ ! -x "$RUST_BIN/rustc" ]; then echo 'APPFORGE_RUSTC_MISSING_OR_NOT_EXECUTABLE' >&2; exit 66; fi
   if ! "$RUST_BIN/rustc" -vV >/dev/null; then echo 'APPFORGE_RUSTC_EXECUTION_FAILED' >&2; exit 67; fi
   # This module promises the official host Rust compiler/standard library and

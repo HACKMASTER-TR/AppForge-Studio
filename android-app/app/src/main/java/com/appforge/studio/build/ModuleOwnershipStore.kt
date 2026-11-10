@@ -105,7 +105,11 @@ internal class ModuleOwnershipStore(private val root:File) {
         val protectedUserChanges=(before.keys+after.keys).filter{key->
             (key.startsWith("home/") || key.startsWith("root/")) && readinessTracked(key) && before[key]!=after[key]
         }
-        require(protectedUserChanges.isEmpty()){"Kurulum kullanıcı kaynak/ayar dizinini değiştirdi; çalışan ortam korunur."}
+        require(protectedUserChanges.isEmpty()){
+            // Fail closed; report only relative path names, never file contents.
+            "Kurulum kullanıcı kaynak/ayar dizinini değiştirdi; çalışan ortam korunur. Değişen yollar: " +
+                protectedUserChanges.take(3).joinToString(", "){it.take(160)}
+        }
         val unknownRemoved=before.keys.filter{it.isNotEmpty() && !metadata(it) && readinessTracked(it) && before[it]!=after[it] && it !in known}
         require(unknownRemoved.isEmpty()){"Kurulum kullanıcıya ait/sahipliği bilinmeyen dosyaları değiştirdi; eski ortam korundu: "+unknownRemoved.take(3).joinToString()}
 
