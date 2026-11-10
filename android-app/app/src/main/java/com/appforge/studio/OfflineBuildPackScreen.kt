@@ -642,8 +642,8 @@ internal object ModuleInstallOperations {
                             }
 
                             if(busy && event.phase==ModulePhase.DOWNLOADING) {
-                                Text("Dosya indirme ilerlemesi")
                                 val pct=event.percent
+                                Text(pct?.let { "Dosya indiriliyor · %$it" } ?: "Dosya indiriliyor")
                                 if(pct!=null)
                                     LinearProgressIndicator(
                                         progress={pct/100f},

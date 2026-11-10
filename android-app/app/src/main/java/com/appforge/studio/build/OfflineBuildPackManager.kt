@@ -323,7 +323,7 @@ internal object OfflineBuildPackManager {
                         continue
                     }
                     if(installedVersion(app,id)!=null) {
-                        val permission=lifecycleStatus(app,id,insideMutation=true).update
+                        val permission=lifecycleStatus(app,id,insideMutation=true,updateOnly=true).update
                         require(permission.allowed){permission.reason?:"Güncelleme güvenle doğrulanamadı."}
                     }
                     require(AptSnapshotMigration.blockedReason(root)==null){AptSnapshotMigration.blockedReason(root)!!}
@@ -564,22 +564,23 @@ internal object OfflineBuildPackManager {
     fun hasPendingLifecycle(context:Context,id:OfflineModuleId):Boolean = if(id==OfflineModuleId.FAST_HTML)false else if(id==OfflineModuleId.WINDOWS_PORTABLE)
         File(context.noBackupFilesDir,"offline-build-pack/.portable-lifecycle.json").exists()
     else runtimeRootfs(context)?.let{File(it.parentFile,".module-generation.json").exists() || File(it.parentFile,".rootfs-activation.json").exists()}==true
-    fun lifecycleStatus(context:Context,id:OfflineModuleId,insideMutation:Boolean=false):ModuleLifecycleStatus {
+    fun lifecycleStatus(context:Context,id:OfflineModuleId,insideMutation:Boolean=false,updateOnly:Boolean=false):ModuleLifecycleStatus {
         val root=runtimeRootfs(context)
         val native=id in witnesses.keys
         val version=installedVersion(context,id)?:if(!native && moduleReady(context,id))OfflineModules.spec(id).version else null
-        val dependents=OfflineModules.all.filter{spec->spec.id!=id && id in OfflineModules.resolve(spec.dependencies) &&
+        val dependents=if(updateOnly)emptySet() else OfflineModules.all.filter{spec->spec.id!=id && id in OfflineModules.resolve(spec.dependencies) &&
             (installedVersion(context,spec.id)!=null || moduleReady(context,spec.id) || root?.let{r->witnesses[spec.id].orEmpty().any{File(r,it).exists()}}==true)
         }.map{it.id}.toSet()
-        val inventory=if(native && root!=null)runCatching{ModuleOwnershipStore(root).lifecycleInventory(id)}.getOrNull() else null
+        val inventory=if(!updateOnly && native && root!=null)runCatching{ModuleOwnershipStore(root).lifecycleInventory(id)}.getOrNull() else null
         val ownershipError=if(native && (root==null || !ModuleOwnershipStore(root).verifyNamespace(id)))"Modülün dosya sahipliği/bütünlüğü doğrulanamadı." else null
-        val removeError=when(id) {
+        val removeError=if(updateOnly)"Kaldırma bu kontrolde değerlendirilmedi." else when(id) {
             OfflineModuleId.FAST_HTML->"Gömülü modül kaldırılamaz."
             OfflineModuleId.WINDOWS_PORTABLE->OwnedModuleFiles.portableRemovalReason(context.noBackupFilesDir,WindowsPortableHostStore.HOST_SHA256)
             OfflineModuleId.LINUX_RUNTIME->if(DeviceBuildRuntimeV3.isReady(context))null else "Runtime doğrulanamadı."
             else->root?.let{ModuleOwnershipStore(it).safeRemovalReason(id)}?:"Runtime yok."
         }
         val rollbackError=when {
+            updateOnly->"Geri alma bu kontrolde değerlendirilmedi."
             !native->"Bu modül için doğrulanmış generation geri alma yolu yok."
             root==null->"Runtime yok."
             else->RuntimeGenerationStore(root).rollbackReason(id)
