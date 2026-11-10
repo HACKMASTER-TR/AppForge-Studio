@@ -833,6 +833,9 @@ int main(void) {
 }
 EOF
 
+      [ -s "$probe/probe.c" ] || {
+        echo "APPFORGE_NDK_C_PROBE_SOURCE_MISSING" >&2;exit 67;
+      }
       "$bin/clang" \
         --target=aarch64-linux-android24 \
         --sysroot="$host/sysroot" \
@@ -859,6 +862,9 @@ int main() {
 }
 EOF
 
+      [ -s "$probe/probe.cpp" ] || {
+        echo "APPFORGE_NDK_CPP_PROBE_SOURCE_MISSING" >&2;exit 68;
+      }
       "$bin/clang++" \
         --target=aarch64-linux-android24 \
         --sysroot="$host/sysroot" \

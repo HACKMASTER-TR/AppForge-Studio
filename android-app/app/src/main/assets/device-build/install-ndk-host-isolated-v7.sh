@@ -125,10 +125,10 @@ case "$name" in
  *) echo 'APPFORGE_NDK_HOST_TOOL_NOT_ALLOWED' >&2;exit 66;;
 esac
 [ -x "$executable" ] || { echo "APPFORGE_NDK_HOST_EXE_MISSING:$name" >&2;exit 66; }
-# Force the verified host glibc 2.39 loader to search this private prefix.
-# A plain environment variable was insufficient on the proot ARM64 device;
-# --library-path makes the dependency lookup explicit for this executable.
-# The private prefix never includes a second libc6 or dynamic interpreter.
+# Use the verified host glibc loader through the ELF PT_INTERP normally.
+# Invoking ld.so as a command changes /proc/self/exe to the loader; that
+# breaks CMake module discovery and Clang subprocess/path resolution.
+# The V8 verified, private libedit.so.2 SONAME copy remains mandatory.
 interpreter=/lib/ld-linux-aarch64.so.1
 [ -x "$interpreter" ] || { echo 'APPFORGE_NDK_HOST_GLIBC_LOADER_MISSING' >&2;exit 66; }
 libpath="$sysroot/usr/lib/llvm-18/lib:$sysroot/usr/lib/aarch64-linux-gnu:$sysroot/lib/aarch64-linux-gnu"
@@ -137,7 +137,7 @@ libpath="$sysroot/usr/lib/llvm-18/lib:$sysroot/usr/lib/aarch64-linux-gnu:$sysroo
 }
 export LD_LIBRARY_PATH="$libpath"
 export PATH="$prefix/bin:$PATH"
-exec "$interpreter" --library-path "$libpath" "$executable" "$@"
+exec "$executable" "$@"
 WRAPPER
 chmod 0755 "$STAGE/bin/host-tool"
 for name in clang clang++ ld.lld llvm-ar llvm-ranlib llvm-strip llvm-nm llvm-objcopy llvm-readelf cmake ninja;do
@@ -169,6 +169,30 @@ if ! "$BIN/clang" --version >/dev/null ||
   fi
   exit 67
 fi
+# Smoke-test real CMake modules and actual Clang reading a source file.
+# --version is insufficient: CMake may report a missing CMAKE_ROOT and exit 0.
+[ -s "$ROOT/usr/share/cmake-3.28/Modules/CMakeDetermineSystem.cmake" ] || {
+  echo 'APPFORGE_NDK_HOST_CMAKE_MODULES_MISSING' >&2;exit 68;
+}
+probe_dir=$(mktemp -d /tmp/appforge-ndk-v9.XXXXXXXX) || exit 68
+trap 'rm -rf -- "$probe_dir"' 0 HUP INT TERM
+cat > "$probe_dir/check.cmake" <<'CMAKE'
+if(NOT EXISTS "${CMAKE_ROOT}/Modules/CMakeDetermineSystem.cmake")
+  message(FATAL_ERROR "APPFORGE_NDK_HOST_CMAKE_ROOT_INVALID")
+endif()
+CMAKE
+printf 'int appforge_ndk_host_source(void) { return 42; }\n' > "$probe_dir/readable.c"
+[ -s "$probe_dir/readable.c" ] || exit 68
+if ! "$BIN/cmake" -P "$probe_dir/check.cmake";then
+  echo 'APPFORGE_NDK_HOST_CMAKE_ROOT_PROBE_FAILED' >&2;exit 68
+fi
+printf 'APPFORGE_NDK_HOST_CMAKE_MODULES=PASS\n'
+if ! "$BIN/clang" --target=aarch64-unknown-linux-gnu -x c -fsyntax-only "$probe_dir/readable.c";then
+  echo 'APPFORGE_NDK_HOST_SOURCE_READ_PROBE_FAILED' >&2;exit 69
+fi
+printf 'APPFORGE_NDK_HOST_CLANG_SOURCE_READ=PASS\n'
+rm -rf -- "$probe_dir"
+trap - 0 HUP INT TERM
 [ "$(dpkg-query -W -f='${Version}' libc6)" = '2.39-0ubuntu8.7' ] || exit 67
-printf 'APPFORGE_NDK_HOST_EXPLICIT_LOADER=PASS\n'
+printf 'APPFORGE_NDK_HOST_DIRECT_ELF_EXEC=PASS\n'
 printf 'APPFORGE_NDK_HOST_PRIVATE_TOOLS=PASS\nAPPFORGE_NDK_HOST_GLIBC_2_39_8_7_PRESERVED=PASS\nAPPFORGE_NDK_HOST_SIGNED_PACKAGES=69\n'

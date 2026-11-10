@@ -28,7 +28,7 @@ class NdkHostLoaderContract(unittest.TestCase):
                         'PREFIX=/opt/appforge-device/ndk-host-v7',
                         'libpath="$sysroot/usr/lib/llvm-18/lib:',
                         'interpreter=/lib/ld-linux-aarch64.so.1',
-                        'exec "$interpreter" --library-path "$libpath" "$executable" "$@"'):
+                        'exec "$executable" "$@"'):
             self.assertIn(snippet,s)
         for forbidden in ('apt-get install','dpkg -i','dpkg --force','LD_PRELOAD=',
                           'Acquire::https::Verify-Peer=false'):
@@ -51,7 +51,7 @@ class NdkHostLoaderContract(unittest.TestCase):
     def test_v8_ci_branch_in_both_isolated_apks(self):
         s=FLOW.read_text()
         branch='codex/v9-r2-ndk-libedit-loader-20261110'
-        self.assertIn(branch+']',s)
+        self.assertIn(branch,s)
         self.assertEqual(s.count("github.ref == 'refs/heads/"+branch+"'"),2)
         self.assertIn('codex/v9-r2-ndk-isolated-host-20261110',s)
 
