@@ -23,7 +23,7 @@ test('V7 PersistentOperationGraph defines REMOVAL and ROLLBACK stages and atomic
   assert.match(coordinator, /ModulePhase\.READY,ModulePhase\.REMOVED->DownloadState\.COMPLETED/);
   assert.match(coordinator, /val bounded=PersistentOperationGraph\.pruneRetained\(rows\)/);
 
-  assert.match(screen, /fun recordLifecycle\(event:ModuleProgress\)\{DownloadCoordinator\.modulePhase\(event\);publish\(event\)\}/);
+  assert.match(screen, /fun recordLifecycle\(event:ModuleProgress\)\{diagnosticOperation\.value=event\.operationId;DownloadCoordinator\.modulePhase\(event\);publish\(event\)\}/);
 });
 
 test('V7 terminal subtree pruning algorithm preserves RECOVERY_REQUIRED and active subtrees while evicting oldest terminal subtrees atomically', () => {

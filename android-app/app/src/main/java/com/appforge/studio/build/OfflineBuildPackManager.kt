@@ -317,7 +317,11 @@ internal object OfflineBuildPackManager {
                 for(id in linux.filter{it!=OfflineModuleId.LINUX_RUNTIME}) {
                     control.checkpoint()
                     active=id
-                    if(moduleReady(app,id))continue
+                    phase(id,ModulePhase.VERIFYING,"Kurulu araç zinciri ve bağımlılıkları kontrol ediliyor.")
+                    if(moduleReady(app,id)) {
+                        phase(id,ModulePhase.READY,"Mevcut modül doğrulandı.")
+                        continue
+                    }
                     if(installedVersion(app,id)!=null) {
                         val permission=lifecycleStatus(app,id,insideMutation=true).update
                         require(permission.allowed){permission.reason?:"Güncelleme güvenle doğrulanamadı."}

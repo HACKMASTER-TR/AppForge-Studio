@@ -134,7 +134,7 @@ internal object V9R2BundleReader {
         }
     }
     if(aptSource) {
-        if(sourceReady) {
+        if(sourceReady && showCacheDetails) {
             Text(
                 "İmzalı R2 kaynağı hazır • Ed25519 doğrulandı. " +
                     "Manuel manifest ve imza seçimi gerekmiyor.",
@@ -142,12 +142,12 @@ internal object V9R2BundleReader {
             )
         }
         if(showCacheDetails)Text(cacheStatus.ifBlank{"Paket önbelleği denetleniyor…"},style=MaterialTheme.typography.bodySmall)
-        Text("Kaynak: R2 ve doğrulanmış yerel önbellek. Ubuntu Snapshot yalnız sabit köken kaydıdır.",style=MaterialTheme.typography.bodySmall)
-        Text("APT için ayrıca 4 Ubuntu imzası ve 16 Packages indeksi doğrulanır. Eksik metadata kurulumu engeller; paket sayısı READY anlamına gelmez.",style=MaterialTheme.typography.bodySmall)
-        TextButton(enabled=!active,onClick={showSource=!showSource}) {
+        if(showCacheDetails)Text("Kaynak: R2 ve doğrulanmış yerel önbellek. Ubuntu Snapshot yalnız sabit köken kaydıdır.",style=MaterialTheme.typography.bodySmall)
+        if(showCacheDetails)Text("APT için ayrıca 4 Ubuntu imzası ve 16 Packages indeksi doğrulanır. Eksik metadata kurulumu engeller; paket sayısı READY anlamına gelmez.",style=MaterialTheme.typography.bodySmall)
+        if(showCacheDetails || !sourceReady)TextButton(enabled=!active,onClick={showSource=!showSource}) {
             Text(if(sourceReady)"İmzalı R2 kaynağını değiştir" else "İmzalı R2 kaynağını seç")
         }
-        if(showSource || !sourceReady)Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        if((showCacheDetails && showSource) || !sourceReady)Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             OutlinedButton(enabled=!active,onClick={chooseManifest.launch(arrayOf("*/*"))}){Text(if(manifest==null)"Manifest seç" else "Manifest ✓")}
             OutlinedButton(enabled=!active,onClick={chooseSignature.launch(arrayOf("*/*"))}){Text(if(signature==null)"İmza seç" else "İmza ✓")}
         }
@@ -170,7 +170,7 @@ internal object V9R2BundleReader {
                 } catch(e:Exception){status="R2 kaynağı reddedildi: ${e.message}"}
                 finally{active=false}
             }
-        }){Text("Paketleri indir, doğrula ve kur")}
+        }){Text("Kur")}
     if(partial)Text("Manifest ve imza birlikte seçilmeli.",color=MaterialTheme.colorScheme.error)
     if(requiresSource && !sourceReady && manifest==null)Text("İmzalı R2 sürümü gerekli. Eksik Packages indeksleri varsa işlem güvenle durur.",style=MaterialTheme.typography.bodySmall)
     if(active)LinearProgressIndicator(modifier=Modifier.fillMaxWidth())

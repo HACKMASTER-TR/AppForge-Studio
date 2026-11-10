@@ -18,6 +18,10 @@ import kotlinx.coroutines.*
 internal object ModuleInstallOperations {
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
     val activeProgress=kotlinx.coroutines.flow.MutableStateFlow<ModuleProgress?>(null)
+    val installTarget=kotlinx.coroutines.flow.MutableStateFlow<OfflineModuleId?>(null)
+    val completedInstall=kotlinx.coroutines.flow.MutableStateFlow<OfflineModuleId?>(null)
+    val diagnosticOperation=kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val startedAt=kotlinx.coroutines.flow.MutableStateFlow(0L)
     val updates=kotlinx.coroutines.flow.MutableStateFlow<Map<OfflineModuleId,ModuleProgress>>(emptyMap())
     val busy=kotlinx.coroutines.flow.MutableStateFlow(false)
     val stopPending=kotlinx.coroutines.flow.MutableStateFlow(false)
@@ -44,6 +48,10 @@ internal object ModuleInstallOperations {
     @Synchronized fun start(context:android.content.Context, selected:OfflineModuleId, consent:Boolean) {
         if(busy.value)return
         try{restore(context)}catch(e:Exception){journalError.value="İndirme kaydı reddedildi; kurulum başlamadı: ${e.message}";DownloadNetwork.restorePreference();return}
+        installTarget.value=selected
+        completedInstall.value=null
+        diagnosticOperation.value=null
+        startedAt.value=android.os.SystemClock.elapsedRealtime()
         busy.value=true;pauseRequested=false;downloadControl=DownloadControl();stopPending.value=false
         try {ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException) {
             busy.value=false;DownloadNetwork.restorePreference()
@@ -69,14 +77,17 @@ internal object ModuleInstallOperations {
                     val last=java.util.concurrent.atomic.AtomicReference<ModuleProgress?>(null)
                     try {
                         OfflineBuildPackManager.installModules(context.applicationContext,setOf(selected),consent,downloadControl){event->
-                            last.set(event);publish(event)
+                            last.set(event);diagnosticOperation.value=event.operationId;publish(event)
                         }
+                        publish(ModuleProgress(selected,last.get()?.operationId?:"final-integrity",ModulePhase.VERIFYING,
+                            detail="Etkin modül son kez kontrol ediliyor."))
                         check(OfflineBuildPackManager.moduleReady(context.applicationContext,selected) &&
                             !OfflineBuildPackManager.hasPendingLifecycle(context.applicationContext,selected)) {
                             "Otomatik son bütünlük kontrolü başarısız; modül hazır değil."
                         }
                         publish(ModuleProgress(selected,last.get()?.operationId?:"final-integrity",ModulePhase.READY,
                             detail="Doğrulanmış kurulum • paketler ve etkin modül bütünlüğü kontrol edildi."))
+                        completedInstall.value=selected
                         break
                     }catch(e:CancellationException){throw e}
                     catch(e:Exception) {
@@ -101,7 +112,7 @@ internal object ModuleInstallOperations {
                 updates.value=updates.value+(selected to ModuleProgress(selected,"canceled",if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else if(pauseRequested)ModulePhase.PAUSED else ModulePhase.CANCELED,errorCode=if(e is DownloadNetwork.PolicyBlocked)"NETWORK_POLICY" else null,detail=if(e is DownloadNetwork.PolicyBlocked)"Ağ politikası/onay bekleniyor; kısmi dosya korunur. Devam et ile tekrar doğrulayın." else if(pauseRequested)"Duraklatıldı; doğrulanmamış kısmi dosya devam için korunur." else "İptal edildi; çalışan modüller korunur."))
             } catch(e:Exception) {
                 // Preserve the manager's connection-wait/error state for this operation.
-                if(updates.value[selected]?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
+                if(activeProgress.value?.takeIf { it.moduleId==selected }?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
                 updates.value=updates.value+(selected to ModuleProgress(selected,"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
             } finally {stalledWatch.cancel();try{runCatching{persist()}}finally{activeProgress.value=null;busy.value=false;DownloadNetwork.restorePreference()}}
         }
@@ -109,11 +120,15 @@ internal object ModuleInstallOperations {
     @Synchronized fun lifecycle(context:android.content.Context,id:OfflineModuleId,action:String) {
         require(action in setOf("remove","rollback"));if(busy.value)return
         try{restore(context)}catch(e:Exception){journalError.value="İndirme kaydı reddedildi; yaşam döngüsü işlemi başlamadı: ${e.message}";return}
+        installTarget.value=null
+        completedInstall.value=null
+        diagnosticOperation.value=null
+        startedAt.value=android.os.SystemClock.elapsedRealtime()
         busy.value=true
         try{ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException){busy.value=false;journalError.value="Android yaşam döngüsü hizmetini başlatmadı: ${e.message}";return}
         job=scope.launch {
             val operation=java.util.UUID.randomUUID().toString()
-            fun recordLifecycle(event:ModuleProgress){DownloadCoordinator.modulePhase(event);publish(event)}
+            fun recordLifecycle(event:ModuleProgress){diagnosticOperation.value=event.operationId;DownloadCoordinator.modulePhase(event);publish(event)}
             try {
                 recordLifecycle(ModuleProgress(id,operation,if(action=="remove")ModulePhase.REMOVING else ModulePhase.ROLLING_BACK,detail="Onaylı işlem: bağımlılık, sahiplik, kullanım ve generation bütünlüğü yeniden doğrulanıyor."))
                 if(action=="remove")OfflineBuildPackManager.removeOwnedModule(context.applicationContext,id)
@@ -169,6 +184,17 @@ internal object ModuleInstallOperations {
     var recoveryBusy by remember { mutableStateOf(false) }
     var recoveryMessage by remember { mutableStateOf("") }
     val liveProgress by ModuleInstallOperations.activeProgress.collectAsState()
+    val installTarget by ModuleInstallOperations.installTarget.collectAsState()
+    val completedInstall by ModuleInstallOperations.completedInstall.collectAsState()
+    val diagnosticOperation by ModuleInstallOperations.diagnosticOperation.collectAsState()
+    val startedAt by ModuleInstallOperations.startedAt.collectAsState()
+    var elapsedSeconds by remember(startedAt) { mutableLongStateOf(0L) }
+    LaunchedEffect(busy,startedAt) {
+        while(busy && startedAt>0L) {
+            elapsedSeconds=(android.os.SystemClock.elapsedRealtime()-startedAt)/1000
+            delay(1000)
+        }
+    }
     var sdkConsent by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf("") }
     var confirmPrune by remember{mutableStateOf(false)}
@@ -460,7 +486,8 @@ internal object ModuleInstallOperations {
                 val active=liveProgress?.takeIf{
                     busy && it.moduleId in OfflineModules.resolve(setOf(selected))
                 }
-                val event=active ?: events[selected]
+                val installingSelected=busy && installTarget==selected
+                val event=if(installingSelected)active else active ?: events[selected]
                 val canInstall=recovered && chosen==null &&
                     !busy && !preparing && !prefetchBusy && !recoveryBusy && unsupported==null
 
@@ -560,6 +587,13 @@ internal object ModuleInstallOperations {
 
                         Text(
                             "Durum: "+when {
+                                installingSelected -> when {
+                                    active==null -> "Kurulum hazırlanıyor"
+                                    active.phase==ModulePhase.READY -> "Kurulum devam ediyor"
+                                    active.moduleId!=selected ->
+                                        "${OfflineModules.spec(active.moduleId).title} · ${active.phase.turkishLabel()}"
+                                    else -> active.phase.turkishLabel()
+                                }
                                 busy && active!=null -> active.phase.turkishLabel()
                                 !recovered -> "Önceki işlemler kontrol ediliyor"
                                 migrationReason!=null -> "Güvenli runtime geçişi gerekli"
@@ -577,9 +611,18 @@ internal object ModuleInstallOperations {
                             Text("Sürüm: $it",style=MaterialTheme.typography.bodySmall)
                         }
 
+                        if(installingSelected) {
+                            LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
+                            Text("Geçen süre: ${elapsedSeconds/60} dk ${elapsedSeconds%60} sn")
+                        } else if(!busy && completedInstall==selected) {
+                            LinearProgressIndicator(progress={1f},modifier=Modifier.fillMaxWidth())
+                            Text("Kurulum tamamlandı · %100")
+                        }
+
                         if(event!=null) {
-                            Text(event.detail,style=MaterialTheme.typography.bodySmall)
-                            if(event.phase==ModulePhase.ERROR)
+                            if(moduleDetails || event.phase in setOf(ModulePhase.ERROR,ModulePhase.AWAITING_CONSENT,ModulePhase.WAITING_CONNECTION))
+                                Text(event.detail,style=MaterialTheme.typography.bodySmall)
+                            if(moduleDetails && event.phase==ModulePhase.ERROR)
                                 Text(
                                     "Hata: "+(event.errorCode?:"Bilinmiyor"),
                                     color=MaterialTheme.colorScheme.error
@@ -599,6 +642,7 @@ internal object ModuleInstallOperations {
                             }
 
                             if(busy && event.phase==ModulePhase.DOWNLOADING) {
+                                Text("Dosya indirme ilerlemesi")
                                 val pct=event.percent
                                 if(pct!=null)
                                     LinearProgressIndicator(
@@ -623,7 +667,7 @@ internal object ModuleInstallOperations {
                                 event.averageSpeedBytesPerSecond?.let { average ->
                                     Text("Ortalama hız: %.1f MiB/sn".format(average/1024/1024),style=MaterialTheme.typography.bodySmall)
                                 }
-                            } else if(busy && event.phase !in setOf(
+                            } else if(busy && !installingSelected && event.phase !in setOf(
                                 ModulePhase.READY,ModulePhase.ERROR,ModulePhase.CANCELED
                             )) {
                                 LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
@@ -694,9 +738,14 @@ internal object ModuleInstallOperations {
                 Text("Varsayılan politika: ${DownloadNetwork.policy}. VPN veya ölçümlü Wi-Fi, kısıtlı politikada engellenir. Dış paket yöneticilerinde ağ geçişi kısıtı garanti edilemediğinden açık ağ izni gerekir.")
             }}}
             if(section=="diagnostics")item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("Kalıcı işlem ağacı",style=MaterialTheme.typography.titleMedium)
+                Text("Son işlem",style=MaterialTheme.typography.titleMedium)
                 Text("Geçmiş kayıtlar komut veya kurulum yetkisi değildir. Dosya tamamlanması, modül Hazır ve proje Çevrimdışı Hazır ayrı doğrulanır.")
-                operationTree.filter{it.parentOperationId==null}.takeLast(8).reversed().forEach{root->
+                val rootIds=diagnosticOperation?.let { operation ->
+                    OfflineModuleId.entries.map { PersistentOperationGraph.moduleId(operation,it) }.toSet()
+                }.orEmpty()
+                val currentRoots=operationTree.filter { it.parentOperationId==null && it.operationId in rootIds }
+                if(currentRoots.isEmpty())Text(if(busy)"İşlem hazırlanıyor…" else "Bu oturumda işlem kaydı yok.")
+                currentRoots.asReversed().forEach{root->
                     Text("${OfflineModules.spec(root.moduleId).title} • ${root.operationState} • ${root.operationId.take(12)}")
                     operationTree.filter{it.parentOperationId==root.operationId}.takeLast(12).forEach{child->
                         Text("  ${child.stage} • ${child.operationState}"+(if(child.stage==OperationStage.ARTIFACT_DOWNLOAD)" • ${child.downloadCapability}" else ""))
@@ -760,7 +809,6 @@ internal object ModuleInstallOperations {
             }
             if(section=="modules" && project!=null && (!FastHtmlApkPolicy.isCandidate(project) || RustProjectPolicy.hasRust(project)))item { ProjectDependencyPreparationCard(project,onRustPrepared) }
             if(section=="modules" && selected==OfflineModuleId.WINDOWS_PORTABLE && portableReady)item { WindowsModuleSmokeCard() }
-            item { Text("Toplam işlem: "+if(busy)"devam ediyor; kurulum iş miktarı ölçülemediği için toplam yüzde yok" else "bekliyor / son modül durumlarını inceleyin") }
             item { Text("Kullanıcının başlattığı kurulum Android veri aktarımı servisiyle izlenir. Android zaman sınırı veya süreç ölümü işlemi durdurabilir. Yeniden açınca kayıt geri yüklenir; devam için onay gerekir, dosyalar yeniden doğrulanır.") }
             if(journalError.isNotBlank())item{Text(journalError)}
             if(section=="diagnostics" && history.isNotEmpty())item{Column {Text("Son işlem kayıtları (hazır olma kanıtı değildir)");history.takeLast(8).forEach{Text(it)}}}
