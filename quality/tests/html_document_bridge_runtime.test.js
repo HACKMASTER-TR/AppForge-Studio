@@ -78,10 +78,10 @@ for(const dir of variants){
  test(`${dir}: MIME/signature/size/scheme, duplicates, subframes and share opt-out`,async()=>{
   const b=browser(dir,{sharing:false});assert.equal(b.context.navigator.share,undefined);
   assert.equal(browser(dir,{subframe:true}).context.AppForgeDocuments,undefined);
-  await assert.rejects(b.context.AppForgeDocuments.save(new Blob(['%PDF-'],{type:'text/plain'})),/Expected PDF/);
+  await assert.rejects(b.context.AppForgeDocuments.save(new Blob(['%PDF-'],{type:'text/html'})),/Expected PDF/);
   await assert.rejects(b.context.AppForgeDocuments.save(new Blob(['wrong'],{type:'application/pdf'})),/signature/);
   await assert.rejects(b.context.AppForgeDocuments.save(new Blob([new Uint8Array(16*1024*1024+1)],{type:'application/pdf'})),/Expected PDF/);
-  for(const url of ['file:///secret.pdf','content://secret/pdf','https://example.test/a.pdf','javascript:alert(1)'])await assert.rejects(b.context.AppForgeDocuments.download(url),/generated PDF/);
+  for(const url of ['file:///secret.pdf','content://secret/pdf','https://example.test/a.pdf','javascript:alert(1)'])await assert.rejects(b.context.AppForgeDocuments.download(url),/generated supported document/);
   const first=b.context.AppForgeDocuments.save(new Blob(['%PDF-'],{type:'application/pdf'}));
   await assert.rejects(b.context.AppForgeDocuments.save(new Blob(['%PDF-'],{type:'application/pdf'})),/already active/);await first;
  });
@@ -113,7 +113,8 @@ const stubs={
  'android/os/Bundle.java':`package android.os; public class Bundle {}`,
  'android/graphics/Color.java':`package android.graphics; public class Color {public static int parseColor(String s){return 0;} }`,
  'android/view/Window.java':`package android.view; public class Window {public void setStatusBarColor(int c){} public void setNavigationBarColor(int c){} }`,
- 'android/graphics/Bitmap.java':`package android.graphics; public class Bitmap {}`,
+ 'android/graphics/Bitmap.java':`package android.graphics; public class Bitmap {public void recycle(){}}`,
+ 'android/graphics/BitmapFactory.java':`package android.graphics;public class BitmapFactory {public static class Options{public boolean inJustDecodeBounds;public int outWidth,outHeight;public String outMimeType;}public static Bitmap decodeByteArray(byte[] b,int o,int l){try{return javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(b,o,l))==null?null:new Bitmap();}catch(Exception e){return null;}}public static Bitmap decodeByteArray(byte[] b,int o,int l,Options options){try{java.awt.image.BufferedImage image=javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(b,o,l));if(image!=null){options.outWidth=image.getWidth();options.outHeight=image.getHeight();options.outMimeType=(b[o]&255)==137?"image/png":"image/jpeg";}}catch(Exception e){}return null;}}`,
  'android/webkit/JavascriptInterface.java':`package android.webkit; public @interface JavascriptInterface {}`,
  'android/webkit/DownloadListener.java':`package android.webkit; public interface DownloadListener {void onDownloadStart(String u,String a,String d,String m,long l);}`,
  'android/webkit/WebViewClient.java':`package android.webkit; public class WebViewClient {public WebResourceResponse shouldInterceptRequest(WebView w,WebResourceRequest r){return null;} public void onPageStarted(WebView w,String u,android.graphics.Bitmap b){} public void onPageFinished(WebView w,String u){} public boolean shouldOverrideUrlLoading(WebView w,WebResourceRequest r){return false;} public boolean shouldOverrideUrlLoading(WebView w,String u){return false;}}`,
@@ -334,6 +335,27 @@ public class Harness {
    if(csvMode.equals("save")){check(a.picker.type.equals("text/csv"));result(Activity.RESULT_OK,destination("content://documents/csv"));check(java.util.Arrays.equals(a.resolver.bytes.toByteArray(),csv));}
    else {for(int i=0;i<200 && a.launched==null;i++)Thread.sleep(5);check(a.picker==null);check(a.resolver.bytes==null);check(a.launched.type.equals("text/csv"));}
   }
+  for(String format:new String[]{"png","jpeg","txt"}) {
+   byte[] payload;
+   String mime=format.equals("txt")?"text/plain":("image/"+format);
+   String name="export."+(format.equals("jpeg")?"jpg":format);
+   if(format.equals("txt"))payload="Text with unbalanced \\"quotes and UTF-8: ç\\n".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+   else {java.io.ByteArrayOutputStream output=new java.io.ByteArrayOutputStream();javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(2,3,java.awt.image.BufferedImage.TYPE_INT_RGB),format,output);payload=output.toByteArray();}
+   check(AppForgeDocuments.validDocument(payload,mime));
+   if(!format.equals("txt"))check(!AppForgeDocuments.validDocument(payload,format.equals("png")?"image/jpeg":"image/png"));
+   check(!AppForgeDocuments.validDocument(new byte[]{0},"text/plain"));
+   check(!AppForgeDocuments.validDocument(new byte[]{(byte)255},"text/plain"));
+   check(!AppForgeDocuments.validDocument(payload,"text/html"));
+   if(!format.equals("txt"))check(!AppForgeDocuments.validDocument("fake image".getBytes(),mime));
+   try{AppForgeDocuments.safeDocumentName("fake.pdf",mime);throw new AssertionError();}catch(SecurityException expected){}
+   for(String exportMode:new String[]{"save","share"}) {
+    init(true);check(call(op("begin").put("mode",exportMode).put("mime",mime).put("size",payload.length).put("name",name)).yes("ok"));
+    check(call(op("chunk").put("offset",0).put("data",java.util.Base64.getEncoder().encodeToString(payload))).yes("ok"));call(op("finish"));
+    if(exportMode.equals("save")){check(a.picker.type.equals(mime));result(Activity.RESULT_OK,destination("content://documents/"+format));check(java.util.Arrays.equals(a.resolver.bytes.toByteArray(),payload));}
+    else {for(int i=0;i<200 && a.launched==null;i++)Thread.sleep(5);check(a.launched.type.equals(mime));AppForgeShareProvider provider2=new AppForgeShareProvider();provider2.context=a;Uri uri2=(Uri)a.launched.extras.get(Intent.EXTRA_STREAM);check(provider2.getType(uri2).equals(mime));check(java.util.Arrays.equals(java.nio.file.Files.readAllBytes(provider2.openFile(uri2,"r").file.toPath()),payload));}
+   }
+  }
+  init(true);w.url="https://attacker.test";check(!call(op("begin").put("mode","save").put("size",4).put("mime","image/png").put("name","image.png")).yes("ok"));
   // Hold the real provider creation lock so background/navigation happen before completion.
   init(true);check(begin("share",7).yes("ok"));check(call(op("chunk").put("offset",0).put("data","JVBERi0A/w==")).yes("ok"));
   synchronized(AppForgeShareProvider.class){call(op("finish"));d.pause();}
@@ -374,7 +396,7 @@ public class Harness {
   check(java.util.Arrays.equals(a.resolver.bytes.toByteArray(),new byte[]{37,80,68,70,45,0,(byte)255}));
 
   init(true);w.url="https://attacker.test";check(!begin("save",7).yes("ok"));
-  init(true);check(!call(op("begin").put("mode","save").put("size",7).put("mime","text/plain")).yes("ok"));
+  init(true);check(!call(op("begin").put("mode","save").put("size",7).put("mime","text/html")).yes("ok"));
   a=new Activity();w=new WebView();d=new AppForgeDocuments(a,w,"https://trusted.test",false,false);d.pageFinished(w.url);port=w.pair[0];w.touch.onTouch(w,new android.view.MotionEvent());check(!begin("save",7).yes("ok"));
   a=new Activity();w=new WebView();d=new AppForgeDocuments(a,w,null,true,true);d.pageFinished(w.url);check(w.pair==null);
   for(String bad:new String[]{"file:///data/private/report.html","file:///android_asset/site/../private.html","file:///android_asset/site/%2e%2e/private.html","file://attacker/android_asset/site/index.html","https://attacker.test/index.html","content://private/index.html"})check(!AppForgeDocuments.legacyLocalPage(bad));
@@ -440,4 +462,14 @@ for(const dir of variants)test(`${dir}: local location shim returns only correla
  b.context.AppForgeLocation.getCurrentPosition(()=>assert.fail('Denied request produced coordinates'),e=>{error=e;});
  await new Promise(r=>setImmediate(r));const deniedId=b.compatMessages.at(-1).args[0];
  b.events['appforge-location']({detail:{id:deniedId,ok:false,error:{code:1,message:'Denied'}}});assert.equal(error.code,1);
+});
+
+for(const dir of variants)test(`${dir}: PNG JPEG TXT JS transports exact bytes in save/share and data URL modes`,async()=>{
+ for(const [mime,name,bytes] of [['image/png','image.png',Buffer.from([137,80,78,71,13,10,26,10])],['image/jpeg','image.jpg',Buffer.from([255,216,255,217])],['text/plain','notes.txt',Buffer.from('UTF-8 ç and unbalanced " text')]]) {
+  for(const mode of ['save','share']) {
+   const b=browser(dir);await b.context.AppForgeDocuments[mode](new Blob([bytes],{type:mime}),name);
+   assert.deepEqual(b.bytes,bytes);assert.equal(b.messages[0].mime,mime);assert.equal(b.messages[0].name,name);
+  }
+  const b=browser(dir);await b.context.AppForgeDocuments.download('data:'+mime+';base64,'+bytes.toString('base64'),name);assert.deepEqual(b.bytes,bytes);
+ }
 });

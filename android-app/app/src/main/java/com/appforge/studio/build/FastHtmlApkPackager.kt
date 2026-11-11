@@ -35,7 +35,8 @@ internal object FastHtmlApkPackager {
 
     fun build(
         context: Context, draft: ProjectDraft, workspace: File,
-        uploadSigner: ApkSigner.SignerConfig? = null
+        uploadSigner: ApkSigner.SignerConfig? = null,
+        stages: BuildStageTimings = BuildStageTimings()
     ): File {
         FastHtmlApkPolicy.requireSupported(draft)
         check(workspace.mkdirs() || workspace.isDirectory)
@@ -43,15 +44,19 @@ internal object FastHtmlApkPackager {
         val unsigned = File(workspace, "html-unsigned.apk")
         val signed = File(workspace, "html-output.apk")
         val htmlProject: Pair<String, Map<String, ByteArray>>? =
-            if (draft.sourceMode == SourceMode.LOCAL) readHtmlProject(draft) else null
-        try {
-            context.assets.open(ASSET).use { input ->
-                FileOutputStream(template).use { output ->
-                    copyLimited(input, output, MAX_TEMPLATE_BYTES)
-                }
+            stages.measure(BuildStageTimings.Stage.ASSETS) {
+                if (draft.sourceMode == SourceMode.LOCAL) readHtmlProject(draft) else null
             }
-            check(template.length() in 1024..MAX_TEMPLATE_BYTES) { "Gömülü HTML APK şablonu eksik veya geçersiz." }
-            TemplateIntegrity.requireAsset(context, ASSET, template.readBytes())
+        try {
+            stages.measure(BuildStageTimings.Stage.TEMPLATE) {
+                context.assets.open(ASSET).use { input ->
+                    FileOutputStream(template).use { output ->
+                        copyLimited(input, output, MAX_TEMPLATE_BYTES)
+                    }
+                }
+                check(template.length() in 1024..MAX_TEMPLATE_BYTES) { "Gömülü HTML APK şablonu eksik veya geçersiz." }
+                TemplateIntegrity.requireAsset(context, ASSET, template.readBytes())
+            }
             val icon = FastHtmlIcon.read(context, draft)
             val config = runtimeConfig(draft, htmlProject?.first ?: "")
             val additions = mutableMapOf("assets/appforge-html-config.json" to config)
@@ -59,34 +64,40 @@ internal object FastHtmlApkPackager {
             ZipFile(template).use { zip ->
                 val manifest = zip.getEntry("AndroidManifest.xml")
                     ?: error("Şablon manifesti bulunamadı.")
-                additions["AndroidManifest.xml"] = HtmlBinaryManifest.rewrite(
+                additions["AndroidManifest.xml"] = stages.measure(BuildStageTimings.Stage.MANIFEST) { HtmlBinaryManifest.rewrite(
                     zip.getInputStream(manifest).use { it.readBytes() },
                     draft.packageName, draft.appName, draft.versionCode, draft.versionName,
                     draft.minSdk, draft.targetSdk, FastHtmlApkPolicy.templatePermissions(draft), FastHtmlApkPolicy.applicationCategory(draft),
                     if (draft.deepLinkEnabled) listOf(draft.deepLinkScheme,draft.deepLinkHost,draft.deepLinkPathPrefix) else null, true, draft.mediaPlayerBridge, draft.billingEnabled, WebviewProjectSettings.cleartextHost(draft)!=null
-                )
+                ) }
                 val resources = zip.getInputStream(requireNotNull(zip.getEntry("resources.arsc"))).use { it.readBytes() }
                 val networkPath=FastHtmlResourceColor.binaryNetworkSecurityPath(resources)
                 val network=zip.getInputStream(requireNotNull(zip.getEntry(networkPath))).use{it.readBytes()}
                 additions[networkPath]=HtmlBinaryManifest.networkSecurity(network,WebviewProjectSettings.cleartextHost(draft))
-                additions["resources.arsc"] = FastHtmlResourceColor.binary(resources, draft.primaryColor, draft.packageName)
+                additions["resources.arsc"] = stages.measure(BuildStageTimings.Stage.RESOURCES) {
+                    FastHtmlResourceColor.binary(resources, draft.primaryColor, draft.packageName)
+                }
                 val iconPath = FastHtmlResourceColor.binaryIconPath(resources)
                 require(zip.getEntry(iconPath) != null) { "Pinned icon resource missing." }
                 if (icon != null) additions[iconPath] = icon
-                repackage(zip, unsigned, additions)
+                stages.measure(BuildStageTimings.Stage.PACKAGING) { repackage(zip, unsigned, additions) }
             }
-            val signer = uploadSigner ?: getOrCreateSigner()
-            ApkSigner.Builder(listOf(signer))
-                .setInputApk(unsigned)
-                .setOutputApk(signed)
-                .setMinSdkVersion(draft.minSdk)
-                .setV1SigningEnabled(false)
-                .setV2SigningEnabled(true)
-                .setV3SigningEnabled(true)
-                .build().sign()
-            val verification = ApkVerifier.Builder(signed).build().verify()
-            check(verification.isVerified && verification.signerCertificates.isNotEmpty()) {
-                "APK v2/v3 imza doğrulaması başarısız."
+            stages.measure(BuildStageTimings.Stage.SIGNING) {
+                val signer = uploadSigner ?: getOrCreateSigner()
+                ApkSigner.Builder(listOf(signer))
+                    .setInputApk(unsigned)
+                    .setOutputApk(signed)
+                    .setMinSdkVersion(draft.minSdk)
+                    .setV1SigningEnabled(false)
+                    .setV2SigningEnabled(true)
+                    .setV3SigningEnabled(true)
+                    .build().sign()
+            }
+            stages.measure(BuildStageTimings.Stage.VERIFICATION) {
+                val verification = ApkVerifier.Builder(signed).build().verify()
+                check(verification.isVerified && verification.signerCertificates.isNotEmpty()) {
+                    "APK v2/v3 imza doğrulaması başarısız."
+                }
             }
             check(signed.length() in 1024..(MAX_TEMPLATE_BYTES + MAX_PROJECT_BYTES + 1_048_576))
             return signed

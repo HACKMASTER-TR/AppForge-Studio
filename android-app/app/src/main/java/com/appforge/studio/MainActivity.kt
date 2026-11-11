@@ -2813,6 +2813,8 @@ private fun AppForgeApp() {
                                             .startPage
                                             .absolutePath,
 
+                                    sourceMode = if (analysis.technologyId == "pdf") SourceMode.LOCAL else baseDraft.sourceMode,
+
                                     sourceTechnology =
                                         analysis
                                             .technologyId,
@@ -5789,6 +5791,7 @@ private fun AppForgeApp() {
                         onPickSource = {
                             sourcePicker.launch(
                                 arrayOf(
+                                    "application/pdf",
                                     "text/html",
                                     "application/zip",
                                     "application/octet-stream"
@@ -8591,7 +8594,7 @@ private fun QuickCreateScreenContent(
                                 },
                                 label = {
                                     Text(
-                                        "HTML / ZIP"
+                                        "HTML / ZIP / PDF"
                                     )
                                 }
                             )
@@ -8637,7 +8640,7 @@ private fun QuickCreateScreenContent(
                                         draft.startPage
                                             .isNullOrBlank()
                                     ) {
-                                        "HTML / ZIP seç"
+                                        "HTML / ZIP / PDF seç"
                                     } else {
                                         "✓ ${
                                             draft.sourceLabel
@@ -14664,7 +14667,7 @@ private fun SourceStep(
                     },
                     label = {
                         Text(
-                            "HTML / ZIP"
+                            "HTML / ZIP / PDF"
                         )
                     }
                 )
@@ -20617,7 +20620,7 @@ private fun BuildSettingsStep(
                                 draft.sourceMode ==
                                     SourceMode.LOCAL
                             ) {
-                                "HTML / ZIP"
+                                "HTML / ZIP / PDF"
                             } else {
                                 "Web URL"
                             }

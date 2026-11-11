@@ -1,0 +1,90 @@
+name: HTML PDF integration verification
+on:
+  pull_request:
+    branches: [feat/v9-global-package-distribution-20261027]
+    paths: ["android-app/**", "quality/**", ".github/workflows/html-pdf-integration.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: html-pdf-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android-host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.3.1"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned Kotlin compiler
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.2 https://github.com/JetBrains/kotlin/releases/download/v2.3.10/kotlin-compiler-2.3.10.zip -o "$RUNNER_TEMP/kotlin.zip"
+          echo "c8d546f9ff433b529fb0ad43feceb39831040cae2ca8d17e7df46364368c9a9e  $RUNNER_TEMP/kotlin.zip" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP/kotlin"
+          echo "$RUNNER_TEMP/kotlin/kotlinc/bin" >> "$GITHUB_PATH"
+      - name: Install Android toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          "$SDKMANAGER" --channel=3 "platforms;android-37.0" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"; fi
+      - name: Execute Android units and build app, templates and device tests
+        run: gradle -p android-app :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :html-apk-template:bundleRelease --no-daemon --max-workers=2
+      - name: Execute routing and document security regressions
+        run: node --test quality/tests/html_document_bridge_runtime.test.js quality/tests/fast_html_advanced_routing_runtime.test.js quality/tests/fast_html_ui_recovery_v1_contract.test.js quality/tests/fast_html_apk_v1_contract.test.js quality/tests/t21_share_provider_runtime.test.js quality/tests/web_wrapper_config_contract.test.js
+      - name: Compile shipped normal runtime against Android API
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/normal-wrapper"
+          javac --release 8 -Xlint:-options -cp "$ANDROID_HOME/platforms/android-37/android.jar" -d "$RUNNER_TEMP/normal-wrapper" android-app/app/src/main/assets/device-build/*.java
+      - name: Verify PDF sources with a host parser boundary
+        shell: bash
+        run: |
+          python3 - <<'PYTHON'
+          import hashlib, os, pathlib, urllib.request
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'pdfbox'
+          root.mkdir()
+          jars=[('org/apache/pdfbox','pdfbox','3.0.6','87b9122b78f521fef83e2806d98e7e483e049f087ea6267b72d319f672019101'),('org/apache/pdfbox','pdfbox-io','3.0.6','191eac63756ff0dbc841e397e97cfa0cbdfd2515972d60ef5639a0aa884a7e47'),('org/apache/pdfbox','fontbox','3.0.6','7a09fcb0c630e471ac26b347ca45a0d8aef5a969cc59aebff1c57fe92293e2b1'),('commons-logging','commons-logging','1.3.5','6d7a744e4027649fbb50895df9497d109f98c766a637062fe8d2eabbb3140ba4')]
+          paths=[]
+          for group,name,version,expected in jars:
+              target=root/(name+'.jar')
+              urllib.request.urlretrieve('https://repo.maven.apache.org/maven2/'+group+'/'+name+'/'+version+'/'+name+'-'+version+'.jar',target)
+              assert hashlib.sha256(target.read_bytes()).hexdigest()==expected
+              paths.append(str(target))
+          import subprocess
+          subprocess.run(['python3','quality/tools/pdf_source_host_smoke.py','--parser-jars',os.pathsep.join(paths)],check=True)
+          PYTHON
+      - name: Install verified bundletool
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.2 https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar -o "$RUNNER_TEMP/bundletool.jar"
+          echo "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29  $RUNNER_TEMP/bundletool.jar" | sha256sum --check
+      - name: Execute production APK and AAB packagers
+        shell: bash
+        run: |
+          set -euo pipefail
+          APKSIG="$(find "$HOME/.gradle/caches/modules-2/files-2.1/com.android.tools.build/apksig" -name '*.jar' | head -n 1)"
+          JSON="$(find "$HOME/.gradle/caches/modules-2/files-2.1/org.json/json/20250517" -name '*.jar' | head -n 1)"
+          python3 quality/tools/fast_html_v2_compiled_smoke.py --android-jar "$ANDROID_HOME/platforms/android-37/android.jar" --apksig-jar "$APKSIG" --json-jar "$JSON" --assets-build android-app/app/build --output-dir integration-artifacts --bundletool-jar "$RUNNER_TEMP/bundletool.jar"
+      - name: Upload APK, AAB and actual test reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: html-pdf-verification-${{ github.sha }}
+          path: |
+            android-app/app/build/outputs/apk/debug/*.apk
+            android-app/app/build/outputs/apk/androidTest/debug/*.apk
+            android-app/app/build/reports/tests/
+            integration-artifacts/
+          if-no-files-found: error
+          retention-days: 7

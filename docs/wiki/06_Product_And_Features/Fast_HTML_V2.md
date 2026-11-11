@@ -92,3 +92,9 @@ fallback was added. Physical and live Play acceptance remain NOT_RUN.
 See [[Modular_Offline_V3]] for the central support matrix, explicit normal-engine
 selection, precise source findings and selected-module installation boundaries.
 This revision does not establish physical Android or live external-service acceptance.
+
+## 2026-11-11 development extension
+
+See [[HTML_PDF_Integration]] for HTTPS URL bundles, bounded PNG/JPEG/TXT exports,
+native normal-engine PDF sources and timing events. Earlier APK-only URL notes
+describe the historical baseline; device acceptance remains separate.

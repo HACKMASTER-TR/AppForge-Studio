@@ -36,9 +36,35 @@ object ProjectTechnologyDetector {
             }.getOrDefault("")
         }
 
+    private fun validPdfIdentity(root: File): Boolean = runCatching {
+        require(root.isDirectory && !java.nio.file.Files.isSymbolicLink(root.toPath()))
+        val marker = File(root, "appforge-pdf.sha256")
+        val document = File(root, "appforge-document.pdf")
+        require(!java.nio.file.Files.isSymbolicLink(marker.toPath()) && marker.isFile && marker.length() == 64L)
+        require(!java.nio.file.Files.isSymbolicLink(document.toPath()) && document.isFile && document.length() in 5..32L * 1024 * 1024)
+        val sha = java.security.MessageDigest.getInstance("SHA-256")
+        document.inputStream().use { input ->
+            val buffer = ByteArray(8192)
+            var total = 0L
+            while (true) {
+                val count = input.read(buffer); if (count < 0) break
+                total += count; require(total <= 32L * 1024 * 1024)
+                sha.update(buffer, 0, count)
+            }
+        }
+        marker.readText() == sha.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
+    }.getOrDefault(false)
+
     fun detect(root: File): ProjectTechnologyInfo {
         if (!root.exists() || !root.isDirectory) {
             return unknown("Proje klasörü bulunamadı.")
+        }
+
+        if (File(root, "appforge-pdf.sha256").exists()) {
+            return if (validPdfIdentity(root))
+                ProjectTechnologyInfo("pdf", "PDF / Çevrimdışı okuyucu", "webview-static", true,
+                    "Gömülü PDF normal Android motorunda açılır; SDK/JDK/Gradle gerektirir.")
+            else unknown("PDF proje bütünlüğü geçersiz; belgeyi yeniden içe aktarın.")
         }
 
         // Explicit local Rust consumer bindings precede heuristic language scans.
