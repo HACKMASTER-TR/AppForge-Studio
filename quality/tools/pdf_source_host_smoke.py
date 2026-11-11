@@ -51,6 +51,26 @@ public class Fixtures {
    for(int i=0;i<count;i++)document.addPage(new PDPage());document.save(new File(args[0],"valid-"+count+".pdf"));
   }
   try(PDDocument document=new PDDocument()){
+   java.awt.image.BufferedImage scan=new java.awt.image.BufferedImage(300,200,java.awt.image.BufferedImage.TYPE_INT_RGB);
+   java.awt.Graphics2D graphics=scan.createGraphics();
+   try{graphics.setColor(java.awt.Color.WHITE);graphics.fillRect(0,0,300,200);graphics.setColor(java.awt.Color.BLACK);graphics.fillRect(10,10,90,90);}finally{graphics.dispose();}
+   org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject image=org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory.createFromImage(document,scan);
+   for(int i=0;i<2;i++){
+    PDPage page=new PDPage(new org.apache.pdfbox.pdmodel.common.PDRectangle(300,200));document.addPage(page);
+    try(PDPageContentStream content=new PDPageContentStream(document,page)){content.drawImage(image,0,0,300,200);}
+   }
+   document.save(new File(args[0],"scanned.pdf"));
+  }
+  // Independently check that the fixture is image-only and actually renders nonblank pixels.
+  try(PDDocument document=org.apache.pdfbox.Loader.loadPDF(new File(args[0],"scanned.pdf"))){
+   if(document.getNumberOfPages()!=2 || !new org.apache.pdfbox.text.PDFTextStripper().getText(document).trim().isEmpty())throw new AssertionError("Not an image-only scan fixture");
+   for(int i=0;i<2;i++){
+    if(!document.getPage(i).getResources().getXObjectNames().iterator().hasNext())throw new AssertionError("Missing raster image");
+    java.awt.image.BufferedImage rendered=new org.apache.pdfbox.rendering.PDFRenderer(document).renderImageWithDPI(i,72);
+    if((rendered.getRGB(20,20)&0xffffff)!=0)throw new AssertionError("Blank scan rendering");
+   }
+  }
+  try(PDDocument document=new PDDocument()){
    document.addPage(new PDPage());StandardProtectionPolicy policy=new StandardProtectionPolicy("fixture-owner","fixture-user",new AccessPermission());
    policy.setEncryptionKeyLength(128);document.protect(policy);document.save(new File(args[0],"encrypted.pdf"));
   }
@@ -72,6 +92,7 @@ fun main(args:Array<String>) {
  val root=File(args[0])
  check(PdfProjectSource.validate(File(root,"valid-1.pdf"))==1)
  check(PdfProjectSource.validate(File(root,"valid-3.pdf"))==3)
+ check(PdfProjectSource.validate(File(root,"scanned.pdf"))==2)
  val encrypted=runCatching{PdfProjectSource.validate(File(root,"encrypted.pdf"))}.exceptionOrNull()
  check(encrypted is IllegalArgumentException && encrypted.message!!.contains("Parola"))
  for(text in listOf("not PDF", "%PDF-1.4\\ncorrupt\\n%%EOF")) {
@@ -88,7 +109,7 @@ fun main(args:Array<String>) {
  check(runCatching{PdfProjectSource.validate(oversized)}.isFailure)
  val link=File(root,"linked.pdf");java.nio.file.Files.createSymbolicLink(link.toPath(),File(root,"valid-1.pdf").toPath())
  check(runCatching{PdfProjectSource.validate(link)}.isFailure)
- println("PASS production PDF source: valid, multipage, encrypted, corrupt, oversized, symlink and hash tamper (PDFBox host parser boundary)")
+ println("PASS production PDF source: valid, multipage, image-only scanned, encrypted, corrupt, oversized, symlink and hash tamper (PDFBox host parser boundary)")
 }''')
     subprocess.run(['kotlinc', str(root / 'android-app/app/src/main/java/com/appforge/studio/io/PdfProjectSource.kt'), str(work / 'Check.kt'), '-cp', cp, '-include-runtime', '-d', str(work / 'check.jar')], check=True)
     subprocess.run(['java', '-cp', str(work / 'check.jar') + os.pathsep + cp, 'CheckKt', str(work)], check=True)

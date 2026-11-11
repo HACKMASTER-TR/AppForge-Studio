@@ -13,6 +13,8 @@ source_files:
   - "android-app/app/src/main/assets/device-build/AppForgeDocuments.java"
   - "android-app/app/src/main/java/com/appforge/studio/build/BuildStageTimings.kt"
   - "quality/tests/html_document_bridge_runtime.test.js"
+  - "quality/tools/pdf_source_host_smoke.py"
+  - "android-app/app/src/androidTest/java/com/appforge/studio/io/PdfProjectSourceInstrumentedTest.kt"
 ---
 
 # HTML and PDF integration
@@ -100,3 +102,18 @@ fixture; they require an attached device/emulator. The compiled packager smoke
 executes real Kotlin packagers/signers with network/process execution denied and
 can retain signed test artifacts and run bundletool. Neither harness is a device
 installation test. Detailed commands/results are in the delivery report.
+
+## User-supplied REA research follow-up
+
+The 11 November reference note distinguishes static REA findings, store claims and
+unperformed device acceptance. See the [evidence mapping](../../reports/rea-evidence-mapping-20261111.md)
+for reported evidence IDs and the AppForge comparison. These IDs were supplied by
+the user; their underlying payloads were not independently fetched here.
+
+A new host test verifies an actual two-page raster-only PDF fixture with image
+resources, no selectable text and nonblank independently rendered pixels before
+running production source validation. The Android counterpart parses and renders
+both pages and checks pixels; compiling it is not device acceptance. Existing
+32 MiB/1,000-page AppForge budgets remain unchanged. Reference PDF editing,
+bookmarks, thumbnails, native API methods, ads and AI credit descriptions do not
+automatically become implemented AppForge features or authorize product changes.

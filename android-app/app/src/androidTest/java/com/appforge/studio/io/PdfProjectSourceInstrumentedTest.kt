@@ -55,4 +55,38 @@ class PdfProjectSourceInstrumentedTest {
         } finally { file.delete() }
     }
 
+    @Test fun imageOnlyScannedDocumentCanBeParsedAndRendered() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = File.createTempFile("scanned-pdf-", ".pdf", context.cacheDir)
+        val scan = android.graphics.Bitmap.createBitmap(300, 200, android.graphics.Bitmap.Config.ARGB_8888)
+        val rendered = android.graphics.Bitmap.createBitmap(300, 200, android.graphics.Bitmap.Config.ARGB_8888)
+        try {
+            val canvas = android.graphics.Canvas(scan)
+            canvas.drawColor(android.graphics.Color.WHITE)
+            val paint = android.graphics.Paint().apply { color = android.graphics.Color.BLACK }
+            canvas.drawRect(10f, 10f, 100f, 100f, paint)
+            val document = PdfDocument()
+            try {
+                repeat(2) { index ->
+                    val page = document.startPage(PdfDocument.PageInfo.Builder(300, 200, index + 1).create())
+                    page.canvas.drawBitmap(scan, 0f, 0f, null)
+                    document.finishPage(page)
+                }
+                file.outputStream().use(document::writeTo)
+            } finally { document.close() }
+            assertEquals(2, PdfProjectSource.validate(file))
+            android.os.ParcelFileDescriptor.open(file, android.os.ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
+                android.graphics.pdf.PdfRenderer(descriptor).use { renderer ->
+                    repeat(2) { index ->
+                        renderer.openPage(index).use { page ->
+                            rendered.eraseColor(android.graphics.Color.WHITE)
+                            page.render(rendered, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                            assertEquals(android.graphics.Color.BLACK, rendered.getPixel(20, 20))
+                        }
+                    }
+                }
+            }
+        } finally { scan.recycle(); rendered.recycle(); file.delete() }
+    }
+
 }
