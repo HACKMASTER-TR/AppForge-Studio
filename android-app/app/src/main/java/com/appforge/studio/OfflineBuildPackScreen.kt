@@ -10,6 +10,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.appforge.studio.build.*
 import com.appforge.studio.model.ProjectDraft
 import kotlinx.coroutines.*
@@ -158,6 +161,16 @@ internal object ModuleInstallOperations {
     var lifecycleStates by remember{mutableStateOf<Map<OfflineModuleId,ModuleLifecycleStatus>>(emptyMap())}
     var pendingLifecycle by remember{mutableStateOf<Pair<OfflineModuleId,String>?>(null)}
     var ready by remember { mutableStateOf<Map<OfflineModuleId,Boolean>>(emptyMap()) }
+    var existingFiles by remember { mutableStateOf<Set<OfflineModuleId>>(emptySet()) }
+    var refreshRevision by remember { mutableIntStateOf(0) }
+    val lifecycleOwner=LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer=LifecycleEventObserver { _,event ->
+            if(event==Lifecycle.Event.ON_RESUME) refreshRevision++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     var history by remember{mutableStateOf<List<String>>(emptyList())}
     var chosen by remember { mutableStateOf<OfflineModuleId?>(null) }
     var selectedName by rememberSaveable { mutableStateOf(OfflineModuleId.NODE_WEB.name) }
@@ -184,8 +197,17 @@ internal object ModuleInstallOperations {
     val plan=remember(project){project?.let{OfflineModules.forProject(it)}}
     val readinessChanges=events.mapValues{it.value.phase==ModulePhase.READY}
     LaunchedEffect(Unit){withContext(Dispatchers.IO){runCatching{ModuleInstallOperations.restore(context)}.onFailure{detail="İndirme günlüğü reddedildi: ${it.message}"};runCatching{OfflineBuildPackManager.recoverPending(context)}.onFailure{detail="Kurtarma güvenli biçimde durdu: ${it.message}"}};recovered=true}
-    LaunchedEffect(readinessChanges,busy,usageRevision,recovered){
+    LaunchedEffect(readinessChanges,busy,usageRevision,recovered,refreshRevision){
         if(!recovered)return@LaunchedEffect
+        ready=emptyMap()
+        if(busy)return@LaunchedEffect
+        // Publish installation facts before slower cleanup/history diagnostics.
+        val inspected=withContext(Dispatchers.IO) {
+            OfflineBuildPackManager.installedReadiness(context) to
+                OfflineModules.all.filter{OfflineBuildPackManager.hasExistingFiles(context,it.id)}.map{it.id}.toSet()
+        }
+        existingFiles=inspected.second
+        ready=inspected.first
         val cleanup=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.prunableSnapshotBytes(context)}}
         pruneBytes=cleanup.getOrNull();pruneReason=cleanup.exceptionOrNull()?.message
         aptStates=withContext(Dispatchers.IO){OfflineModules.all.associate{module->module.id to runCatching{OfflineBuildPackManager.aptSummary(context,module.id)?.let{it.detail+"\n"+it.versions.joinToString("\n")}}.getOrElse{"APT kilidi doğrulanamadı: ${it.message}"}.orEmpty()}}
@@ -193,7 +215,7 @@ internal object ModuleInstallOperations {
         availableUpdates=withContext(Dispatchers.IO){OfflineModules.all.filter{OfflineBuildPackManager.updateAvailable(context,it.id)}.map{it.id}.toSet()}
         installedVersions=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.installedVersion(context,it.id)}}
         history=withContext(Dispatchers.IO){ModuleInstallOperations.history()}
-ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (OfflineBuildPackManager.moduleReady(context,it.id) && !OfflineBuildPackManager.hasPendingLifecycle(context,it.id))}}
+
     }
     fun begin(id:OfflineModuleId) {
         if(DownloadNetwork.policy==DownloadNetworkPolicy.WIFI_PREFERRED && !DownloadNetwork.allowed()){mobileModule=id;return}
@@ -380,6 +402,28 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
         LazyColumn(modifier=Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             item { ModuleManagerNavigation(section) { section=it } }
             if(section=="modules")item {
+                Card(modifier=Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Text("Mevcut modüller",style=MaterialTheme.typography.titleMedium)
+                        Text("Önceden kurulanlar dosya ve bütünlük kayıtlarından algılanır; bu kontrol indirme yapmaz.",style=MaterialTheme.typography.bodySmall)
+                        OutlinedButton(enabled=recovered && !busy && !preparing,onClick={refreshRevision++}) { Text("Kurulumları yeniden kontrol et") }
+                        OfflineModules.all.forEach { module ->
+                            TextButton(onClick={selectedName=module.id.name;moduleDetails=false},modifier=Modifier.fillMaxWidth()) {
+                                Column(Modifier.fillMaxWidth()) {
+                                    Text(module.title,style=MaterialTheme.typography.titleSmall)
+                                    Text(when {
+                                        !ready.containsKey(module.id) -> "Kontrol ediliyor…"
+                                        ready[module.id]==true -> "HAZIR ✓"
+                                        module.id in existingFiles -> "Dosyalar mevcut • doğrulama gerekli"
+                                        else -> "Kurulu değil"
+                                    },style=MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if(section=="modules")item {
                 val selected=OfflineModuleId.entries.firstOrNull{
                     it.name==selectedName
                 } ?: OfflineModuleId.NODE_WEB
@@ -409,7 +453,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                 val active=liveProgress?.takeIf{
                     busy && it.moduleId in OfflineModules.resolve(setOf(selected))
                 }
-                val event=active ?: events[selected]
+                val event=active ?: events[selected]?.takeUnless { installed }
                 val updateRequired=selected in availableUpdates
                 val canInstall=known && migrationChecked && migrationReason==null &&
                     !busy && !preparing && !prefetchBusy && !recoveryBusy && unsupported==null &&
@@ -444,7 +488,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                             ) {
                                 OfflineModules.all.forEach { item ->
                                     DropdownMenuItem(
-                                        text={Text(item.title)},
+                                        text={Text(item.title+if(ready[item.id]==true) " • HAZIR ✓" else "")},
                                         onClick={
                                             selectedName=item.id.name
                                             moduleMenuOpen=false
@@ -515,11 +559,12 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                         Text(
                             "Durum: "+when {
                                 !known -> "Bütünlük kontrolü sürüyor"
-                                installed && !updateRequired -> "Doğrulanmış kurulum"
+                                installed && !updateRequired -> "HAZIR ✓ • Doğrulanmış kurulum"
                                 !migrationChecked -> "APT geçiş denetimi sürüyor"
                                 migrationReason!=null -> "Güvenli runtime geçişi gerekli"
                                 installed && updateRequired -> "Güncelleme mevcut • kurulum korunuyor"
-                                event?.phase==ModulePhase.READY -> "Kurulu değil / bütünlük doğrulanmadı"
+                                selected in existingFiles -> "Dosyalar mevcut • bütünlük veya bağımlılık doğrulaması gerekli"
+                                event?.phase==ModulePhase.READY -> "Kurulum kaydı var • bütünlük doğrulanmadı"
                                 event!=null -> event.phase.turkishLabel()
                                 else -> "Kurulu değil"
                             },

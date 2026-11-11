@@ -581,16 +581,35 @@ internal object OfflineBuildPackManager {
             RuntimeGenerationStore(root).pruneUnused(ModuleOwnershipStore(root).protectedSnapshots(),retain=1,canceled={if(job?.isActive==false)throw kotlinx.coroutines.CancellationException()})
         }
     }
+    /** Actual local installation facts, shared by UI inspection and build readiness. */
+    private fun installationVerified(context:Context,id:OfflineModuleId):Boolean = when(id) {
+        OfflineModuleId.FAST_HTML -> {TemplateIntegrity.requireBundled(context,setOf("html-apk-template.apk","html-aab-template.aab"));true}
+        OfflineModuleId.WINDOWS_PORTABLE -> {WindowsPortableHostStore.requireVerifiedHost(context);true}
+        OfflineModuleId.LINUX_RUNTIME -> DeviceBuildRuntimeV3.isReady(context)
+        else -> runtimeRootfs(context)?.let { recordMatches(context,it,id) } ?: false
+    }
+
     fun moduleReady(context:Context,id:OfflineModuleId):Boolean = runCatching {
-        when(id) {
-            OfflineModuleId.FAST_HTML -> {TemplateIntegrity.requireBundled(context,setOf("html-apk-template.apk","html-aab-template.aab"));true}
-            OfflineModuleId.WINDOWS_PORTABLE -> {WindowsPortableHostStore.requireVerifiedHost(context);true}
-            OfflineModuleId.LINUX_RUNTIME -> DeviceBuildRuntimeV3.isReady(context)
-            else -> {
-                val root=runtimeRootfs(context)?:return@runCatching false
-                recordMatches(context,root,id) &&
-                    OfflineModules.spec(id).dependencies.all{moduleReady(context,it)}
-            }
+        installationVerified(context,id) && OfflineModules.spec(id).dependencies.all { moduleReady(context,it) }
+    }.getOrDefault(false)
+
+    /** Startup/resume inspection uses existing files/receipts; never installs or downloads. */
+    fun installedReadiness(context:Context):Map<OfflineModuleId,Boolean> = InstalledModuleReadiness.inspect(
+        OfflineModules.all.map { it.id }, { OfflineModules.spec(it).dependencies },
+        { installationVerified(context,it) }, { hasPendingLifecycle(context,it) }
+    )
+
+    /** Presence is diagnostic only: legacy files without valid receipts never become READY. */
+    fun hasExistingFiles(context:Context,id:OfflineModuleId):Boolean = runCatching {
+        if(id==OfflineModuleId.WINDOWS_PORTABLE) {
+            val host=WindowsPortableHostStore.journalTarget(context)
+            return@runCatching host.isFile && host.canonicalFile.toPath().startsWith(context.noBackupFilesDir.canonicalFile.toPath())
+        }
+        val root=runtimeRootfs(context)?:return@runCatching false
+        if(id==OfflineModuleId.LINUX_RUNTIME)return@runCatching root.isDirectory
+        (witnesses[id].orEmpty()+"opt/appforge-device/modules-v3/${id.name}.json").any { path ->
+            val file=File(root,path)
+            file.isFile && file.canonicalFile.toPath().startsWith(root.canonicalFile.toPath())
         }
     }.getOrDefault(false)
 
