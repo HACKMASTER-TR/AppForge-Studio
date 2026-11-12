@@ -18,7 +18,7 @@ test('T21 provider actual resolver rejects expired, oversized, foreign and escap
  assert.ok(nameStart > 0);
  // Compile the actual sanitizer, including any private helpers preceding the next method.
  const nameEnd = documents.indexOf('    boolean activityResult(', nameStart);
- const sanitizer = documents.slice(nameStart, nameEnd);
+ const sanitizer = documents.slice(documents.indexOf("    static String extension("), documents.indexOf("    static boolean validDocument(")) + documents.slice(nameStart, nameEnd);
  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 't21-provider-'));
  try {
  fs.writeFileSync(path.join(dir, 'Check.java'), `import java.io.*; import java.util.*;

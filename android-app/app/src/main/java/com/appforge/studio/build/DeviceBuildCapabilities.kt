@@ -59,6 +59,7 @@ internal object DeviceBuildCapabilities {
                 technologies =
                     setOf(
                         "web-static",
+                        "pdf",
                         "html",
                         "css",
                         "javascript",

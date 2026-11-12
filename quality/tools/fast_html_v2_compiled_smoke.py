@@ -11,6 +11,7 @@ import tempfile
 import re
 import struct
 import zlib
+import shutil
 from zipfile import ZipFile
 
 p = argparse.ArgumentParser(description=__doc__)
@@ -19,6 +20,8 @@ p.add_argument('--apksig-jar', required=True)
 p.add_argument('--json-jar', required=True)
 p.add_argument('--aapt2', help='Independent binary manifest/resource inspection')
 p.add_argument('--assets-build', required=True, help='android-app/app/build containing generated assets')
+p.add_argument("--output-dir", help="Retain only signed test APK/AAB artifacts")
+p.add_argument("--bundletool-jar", help="Validate actual bundles and generate a universal APK set")
 args = p.parse_args()
 root = Path(__file__).resolve().parents[2]
 build = root / 'android-app/app/src/main/java/com/appforge/studio/build'
@@ -139,6 +142,25 @@ fun main(args:Array<String>) {
   val apk=FastHtmlApkPackager.build(context,draft,workspace,signer)
   check(ApkVerifier.Builder(apk).build().verify().isVerified)
   ZipFile(apk).use{z->check(org.json.JSONObject(z.getInputStream(z.getEntry("assets/appforge-html-config.json")).readBytes().toString(Charsets.UTF_8)).getString("url")==address)}
+  if(address.startsWith("https://")) {
+   for(output in listOf("aab","both","apk+aab")) {
+    val bundleDraft=draft.copy(buildOutput=output,importedFolder=null,startPage=null)
+    check(FastHtmlApkPolicy.isCandidate(bundleDraft))
+    val events=mutableListOf<String>()
+    val unsigned=FastHtmlAabUnsignedPackager.buildUnsignedCandidate(context,bundleDraft,workspace,BuildStageTimings{events.add(it)})
+    val bundle=FastHtmlAabJarSigner.signWithIdentity(unsigned,workspace,key,certificate)
+    FastHtmlAabVerification.requireSignedPayload(bundle,certificate)
+    ZipFile(bundle).use { z ->
+     check(z.entries().asSequence().none{it.name.startsWith("base/assets/site/")})
+     val config=org.json.JSONObject(z.getInputStream(z.getEntry("base/assets/appforge-html-config.json")).readBytes().toString(Charsets.UTF_8))
+     check(config.getString("url")==address && config.getString("mode")=="URL")
+     val manifest=z.getInputStream(z.getEntry("base/manifest/AndroidManifest.xml")).readBytes().toString(Charsets.UTF_8)
+     check(manifest.contains(draft.packageName) && manifest.contains("android.permission.INTERNET"))
+    }
+    check(events.any{it.contains("PACKAGING PASS")} && events.none{it.contains("FAIL")})
+    println("PASS production HTTPS URL $output without site assets, signed certificate and timing events")
+   }
+  } else check(runCatching{FastHtmlAabUnsignedPackager.requireSource(draft.copy(buildOutput="aab"))}.isFailure)
   println("PASS production URL APK original URL preserved and signed $index")
  }
 }
@@ -146,7 +168,7 @@ fun main(args:Array<String>) {
     jars = [str(work / 'classes'), args.json_jar, args.apksig_jar, args.android_jar]
     classpath = os.pathsep.join(jars)
     sources = ['DeviceBuildCapabilities.kt', 'WebviewProjectSettings.kt', 'FeatureSupportMatrix.kt', 'FastHtmlApkPolicy.kt',
-               'FastHtmlApkPackager.kt', 'FastHtmlResourceColor.kt', 'FastHtmlIcon.kt', 'HtmlBinaryManifest.kt', 'TemplateIntegrity.kt',
+               'BuildStageTimings.kt', 'FastHtmlApkPackager.kt', 'FastHtmlResourceColor.kt', 'FastHtmlIcon.kt', 'HtmlBinaryManifest.kt', 'TemplateIntegrity.kt',
                'FastHtmlAabProtoManifest.kt', 'FastHtmlAabUnsignedPackager.kt',
                'FastHtmlAabJarSigner.kt', 'FastHtmlAabVerification.kt']
     subprocess.run(['kotlinc', str(root / 'android-app/app/src/main/java/com/appforge/studio/io/HtmlCapabilityFindings.kt'), str(model), *(str(build / s) for s in sources), str(work / 'BuildConfig.kt'),
@@ -231,3 +253,30 @@ fun main(args:Array<String>) {
                 item = fields(one(value, 4)); primitive = fields(one(item, 7))
                 assert one(primitive, 9) == int(expected, 16)
                 print('PASS independent AAB primary resource and namespace', enabled)
+
+    signed_bundles = []
+    for candidate in work.glob('*/*.aab'):
+        with ZipFile(candidate) as bundle:
+            if 'META-INF/MANIFEST.MF' in bundle.namelist():
+                signed_bundles.append(candidate)
+    if args.output_dir:
+        output = Path(args.output_dir).resolve()
+        output.mkdir(parents=True, exist_ok=True)
+        for index, bundle in enumerate(sorted(signed_bundles)):
+            shutil.copyfile(bundle, output / (bundle.parent.name + '-' + str(index) + '.aab'))
+        for apk in work.glob('*/html-output.apk'):
+            shutil.copyfile(apk, output / (apk.parent.name + '.apk'))
+    if args.bundletool_jar:
+        assert signed_bundles, 'No signed bundle to validate'
+        for bundle in signed_bundles:
+            subprocess.run(['java', '-jar', args.bundletool_jar, 'validate', '--bundle='+str(bundle)], check=True)
+        bundle = next(bundle for bundle in signed_bundles if bundle.parent.name == 'url-3')
+        password_file = work / 'test-password.txt'
+        password_file.write_text(password)
+        password_file.chmod(0o600)
+        apk_set = (Path(args.output_dir).resolve() if args.output_dir else work) / 'https-url-universal.apks'
+        subprocess.run(['java', '-jar', args.bundletool_jar, 'build-apks', '--bundle='+str(bundle),
+                        '--output='+str(apk_set), '--mode=universal', '--overwrite', '--ks='+str(store),
+                        '--ks-key-alias=test', '--ks-pass=file:'+str(password_file),
+                        '--key-pass=file:'+str(password_file)], check=True)
+        print('PASS bundletool validate all signed bundles and build-apks HTTPS URL universal set')

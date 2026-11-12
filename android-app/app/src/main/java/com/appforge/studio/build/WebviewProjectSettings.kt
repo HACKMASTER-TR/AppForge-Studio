@@ -87,6 +87,14 @@ internal object WebviewProjectSettings {
     }
 
     fun validate(draft: ProjectDraft) {
+        if (draft.sourceTechnology == "pdf") {
+            val outputs = DeviceBuildCapabilities.requestedOutputs(draft.buildOutput)
+            require(draft.sourceBuildEngine.trim().lowercase() == "webview-static" &&
+                draft.sourceMode == com.appforge.studio.model.SourceMode.LOCAL && outputs.isNotEmpty() &&
+                outputs.all { it in setOf(DeviceArtifactKind.APK, DeviceArtifactKind.AAB) }) {
+                "PDF kaynağı yalnız normal Android motoruyla APK/AAB üretir."
+            }
+        }
         FeatureSupportMatrix.requireCompatible(draft)
         val failures = diagnostics(draft)
         require(failures.isEmpty()) { failures.joinToString("\n") { it.turkish() } }
@@ -231,6 +239,13 @@ internal object WizardReadinessEvaluator {
             if (selected && (field !in setOf("qrScanner", "mediaPlayerBridge", "billingEnabled") || !FastHtmlApkPolicy.isCandidate(draft)) && diagnostics.none { it.field == field }) reject(true,
                 if (field in setOf("qrScanner", "mediaPlayerBridge")) 5 else 6, field,
                 "Cihaz motoru bu otomatik entegrasyonu desteklemiyor; kaynak projenin kendi entegrasyonu ayrıca doğrulanmalıdır.")
+        }
+        if (draft.sourceTechnology == "pdf") {
+            reject(engine != "webview-static" || draft.sourceMode != com.appforge.studio.model.SourceMode.LOCAL ||
+                outputs.any { it !in setOf(DeviceArtifactKind.APK, DeviceArtifactKind.AAB) },
+                1, "sourceTechnology", "PDF kaynağı yalnız normal Android motoruyla APK/AAB üretir.")
+            diagnostics.add(WizardDiagnostic(1, "pdfReader", WizardCapabilityClass.NORMAL_SUPPORTED,
+                "PDF çevrimdışı yerleşik okuyucuda açılır; yakınlaştırma, sayfa seçimi ve son sayfa kaydı vardır. PDF düzenleme ve WebView JavaScript API'leri okuyucuda çalışmaz.", false))
         }
         if (engine == "webview-static") {
             reject(draft.sourceMode == com.appforge.studio.model.SourceMode.LOCAL && draft.importedFolder.isNullOrBlank(),
