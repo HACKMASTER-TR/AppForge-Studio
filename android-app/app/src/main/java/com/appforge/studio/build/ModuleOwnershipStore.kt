@@ -13,7 +13,7 @@ internal class ModuleOwnershipStore(private val root:File) {
             OfflineModuleId.RUST->listOf("opt/appforge-device/rust-1.85.1/","usr/bin/python3","usr/lib/python3.12/","usr/lib/python3/dist-packages/")
             OfflineModuleId.NODE_WEB->listOf("opt/appforge-device/node-22.23.3/")
             OfflineModuleId.ANDROID_CORE->listOf("opt/appforge-device/android-sdk/platforms/android-37.0/","opt/appforge-device/android-sdk/build-tools/36.0.0/","opt/appforge-device/android-sdk/cmdline-tools/","opt/appforge-device/jdk-17/","opt/appforge-device/gradle-9.3.1/","opt/appforge-device/gradle-8.14.3/")
-            OfflineModuleId.RUST_ANDROID_NDK->listOf("opt/appforge-device/android-sdk/ndk/27.1.12297006/","opt/appforge-device/android-sdk/cmake/3.22.1/","opt/appforge-device/.rust-android-ndk-ready","usr/lib/llvm-18/")
+            OfflineModuleId.RUST_ANDROID_NDK->listOf("opt/appforge-device/android-sdk/ndk/27.1.12297006/","opt/appforge-device/android-sdk/cmake/3.22.1/","opt/appforge-device/.rust-android-ndk-ready","opt/appforge-device/ndk-host-v7/","opt/appforge-device/expo-ndk-host-originals/","usr/lib/llvm-18/")
             OfflineModuleId.EXPO_REACT_NATIVE->listOf("opt/appforge-device/android-sdk/ndk/27.1.12297006/","opt/appforge-device/android-sdk/cmake/3.22.1/","opt/appforge-device/android-sdk/platforms/android-36/","usr/lib/llvm-18/")
             OfflineModuleId.PYTHON_ANDROID->listOf("usr/lib/python3.12/","usr/lib/python3/dist-packages/")
             OfflineModuleId.WINDOWS_NATIVE->listOf("usr/x86_64-w64-mingw32/","usr/lib/gcc/x86_64-w64-mingw32/","usr/bin/x86_64-w64-mingw32-")
@@ -105,7 +105,11 @@ internal class ModuleOwnershipStore(private val root:File) {
         val protectedUserChanges=(before.keys+after.keys).filter{key->
             (key.startsWith("home/") || key.startsWith("root/")) && readinessTracked(key) && before[key]!=after[key]
         }
-        require(protectedUserChanges.isEmpty()){"Kurulum kullanıcı kaynak/ayar dizinini değiştirdi; çalışan ortam korunur."}
+        require(protectedUserChanges.isEmpty()){
+            // Fail closed; report only relative path names, never file contents.
+            "Kurulum kullanıcı kaynak/ayar dizinini değiştirdi; çalışan ortam korunur. Değişen yollar: " +
+                protectedUserChanges.take(3).joinToString(", "){it.take(160)}
+        }
         val unknownRemoved=before.keys.filter{it.isNotEmpty() && !metadata(it) && readinessTracked(it) && before[it]!=after[it] && it !in known}
         require(unknownRemoved.isEmpty()){"Kurulum kullanıcıya ait/sahipliği bilinmeyen dosyaları değiştirdi; eski ortam korundu: "+unknownRemoved.take(3).joinToString()}
 

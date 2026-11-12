@@ -36,7 +36,26 @@ internal object VerifiedModuleDownload {
         try {
             var attempt=DownloadCoordinator.bind(operation,expected,nativeTarget)
             require(attempt<=maxRetries){"Kalıcı yeniden deneme sınırı doldu; otomatik devam engellendi."}
-            report(ModuleProgress(module,operation,ModulePhase.CONNECTING,detail="Sabit kaynaklı dosya kaydı kuyruğa alındı; henüz aktarım tamamlanmadı."))
+            // A verified local archive requires neither a network connection nor a misleading CONNECTING phase.
+            // The existing transfer() still performs independent path, range and SHA-256 checks for misses.
+            require(maxBytes in 1..(2L*1024*1024*1024))
+            val cacheAddress=URL(url)
+            require(cacheAddress.protocol=="https" && cacheAddress.userInfo==null && cacheAddress.ref==null)
+            require(expected.matches(Regex("[0-9a-f]{64}")))
+            require(!Files.isSymbolicLink(nativeTarget.toPath())) { "Önbellek hedefi symlink olamaz." }
+            if(nativeTarget.isFile && nativeTarget.length() in 1..maxBytes && sha(nativeTarget)==expected) {
+                val bytes=nativeTarget.length()
+                report(ModuleProgress(module,operation,ModulePhase.VERIFYING,bytes,bytes,
+                    detail="Yerel önbellek SHA-256 ile doğrulandı; ağ isteği yapılmadı."))
+                DownloadCoordinator.observe(DownloadCoordinator.Transfer(expected,expected,identity,
+                    ModuleProgress(module,operation,ModulePhase.PREPARING,bytes,bytes,
+                        detail="ÖNBELLEKTEN KULLANILDI ✓ • Ağdan 0 bayt aktarıldı."),
+                    DownloadCoordinator.ResumeCapability.VERIFIED_HTTP_RANGE,verificationStatus="SHA256_VERIFIED"))
+                progress(ModuleProgress(module,operation,ModulePhase.PREPARING,bytes,bytes,
+                    detail="ÖNBELLEKTEN KULLANILDI ✓ • Ağdan 0 bayt aktarıldı."))
+                return
+            }
+            report(ModuleProgress(module,operation,ModulePhase.CONNECTING,detail="Doğrulanmış yerel dosya bulunamadı; aktarım hazırlanıyor."))
             while(true) {
                 try {
                     DownloadNetwork.withPolicy(requestPolicy){transfer(url,expected,nativeTarget,module,operation,canceled,clock,{address->DownloadNetwork.check(requestPolicy);open(address)},report,availableBytes,maxBytes,requestPolicy)}

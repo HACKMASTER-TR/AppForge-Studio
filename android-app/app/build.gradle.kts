@@ -154,6 +154,7 @@ fun appForgeDownloadPinnedAsset(
 
 val appForgeOfflineBuild = gradle.startParameter.isOffline
 val appForgeProrootCache = File(gradle.gradleUserHomeDir,"appforge/proroot/$appForgeProrootVersion/arm64-v8a")
+val appForgeVendoredProrootRoot = layout.projectDirectory.dir("src/main/proroot-pinned/arm64-v8a").asFile
 
 val appForgeProrootJniRoot = layout.buildDirectory.dir("generated/proroot/jniLibs")
 
@@ -189,6 +190,14 @@ val prepareAppForgeProrootRuntime =
                         Files.move(part.toPath(),destination.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
                     }finally{part.delete()}
                 }
+                // Prefer the exact upstream SHA-256 pinned Proroot assets from the last verified CI APK.
+                // An invalid vendored asset fails closed; a valid one populates the usual Gradle cache.
+                val vendored=appForgeVendoredProrootRoot.resolve(asset.name)
+                require(vendored.isFile && !Files.isSymbolicLink(vendored.toPath()) && verified(vendored)) {
+                    "APPFORGE_PROROOT_PINNED_SOURCE_INVALID: ${asset.name}"
+                }
+                if(!verified(cache)) promote(vendored,cache)
+                logger.lifecycle("APPFORGE_PROROOT_PINNED=PASS: ${asset.name}")
                 if(validExisting && !verified(cache))promote(target,cache)
                 if(!validExisting) {
                     if(!verified(cache)) {
@@ -196,9 +205,25 @@ val prepareAppForgeProrootRuntime =
                         cache.parentFile.mkdirs()
                         val part=File(cache.path+".download-"+UUID.randomUUID())
                         try {
-                            appForgeDownloadPinnedAsset(
-                                initialUrl = "https://github.com/coderredlab/proroot/releases/download/$appForgeProrootVersion/${asset.name}",
-                                destination = part,expectedSize = asset.size,expectedSha256 = asset.sha256)
+                            // Retry only explicitly transient GitHub HTTP responses.
+                            // HTTPS, trusted-host, size and SHA-256 checks stay unchanged.
+                            var attempt = 1
+                            while (true) {
+                                try {
+                                    appForgeDownloadPinnedAsset(
+                                        initialUrl = "https://github.com/coderredlab/proroot/releases/download/$appForgeProrootVersion/${asset.name}",
+                                        destination = part,expectedSize = asset.size,expectedSha256 = asset.sha256)
+                                    break
+                                } catch (failure: IllegalStateException) {
+                                    val match = Regex("""^Proroot indirme HTTP (429|502|503|504) ile başarısız\.$""")
+                                        .matchEntire(failure.message.orEmpty())
+                                    if (match == null || attempt >= 4) throw failure
+                                    val code = match.groupValues[1]
+                                    logger.warn("APPFORGE_PROROOT_HTTP_RETRY=$attempt/4 STATUS=$code")
+                                    Thread.sleep(2_000L * attempt)
+                                    attempt++
+                                }
+                            }
                             promote(part,cache)
                         }finally{part.delete()}
                     }
@@ -311,6 +336,41 @@ require(!appforgeV9R2DeviceAcceptance ||
 
 require(!(appforgeProRecoveryTest && appforgeProSecondDevice)) {
     "Pro recovery and second-device modes cannot be combined."
+}
+
+// A new test identity never replaces production or an earlier acceptance APK/data.
+val appforgeV9R2Issue78Acceptance = providers.gradleProperty("appforgeV9R2Issue78Acceptance").orNull == "true"
+require(!appforgeV9R2Issue78Acceptance || (!appforgeV9R2DeviceAcceptance &&
+    !appforgeProProcessDeathTest && !appforgeProRecoveryTest && !appforgeProSecondDevice &&
+    !appforgePlayIntegrityAcceptance)) { "Issue78 acceptance must use its own package identity" }
+
+val appforgeV9R2Isolated2Acceptance =
+    providers.gradleProperty("appforgeV9R2Isolated2Acceptance").orNull == "true"
+require(!appforgeV9R2Isolated2Acceptance ||
+    (!appforgeV9R2Issue78Acceptance && !appforgeV9R2DeviceAcceptance &&
+     !appforgeProProcessDeathTest && !appforgeProRecoveryTest &&
+     !appforgeProSecondDevice && !appforgePlayIntegrityAcceptance)) {
+    "Isolated2 must not share any other acceptance identity"
+}
+
+val appforgeV9R2Isolated3Acceptance =
+    providers.gradleProperty("appforgeV9R2Isolated3Acceptance").orNull == "true"
+require(!appforgeV9R2Isolated3Acceptance ||
+    (!appforgeV9R2Isolated2Acceptance &&
+     !appforgeV9R2Issue78Acceptance &&
+     !appforgeV9R2DeviceAcceptance &&
+     !appforgeProProcessDeathTest &&
+     !appforgeProRecoveryTest &&
+     !appforgeProSecondDevice &&
+     !appforgePlayIntegrityAcceptance)) {
+    "Isolated3 must use its own test identity"
+}
+
+val appforgeV9R2Isolated3Upgrade =
+    providers.gradleProperty("appforgeV9R2Isolated3Upgrade").orNull == "true"
+require(!appforgeV9R2Isolated3Upgrade ||
+    (appforgeV9R2Isolated3Acceptance && appforgeIntegrationDebugVersionCode == null)) {
+    "In-place upgrade requires the original isolated3 debug identity only."
 }
 
 android {
@@ -435,7 +495,13 @@ android {
     buildTypes {
         getByName("debug") {
             ciDebugSigning?.let { signingConfig = it }
-            if (appforgeV9R2DeviceAcceptance) {
+            if (appforgeV9R2Isolated3Acceptance) {
+                applicationIdSuffix = ".v9r2isolated3"
+            } else if (appforgeV9R2Isolated2Acceptance) {
+                applicationIdSuffix = ".v9r2isolated2"
+            } else if (appforgeV9R2Issue78Acceptance) {
+                applicationIdSuffix = ".v9r2issue78"
+            } else if (appforgeV9R2DeviceAcceptance) {
                 applicationIdSuffix = ".v9r2accept"
             } else if (appforgeProRecoveryTest) {
                 applicationIdSuffix = ".prorecovery"
@@ -681,6 +747,12 @@ androidComponents {
     }
 
     onVariants(selector().withBuildType("debug")) { variant ->
+        if (appforgeV9R2Isolated3Upgrade) {
+            variant.outputs.forEach { output ->
+                output.versionCode.set(536)
+                output.versionName.set("5.0.36-isolated3-upgrade")
+            }
+        }
         appforgeIntegrationDebugVersionCode?.let { code ->
             variant.outputs.forEach { output ->
                 output.versionCode.set(code)

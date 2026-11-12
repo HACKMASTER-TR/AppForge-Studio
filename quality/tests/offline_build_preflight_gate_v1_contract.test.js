@@ -162,7 +162,7 @@ test(
 
     assert.match(
       screen,
-      /ready\[module.id\]/
+      /blocked to OfflineModules\.resolve\(setOf\(id\)\)/
     );
   }
 );

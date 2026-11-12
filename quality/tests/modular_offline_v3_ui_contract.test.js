@@ -16,7 +16,7 @@ test('V3 installer scopes SDK consent and never defaults to installing every mod
   const screen=read(base+'java/com/appforge/studio/OfflineBuildPackScreen.kt');
   assert.match(manager,/OfflineModules\.resolve\(selected\)/);
   assert.match(manager,/pending\.filterNot|plan\.filterNot/);
-  assert.match(screen,/val needsSdk=OfflineModuleId.ANDROID_CORE in missing/);
+  assert.match(screen,/val needsSdk=modules\?\.any \{\s*it==OfflineModuleId\.ANDROID_CORE \|\| it==OfflineModuleId\.EXPO_REACT_NATIVE \|\|\s*it==OfflineModuleId\.RUST_ANDROID_NDK/);
   assert.match(screen,/Onayla ve kur/);
   assert.match(screen,/Araç indirmeden devam et/);
 });
@@ -30,9 +30,11 @@ test('standalone Node module pins and verifies archive without Android toolchain
 test('module UI uses byte measurements and does not equate download completion to READY', () => {
   const screen=read(base+'java/com/appforge/studio/OfflineBuildPackScreen.kt');
   const downloader=read(base+'java/com/appforge/studio/build/VerifiedModuleDownload.kt');
-  assert.match(screen,/state\.percent/);
-  assert.match(screen,/state\.averageSpeedBytesPerSecond/);
-  assert.match(screen,/toplam boyut bilinmiyor/);
+  assert.match(screen,/event\.percent/);
+  assert.match(screen,/event\.averageSpeedBytesPerSecond/);
+  assert.match(screen,/toplam bilinmiyor/);
+  assert.match(screen,/check\(OfflineBuildPackManager\.moduleReady/);
+  assert.match(screen,/!OfflineBuildPackManager\.hasPendingLifecycle/);
   assert.doesNotMatch(downloader,/ModulePhase\.READY/);
   assert.match(downloader,/StandardCopyOption\.ATOMIC_MOVE/);
 });

@@ -10,8 +10,8 @@ import org.json.JSONObject
 internal object AndroidRuntimeTrust {
     private const val CERT="etc/ssl/certs/appforge-system-roots-v5.pem"
     private const val JAVA_CERT="etc/ssl/certs/appforge-system-roots-v5.p12"
-    // This store contains public certificates only; its standard integrity password is not a credential.
-    val shellEnvironment = "if [ -f /$JAVA_CERT ]; then export JAVA_TOOL_OPTIONS=\"\${JAVA_TOOL_OPTIONS:-} -Djavax.net.ssl.trustStore=/$JAVA_CERT -Djavax.net.ssl.trustStoreType=PKCS12 -Djavax.net.ssl.trustStorePassword=changeit\"; fi; "
+    // Retain the existing receipt format. Build JVMs use their own JDK trust
+    // store; Android's PKCS12 export is not injected into the Linux JVM.
     private const val APT="etc/apt/apt.conf.d/99appforge-system-tls"
     private const val RECEIPT=".appforge-system-tls-v5.json"
     private fun file(root:File,path:String):File {

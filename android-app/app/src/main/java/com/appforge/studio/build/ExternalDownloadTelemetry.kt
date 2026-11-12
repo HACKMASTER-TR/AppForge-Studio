@@ -24,11 +24,14 @@ internal class ExternalDownloadTelemetry(private val module:OfflineModuleId,priv
         counter.bytes=bytes
         val metric=event.optString("byteMetric")
         val failed=event.optString("state")=="error"
+        val gradleReadFailure=failed && id.startsWith("gradle-") &&
+            event.optString("errorCode")=="GRADLE_RESOURCE_FAILED"
         val measured=metric !in setOf("staged-files","unavailable","cached")
         val finished=event.optBoolean("finished",false) && !failed
         counter.terminal=finished || failed || metric=="cached"
-        val phase=when { failed->ModulePhase.ERROR; finished || !measured->ModulePhase.PREPARING; else->ModulePhase.DOWNLOADING }
+        val phase=when { failed && !gradleReadFailure->ModulePhase.ERROR; gradleReadFailure->ModulePhase.PREPARING; finished || !measured->ModulePhase.PREPARING; else->ModulePhase.DOWNLOADING }
         val detail=when {
+            gradleReadFailure->" • kaynak okuma kesildi; nihai Gradle sonucu bekleniyor."
             failed->" • aktarım kesildi; indirme tamamlanmadı."
             metric=="cached"->" • APT önbelleği kullanıldı; ağdan yeniden indirilmedi."
             !measured->" • ağ aktarımı ölçülemiyor; boyut bilinmiyor, süre hesaplanıyor."
@@ -40,7 +43,7 @@ internal class ExternalDownloadTelemetry(private val module:OfflineModuleId,priv
         val sample=counter.meter.sample(bytes,if(measured)total else null,now)
         val result=sample.copy(
             bytesDownloaded=if(measured)sample.bytesDownloaded else 0L,
-            phase=phase,errorCode=if(failed)event.optString("errorCode","TRANSFER_INTERRUPTED").take(100) else null,
+            phase=phase,errorCode=if(failed && !gradleReadFailure)event.optString("errorCode","TRANSFER_INTERRUPTED").take(100) else null,
             speedBytesPerSecond=if(measured && !counter.terminal)sample.speedBytesPerSecond else null,
             averageSpeedBytesPerSecond=if(measured && !counter.terminal)sample.averageSpeedBytesPerSecond else null,
             estimatedRemainingMs=if(measured && !counter.terminal)sample.estimatedRemainingMs else null,

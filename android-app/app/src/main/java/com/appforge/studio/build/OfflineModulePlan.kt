@@ -8,7 +8,7 @@ internal data class OfflineModulePlan(val modules:List<OfflineModuleId>,val erro
 internal object OfflineModules {
     val all=listOf(
         OfflineModuleSpec(OfflineModuleId.RUST_ANDROID_NDK,"Rust Android NDK + CMake","NDK 27.1.12297006 / CMake SDK-path 3.22.1 • ARM64 Ubuntu host",setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.RUST),"Google SHA-256 / signed Ubuntu snapshot; no Node or Expo runtime"),
-        OfflineModuleSpec(OfflineModuleId.RUST,"Rust + Cargo","1.85.1 • host/WASM std • dahili Python 3.12 / Git",setOf(OfflineModuleId.LINUX_RUNTIME),"static.rust-lang.org / SHA-256 + imzalı Ubuntu snapshot 20261018T000000Z"),
+        OfflineModuleSpec(OfflineModuleId.RUST,"Rust + Cargo","1.85.1 • host ELF object + WASM std • dahili Python 3.12 / Git",setOf(OfflineModuleId.LINUX_RUNTIME),"static.rust-lang.org / SHA-256 + imzalı Ubuntu snapshot 20261018T000000Z"),
         OfflineModuleSpec(OfflineModuleId.FAST_HTML,"Fast HTML","CI APK/AAB 26/37",emptySet(),"Gömülü ve SHA-256 doğrulanan şablonlar",0,0),
         OfflineModuleSpec(OfflineModuleId.LINUX_RUNTIME,"Linux derleme ortamı","Device Build Runtime V3",emptySet(),"LinuxRuntimeManifestRegistry / doğrulanmış Ubuntu"),
         OfflineModuleSpec(OfflineModuleId.ANDROID_CORE,"Android SDK + JDK + Gradle","API 37.0 / Build Tools 36 / JDK 17.0.20.1 / Gradle 9.3.1 + 8.14.3",setOf(OfflineModuleId.LINUX_RUNTIME),"Google / Adoptium / services.gradle.org"),
@@ -64,7 +64,7 @@ internal object OfflineModules {
 }
 
 internal enum class ModulePhase { RESOLVING, STORAGE_CHECK, AWAITING_CONSENT, CONNECTING, DOWNLOADING, VERIFYING, EXTRACTING, INSTALLING, PREPARING, OFFLINE_TEST, READY, REMOVING, REMOVED, ROLLING_BACK, PAUSED, WAITING_CONNECTION, RECONNECTING, CANCELED, ERROR }
-internal data class ModuleProgress(val moduleId:OfflineModuleId,val operationId:String,val phase:ModulePhase,val bytesDownloaded:Long=0,val bytesTotal:Long?=null,val speedBytesPerSecond:Double?=null,val elapsedMs:Long=0,val estimatedRemainingMs:Long?=null,val errorCode:String?=null,val detail:String="",val averageSpeedBytesPerSecond:Double?=null) {
+internal data class ModuleProgress(val moduleId:OfflineModuleId,val operationId:String,val phase:ModulePhase,val bytesDownloaded:Long=0,val bytesTotal:Long?=null,val speedBytesPerSecond:Double?=null,val elapsedMs:Long=0,val estimatedRemainingMs:Long?=null,val errorCode:String?=null,val detail:String="",val averageSpeedBytesPerSecond:Double?=null,val downloadElapsedMs:Long=0,val verificationElapsedMs:Long=0,val installationElapsedMs:Long=0) {
     val percent:Int? get()=bytesTotal?.takeIf{it>0}?.let{((bytesDownloaded.coerceIn(0,it).toDouble()/it)*100).toInt()}
 }
 /** Monotonic-clock byte telemetry only. A completed download is not a READY module. */

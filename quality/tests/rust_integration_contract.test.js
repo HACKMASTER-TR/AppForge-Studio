@@ -15,9 +15,11 @@ test('Rust native module reuses verified downloader and existing generation owne
 });
 test('Compact module screen keeps technical controls behind details and distinct navigation',()=>{
  const ui=read('android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt');
- assert.match(ui,/ModuleCompactHeader/);assert.match(ui,/if\(expanded && lifecycle!=null\)/);
+ assert.match(ui,/DropdownMenu/);
+ assert.match(ui,/if\(moduleDetails\)\s*\{[\s\S]*lifecycle\?\.let/);
+ assert.match(ui,/lc\.rollback\.allowed/);assert.match(ui,/lc\.remove\.allowed/);
  for(const section of ['network','history','diagnostics'])assert.ok(ui.includes(`section=="${section}"`));
- assert.match(ui,/rememberSaveable/);assert.match(ui,/pendingLifecycle=module.id to "rollback"/);
+ assert.match(ui,/rememberSaveable/);assert.match(ui,/pendingLifecycle=selected to "rollback"/);
 });
 test('Cargo vendor adapter validates real directory-source checksums and fails closed',()=>{
  const result=spawnSync('python3',['quality/rust_vendor_test.py'],{cwd:base,encoding:'utf8'});

@@ -10,6 +10,8 @@ related:
   - "[[Fast_HTML_V2]]"
   - "[[Device_Build_Runtime_V3]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/PinnedAptMetadata.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/V9R2ObjectTransfer.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/ExternalTelemetryChannels.kt"
   - "android-app/app/src/main/assets/device-build/apt-acquire-observer.sh"
   - "android-app/app/src/main/assets/device-build/apt-acquire-observer.awk"
@@ -19,6 +21,8 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/VerifiedModuleDownload.kt"
   - "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
   - "android-app/app/src/test/java/com/appforge/studio/build/ModularOfflineV3Test.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/InstalledModuleReadiness.kt"
+  - "android-app/app/src/test/java/com/appforge/studio/build/InstalledModuleReadinessTest.kt"
   - "android-app/app/src/test/java/com/appforge/studio/build/VerifiedModuleDownloadTest.kt"
 ---
 
@@ -289,3 +293,36 @@ Managed APT now uses a fixed authenticated Ubuntu snapshot, a packaged per-modul
 artifact allowlist, exact replay manifests and a separate package-download consent
 step. See [[APT_Snapshot_Offline_Toolchain]] for integrity, legacy migration blocks
 and host-versus-device acceptance boundaries.
+
+## Issue 78: one service-owned R2 installation flow (2026-11-04)
+
+The R2 source card imports and persists original signed release bytes; it hands
+installation to the existing foreground operation/service rather than starting
+a second screen-owned download. The manager verifies Ed25519 and the local
+sequence floor, acquires selected catalog objects once, stages installation,
+runs real module functional probes and validates ownership/receipts before READY.
+A cached object or restored UI state never proves installation. SHA-256 and the
+8 MiB range transport protect pause/resume and offline reuse. Metadata or trust
+failures remain errors even when the device has no network; they are not
+misreported as transient connection waits. The baseline Node recipe has a narrow
+byte-exact compatibility path so an installer security update does not mark an
+unchanged working Node broken. All file/ownership/version checks still apply.
+The issue-specific debug APK uses `com.appforge.studio.v9r2issue78`, preserving
+existing app data and signing identities. See
+[the evidence and device procedure](../../reports/v9-offline-module-center-r2-20261104.md).
+
+## Existing installations on startup and resume (2026-11-11)
+
+The module screen now inspects persisted installations on entry, activity resume,
+and explicit refresh. A module overview and selector show `HAZIR` only after the
+existing recipe/version, witness SHA-256, ownership, APT and dependency checks
+pass. The inspection is read-only and never starts a download or installation.
+An operation journal is not needed to recognize a previously verified module.
+
+A per-refresh dependency cache avoids repeatedly hashing shared dependencies for
+each card. Pending lifecycle work, invalid receipts, missing dependencies and
+cycles fail closed. Readiness is published before slower cleanup/history
+inspection; active installations defer inspection until they finish. Older local
+files without a valid current proof are explicitly shown as present and needing
+verification, rather than absent or READY. Existing build-time readiness checks
+remain enforced. Resume observers are removed when the screen leaves composition.

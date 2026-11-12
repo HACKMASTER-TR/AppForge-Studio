@@ -23,7 +23,7 @@ test('fast HTML/URL APK bypasses rootfs and offline package without touching oth
   const engine = read(source + 'DeviceBuildEngine.kt');
   const offline = read(source + 'OfflineBuildPackManager.kt');
   assert.match(engine, /FastHtmlApkPolicy\.isCandidate\(draft\)/);
-  assert.match(engine, /FastHtmlApkPackager\.build\(context, draft, workspace\)/);
+  assert.match(engine, /FastHtmlApkPackager\.build\(context, draft, workspace, stages = stages\)/);
   assert.ok(engine.indexOf('FastHtmlApkPackager.build') < engine.indexOf('DeviceBuildRuntimeV3\n'));
   assert.match(offline, /if \(FastHtmlApkPolicy\.isCandidate\(draft\)\)/);
   assert.match(offline, /FastHtmlApkPolicy\.requireSupported\(draft\)/);

@@ -10,6 +10,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.appforge.studio.build.*
 import com.appforge.studio.model.ProjectDraft
 import kotlinx.coroutines.*
@@ -18,10 +21,15 @@ import kotlinx.coroutines.*
 internal object ModuleInstallOperations {
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
     val activeProgress=kotlinx.coroutines.flow.MutableStateFlow<ModuleProgress?>(null)
+    val installTarget=kotlinx.coroutines.flow.MutableStateFlow<OfflineModuleId?>(null)
+    val completedInstall=kotlinx.coroutines.flow.MutableStateFlow<OfflineModuleId?>(null)
+    val diagnosticOperation=kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val startedAt=kotlinx.coroutines.flow.MutableStateFlow(0L)
     val updates=kotlinx.coroutines.flow.MutableStateFlow<Map<OfflineModuleId,ModuleProgress>>(emptyMap())
     val busy=kotlinx.coroutines.flow.MutableStateFlow(false)
     val stopPending=kotlinx.coroutines.flow.MutableStateFlow(false)
     private var job:Job?=null
+    private val elapsedTracker=ModuleElapsedTracker()
     private var journal:ModuleOperationJournal?=null
     @Synchronized fun restore(context:android.content.Context) {
         if(journal!=null)return
@@ -36,14 +44,20 @@ internal object ModuleInstallOperations {
     private fun persist(){try{journal?.save(updates.value);journalError.value=""}catch(e:Exception){journalError.value="İşlem günlüğü yazılamadı; güvenli devam garantisi yok. Depolamayı kontrol edin.";throw e}}
     @Volatile private var lastEventAt=0L
     @Synchronized private fun publish(event:ModuleProgress) {
-        lastEventAt=android.os.SystemClock.elapsedRealtime()
-        activeProgress.value=event;updates.value=updates.value+(event.moduleId to event);persist()
+        val now=android.os.SystemClock.elapsedRealtime()
+        lastEventAt=now
+        val timed=elapsedTracker.observe(event,now)
+        activeProgress.value=timed;updates.value=updates.value+(timed.moduleId to timed);persist()
     }
     @Volatile private var pauseRequested=false
     private var downloadControl=DownloadControl()
     @Synchronized fun start(context:android.content.Context, selected:OfflineModuleId, consent:Boolean) {
         if(busy.value)return
         try{restore(context)}catch(e:Exception){journalError.value="İndirme kaydı reddedildi; kurulum başlamadı: ${e.message}";DownloadNetwork.restorePreference();return}
+        installTarget.value=selected
+        completedInstall.value=null
+        diagnosticOperation.value=null
+        startedAt.value=android.os.SystemClock.elapsedRealtime()
         busy.value=true;pauseRequested=false;downloadControl=DownloadControl();stopPending.value=false
         try {ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException) {
             busy.value=false;DownloadNetwork.restorePreference()
@@ -69,14 +83,17 @@ internal object ModuleInstallOperations {
                     val last=java.util.concurrent.atomic.AtomicReference<ModuleProgress?>(null)
                     try {
                         OfflineBuildPackManager.installModules(context.applicationContext,setOf(selected),consent,downloadControl){event->
-                            last.set(event);publish(event)
+                            last.set(event);diagnosticOperation.value=event.operationId;publish(event)
                         }
+                        publish(ModuleProgress(selected,last.get()?.operationId?:"final-integrity",ModulePhase.VERIFYING,
+                            detail="Etkin modül son kez kontrol ediliyor."))
                         check(OfflineBuildPackManager.moduleReady(context.applicationContext,selected) &&
                             !OfflineBuildPackManager.hasPendingLifecycle(context.applicationContext,selected)) {
                             "Otomatik son bütünlük kontrolü başarısız; modül hazır değil."
                         }
                         publish(ModuleProgress(selected,last.get()?.operationId?:"final-integrity",ModulePhase.READY,
                             detail="Doğrulanmış kurulum • paketler ve etkin modül bütünlüğü kontrol edildi."))
+                        completedInstall.value=selected
                         break
                     }catch(e:CancellationException){throw e}
                     catch(e:Exception) {
@@ -98,22 +115,27 @@ internal object ModuleInstallOperations {
                     }
                 }
             } catch(e:CancellationException) {
-                updates.value=updates.value+(selected to ModuleProgress(selected,"canceled",if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else if(pauseRequested)ModulePhase.PAUSED else ModulePhase.CANCELED,errorCode=if(e is DownloadNetwork.PolicyBlocked)"NETWORK_POLICY" else null,detail=if(e is DownloadNetwork.PolicyBlocked)"Ağ politikası/onay bekleniyor; kısmi dosya korunur. Devam et ile tekrar doğrulayın." else if(pauseRequested)"Duraklatıldı; doğrulanmamış kısmi dosya devam için korunur." else "İptal edildi; çalışan modüller korunur."))
+                val previous=activeProgress.value?.takeIf{it.moduleId==selected}
+                publish(ModuleProgress(selected,previous?.operationId?:"canceled",if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else if(pauseRequested)ModulePhase.PAUSED else ModulePhase.CANCELED,errorCode=if(e is DownloadNetwork.PolicyBlocked)"NETWORK_POLICY" else null,detail=if(e is DownloadNetwork.PolicyBlocked)"Ağ politikası/onay bekleniyor; kısmi dosya korunur. Devam et ile tekrar doğrulayın." else if(pauseRequested)"Duraklatıldı; doğrulanmamış kısmi dosya devam için korunur." else "İptal edildi; çalışan modüller korunur."))
             } catch(e:Exception) {
                 // Preserve the manager's connection-wait/error state for this operation.
-                if(updates.value[selected]?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
-                updates.value=updates.value+(selected to ModuleProgress(selected,"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
+                if(activeProgress.value?.takeIf { it.moduleId==selected }?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
+                publish(ModuleProgress(selected,activeProgress.value?.takeIf{it.moduleId==selected}?.operationId?:"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
             } finally {stalledWatch.cancel();try{runCatching{persist()}}finally{activeProgress.value=null;busy.value=false;DownloadNetwork.restorePreference()}}
         }
     }
     @Synchronized fun lifecycle(context:android.content.Context,id:OfflineModuleId,action:String) {
         require(action in setOf("remove","rollback"));if(busy.value)return
         try{restore(context)}catch(e:Exception){journalError.value="İndirme kaydı reddedildi; yaşam döngüsü işlemi başlamadı: ${e.message}";return}
+        installTarget.value=null
+        completedInstall.value=null
+        diagnosticOperation.value=null
+        startedAt.value=android.os.SystemClock.elapsedRealtime()
         busy.value=true
         try{ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException){busy.value=false;journalError.value="Android yaşam döngüsü hizmetini başlatmadı: ${e.message}";return}
         job=scope.launch {
             val operation=java.util.UUID.randomUUID().toString()
-            fun recordLifecycle(event:ModuleProgress){DownloadCoordinator.modulePhase(event);publish(event)}
+            fun recordLifecycle(event:ModuleProgress){diagnosticOperation.value=event.operationId;DownloadCoordinator.modulePhase(event);publish(event)}
             try {
                 recordLifecycle(ModuleProgress(id,operation,if(action=="remove")ModulePhase.REMOVING else ModulePhase.ROLLING_BACK,detail="Onaylı işlem: bağımlılık, sahiplik, kullanım ve generation bütünlüğü yeniden doğrulanıyor."))
                 if(action=="remove")OfflineBuildPackManager.removeOwnedModule(context.applicationContext,id)
@@ -154,10 +176,16 @@ internal object ModuleInstallOperations {
     var mobileModule by remember{mutableStateOf<OfflineModuleId?>(null)}
     val usageRevision by BuildModuleUsage.changes.collectAsState()
     var recovered by remember{mutableStateOf(false)}
-    var aptStates by remember{mutableStateOf<Map<OfflineModuleId,String>>(emptyMap())}
-    var lifecycleStates by remember{mutableStateOf<Map<OfflineModuleId,ModuleLifecycleStatus>>(emptyMap())}
-    var pendingLifecycle by remember{mutableStateOf<Pair<OfflineModuleId,String>?>(null)}
+    var pendingLifecycle by remember { mutableStateOf<Pair<OfflineModuleId,String>?>(null) }
     var ready by remember { mutableStateOf<Map<OfflineModuleId,Boolean>>(emptyMap()) }
+    var existingFiles by remember { mutableStateOf<Set<OfflineModuleId>>(emptySet()) }
+    var refreshRevision by remember { mutableIntStateOf(0) }
+    val lifecycleOwner=LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer=LifecycleEventObserver { _,event -> if(event==Lifecycle.Event.ON_RESUME)refreshRevision++ }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     var history by remember{mutableStateOf<List<String>>(emptyList())}
     var chosen by remember { mutableStateOf<OfflineModuleId?>(null) }
     var selectedName by rememberSaveable { mutableStateOf(OfflineModuleId.NODE_WEB.name) }
@@ -172,28 +200,114 @@ internal object ModuleInstallOperations {
     var recoveryBusy by remember { mutableStateOf(false) }
     var recoveryMessage by remember { mutableStateOf("") }
     val liveProgress by ModuleInstallOperations.activeProgress.collectAsState()
+    val installTarget by ModuleInstallOperations.installTarget.collectAsState()
+    val completedInstall by ModuleInstallOperations.completedInstall.collectAsState()
+    val diagnosticOperation by ModuleInstallOperations.diagnosticOperation.collectAsState()
+    val startedAt by ModuleInstallOperations.startedAt.collectAsState()
+    var elapsedSeconds by remember(startedAt) { mutableLongStateOf(0L) }
+    LaunchedEffect(busy,startedAt) {
+        while(busy && startedAt>0L) {
+            elapsedSeconds=(android.os.SystemClock.elapsedRealtime()-startedAt)/1000
+            delay(1000)
+        }
+    }
     var sdkConsent by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf("") }
-    var availableUpdates by remember{mutableStateOf<Set<OfflineModuleId>>(emptySet())}
     var confirmPrune by remember{mutableStateOf(false)}
+    var confirmDuplicateQuarantine by remember{mutableStateOf(false)}
+    var duplicateQuarantineBusy by remember{mutableStateOf(false)}
+    var duplicateQuarantineBytes by remember(confirmDuplicateQuarantine){mutableStateOf<Long?>(null)}
+    var duplicateQuarantineError by remember(confirmDuplicateQuarantine){mutableStateOf<String?>(null)}
     var confirmHistoryCleanup by remember{mutableStateOf(false)}
     var historyDetails by rememberSaveable { mutableStateOf(false) }
-    var pruneBytes by remember{mutableStateOf<Long?>(null)}
-    var pruneReason by remember{mutableStateOf<String?>(null)}
-    var installedVersions by remember{mutableStateOf<Map<OfflineModuleId,String?>>(emptyMap())}
+    var pruneBytes by remember(confirmPrune){mutableStateOf<Long?>(null)}
+    var pruneReason by remember(confirmPrune){mutableStateOf<String?>(null)}
+    val selected=OfflineModuleId.entries.firstOrNull { it.name==selectedName } ?: OfflineModuleId.NODE_WEB
+    var recordedVersion by remember(selected) { mutableStateOf<String?>(null) }
+    var updateRequired by remember(selected) { mutableStateOf(false) }
+    var lifecycle by remember(selected) { mutableStateOf<ModuleLifecycleStatus?>(null) }
+    var aptState by remember(selected) { mutableStateOf("") }
+    var migrationReason by remember(selected) { mutableStateOf<String?>(null) }
+    var portableReady by remember { mutableStateOf(false) }
+    var installPlan by remember(chosen) { mutableStateOf<List<OfflineModuleId>?>(null) }
     val plan=remember(project){project?.let{OfflineModules.forProject(it)}}
-    val readinessChanges=events.mapValues{it.value.phase==ModulePhase.READY}
+
     LaunchedEffect(Unit){withContext(Dispatchers.IO){runCatching{ModuleInstallOperations.restore(context)}.onFailure{detail="İndirme günlüğü reddedildi: ${it.message}"};runCatching{OfflineBuildPackManager.recoverPending(context)}.onFailure{detail="Kurtarma güvenli biçimde durdu: ${it.message}"}};recovered=true}
-    LaunchedEffect(readinessChanges,busy,usageRevision,recovered){
-        if(!recovered)return@LaunchedEffect
-        val cleanup=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.prunableSnapshotBytes(context)}}
-        pruneBytes=cleanup.getOrNull();pruneReason=cleanup.exceptionOrNull()?.message
-        aptStates=withContext(Dispatchers.IO){OfflineModules.all.associate{module->module.id to runCatching{OfflineBuildPackManager.aptSummary(context,module.id)?.let{it.detail+"\n"+it.versions.joinToString("\n")}}.getOrElse{"APT kilidi doğrulanamadı: ${it.message}"}.orEmpty()}}
-        lifecycleStates=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.lifecycleStatus(context,it.id)}}
-        availableUpdates=withContext(Dispatchers.IO){OfflineModules.all.filter{OfflineBuildPackManager.updateAvailable(context,it.id)}.map{it.id}.toSet()}
-        installedVersions=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.installedVersion(context,it.id)}}
-        history=withContext(Dispatchers.IO){ModuleInstallOperations.history()}
-ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (OfflineBuildPackManager.moduleReady(context,it.id) && !OfflineBuildPackManager.hasPendingLifecycle(context,it.id))}}
+    val readinessChanges=events.mapValues { it.value.phase==ModulePhase.READY }
+    LaunchedEffect(recovered,busy,usageRevision,refreshRevision,readinessChanges) {
+        ready=emptyMap()
+        if(!recovered || busy)return@LaunchedEffect
+        val inspected=withContext(Dispatchers.IO) {
+            OfflineBuildPackManager.installedReadiness(context) to
+                OfflineModules.all.filter { OfflineBuildPackManager.hasExistingFiles(context,it.id) }.map { it.id }.toSet()
+        }
+        existingFiles=inspected.second
+        ready=inspected.first
+    }
+    LaunchedEffect(selected,recovered,busy,events[selected]?.phase,refreshRevision) {
+        if(!recovered || busy)return@LaunchedEffect
+        val recorded=withContext(Dispatchers.IO) {
+            OfflineBuildPackManager.installedVersion(context,selected) to
+                OfflineBuildPackManager.updateAvailable(context,selected)
+        }
+        recordedVersion=recorded.first
+        updateRequired=recorded.second
+    }
+    LaunchedEffect(section,recovered,busy) {
+        if(section in setOf("history","diagnostics") && recovered && !busy)
+            history=withContext(Dispatchers.IO){ModuleInstallOperations.history()}
+    }
+    LaunchedEffect(section,selected,moduleDetails,recovered,busy,usageRevision,refreshRevision) {
+        lifecycle=null
+        aptState=""
+        portableReady=false
+        if(section!="modules" || !recovered || busy)return@LaunchedEffect
+        if(moduleDetails) {
+            val result=withContext(Dispatchers.IO) {
+                runCatching { OfflineBuildPackManager.lifecycleStatus(context,selected) } to
+                    runCatching { OfflineBuildPackManager.aptSummary(context,selected) }
+            }
+            lifecycle=result.first.getOrNull()
+            aptState=result.second.fold(
+                { it?.let { summary -> summary.detail+"\n"+summary.versions.joinToString("\n") }.orEmpty() },
+                { "APT kilidi doğrulanamadı: ${it.message}" }
+            )
+        }
+        if(selected==OfflineModuleId.WINDOWS_PORTABLE)
+            portableReady=withContext(Dispatchers.IO){OfflineBuildPackManager.moduleReady(context,selected)}
+    }
+    LaunchedEffect(chosen) {
+        val id=chosen ?: return@LaunchedEffect
+        val result=withContext(Dispatchers.IO) {
+            runCatching {
+                val blocked=OfflineBuildPackManager.aptMigrationBlockedReason(context,id)
+                blocked to OfflineModules.resolve(setOf(id))
+            }
+        }
+        result.fold({ (blocked,modules) ->
+            if(blocked!=null) {
+                if(selected==id && section=="modules")migrationReason=blocked else detail=blocked
+                chosen=null
+            } else {
+                migrationReason=null
+                installPlan=modules
+            }
+        }, {
+            detail="Kurulum ön kontrolü başarısız: ${it.message}"
+            chosen=null
+        })
+    }
+    LaunchedEffect(confirmDuplicateQuarantine) {
+        if(!confirmDuplicateQuarantine)return@LaunchedEffect
+        val result=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.duplicateQuarantineBytes(context)}}
+        duplicateQuarantineBytes=result.getOrNull()
+        duplicateQuarantineError=result.exceptionOrNull()?.message
+    }
+    LaunchedEffect(confirmPrune) {
+        if(!confirmPrune)return@LaunchedEffect
+        val result=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.prunableSnapshotBytes(context)}}
+        pruneBytes=result.getOrNull()
+        pruneReason=result.exceptionOrNull()?.message
     }
     fun begin(id:OfflineModuleId) {
         if(DownloadNetwork.policy==DownloadNetworkPolicy.WIFI_PREFERRED && !DownloadNetwork.allowed()){mobileModule=id;return}
@@ -249,10 +363,9 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
         onDismissRequest={ubuntuFetchConfirm=false},
         title={Text("Eksik Ubuntu paketlerini indir")},
         text={Text(
-            "Doğrulanmış tüm bağlantılar kullanılabilir: Wi-Fi, "+
-            "hotspot, mobil veri ve VPN. "+
-            "APK içindeki sabit SHA-256 ve resmî Ubuntu Snapshot "+
-            "adreslerinden yalnız eksik paketler indirilecek. "+
+            "Kaydedilmiş ağ politikanız uygulanır. "+
+            "Ed25519 sürümü ve APK SHA-256 kataloğuyla yalnız eksik R2 paketleri alınacak. "+
+            "Ubuntu Snapshot ağına başvurulmaz. "+
             "İndirmeden sonra imzalı Ubuntu APT indeksleri de "+
             "doğrulanacak. Modül kurulumu veya runtime geçişi "+
             "yapılmayacak."
@@ -344,13 +457,47 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
         else {networkPolicy=DownloadNetworkPolicy.ALLOW_ANY;DownloadNetwork.select(networkPolicy)}
     }){Text(if(mobileModule!=null)"Yalnız bu işlem için izin ver" else "Bu ağ tercihini kaydet")}},dismissButton={TextButton(onClick={confirmAnyNetwork=false;mobileModule=null}){Text("Reddet; kaydı koru")}})
     pendingLifecycle?.let{(id,action)->
-        val permission=if(action=="remove")lifecycleStates[id]?.remove else lifecycleStates[id]?.rollback
+        val permission=if(id!=selected)null else if(action=="remove")lifecycle?.remove else lifecycle?.rollback
         AlertDialog(onDismissRequest={pendingLifecycle=null},title={Text(if(action=="remove")"Modülü kaldırmayı onayla" else "Önceki sürüme dönmeyi onayla")},
             text={Text("${OfflineModules.spec(id).title}: sahiplik, bağımlılar, aktif kullanım ve bütünlük tekrar kontrol edilir. Kullanıcı kaynakları/anahtarları korunur. Rootfs son geçişten sonra değişmişse bütün ortam geri alma engellenir. Runtime ve Portable kaldırılması dosyaları arşivler; disk boşalttığı varsayılmaz.")},
             confirmButton={TextButton(enabled=!busy && permission?.allowed==true,onClick={pendingLifecycle=null;ModuleInstallOperations.lifecycle(context,id,action)}){Text("Onayla")}},
             dismissButton={TextButton(onClick={pendingLifecycle=null}){Text("Vazgeç")}})
     }
-    if(confirmPrune)AlertDialog(onDismissRequest={confirmPrune=false},title={Text("Kullanılmayan eski sürümleri temizle")},text={Text("Aktif ortam, en son geri alma sürümü ve modül sahiplik kayıtlarının kullandığı snapshot'lar korunur. Daha eski geri alma geçmişi kısalabilir. Yalnız hash envanteri doğrulanan özel snapshot kopyaları silinir; kullanıcı projeleri silinmez.")},confirmButton={TextButton(enabled=!busy,onClick={confirmPrune=false;scope.launch{detail=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.pruneUnusedSnapshots(context)}.fold({"${it/1024/1024} MiB eski snapshot temizlendi."},{"Temizleme engellendi: ${it.message}"})}}}){Text("Onayla ve temizle")}},dismissButton={TextButton(onClick={confirmPrune=false}){Text("Vazgeç")}})
+    if(confirmDuplicateQuarantine)AlertDialog(
+        onDismissRequest={confirmDuplicateQuarantine=false},
+        title={Text("Aynı içerikli ayrılmış Ubuntu kopyalarını temizle")},
+        text={Text(duplicateQuarantineError ?: duplicateQuarantineBytes?.let {
+            "SHA-256 ve dosya öznitelikleriyle aktif ortamla birebir aynı olduğu doğrulanan ${it/1024/1024} MiB temizlenebilir. " +
+            "Farklı veya doğrulanamayan .v3-discard klasörleri, rootfs, geri alma sürümleri ve paket önbelleği korunur."
+        } ?: "Ayrılmış ortamlar karşılaştırılıyor; bu kontrol büyük depolamada uzun sürebilir…")},
+        confirmButton={TextButton(enabled=!busy && !preparing && !duplicateQuarantineBusy && duplicateQuarantineBytes!=null && duplicateQuarantineBytes!!>0,onClick={
+            confirmDuplicateQuarantine=false
+            duplicateQuarantineBusy=true
+            scope.launch {
+                try {
+                    detail=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.pruneDuplicateQuarantines(context)}
+                        .fold({"${it/1024/1024} MiB birebir aynı ayrılmış kopya temizlendi; diğerleri korundu."},
+                            {"Güvenli temizlik engellendi: ${it.message}"})}
+                } finally { duplicateQuarantineBusy=false }
+            }
+        }){Text("Yalnız birebir kopyaları temizle")}},
+        dismissButton={TextButton(onClick={confirmDuplicateQuarantine=false}){Text("Vazgeç")}}
+    )
+    if(confirmPrune)AlertDialog(
+        onDismissRequest={confirmPrune=false},
+        title={Text("Kullanılmayan eski sürümleri temizle")},
+        text={Text(pruneReason ?: pruneBytes?.let {
+            "${it/1024/1024} MiB doğrulanmış dosya. Etkin ortam ve korunan geri alma sürümleri saklanır."
+        } ?: "Eski ortam kopyaları denetleniyor…")},
+        confirmButton={TextButton(enabled=!busy && pruneBytes!=null,onClick={
+            confirmPrune=false
+            scope.launch {
+                detail=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.pruneUnusedSnapshots(context)}
+                    .fold({"${it/1024/1024} MiB eski snapshot temizlendi."},{"Temizleme engellendi: ${it.message}"})}
+            }
+        }){Text("Onayla ve temizle")}},
+        dismissButton={TextButton(onClick={confirmPrune=false}){Text("Vazgeç")}}
+    )
     if(confirmHistoryCleanup)AlertDialog(
         onDismissRequest={confirmHistoryCleanup=false},
         title={Text("Eski indirme kayıtlarını bırak")},
@@ -368,40 +515,54 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
         dismissButton={TextButton(onClick={confirmHistoryCleanup=false}){Text("Vazgeç")}}
     )
     if(chosen!=null) {
-        val id=chosen!!;val missing=OfflineModules.resolve(setOf(id)).filter{ready[it]!=true}
-        val needsSdk=OfflineModuleId.ANDROID_CORE in missing || OfflineModuleId.EXPO_REACT_NATIVE in missing
+        val id=chosen!!
+        val modules=installPlan
+        val needsSdk=modules?.any {
+            it==OfflineModuleId.ANDROID_CORE || it==OfflineModuleId.EXPO_REACT_NATIVE ||
+                it==OfflineModuleId.RUST_ANDROID_NDK
+        }==true
         AlertDialog(onDismissRequest={chosen=null},title={Text("Kurulumu onayla")},text={Column {
-            Text("Yalnız eksik modüller: "+missing.joinToString{OfflineModules.spec(it).title})
-            Text("Boyutu doğrulanmamış indirmelerde toplam boyut bilinmiyor gösterilir. Bağımlılıklar ortak kullanılır.")
-            if(needsSdk){Text("Android SDK lisansı yalnız bu kurulum için gereklidir. SDK Manager lisansı cihazda ayrıca doğrular.");TextButton(onClick={android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://developer.android.com/studio/terms")).also{context.startActivity(it)}}){Text("Android SDK lisansını incele")};Row{Checkbox(sdkConsent,{sdkConsent=it});Text("SDK lisansını kabul ediyorum")}}
-        }},confirmButton={TextButton(enabled=!busy && (!needsSdk||sdkConsent),onClick={chosen=null;begin(id)}){Text("Onayla ve kur")}},dismissButton={TextButton(onClick={chosen=null}){Text("Vazgeç")}})
+            Text(if(modules==null)"Kurulum planı hazırlanıyor…" else
+                "Seçilen modül: "+OfflineModules.spec(id).title)
+            if(needsSdk){
+                Text("Bu işlemde Android SDK kurulumu veya güncellemesi gerekirse lisans onayı kullanılır.")
+                TextButton(onClick={android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://developer.android.com/studio/terms")).also{context.startActivity(it)}}){Text("Android SDK lisansını incele")}
+                Row{Checkbox(sdkConsent,{sdkConsent=it});Text("SDK lisansını kabul ediyorum")}
+            }
+        }},confirmButton={TextButton(
+            enabled=!busy && !preparing && modules!=null && (!needsSdk||sdkConsent),
+            onClick={chosen=null;begin(id)}
+        ){Text("Onayla ve kur")}},dismissButton={TextButton(onClick={chosen=null}){Text("Vazgeç")}})
     }
     Scaffold(topBar={TopAppBar(title={Text("Birleşik Modül Merkezi V9")},navigationIcon={TextButton(onClick=onBack){Text("Geri")}})}){padding->
         LazyColumn(modifier=Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             item { ModuleManagerNavigation(section) { section=it } }
             if(section=="modules")item {
-                val selected=OfflineModuleId.entries.firstOrNull{
-                    it.name==selectedName
-                } ?: OfflineModuleId.NODE_WEB
-                val spec=OfflineModules.spec(selected)
-                val installed=ready[selected]==true
-                val known=ready.containsKey(selected)
-                val lifecycle=lifecycleStates[selected]
-                var migrationAudit by remember {
-                    mutableStateOf<Pair<OfflineModuleId,String?>?>(null)
-                }
-                LaunchedEffect(selected,recovered,busy) {
-                    migrationAudit=null
-                    if(recovered) migrationAudit=withContext(Dispatchers.IO) {
-                        selected to runCatching {
-                            OfflineBuildPackManager.aptMigrationBlockedReason(context,selected)
-                        }.getOrElse {
-                            "APT güvenlik kontrolü başarısız: ${it.message}"
+                Card(modifier=Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Text("Mevcut modüller",style=MaterialTheme.typography.titleMedium)
+                        Text("Önceden kurulanlar dosya ve bütünlük kayıtlarından algılanır; bu kontrol indirme yapmaz.",style=MaterialTheme.typography.bodySmall)
+                        OutlinedButton(enabled=recovered && !busy && !preparing,onClick={refreshRevision++}) { Text("Kurulumları yeniden kontrol et") }
+                        OfflineModules.all.forEach { module ->
+                            TextButton(onClick={selectedName=module.id.name;moduleDetails=false},modifier=Modifier.fillMaxWidth()) {
+                                Column(Modifier.fillMaxWidth()) {
+                                    Text(module.title,style=MaterialTheme.typography.titleSmall)
+                                    Text(when {
+                                        !ready.containsKey(module.id) -> "Kontrol ediliyor…"
+                                        ready[module.id]==true -> "HAZIR ✓"
+                                        module.id in existingFiles -> "Dosyalar mevcut • doğrulama gerekli"
+                                        else -> "Kurulu değil"
+                                    },style=MaterialTheme.typography.bodySmall)
+                                }
+                            }
                         }
                     }
                 }
-                val migrationChecked=migrationAudit?.first==selected
-                val migrationReason=migrationAudit?.takeIf{it.first==selected}?.second
+            }
+
+            if(section=="modules")item {
+                val installed=ready[selected]==true
+                val spec=OfflineModules.spec(selected)
                 val unsupported=if(selected !in setOf(
                     OfflineModuleId.FAST_HTML,
                     OfflineModuleId.WINDOWS_PORTABLE
@@ -409,12 +570,10 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                 val active=liveProgress?.takeIf{
                     busy && it.moduleId in OfflineModules.resolve(setOf(selected))
                 }
-                val event=active ?: events[selected]
-                val updateRequired=selected in availableUpdates
-                val canInstall=known && migrationChecked && migrationReason==null &&
-                    !busy && !preparing && !prefetchBusy && !recoveryBusy && unsupported==null &&
-                    (!installed || updateRequired) &&
-                    (lifecycle?.installedVersion==null || lifecycle.update.allowed)
+                val installingSelected=busy && installTarget==selected
+                val event=if(installingSelected)active else active ?: events[selected]?.takeUnless { installed }
+                val canInstall=recovered && chosen==null && (!installed || updateRequired) &&
+                    !busy && !preparing && !prefetchBusy && !recoveryBusy && unsupported==null
 
                 Card(Modifier.fillMaxWidth()) {
                     Column(
@@ -444,7 +603,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                             ) {
                                 OfflineModules.all.forEach { item ->
                                     DropdownMenuItem(
-                                        text={Text(item.title)},
+                                        text={Text(item.title+if(ready[item.id]==true) " • HAZIR ✓" else "")},
                                         onClick={
                                             selectedName=item.id.name
                                             moduleMenuOpen=false
@@ -457,11 +616,9 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
 
                         if(unsupported!=null)
                             Text(unsupported,color=MaterialTheme.colorScheme.error)
-                        if(!migrationChecked && !installed)
-                            Text("APT geçiş güvenliği kontrol ediliyor...")
-                        if(migrationReason!=null && (!installed || updateRequired)) {
+                        migrationReason?.let { reason ->
                             Text("Güvenli runtime geçişi gerekli",color=MaterialTheme.colorScheme.error)
-                            Text(migrationReason,style=MaterialTheme.typography.bodySmall)
+                            Text(reason,style=MaterialTheme.typography.bodySmall)
                             Text("Mevcut Node.js ortamı ve R2 önbelleği korunuyor. Kurulum engeli kaldırılmadı.",style=MaterialTheme.typography.bodySmall)
                             OutlinedButton(
                                 enabled=!recoveryBusy && !busy && !preparing &&
@@ -479,7 +636,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                                     recoveryMessage,
                                     style=MaterialTheme.typography.bodySmall
                                 )
-                            if(selected==OfflineModuleId.PYTHON_ANDROID) {
+                            if(moduleDetails && selected==OfflineModuleId.PYTHON_ANDROID) {
                                 OutlinedButton(
                                     enabled=!recoveryBusy && !busy &&
                                         !preparing && !prefetchBusy,
@@ -514,25 +671,59 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
 
                         Text(
                             "Durum: "+when {
-                                !known -> "Bütünlük kontrolü sürüyor"
-                                installed && !updateRequired -> "Doğrulanmış kurulum"
-                                !migrationChecked -> "APT geçiş denetimi sürüyor"
+                                installingSelected -> when {
+                                    active==null -> "Kurulum hazırlanıyor"
+                                    active.phase==ModulePhase.READY -> "Kurulum devam ediyor"
+                                    active.moduleId!=selected ->
+                                        "${OfflineModules.spec(active.moduleId).title} · ${active.phase.turkishLabel()}"
+                                    else -> active.phase.turkishLabel()
+                                }
+                                busy && active!=null -> active.phase.turkishLabel()
+                                !recovered -> "Önceki işlemler kontrol ediliyor"
+                                !ready.containsKey(selected) -> "Bütünlük kontrolü sürüyor"
+                                installed && updateRequired -> "HAZIR ✓ • Güncelleme mevcut"
+                                installed -> "HAZIR ✓ • Doğrulanmış kurulum"
                                 migrationReason!=null -> "Güvenli runtime geçişi gerekli"
-                                installed && updateRequired -> "Güncelleme mevcut • kurulum korunuyor"
-                                event?.phase==ModulePhase.READY -> "Kurulu değil / bütünlük doğrulanmadı"
+                                selected in existingFiles -> "Dosyalar mevcut • doğrulama gerekli"
+                                event?.phase==ModulePhase.READY -> "Kurulum kaydı var • doğrulama gerekli"
+                                updateRequired -> "Güncelleme mevcut"
+                                recordedVersion!=null -> "Kurulum kaydı var"
                                 event!=null -> event.phase.turkishLabel()
-                                else -> "Kurulu değil"
+                                else -> "Kurulum kaydı bulunamadı"
                             },
                             style=MaterialTheme.typography.titleSmall
                         )
 
-                        installedVersions[selected]?.let {
+                        recordedVersion?.let {
                             Text("Sürüm: $it",style=MaterialTheme.typography.bodySmall)
                         }
 
+                        if(installingSelected) {
+                            LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
+                            Text("Geçen süre: ${elapsedSeconds/60} dk ${elapsedSeconds%60} sn")
+                        } else if(!busy && completedInstall==selected) {
+                            LinearProgressIndicator(progress={1f},modifier=Modifier.fillMaxWidth())
+                            Text("Kurulum tamamlandı · %100")
+                        }
+                        if(!installingSelected && event!=null && event.elapsedMs>0L) {
+                            val total=event.elapsedMs/1000L
+                            Text("Son işlem süresi: ${total/60} dk ${total%60} sn",style=MaterialTheme.typography.bodySmall)
+                            Text("İndirme: ${event.downloadElapsedMs/1000L} sn • "+
+                                "Doğrulama: ${event.verificationElapsedMs/1000L} sn • "+
+                                "Kurulum: ${event.installationElapsedMs/1000L} sn",
+                                style=MaterialTheme.typography.bodySmall)
+                            val other=(event.elapsedMs-event.downloadElapsedMs-
+                                event.verificationElapsedMs-event.installationElapsedMs).coerceAtLeast(0L)
+                            Text("Hazırlık / bekleme: ${other/1000L} sn",style=MaterialTheme.typography.bodySmall)
+                            Text("Süreler işlem günlüğünde saklanır; geçmiş kayıt tek başına modülün hazır olduğunu kanıtlamaz.",
+                                style=MaterialTheme.typography.bodySmall)
+                        }
+
                         if(event!=null) {
-                            Text(event.detail,style=MaterialTheme.typography.bodySmall)
-                            if(event.phase==ModulePhase.ERROR)
+                            if(moduleDetails || (recordedVersion==null || active!=null) &&
+                                event.phase in setOf(ModulePhase.ERROR,ModulePhase.AWAITING_CONSENT,ModulePhase.WAITING_CONNECTION))
+                                Text(event.detail,style=MaterialTheme.typography.bodySmall)
+                            if(moduleDetails && event.phase==ModulePhase.ERROR)
                                 Text(
                                     "Hata: "+(event.errorCode?:"Bilinmiyor"),
                                     color=MaterialTheme.colorScheme.error
@@ -553,6 +744,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
 
                             if(busy && event.phase==ModulePhase.DOWNLOADING) {
                                 val pct=event.percent
+                                Text(pct?.let { "Dosya indiriliyor · %$it" } ?: "Dosya indiriliyor")
                                 if(pct!=null)
                                     LinearProgressIndicator(
                                         progress={pct/100f},
@@ -573,7 +765,10 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                                         "%.1f MiB/sn".format(it/1024/1024)
                                     }?:"hesaplanıyor"
                                 ))
-                            } else if(busy && event.phase !in setOf(
+                                event.averageSpeedBytesPerSecond?.let { average ->
+                                    Text("Ortalama hız: %.1f MiB/sn".format(average/1024/1024),style=MaterialTheme.typography.bodySmall)
+                                }
+                            } else if(busy && !installingSelected && event.phase !in setOf(
                                 ModulePhase.READY,ModulePhase.ERROR,ModulePhase.CANCELED
                             )) {
                                 LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
@@ -583,6 +778,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                         V9R2CandidatePrefetchCard(
                             selected=selected,
                             installEnabled=canInstall,
+                            showCacheDetails=moduleDetails,
                             onBusyChange={prefetchBusy=it},
                             onInstall={chosen=it}
                         )
@@ -617,7 +813,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                                     "${it/1024/1024} MiB"
                                 }?:"toplam bilinmiyor"
                             ))
-                            aptStates[selected]?.takeIf{it.isNotBlank()}?.let{
+                            aptState.takeIf{it.isNotBlank()}?.let{
                                 Text(it,style=MaterialTheme.typography.bodySmall)
                             }
                             lifecycle?.let{lc->
@@ -643,9 +839,14 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                 Text("Varsayılan politika: ${DownloadNetwork.policy}. VPN veya ölçümlü Wi-Fi, kısıtlı politikada engellenir. Dış paket yöneticilerinde ağ geçişi kısıtı garanti edilemediğinden açık ağ izni gerekir.")
             }}}
             if(section=="diagnostics")item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("Kalıcı işlem ağacı",style=MaterialTheme.typography.titleMedium)
+                Text("Son işlem",style=MaterialTheme.typography.titleMedium)
                 Text("Geçmiş kayıtlar komut veya kurulum yetkisi değildir. Dosya tamamlanması, modül Hazır ve proje Çevrimdışı Hazır ayrı doğrulanır.")
-                operationTree.filter{it.parentOperationId==null}.takeLast(8).reversed().forEach{root->
+                val rootIds=diagnosticOperation?.let { operation ->
+                    OfflineModuleId.entries.map { PersistentOperationGraph.moduleId(operation,it) }.toSet()
+                }.orEmpty()
+                val currentRoots=operationTree.filter { it.parentOperationId==null && it.operationId in rootIds }
+                if(currentRoots.isEmpty())Text(if(busy)"İşlem hazırlanıyor…" else "Bu oturumda işlem kaydı yok.")
+                currentRoots.asReversed().forEach{root->
                     Text("${OfflineModules.spec(root.moduleId).title} • ${root.operationState} • ${root.operationId.take(12)}")
                     operationTree.filter{it.parentOperationId==root.operationId}.takeLast(12).forEach{child->
                         Text("  ${child.stage} • ${child.operationState}"+(if(child.stage==OperationStage.ARTIFACT_DOWNLOAD)" • ${child.downloadCapability}" else ""))
@@ -692,26 +893,37 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                     Text("${record.verifiedPartialBytes/1024/1024} MiB doğrulanmış kısmi / "+(record.expectedBytes?.let{"${it/1024/1024} MiB"}?:"Boyut bilinmiyor"))
                     Text("Ağ: ${record.networkPolicy} • ${record.resumeCapability} • ${record.verificationState} • retry ${record.retryCount}")
                     record.failureReason?.let{Text("Hata: $it")}
-                    if(ready[record.moduleId]==true)Text("Modül bağımsız bütünlük kontrolüyle hazır; tarihî dosya kaydı kurulum kanıtı değildir.")
                     if(record.downloadState==DownloadState.COMPLETED)Text("Dosya SHA-256 ile tamamlandı; modülün Hazır kontrolü ayrıdır.")
                     else {
-                        Button(enabled=!busy && !preparing && record.stagingIdentity!=null && ready[record.moduleId]!=true,onClick={chosen=record.moduleId}){Text(if(record.downloadState==DownloadState.PAUSED)"Devam et • onayla" else "Güvenli yeniden dene • onayla")}
+                        Button(enabled=!busy && !preparing && record.stagingIdentity!=null && recovered && chosen==null,onClick={chosen=record.moduleId}){Text(if(record.downloadState==DownloadState.PAUSED)"Devam et • onayla" else "Güvenli yeniden dene • onayla")}
                         if(record.stagingIdentity==null)Text("Paket yöneticisi kaydı: aynı projeden tekrar açık kod çalıştırma onayı gerekir; dosya düzeyinde devam sunulmaz.")
                         OutlinedButton(enabled=!busy && !preparing && record.downloadState!=DownloadState.CANCELLED,onClick={scope.launch{runCatching{withContext(Dispatchers.IO){DownloadCoordinator.cancelRecord(record.operationId,record.artifactId)}}.onFailure{detail=it.message?:"Kayıt güncellenemedi"}}}){Text("Geçmiş kaydını iptal et • dosyaları koru")}
                     }
                 }}
             }
             plan?.let{p->item{Text(p.error?:"Bu proje için: "+p.modules.joinToString{OfflineModules.spec(it).title})}}
-            if(section=="diagnostics" && ready[OfflineModuleId.LINUX_RUNTIME]==true)item{OutlinedButton(enabled=!busy && BuildModuleUsage.mutationBlockedReason()==null && pruneBytes!=null,onClick={confirmPrune=true}){Text("Eski sürümleri temizle • "+(pruneBytes?.let{"${it/1024/1024} MiB doğrulanmış dosya"}?:"boyut doğrulanamadı"))}}
-            if(section=="diagnostics")pruneReason?.let{reason->item{Text("Eski sürüm temizleme kapalı: $reason")}}
+            if(section=="diagnostics" && recovered)item {
+                Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        enabled=!busy && !preparing && !duplicateQuarantineBusy && BuildModuleUsage.mutationBlockedReason()==null,
+                        onClick={confirmPrune=true}
+                    ){Text("Eski sürümleri temizle")}
+                    OutlinedButton(
+                        enabled=!busy && !preparing && !duplicateQuarantineBusy && BuildModuleUsage.mutationBlockedReason()==null,
+                        onClick={confirmDuplicateQuarantine=true}
+                    ){Text("Birebir aynı ayrılmış kopyaları denetle")}
+                    Text("Bu tarama dosya bütünlüğünü okur. Farklı/şüpheli kopyalar otomatik silinmez.",style=MaterialTheme.typography.bodySmall)
+                }
+            }
             if(section=="modules" && project!=null && (!FastHtmlApkPolicy.isCandidate(project) || RustProjectPolicy.hasRust(project)))item { ProjectDependencyPreparationCard(project,onRustPrepared) }
-            if(section=="modules" && ready[OfflineModuleId.WINDOWS_PORTABLE]==true)item { WindowsModuleSmokeCard() }
-            item { Text("Toplam işlem: "+if(busy)"devam ediyor; kurulum iş miktarı ölçülemediği için toplam yüzde yok" else "bekliyor / son modül durumlarını inceleyin") }
+            if(section=="modules" && selected==OfflineModuleId.WINDOWS_PORTABLE && portableReady)item { WindowsModuleSmokeCard() }
             item { Text("Kullanıcının başlattığı kurulum Android veri aktarımı servisiyle izlenir. Android zaman sınırı veya süreç ölümü işlemi durdurabilir. Yeniden açınca kayıt geri yüklenir; devam için onay gerekir, dosyalar yeniden doğrulanır.") }
             if(journalError.isNotBlank())item{Text(journalError)}
-            if(section=="diagnostics" && history.isNotEmpty())item{Column {Text("Son işlem kayıtları (hazır olma kanıtı değildir)");history.takeLast(8).forEach{Text(it)}}}
+            if(section in setOf("diagnostics","history") && history.isNotEmpty())item{Column {Text("Son işlem kayıtları (hazır olma kanıtı değildir)");history.takeLast(8).forEach{Text(it)}}}
             if(detail.isNotBlank())item{Text(detail)}
-            if(firstRun)item{Button(onClick={onFirstRunComplete?.invoke(true)}){Text("Araç indirmeden devam et")}}
+            if(firstRun)item{Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text("İlk açılışta araç indirme zorunluluğu yok. Fast HTML gömülüdür; diğer modüller ihtiyaç olduğunda kurulur.")
+                Button(onClick={onFirstRunComplete?.invoke(true)}){Text("Araç indirmeden devam et")}}}
         }
     }
 }

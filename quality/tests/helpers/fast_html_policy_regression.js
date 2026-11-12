@@ -23,7 +23,7 @@ fun main() {
   for (output in listOf("apk", "aab", "both", "apk+aab") + windows) {
    val draft = base.copy(sourceMode=mode, webUrl="https://example.com", buildOutput=output)
    val original = draft.copy()
-   val quick = output !in windows && (mode == SourceMode.LOCAL || output == "apk")
+   val quick = output !in windows
    check(FastHtmlApkPolicy.isCandidate(draft) == quick) { "route: $mode/$output" }
    check((WizardReadinessEvaluator.evaluate(draft).capability == WizardCapabilityClass.QUICK_SUPPORTED) == quick)
    for (engine in listOf("node-web", "expo", "android-gradle", "windows-native",
@@ -41,7 +41,7 @@ fun main() {
     check(FastHtmlApkPolicy.normalRouteReasons(selected).isEmpty())
     check(WizardReadinessEvaluator.evaluate(selected).normalRouteReasons.isEmpty())
    } else {
-    check(WizardReadinessEvaluator.evaluate(draft).ready == (mode==SourceMode.LOCAL || output=="apk"))
+    check(WizardReadinessEvaluator.evaluate(draft).ready)
     if(mode==SourceMode.LOCAL) {
      val selected=draft.copy(camera=true);val result=WizardReadinessEvaluator.evaluate(selected)
      check(!result.ready && result.capability == WizardCapabilityClass.UNSUPPORTED_BLOCKED)
@@ -57,7 +57,7 @@ fun main() {
     }
    }
    for(selected in listOf(draft.copy(camera=true),draft.copy(microphone=true),draft.copy(location=true))) {
-    check(FastHtmlApkPolicy.isCandidate(selected) == (output !in windows && (mode==SourceMode.URL && output=="apk" || mode==SourceMode.LOCAL && selected.location)))
+    check(FastHtmlApkPolicy.isCandidate(selected) == (output !in windows && (mode==SourceMode.URL || mode==SourceMode.LOCAL && selected.location)))
    }
    check(draft == original) { "routing mutated source/output selections" }
   }

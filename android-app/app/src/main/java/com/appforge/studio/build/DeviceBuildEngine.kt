@@ -253,11 +253,12 @@ object DeviceBuildEngine {
                 })
                 workspace.deleteRecursively()
                 check(workspace.mkdirs()) { "Fast HTML private workspace could not be prepared." }
+                val stages = BuildStageTimings { state.logs.add(it) }
                 advanceProgress(state, 15, "HTML çıktıları hazırlanıyor")
                 checkCancelled(state)
                 if (!wantsAab) {
                     // Preserve the existing ~1-second fast APK path byte-for-byte.
-                    val apk = FastHtmlApkPackager.build(context, draft, workspace)
+                    val apk = FastHtmlApkPackager.build(context, draft, workspace, stages = stages)
                     checkCancelled(state)
                     state.apk = apk
                 } else {
@@ -274,24 +275,26 @@ object DeviceBuildEngine {
                         if (DeviceArtifactKind.APK in fastOutputs) {
                             candidateApk = FastHtmlApkPackager.build(
                                 context, draft.copy(buildOutput = "apk", signingMode = SigningMode.DEBUG),
-                                workspace, uploadIdentity?.apkSigner
+                                workspace, uploadIdentity?.apkSigner, stages
                             )
                             checkCancelled(state)
                         }
                         val unsigned = FastHtmlAabUnsignedPackager.buildUnsignedCandidate(
-                            context, draft, workspace
+                            context, draft, workspace, stages
                         )
                         candidateUnsignedAab = unsigned
                         checkCancelled(state)
                         if (uploadIdentity != null) {
                             state.logs.add("APPFORGE_FAST_AAB_STAGE_UNSIGNED_OK")
                         }
-                        candidateSignedAab = if (uploadIdentity == null) {
-                            FastHtmlAabJarSigner.signDevelopment(unsigned, workspace)
-                        } else {
-                            FastHtmlAabJarSigner.signWithIdentity(
-                                unsigned, workspace, uploadIdentity.key, uploadIdentity.certificate
-                            )
+                        candidateSignedAab = stages.measure(BuildStageTimings.Stage.SIGNING) {
+                            if (uploadIdentity == null) {
+                                FastHtmlAabJarSigner.signDevelopment(unsigned, workspace)
+                            } else {
+                                FastHtmlAabJarSigner.signWithIdentity(
+                                    unsigned, workspace, uploadIdentity.key, uploadIdentity.certificate
+                                )
+                            }
                         }
                         checkCancelled(state)
                         if (uploadIdentity != null) {
@@ -1697,29 +1700,42 @@ object DeviceBuildEngine {
         nodeWebAssets: Boolean = false,
         fastWebBuild: Boolean = false
     ) {
+        val stages = BuildStageTimings { state.logs.add(it) }
         WebviewProjectSettings.validate(draft)
         val project = File(workspace, "android-wrapper")
         project.deleteRecursively()
 
         val javaDir = File(project, "app/src/main/java/com/appforge/runtime").apply { mkdirs() }
         val assetsDir = File(project, "app/src/main/assets").apply { mkdirs() }
-        File(workspace, "runtime/FastActivity.java").copyTo(File(javaDir, "FastActivity.java"), overwrite = true)
-        File(workspace, "runtime/AppForgeLocalAssets.java").copyTo(File(javaDir, "AppForgeLocalAssets.java"), overwrite = true)
+        stages.measure(BuildStageTimings.Stage.TEMPLATE) {
+            File(workspace, "runtime/FastActivity.java").copyTo(File(javaDir, "FastActivity.java"), overwrite = true)
+            File(workspace, "runtime/AppForgeLocalAssets.java").copyTo(File(javaDir, "AppForgeLocalAssets.java"), overwrite = true)
 
-        File(workspace, "runtime/AppForgeShareProvider.java").copyTo(File(javaDir, "AppForgeShareProvider.java"), overwrite = true)
-        File(workspace, "runtime/AppForgeDocuments.java").copyTo(File(javaDir, "AppForgeDocuments.java"), overwrite = true)
+            File(workspace, "runtime/AppForgeShareProvider.java").copyTo(File(javaDir, "AppForgeShareProvider.java"), overwrite = true)
+            File(workspace, "runtime/AppForgeDocuments.java").copyTo(File(javaDir, "AppForgeDocuments.java"), overwrite = true)
+            File(workspace, "runtime/AppForgePdfReader.java").copyTo(File(javaDir, "AppForgePdfReader.java"), overwrite = true)
 
-        val site = File(assetsDir, "site").apply { mkdirs() }
-        if (draft.sourceMode == SourceMode.LOCAL) {
-            val source = siteRoot ?: error("index.html bulunamadı.")
-            check(source.copyRecursively(site, overwrite = true)) {
-                "Web dosyaları Android assets alanına kopyalanamadı."
-            }
-        } else {
-            File(site, "index.html").writeText("<!doctype html><html><body></body></html>")
         }
+        val site = File(assetsDir, "site").apply { mkdirs() }
+        stages.measure(BuildStageTimings.Stage.ASSETS) {
+            if (draft.sourceMode == SourceMode.LOCAL) {
+                val source = siteRoot ?: error("index.html bulunamadı.")
+                check(source.copyRecursively(site, overwrite = true)) {
+                    "Web dosyaları Android assets alanına kopyalanamadı."
+                }
+            } else {
+                File(site, "index.html").writeText("<!doctype html><html><body></body></html>")
+            }
 
+        }
+        val pdfProject = draft.sourceMode == SourceMode.LOCAL && draft.sourceTechnology == "pdf"
+        if (pdfProject) {
+            require(siteRoot != null && com.appforge.studio.io.PdfProjectSource.isProject(siteRoot)) { "PDF proje bütünlüğü geçersiz." }
+            require(com.appforge.studio.io.PdfProjectSource.isProject(site)) { "Kopyalanmış PDF bütünlüğü geçersiz." }
+            com.appforge.studio.io.PdfProjectSource.validate(File(site, com.appforge.studio.io.PdfProjectSource.DOCUMENT))
+        }
         val config = JSONObject()
+            .put("pdfDocument", pdfProject)
             .put("sourceMode", draft.sourceMode.name)
             .put("assetHttpsEnabled", (nodeWebAssets || draft.microphone) && draft.sourceMode == SourceMode.LOCAL)
             .put("webUrl", draft.webUrl)
@@ -1761,22 +1777,26 @@ object DeviceBuildEngine {
         File(assetsDir, "appforge-fast.json").writeText(config.toString())
         writeAndroidRootProject(project)
         File(project, "app/build.gradle.kts").writeText(webAppGradle(draft))
-        File(project, "app/src/main/AndroidManifest.xml").apply {
-            parentFile?.mkdirs()
-            writeText(webManifest(draft))
+        stages.measure(BuildStageTimings.Stage.MANIFEST) {
+            File(project, "app/src/main/AndroidManifest.xml").apply {
+                parentFile?.mkdirs()
+                writeText(webManifest(draft))
+            }
+            File(project,"app/src/main/res/xml/zz_appforge_network_security.xml").apply {
+                parentFile?.mkdirs();writeText(WebviewProjectSettings.networkSecurityXml(draft))
+            }
         }
-        File(project,"app/src/main/res/xml/zz_appforge_network_security.xml").apply {
-            parentFile?.mkdirs();writeText(WebviewProjectSettings.networkSecurityXml(draft))
+        stages.measure(BuildStageTimings.Stage.RESOURCES) {
+            File(project, "app/src/main/res/values/appforge_theme.xml").apply {
+                parentFile?.mkdirs()
+                writeText("""<resources><color name="appforge_primary">${xml(draft.primaryColor)}</color>
+                    <style name="AppForgeTheme" parent="android:style/Theme.Material.NoActionBar">
+                    <item name="android:colorPrimary">@color/appforge_primary</item>
+                    <item name="android:colorPrimaryDark">@color/appforge_primary</item>
+                    <item name="android:colorAccent">@color/appforge_primary</item></style></resources>""".trimIndent())
+            }
+            DeviceProjectIcon.install(context, draft, project)
         }
-        File(project, "app/src/main/res/values/appforge_theme.xml").apply {
-            parentFile?.mkdirs()
-            writeText("""<resources><color name="appforge_primary">${xml(draft.primaryColor)}</color>
-                <style name="AppForgeTheme" parent="android:style/Theme.Material.NoActionBar">
-                <item name="android:colorPrimary">@color/appforge_primary</item>
-                <item name="android:colorPrimaryDark">@color/appforge_primary</item>
-                <item name="android:colorAccent">@color/appforge_primary</item></style></resources>""".trimIndent())
-        }
-        DeviceProjectIcon.install(context, draft, project)
         writeSdkFiles(
             project = project,
             enableBuildCache =
@@ -1784,18 +1804,20 @@ object DeviceBuildEngine {
         )
 
         state.logs.add("🤖 Android paketi cihazda oluşturuluyor.")
-        buildGradleProject(
-            context = context,
-            draft = draft,
-            project = project,
-            workspace = workspace,
-            rootfs = rootfs,
-            shell = shell,
-            state = state,
-            gradleVersion = "9.3.1",
-            useBuildCache =
-                fastWebBuild
-        )
+        stages.measure(BuildStageTimings.Stage.PACKAGING) {
+            buildGradleProject(
+                context = context,
+                draft = draft,
+                project = project,
+                workspace = workspace,
+                rootfs = rootfs,
+                shell = shell,
+                state = state,
+                gradleVersion = "9.3.1",
+                useBuildCache =
+                    fastWebBuild
+            )
+        }
     }
 
     private fun buildAndroidProject(
@@ -2806,7 +2828,7 @@ object DeviceBuildEngine {
             sessionId = sessionId,
             rootfs = rootfs,
             workspace = workspace,
-            command = AndroidRuntimeTrust.shellEnvironment + "export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; " + command,
+            command = "export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; " + command,
             confirmed = true,
             timeoutMs = timeoutMs
         )

@@ -95,6 +95,34 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         return parent.listFiles().orEmpty().filter{it.name.matches(Regex("\\.v3-discard-[0-9a-f-]{36}"))}.onEach{require(!Files.isSymbolicLink(it.toPath()))}.sortedBy{it.name}
     }
     fun quarantinedBytes():Long = quarantinedDirectories().sumOf{dir->inventory(dir,{}).values.sumOf{it.size}}
+    /** Read-only, heavyweight SHA-256 comparison. Never count an unverified quarantine. */
+    fun duplicateQuarantineBytes():Long {
+        checkAnchor()
+        require(!journal.exists()) { "Önce yarım kalmış generation işlemi kurtarılmalı." }
+        val activeEntries=inventory(active,{})
+        val bytes=activeEntries.values.sumOf{it.size}
+        return quarantinedDirectories().sumOf { candidate ->
+            if(runCatching { inventory(candidate,{}) }.getOrNull()==activeEntries) bytes else 0L
+        }
+    }
+    /** User-approved and serialized by the manager. No symlinks followed; no non-identical tree removed. */
+    fun pruneDuplicateQuarantines(canceled:()->Unit={}):Long {
+        checkAnchor()
+        require(!journal.exists()) { "Önce yarım kalmış generation işlemi kurtarılmalı." }
+        val activeEntries=inventory(active,canceled)
+        val bytes=activeEntries.values.sumOf{it.size}
+        var reclaimed=0L
+        for(candidate in quarantinedDirectories()) {
+            canceled()
+            if(runCatching { inventory(candidate,canceled) }.getOrNull()!=activeEntries) continue
+            // Recheck both immediately before deletion. Files lacking exact proof are retained.
+            require(!journal.exists() && inventory(active,canceled)==activeEntries)
+            require(inventory(candidate,canceled)==activeEntries)
+            removeOwned(candidate)
+            reclaimed=Math.addExact(reclaimed,bytes)
+        }
+        return reclaimed
+    }
     fun prepare(module:OfflineModuleId,availableBytes:()->Long=defaultAvailableBytes,canceled:()->Unit={}):Prepared=prepareOwner(module.name,availableBytes,canceled)
     fun prepareOwner(owner:String,availableBytes:()->Long=defaultAvailableBytes,canceled:()->Unit={}):Prepared {
         require(owner.matches(Regex("[A-Z0-9_:-]{1,100}")))

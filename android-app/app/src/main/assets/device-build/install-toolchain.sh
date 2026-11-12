@@ -29,6 +29,10 @@ EXPO_ARM64_NDK_VERSION="27.1.12297006"
 EXPO_ARM64_NDK_RELEASE="r27b"
 EXPO_ARM64_NDK_SHA1="6fc476b2e57d7c01ac0c95817746b927035b9749"
 EXPO_ARM64_NDK_MARKER="$ROOT/.expo-arm64-ndk-host-v3"
+# The RUST_ANDROID_NDK host toolchain runs in a private, signed, pinned
+# prefix to preserve the existing verified libc6 2.39-0ubuntu8.7 baseline.
+NDK_HOST_ISOLATED=0
+case "$ENGINE:$HOST_ARCH" in rust-native:aarch64|rust-native:arm64) NDK_HOST_ISOLATED=1;;esac
 
 CMDLINE_TOOLS_VERSION="15859902"
 CMDLINE_TOOLS_SHA256="4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
@@ -222,7 +226,7 @@ if [ "${APPFORGE_APT_MANAGED_INSTALL:-0}" != 1 ];then
  echo 'APPFORGE_APT_MODULAR_INSTALL_REQUIRED: prepare missing tools from the package manager' >&2
  exit 60
 fi
-repair_broken_openjdk
+if [ "$NDK_HOST_ISOLATED" != 1 ];then repair_broken_openjdk;fi
 
 # Older AppForge device-toolchain revisions installed Node/npm
 # unconditionally. A failed installation can leave dozens of
@@ -268,7 +272,7 @@ repair_stale_node_packages() {
   # previously interrupted universal Node installation.
   dpkg --audit || true
 
-  apt-get \
+  /bin/sh /opt/appforge-device/telemetry-bin/apt-get \
     -f install \
     -y \
     --no-install-recommends \
@@ -276,11 +280,17 @@ repair_stale_node_packages() {
     || true
 }
 
-repair_stale_node_packages
+if [ "$NDK_HOST_ISOLATED" != 1 ];then repair_stale_node_packages;fi
 
-apt-get update
+/bin/sh /opt/appforge-device/telemetry-bin/apt-get update
+if [ "$NDK_HOST_ISOLATED" = 1 ];then
+  # No apt-get install or dpkg mutation. Ubuntu-signed R2 objects stay in a
+  # dedicated host prefix. Runtime NDK C/C++ link probes remain mandatory.
+  /bin/sh /workspace/runtime/install-ndk-host-isolated-v7.sh
+  export PATH="/opt/appforge-device/ndk-host-v7/bin:$PATH"
+else
 if [ "$REUSE_ANDROID_CORE" != 1 ]; then
-apt-get install -y --no-install-recommends \
+/bin/sh /opt/appforge-device/telemetry-bin/apt-get install -y --no-install-recommends \
   ca-certificates curl unzip zip xz-utils tar \
   git file \
   libstdc++6 zlib1g libpng16-16 \
@@ -290,7 +300,7 @@ fi
 if [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ]; then
   case "$HOST_ARCH" in
     aarch64|arm64)
-      apt-get install -y --no-install-recommends \
+      /bin/sh /opt/appforge-device/telemetry-bin/apt-get install -y --no-install-recommends \
         cmake \
         ninja-build \
         clang \
@@ -302,10 +312,10 @@ fi
 
 case "$ENGINE" in
   node-web)
-    apt-get install -y --no-install-recommends nodejs npm
+    /bin/sh /opt/appforge-device/telemetry-bin/apt-get install -y --no-install-recommends nodejs npm
     ;;
   python-android)
-    apt-get install -y --no-install-recommends       python3       python3-pip       python3-venv python3.12 python3.12-minimal libpython3.12-minimal libpython3.12-stdlib
+    /bin/sh /opt/appforge-device/telemetry-bin/apt-get install -y --no-install-recommends       python3       python3-pip       python3-venv python3.12 python3.12-minimal libpython3.12-minimal libpython3.12-stdlib
 
     test -x /usr/bin/python3.12
 
@@ -314,6 +324,7 @@ case "$ENGINE" in
     echo "APPFORGE_PYTHON_BUILD_RUNTIME=3.12"
     ;;
 esac
+fi # end shared APT package install; isolated Rust NDK never changes dpkg
 
 mkdir -p "$ROOT" "$SDK/platforms" "$SDK/build-tools" "$ROOT/cache"
 
@@ -474,17 +485,27 @@ ensure_expo_arm64_cmake_host() {
   case "$HOST_ARCH" in
     aarch64|arm64)
 
-      test -x /usr/bin/cmake
-      test -x /usr/bin/ninja
+      cmake_host=/usr/bin/cmake
+      ninja_host=/usr/bin/ninja
+      cmake_image=/usr/bin/cmake
+      ninja_image=/usr/bin/ninja
+      if [ "$NDK_HOST_ISOLATED" = 1 ];then
+        cmake_host="$ROOT/ndk-host-v7/bin/cmake"
+        ninja_host="$ROOT/ndk-host-v7/bin/ninja"
+        cmake_image="$ROOT/ndk-host-v7/sysroot/usr/bin/cmake"
+        ninja_image="$ROOT/ndk-host-v7/sysroot/usr/bin/ninja"
+      fi
+      test -x "$cmake_host"
+      test -x "$ninja_host"
 
-      file /usr/bin/cmake |
+      file -L "$cmake_image" |
         grep -Eqi 'aarch64|ARM aarch64' || {
           echo "APPFORGE_EXPO_CMAKE_HOST_ABI_MISMATCH" >&2
           file /usr/bin/cmake >&2 || true
           exit 61
         }
 
-      file /usr/bin/ninja |
+      file -L "$ninja_image" |
         grep -Eqi 'aarch64|ARM aarch64' || {
           echo "APPFORGE_EXPO_NINJA_HOST_ABI_MISMATCH" >&2
           file /usr/bin/ninja >&2 || true
@@ -496,14 +517,14 @@ ensure_expo_arm64_cmake_host() {
 
       mkdir -p "$cmake_bin"
 
-      cat > "$cmake_bin/cmake" <<'EOF'
+      cat > "$cmake_bin/cmake" <<EOF
 #!/bin/sh
-exec /usr/bin/cmake "$@"
+exec "$cmake_host" "\$@"
 EOF
 
-      cat > "$cmake_bin/ninja" <<'EOF'
+      cat > "$cmake_bin/ninja" <<EOF
 #!/bin/sh
-exec /usr/bin/ninja "$@"
+exec "$ninja_host" "\$@"
 EOF
 
       chmod 0755 \
@@ -553,21 +574,17 @@ ensure_expo_arm64_ndk_host() {
   case "$HOST_ARCH" in
     aarch64|arm64)
 
-      for tool in \
-        /usr/bin/clang \
-        /usr/bin/clang++ \
-        /usr/bin/ld.lld \
-        /usr/bin/llvm-ar \
-        /usr/bin/llvm-ranlib \
-        /usr/bin/llvm-strip \
-        /usr/bin/llvm-nm \
-        /usr/bin/llvm-objcopy \
-        /usr/bin/llvm-readelf
-      do
-        test -x "$tool"
+      ndk_host_bin=/usr/bin
+      ndk_clang_image=/usr/bin/clang
+      if [ "$NDK_HOST_ISOLATED" = 1 ];then
+        ndk_host_bin="$ROOT/ndk-host-v7/bin"
+        ndk_clang_image="$ROOT/ndk-host-v7/sysroot/usr/lib/llvm-18/bin/clang"
+      fi
+      for tool in clang clang++ ld.lld llvm-ar llvm-ranlib llvm-strip llvm-nm llvm-objcopy llvm-readelf;do
+        test -x "$ndk_host_bin/$tool"
       done
 
-      file -L /usr/bin/clang |
+      file -L "$ndk_clang_image" |
         grep -Eqi 'aarch64|ARM aarch64' || {
           echo "APPFORGE_EXPO_HOST_CLANG_ABI_MISMATCH" >&2
           file -L /usr/bin/clang >&2 || true
@@ -750,52 +767,52 @@ EOF
 
       write_clang_wrapper \
         clang-18 \
-        /usr/bin/clang \
+        $ndk_host_bin/clang \
         APPFORGE_EXPO_ARM64_NDK_CLANG18_WRAPPER_V3
 
       write_clang_wrapper \
         clang \
-        /usr/bin/clang \
+        $ndk_host_bin/clang \
         APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V3
 
       write_clang_wrapper \
         clang++ \
-        /usr/bin/clang++ \
+        $ndk_host_bin/clang++ \
         APPFORGE_EXPO_ARM64_NDK_CLANGXX_WRAPPER_V3
 
       write_tool_wrapper \
         ld.lld \
-        /usr/bin/ld.lld \
+        $ndk_host_bin/ld.lld \
         APPFORGE_EXPO_ARM64_NDK_LLD_WRAPPER_V2
 
       write_tool_wrapper \
         llvm-ar \
-        /usr/bin/llvm-ar \
+        $ndk_host_bin/llvm-ar \
         APPFORGE_EXPO_ARM64_NDK_AR_WRAPPER_V2
 
       write_tool_wrapper \
         llvm-ranlib \
-        /usr/bin/llvm-ranlib \
+        $ndk_host_bin/llvm-ranlib \
         APPFORGE_EXPO_ARM64_NDK_RANLIB_WRAPPER_V2
 
       write_tool_wrapper \
         llvm-strip \
-        /usr/bin/llvm-strip \
+        $ndk_host_bin/llvm-strip \
         APPFORGE_EXPO_ARM64_NDK_STRIP_WRAPPER_V2
 
       write_tool_wrapper \
         llvm-nm \
-        /usr/bin/llvm-nm \
+        $ndk_host_bin/llvm-nm \
         APPFORGE_EXPO_ARM64_NDK_NM_WRAPPER_V2
 
       write_tool_wrapper \
         llvm-objcopy \
-        /usr/bin/llvm-objcopy \
+        $ndk_host_bin/llvm-objcopy \
         APPFORGE_EXPO_ARM64_NDK_OBJCOPY_WRAPPER_V2
 
       write_tool_wrapper \
         llvm-readelf \
-        /usr/bin/llvm-readelf \
+        $ndk_host_bin/llvm-readelf \
         APPFORGE_EXPO_ARM64_NDK_READELF_WRAPPER_V2
 
       grep -q \
@@ -816,6 +833,9 @@ int main(void) {
 }
 EOF
 
+      [ -s "$probe/probe.c" ] || {
+        echo "APPFORGE_NDK_C_PROBE_SOURCE_MISSING" >&2;exit 67;
+      }
       "$bin/clang" \
         --target=aarch64-linux-android24 \
         --sysroot="$host/sysroot" \
@@ -842,6 +862,9 @@ int main() {
 }
 EOF
 
+      [ -s "$probe/probe.cpp" ] || {
+        echo "APPFORGE_NDK_CPP_PROBE_SOURCE_MISSING" >&2;exit 68;
+      }
       "$bin/clang++" \
         --target=aarch64-linux-android24 \
         --sysroot="$host/sysroot" \
@@ -1103,10 +1126,40 @@ accept_android_sdk_license() {
   if [ -n "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ] && [ -f /workspace/runtime/jvm-telemetry/network-byte-agent.jar ]; then
     SDK_JAVA_OPTIONS="$SDK_JAVA_OPTIONS -javaagent:/workspace/runtime/jvm-telemetry/network-byte-agent.jar"
   fi
-  yes |
+  # The SDK Manager may report all licenses accepted after failing
+  # to retrieve remote manifests. Require the actual license file.
+  if ! yes |
     JAVA_TOOL_OPTIONS="$SDK_JAVA_OPTIONS" "$SDK/cmdline-tools/latest/bin/sdkmanager" \
       --sdk_root="$SDK" \
-      --licenses
+      --licenses --verbose; then
+    echo "APPFORGE_ANDROID_SDK_LICENSE_PRIMARY_COMMAND_FAILED" >&2
+  fi
+
+  if [ ! -s "$SDK/licenses/android-sdk-license" ]; then
+    echo "APPFORGE_ANDROID_SDK_LICENSE_PRIMARY_FILE_MISSING" >&2
+
+    # Retry with the existing JDK certificate store, preserving TLS
+    # verification and explicit application-level license consent.
+    if [ -s "$JAVA_HOME/lib/security/cacerts" ]; then
+      FALLBACK_JAVA_OPTIONS="-Djavax.net.ssl.trustStore=$JAVA_HOME/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+
+      if [ -n "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ] &&
+         [ -f /workspace/runtime/jvm-telemetry/network-byte-agent.jar ]; then
+        FALLBACK_JAVA_OPTIONS="$FALLBACK_JAVA_OPTIONS -javaagent:/workspace/runtime/jvm-telemetry/network-byte-agent.jar"
+      fi
+
+      echo "APPFORGE_ANDROID_SDK_LICENSE_JDK_CACERTS_RETRY"
+
+      if ! yes |
+        JAVA_TOOL_OPTIONS="$FALLBACK_JAVA_OPTIONS" "$SDK/cmdline-tools/latest/bin/sdkmanager" \
+          --sdk_root="$SDK" \
+          --licenses --verbose; then
+        echo "APPFORGE_ANDROID_SDK_LICENSE_FALLBACK_COMMAND_FAILED" >&2
+      fi
+    else
+      echo "APPFORGE_ANDROID_SDK_JDK_CACERTS_MISSING" >&2
+    fi
+  fi
 
   test -s \
     "$SDK/licenses/android-sdk-license" || {

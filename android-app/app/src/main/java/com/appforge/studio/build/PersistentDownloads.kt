@@ -106,15 +106,15 @@ internal class PersistentDownloads(private val directory:File,private val roots:
         FileOutputStream(part).use{it.write(bytes);it.fd.sync()}
         Files.move(part.toPath(),file.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
     }
-    /** Re-read bytes, never trust persisted COMPLETE/partial counters or READY markers. */
+    /** Validate resumable prefixes; final files await explicit source authorization. */
     @Synchronized fun recover():List<ArtifactDownloadRecord> = read().map{r->
         if(r.downloadState==DownloadState.CANCELLED)return@map r
         var bytes=0L;var state=DownloadState.RECOVERY_REQUIRED;var verification="RECHECK_REQUIRED"
         r.stagingIdentity?.let { identity ->
             val target=resolve(identity)
-            if(target.isFile && target.length()<=2L*1024*1024*1024 && r.expectedSha256!=null && (r.expectedBytes==null || target.length()==r.expectedBytes) && VerifiedModuleDownload.sha(target)==r.expectedSha256) {
-                state=DownloadState.RECOVERY_REQUIRED;verification="RECHECK_REQUIRED" // Source manifest is re-authorized only by a fresh explicit module request.
-            } else {
+            // The final file still requires explicit source authorization at use time.
+            // Reading its contents during journal recovery cannot change that decision.
+            if(r.downloadState!=DownloadState.COMPLETED || !target.isFile) {
                 val part=File(target.path+".part");val seal=File(part.path+".sha256");val source=File(part.path+".identity")
                 listOf(part,seal,source).forEach(::safe)
                 if(part.isFile && part.length()<=2L*1024*1024*1024 && (r.expectedBytes==null || part.length()<=r.expectedBytes) && seal.isFile && seal.length()==64L && source.isFile && source.length()<=200 && source.readText()==r.sourceIdentityHash+"\n"+r.expectedSha256 && seal.readText()==VerifiedModuleDownload.sha(part)) {

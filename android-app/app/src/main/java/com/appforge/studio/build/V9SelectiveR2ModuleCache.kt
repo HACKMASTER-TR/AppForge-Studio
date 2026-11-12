@@ -179,6 +179,9 @@ internal object V9SelectiveR2ModuleCache {
         check(userApproved) { "User approval required for V9 selective package prefetch" }
         val plan = signedPlan(context, manifest, signature, persistedFloor, selected, architecture)
         val cache = directory(context)
+        // User explicitly restarted an authenticated plan. Preserve bad cache
+        // entries separately before a clean re-download; inspection alone never mutates.
+        for(item in plan.objects)V9R2ObjectTransfer.quarantineDamaged(File(cache,item.sha256),item.sha256,item.bytes,userApproved)
         val before = inspectCache(cache, plan.objects)
         val available = cache.usableSpace
         if (before.missing.isNotEmpty()) require(available > before.networkBytes + 64L * 1024 * 1024) {

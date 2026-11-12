@@ -11,19 +11,26 @@ class AptSnapshotRetryPolicyTest {
         val b=File("src/main/assets/device-build/apt-snapshot-lock.sh")
         return (if(a.isFile)a else b).readText()
     }
-    @Test fun updateRetryCountAndNetworkTimeoutsAreBounded() {
+    @Test fun r2TimeoutsAndRangesAreBoundedWithoutSnapshotRetries() {
         val text=shell()
-        assertTrue(text.contains("""appforge_apt_get_legacy "$@" -o Acquire::Retries=2"""))
-        assertTrue(text.contains("-o Acquire::https::Timeout=20"))
-        assertTrue(text.contains("-o Acquire::http::Timeout=20"))
-        assertFalse(text.contains("Acquire::Retries=999"))
+        assertFalse(text.contains("appforge_apt_get_legacy"))
+        val a=File("app/src/main/java/com/appforge/studio/build/V9R2ObjectTransfer.kt")
+        val b=File("src/main/java/com/appforge/studio/build/V9R2ObjectTransfer.kt")
+        val transport=(if(a.isFile)a else b).readText()
+        assertTrue(transport.contains("connectTimeout = 20_000"))
+        assertTrue(transport.contains("readTimeout = 20_000"))
+        assertTrue(transport.contains("V9SignedR2CandidateDownload.CHUNK_BYTES"))
+        assertTrue(transport.contains("connection.instanceFollowRedirects = false"))
+        assertEquals(8L*1024*1024,V9SignedR2CandidateDownload.CHUNK_BYTES)
     }
-    @Test fun failedSnapshotCannotSilentlyFallbackToLiveArchive() {
+    @Test fun failedR2CannotSilentlyFallbackToSnapshotOrLiveArchive() {
         val text=shell()
         assertTrue(text.contains("as_stamp=20261018T000000Z"))
-        assertTrue(text.contains("https://snapshot.ubuntu.com/ubuntu/"))
-        assertTrue(text.contains("snapshot index acquisition failed"))
-        assertFalse(text.contains("as_repo=\"https://archive.ubuntu.com"))
+        assertTrue(text.contains("https://snapshot.ubuntu.com/ubuntu/")) // provenance only
+        assertTrue(text.contains("snapshot fallback prohibited"))
+        assertTrue(text.contains("as_prepare_r2_indices || return 60"))
+        assertFalse(ModuleArtifactBroker.allowed(java.net.URL("https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble/InRelease")))
+        assertFalse(ModuleArtifactBroker.allowed(java.net.URL("https://archive.ubuntu.com/ubuntu/pool/example.deb")))
     }
     @Test fun signatureHashAndExpiryValidationStayRequired() {
         val text=shell()

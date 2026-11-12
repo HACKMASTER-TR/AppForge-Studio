@@ -19,7 +19,7 @@ function fixture(body){
   // OpenPGP signatures without importing keys or modifying the user's keyring.
   if(spawnSync('gpgv',['--version']).error?.code==='ENOENT'){
    const home=path.join(dir,'gpg-home');fs.mkdirSync(home,{mode:0o700});
-   source=source.replace('gpgv --status-fd=1',`gpg --batch --no-default-keyring --no-auto-key-retrieve --homedir '${home}' --verify --status-fd=1`);
+   source=source.replace('gpgv --status-fd=1',`gpg --batch --no-default-keyring --no-auto-key-retrieve --homedir '${home}' --decrypt --status-fd=1`);
   }
   fs.writeFileSync(helper,source);
   function seal(){fs.writeFileSync(path.join(store,'indexes.sha256'),fs.readdirSync(path.join(store,'lists')).sort().map(n=>`${sha(fs.readFileSync(path.join(store,'lists',n)))}  ${n}\n`).join(''));}seal();
@@ -27,7 +27,13 @@ function fixture(body){
   body({dir,store,helper,profile,seal,run});
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 }
-test('fixed Ubuntu signed snapshot verifies all four real InRelease signatures',()=>fixture(({run})=>{const r=run('as_verify_indices');assert.equal(r.status,0,r.stderr);}));
+test('fixed Ubuntu signed snapshot verifies all four real InRelease signatures independently of missing Packages',()=>fixture(({profile,run})=>{
+ const r=run(`while IFS="$(printf '\\t')" read -r as_suite as_hash;do as_verify_release || exit 60;done < '${profile}'`);
+ assert.equal(r.status,0,r.stderr);
+}));
+test('all four genuine signed InRelease files cannot authorize installation without sixteen signed Packages indexes',()=>fixture(({run})=>{
+ assert.notEqual(run('as_verify_indices').status,0,'incomplete metadata must never pass admission');
+}));
 test('signed metadata hash mismatch fails closed',()=>fixture(({store,run})=>{fs.appendFileSync(path.join(store,'lists','snapshot.ubuntu.com_ubuntu_20261018T000000Z_dists_noble_InRelease'),'corrupt');assert.notEqual(run('as_verify_indices').status,0);}));
 test('locally replacing checksum cannot make an invalid repository signature trusted',()=>fixture(({store,profile,seal,run})=>{
  const file=path.join(store,'lists','snapshot.ubuntu.com_ubuntu_20261018T000000Z_dists_noble_InRelease');
@@ -87,4 +93,74 @@ test('actual snapshot transaction rejects insufficient download space before acq
 
 test('APT mutation outside the modular installer is rejected before touching the root',()=>fixture(({run})=>{
  const result=run('APPFORGE_APT_MANAGED_INSTALL=0;as_configure');assert.equal(result.status,60);assert(result.stderr.includes('approved modular installer'));
+}));
+
+test('only absent Ubuntu Base documentation exclusions pass package verification', () => fixture(({dir, helper, run}) => {
+ const config = path.join(dir, 'excludes');
+ const doc = path.join(dir, 'usr/share/doc');
+ const man = path.join(dir, 'usr/share/man');
+ fs.writeFileSync(helper, fs.readFileSync(helper, 'utf8')
+  .replaceAll('/etc/dpkg/dpkg.cfg.d/excludes', config)
+  .replaceAll('/usr/share/doc', doc)
+  .replaceAll('/usr/share/man', man));
+ fs.writeFileSync(config, `path-exclude=${doc}/*\npath-exclude=${man}/*\n`);
+ const check = output => run(`as_expected_doc_exclusions '${output}'`);
+ const authors = path.join(doc, 'perl/AUTHORS.gz');
+ assert.equal(check(`missing     ${authors}\nmissing     ${man}/man1/perl.1.gz`).status, 0);
+ assert.notEqual(check('missing     /usr/bin/perl5.38.2').status, 0);
+ assert.notEqual(check(`?M???????   ${authors}`).status, 0);
+ assert.equal(check(`missing     ${doc}/tar/NEWS.gz`).status, 0);
+ const spacedDoc = path.join(doc, 'python3-setuptools/python 2 sunset.rst');
+ assert.equal(check(`missing     ${spacedDoc}`).status, 0);
+ assert.notEqual(check(`missing     ${spacedDoc} (Permission denied)`).status, 0);
+ assert.notEqual(check(`missing     ${spacedDoc}\nmissing     /usr/bin/python3`).status, 0);
+ fs.mkdirSync(path.dirname(spacedDoc), {recursive: true});
+ fs.symlinkSync('missing-target', spacedDoc);
+ assert.notEqual(check(`missing     ${spacedDoc}`).status, 0);
+ assert.notEqual(check(`missing     ${doc}/tar/copyright`).status, 0);
+ assert.notEqual(check(`missing     ${doc}/tar/changelog.Debian.gz`).status, 0);
+ assert.notEqual(check(`missing     ${doc}/../bin/perl`).status, 0);
+ fs.mkdirSync(path.dirname(authors), {recursive: true});
+ fs.symlinkSync('missing-target', authors);
+ assert.notEqual(check(`missing     ${authors}`).status, 0);
+ fs.writeFileSync(config, '');
+ assert.notEqual(check(`missing     ${man}/man1/perl.1.gz`).status, 0);
+}));
+
+test('reviewed dangling dpkg links are repaired only with matching archive link and bytes', () => fixture(({dir, store, helper, run}) => {
+ const bin = path.join(dir, 'bin');
+ const tree = path.join(dir, 'payload');
+ const payloadBin = path.join(tree, 'usr/bin');
+ const archives = path.join(store, 'archives');
+ for (const folder of [bin, payloadBin, archives]) fs.mkdirSync(folder, {recursive: true});
+ const reader = path.join(dir, 'read-fixture-package');
+ fs.writeFileSync(reader, '#!/bin/sh\ncase "$1" in --contents) exec tar -tvf "$2";; --fsys-tarfile) exec cat "$2";; esac\n', {mode: 0o700});
+ fs.writeFileSync(helper, fs.readFileSync(helper, 'utf8')
+  .replace('as_alias_path="/usr/bin/', `as_alias_path="${bin}/`)
+  .replace('as_target_path="/usr/bin/', `as_target_path="${bin}/`)
+  .replace('mktemp /usr/bin/', `mktemp ${bin}/`)
+  .replaceAll('dpkg-deb', reader)
+  .replaceAll('".$as_alias_path"', '"./usr/bin/$as_alias"')
+  .replaceAll('".$as_target_path"', '"./usr/bin/$as_target"'));
+ for (const [pkg, alias, target] of [
+  ['perl-base', 'perl5.38.2', 'perl'], ['perl', 'perlthanks', 'perlbug'], ['unzip', 'zipinfo', 'unzip'],
+ ]) {
+  fs.writeFileSync(path.join(payloadBin, target), pkg, {mode: 0o755});
+  fs.linkSync(path.join(payloadBin, target), path.join(payloadBin, alias));
+  const tar = spawnSync('tar', ['-cf', '-', '-C', tree, `./usr/bin/${target}`, `./usr/bin/${alias}`]);
+  assert.equal(tar.status, 0, String(tar.stderr));
+  const digest = sha(tar.stdout);
+  fs.writeFileSync(path.join(archives, `${digest}.deb`), tar.stdout);
+  const link = path.join(bin, alias);
+  fs.symlinkSync(`../../usr/bin/${target}.dpkg-new`, link);
+  fs.writeFileSync(path.join(bin, target), 'different', {mode: 0o755});
+  const command = `as_repair_dpkg_hardlink '${pkg}' '${digest}'`;
+  assert.equal(run(command).status, 60);
+  assert(fs.lstatSync(link).isSymbolicLink());
+  fs.writeFileSync(path.join(bin, target), pkg);
+  const result = run(command);
+  assert.equal(result.status, 0, result.stderr);
+  assert(fs.lstatSync(link).isFile());
+  assert.equal(fs.readFileSync(link, 'utf8'), pkg);
+ }
 }));
