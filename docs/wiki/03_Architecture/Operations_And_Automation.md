@@ -22,6 +22,8 @@ source_files:
   - "scripts/appforge"
   - "scripts/appforge-stability-gate"
   - "scripts/appforge-delivery-preflight"
+  - "scripts/termux/github-apk.sh"
+  - "quality/tests/test_termux_github_apk.py"
 ---
 
 # Operations and Automation
@@ -48,3 +50,24 @@ workflow.
 
 Publishing, GitHub Releases, commits, pushes and merges remain explicit
 delivery actions rather than automatic consequences of a local source edit.
+
+## Termux GitHub / debug APK handoff (2026-11-12)
+
+`scripts/termux/github-apk.sh` controls GitHub from a normal Termux shell while
+compiling the APK on the existing GitHub Ubuntu debug runner. It does not attempt
+to execute desktop SDK/NDK host binaries natively on Android ARM64. See the
+[Termux instructions](../../../scripts/termux/README.md).
+
+The driver checks the actual authenticated account's push permission, a supplied
+source bundle's SHA-256, base ancestry and development branch before an ordinary
+non-forced push. It creates a draft PR, dispatches `android-debug.yml` with release
+publication explicitly false, correlates the exact commit/run, and downloads only
+a successful development debug artifact. Main, merging, Play/Cloudflare, app
+installation, user data and existing Node are outside the procedure. Local work
+and downloads use new directories; Git directory environment overrides are refused.
+
+The existing workflow was observed active through GitHub's read-only workflow
+metadata API. Driver regressions use mocked Git/GitHub boundaries; they do not
+prove a real phone session, push, PR or hosted build. Those run only after the user
+authenticates an account with actual repository write access in Termux. The prior
+cloud connector 403 does not establish the phone account's permissions.

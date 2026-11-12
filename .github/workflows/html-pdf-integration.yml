@@ -40,6 +40,8 @@ jobs:
           if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"; fi
       - name: Execute Android units and build app, templates and device tests
         run: gradle -p android-app :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :html-apk-template:bundleRelease --no-daemon --max-workers=2
+      - name: Verify Termux GitHub and APK driver with mocked service boundaries
+        run: python3 -m unittest discover -s quality/tests -p test_termux_github_apk.py -v
       - name: Execute routing and document security regressions
         run: node --test quality/tests/html_document_bridge_runtime.test.js quality/tests/fast_html_advanced_routing_runtime.test.js quality/tests/fast_html_ui_recovery_v1_contract.test.js quality/tests/fast_html_apk_v1_contract.test.js quality/tests/t21_share_provider_runtime.test.js quality/tests/web_wrapper_config_contract.test.js
       - name: Compile shipped normal runtime against Android API
