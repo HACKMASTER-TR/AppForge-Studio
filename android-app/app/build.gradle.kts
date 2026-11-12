@@ -749,8 +749,8 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeV9R2Isolated3Upgrade) {
             variant.outputs.forEach { output ->
-                output.versionCode.set(535)
-                output.versionName.set("5.0.35-isolated3-upgrade")
+                output.versionCode.set(536)
+                output.versionName.set("5.0.36-isolated3-upgrade")
             }
         }
         appforgeIntegrationDebugVersionCode?.let { code ->

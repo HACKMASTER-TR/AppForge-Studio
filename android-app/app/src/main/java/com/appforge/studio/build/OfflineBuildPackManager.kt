@@ -628,6 +628,20 @@ internal object OfflineBuildPackManager {
             }
         }
     }
+    fun duplicateQuarantineBytes(context:Context):Long {
+        require(BuildModuleUsage.mutationBlockedReason()==null){"Etkin işlem varken ayrılmış ortam incelemesi yapılmaz."}
+        val root=runtimeRootfs(context)?:error("Runtime yok")
+        return RuntimeGenerationStore(root).duplicateQuarantineBytes()
+    }
+    suspend fun pruneDuplicateQuarantines(context:Context):Long=installMutex.withLock {
+        BuildModuleUsage.mutationLease().use {
+            val root=runtimeRootfs(context)?:error("Runtime yok")
+            val job=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
+            RuntimeGenerationStore(root).pruneDuplicateQuarantines(
+                canceled={if(job?.isActive==false)throw kotlinx.coroutines.CancellationException("Temizleme iptal edildi")}
+            )
+        }
+    }
     fun prunableSnapshotBytes(context:Context):Long {
         require(BuildModuleUsage.mutationBlockedReason()==null){"Etkin işlem varken temizleme hesabı yapılmaz."}
         val root=runtimeRootfs(context)?:error("Runtime yok.")

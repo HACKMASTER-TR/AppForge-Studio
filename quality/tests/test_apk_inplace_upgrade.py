@@ -13,7 +13,7 @@ class ApkUpgradeTest(unittest.TestCase):
     def setUp(self):
         self.reference=json.loads((ROOT/'quality/fixtures/appforge-v9r2isolated3-reference.json').read_text())
         self.old={k:self.reference[k] for k in ['package','version_code','version_name','min_sdk','target_sdk','certificate_sha256']}
-        self.new=dict(self.old,version_code=535,version_name='5.0.35-isolated3-upgrade')
+        self.new=dict(self.old,version_code=536,version_name='5.0.36-isolated3-upgrade')
     def verify(self, **overrides):
         values=dict(reference=self.reference,old=self.old,new=self.new,old_hash=self.reference['apk_sha256'],new_hash='a'*64,source_sha='b'*40);values.update(overrides)
         return module.check(**values)
@@ -24,7 +24,7 @@ class ApkUpgradeTest(unittest.TestCase):
     def test_same_package_with_different_signer_is_rejected(self):
         with self.assertRaisesRegex(ValueError,'UPDATE_CERTIFICATE_MISMATCH'):self.verify(new=dict(self.new,certificate_sha256='c'*64))
     def test_version_must_increase_to_the_reviewed_code(self):
-        for version in [533,534,536]:
+        for version in [533,534,535,537]:
             with self.subTest(version=version),self.assertRaisesRegex(ValueError,'UPDATE_VERSION_MUST_INCREASE'):self.verify(new=dict(self.new,version_code=version))
     def test_modified_reference_is_rejected(self):
         with self.assertRaisesRegex(ValueError,'REFERENCE_APK_HASH_MISMATCH'):self.verify(old_hash='d'*64)

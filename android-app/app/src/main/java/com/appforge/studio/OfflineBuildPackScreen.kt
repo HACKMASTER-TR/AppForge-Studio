@@ -214,6 +214,10 @@ internal object ModuleInstallOperations {
     var sdkConsent by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf("") }
     var confirmPrune by remember{mutableStateOf(false)}
+    var confirmDuplicateQuarantine by remember{mutableStateOf(false)}
+    var duplicateQuarantineBusy by remember{mutableStateOf(false)}
+    var duplicateQuarantineBytes by remember(confirmDuplicateQuarantine){mutableStateOf<Long?>(null)}
+    var duplicateQuarantineError by remember(confirmDuplicateQuarantine){mutableStateOf<String?>(null)}
     var confirmHistoryCleanup by remember{mutableStateOf(false)}
     var historyDetails by rememberSaveable { mutableStateOf(false) }
     var pruneBytes by remember(confirmPrune){mutableStateOf<Long?>(null)}
@@ -292,6 +296,12 @@ internal object ModuleInstallOperations {
             detail="Kurulum ön kontrolü başarısız: ${it.message}"
             chosen=null
         })
+    }
+    LaunchedEffect(confirmDuplicateQuarantine) {
+        if(!confirmDuplicateQuarantine)return@LaunchedEffect
+        val result=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.duplicateQuarantineBytes(context)}}
+        duplicateQuarantineBytes=result.getOrNull()
+        duplicateQuarantineError=result.exceptionOrNull()?.message
     }
     LaunchedEffect(confirmPrune) {
         if(!confirmPrune)return@LaunchedEffect
@@ -453,6 +463,26 @@ internal object ModuleInstallOperations {
             confirmButton={TextButton(enabled=!busy && permission?.allowed==true,onClick={pendingLifecycle=null;ModuleInstallOperations.lifecycle(context,id,action)}){Text("Onayla")}},
             dismissButton={TextButton(onClick={pendingLifecycle=null}){Text("Vazgeç")}})
     }
+    if(confirmDuplicateQuarantine)AlertDialog(
+        onDismissRequest={confirmDuplicateQuarantine=false},
+        title={Text("Aynı içerikli ayrılmış Ubuntu kopyalarını temizle")},
+        text={Text(duplicateQuarantineError ?: duplicateQuarantineBytes?.let {
+            "SHA-256 ve dosya öznitelikleriyle aktif ortamla birebir aynı olduğu doğrulanan ${it/1024/1024} MiB temizlenebilir. " +
+            "Farklı veya doğrulanamayan .v3-discard klasörleri, rootfs, geri alma sürümleri ve paket önbelleği korunur."
+        } ?: "Ayrılmış ortamlar karşılaştırılıyor; bu kontrol büyük depolamada uzun sürebilir…")},
+        confirmButton={TextButton(enabled=!busy && !preparing && !duplicateQuarantineBusy && duplicateQuarantineBytes!=null && duplicateQuarantineBytes!!>0,onClick={
+            confirmDuplicateQuarantine=false
+            duplicateQuarantineBusy=true
+            scope.launch {
+                try {
+                    detail=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.pruneDuplicateQuarantines(context)}
+                        .fold({"${it/1024/1024} MiB birebir aynı ayrılmış kopya temizlendi; diğerleri korundu."},
+                            {"Güvenli temizlik engellendi: ${it.message}"})}
+                } finally { duplicateQuarantineBusy=false }
+            }
+        }){Text("Yalnız birebir kopyaları temizle")}},
+        dismissButton={TextButton(onClick={confirmDuplicateQuarantine=false}){Text("Vazgeç")}}
+    )
     if(confirmPrune)AlertDialog(
         onDismissRequest={confirmPrune=false},
         title={Text("Kullanılmayan eski sürümleri temizle")},
@@ -873,10 +903,17 @@ internal object ModuleInstallOperations {
             }
             plan?.let{p->item{Text(p.error?:"Bu proje için: "+p.modules.joinToString{OfflineModules.spec(it).title})}}
             if(section=="diagnostics" && recovered)item {
-                OutlinedButton(
-                    enabled=!busy && !preparing && BuildModuleUsage.mutationBlockedReason()==null,
-                    onClick={confirmPrune=true}
-                ){Text("Eski sürümleri temizle")}
+                Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        enabled=!busy && !preparing && !duplicateQuarantineBusy && BuildModuleUsage.mutationBlockedReason()==null,
+                        onClick={confirmPrune=true}
+                    ){Text("Eski sürümleri temizle")}
+                    OutlinedButton(
+                        enabled=!busy && !preparing && !duplicateQuarantineBusy && BuildModuleUsage.mutationBlockedReason()==null,
+                        onClick={confirmDuplicateQuarantine=true}
+                    ){Text("Birebir aynı ayrılmış kopyaları denetle")}
+                    Text("Bu tarama dosya bütünlüğünü okur. Farklı/şüpheli kopyalar otomatik silinmez.",style=MaterialTheme.typography.bodySmall)
+                }
             }
             if(section=="modules" && project!=null && (!FastHtmlApkPolicy.isCandidate(project) || RustProjectPolicy.hasRust(project)))item { ProjectDependencyPreparationCard(project,onRustPrepared) }
             if(section=="modules" && selected==OfflineModuleId.WINDOWS_PORTABLE && portableReady)item { WindowsModuleSmokeCard() }
