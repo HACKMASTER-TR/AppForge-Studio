@@ -325,6 +325,44 @@ object TemplateProjectFactory {
             /*
              * ETKİLEŞİM
              */
+            "document-export" -> shell(
+                title = "Belge kaydet / paylaş",
+                subtitle = "Yerel HTML örneği; normal ve hızlı Android motorlarında aynı belge köprüsü.",
+                body = """
+                    <section class="card"><p>Ayarlar: JavaScript, yerel köprü, indirmeler ve paylaşımı açın.
+                    Depolama izni gerekmez; kaydetme sistem belge seçicisini kullanır.</p>
+                    <p>Cihaz: APK kurun, uçak modunda açın, her türü kaydedin ve paylaşın.
+                    Seçiciyi iptal edin; uygulamaya dönüp tekrar deneyin. Dosyaları bağımsız okuyucuda açın.</p>
+                    <select id="format"><option>pdf</option><option>csv</option><option>png</option><option>jpeg</option><option>txt</option></select>
+                    <button onclick="exportDocument('save')">Kaydet</button>
+                    <button onclick="exportDocument('share')">Paylaş</button><p id="result" role="status"></p></section>
+                """.trimIndent(),
+                script = """
+                    async function exportDocument(mode) {
+                      const result=document.getElementById('result');
+                      try {
+                        if(!window.AppForgeDocuments)throw new Error('Belge köprüsü yok. JavaScript ve indirme/paylaşım ayarlarını kontrol edin.');
+                        const type=document.getElementById('format').value;let blob,name='example.'+type;
+                        if(type==='csv')blob=AppForgeDocuments.csv([['name','value'],['AppForge','çevrimdışı']]);
+                        else if(type==='txt')blob=new Blob(['AppForge — çevrimdışı metin\n'],{type:'text/plain'});
+                        else if(type==='pdf'){
+                          const parts=['%PDF-1.4\n'];const offsets=[0];
+                          const objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 4 0 R >>','<< /Length 0 >>\nstream\nendstream'];
+                          objects.forEach((value,i)=>{offsets.push(parts.join('').length);parts.push((i+1)+' 0 obj\n'+value+'\nendobj\n');});
+                          const start=parts.join('').length;parts.push('xref\n0 5\n0000000000 65535 f \n');
+                          offsets.slice(1).forEach(offset=>parts.push(String(offset).padStart(10,'0')+' 00000 n \n'));
+                          parts.push('trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n'+start+'\n%%EOF\n');blob=new Blob(parts,{type:'application/pdf'});
+                        }else{
+                          const canvas=document.createElement('canvas');canvas.width=320;canvas.height=160;
+                          const c=canvas.getContext('2d');c.fillStyle='#ffffff';c.fillRect(0,0,320,160);c.fillStyle='#000000';c.fillText('AppForge offline',20,80);
+                          blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/'+type));
+                          if(!blob)throw new Error('Görüntü üretilemedi');
+                        }
+                        result.textContent=await AppForgeDocuments[mode](blob,name);
+                      } catch(error){result.textContent=error.message;}
+                    }
+                """.trimIndent()
+            )
             "interaction-toolkit" ->
                 shell(
                     title =

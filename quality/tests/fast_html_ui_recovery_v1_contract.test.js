@@ -21,7 +21,7 @@ test('quick app name follows package slug unless package manually overridden', (
 test('exactly the built-in factory template slugs are listed locally', () => {
   const actual = [...factory.matchAll(/^\s*"([a-z][a-z0-9-]+)"\s*->/gm)].map(m => m[1]).sort();
   const catalog = [...local.matchAll(/entry\("([a-z][a-z0-9-]+)"/g)].map(m => m[1]).sort();
-  assert.equal(catalog.length, 18);
+  assert.equal(catalog.length, 19);
   assert.deepEqual(catalog, actual);
 });
 
@@ -39,12 +39,12 @@ test('account status labels removed but privilege logic untouched', () => {
   assert.doesNotMatch(settings, /Normal AppForge kullanımı hesapsızdır/);
 });
 
-test('HTML URL bypass stays limited to APK without touching native or Expo build engines', () => {
+test('HTML URL APK and HTTPS bundles preserve native and Expo engine isolation', () => {
   const policy = read('android-app/app/src/main/java/com/appforge/studio/build/FastHtmlApkPolicy.kt');
   const engine = read('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt');
   assert.match(policy, /setOf\(DeviceArtifactKind\.APK\)/);
   assertFastHtmlEngineIsolation(root);
-  assert.match(engine, /FastHtmlApkPackager\.build\(context, draft, workspace\)/);
+  assert.match(engine, /FastHtmlApkPackager\.build\(context, draft, workspace, stages = stages\)/);
   assert.match(engine, /"expo" -> buildExpoProject/);
   assert.match(engine, /"android-gradle" -> buildAndroidProject/);
 });

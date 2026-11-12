@@ -20,10 +20,9 @@ public final class AppForgeShareProvider extends ContentProvider {
         return root;
     }
     static synchronized Uri create(Context context, byte[] bytes, String name, String mime) throws Exception {
-        if (bytes.length < 1 || bytes.length > AppForgeDocuments.LIMIT ||
-            !("application/pdf".equals(mime) ? AppForgeDocuments.isPdf(bytes) :
-                ("text/csv".equals(mime) || "application/csv".equals(mime)) && AppForgeDocuments.isCsv(bytes)))
+        if (!AppForgeDocuments.validDocument(bytes,mime))
             throw new SecurityException("Invalid share document");
+        AppForgeDocuments.safeDocumentName(name,mime);
         File root = directory(context);
         long total = 0, now = System.currentTimeMillis();
         File[] files = root.listFiles();
@@ -34,7 +33,7 @@ public final class AppForgeShareProvider extends ContentProvider {
         }
         if (total + bytes.length > 64L * 1024 * 1024) throw new java.io.IOException("Share cache full; try later");
         String key = java.util.UUID.randomUUID().toString().replace("-", "") +
-            ("application/pdf".equals(mime) ? ".pdf" : ".csv");
+            AppForgeDocuments.extension(mime);
         File target = new File(root, key);
         boolean ready = false;
         try {
@@ -52,9 +51,9 @@ public final class AppForgeShareProvider extends ContentProvider {
                 !(getContext().getPackageName() + ".appforge.documents").equals(uri.getAuthority()) ||
                 uri.getQuery() != null || uri.getFragment() != null) throw new SecurityException();
             java.util.List<String> parts = uri.getPathSegments();
-            if (parts.size() != 2 || !parts.get(0).matches("[a-f0-9]{32}\\.(pdf|csv)") ||
+            if (parts.size() != 2 || !parts.get(0).matches("[a-f0-9]{32}\\.(pdf|csv|png|jpg|jpeg|txt)") ||
                 !parts.get(1).equals(AppForgeDocuments.safeDocumentName(parts.get(1),
-                    parts.get(0).endsWith(".pdf") ? "application/pdf" : "text/csv"))) throw new SecurityException();
+                    AppForgeDocuments.mimeForName(parts.get(0))))) throw new SecurityException();
             File root = directory(getContext());
             File file = new File(root, parts.get(0));
             if (!file.getCanonicalFile().getParentFile().equals(root.getCanonicalFile()) || !file.isFile() ||
@@ -70,7 +69,7 @@ public final class AppForgeShareProvider extends ContentProvider {
         return ParcelFileDescriptor.open(resolve(uri), ParcelFileDescriptor.MODE_READ_ONLY);
     }
     @Override public String getType(Uri uri) {
-        try { return resolve(uri).getName().endsWith(".pdf") ? "application/pdf" : "text/csv"; }
+        try { return AppForgeDocuments.mimeForName(resolve(uri).getName()); }
         catch (FileNotFoundException e) { throw new IllegalArgumentException("Unavailable share document"); }
     }
     @Override public Cursor query(Uri uri, String[] projection, String selection, String[] args, String sort) {

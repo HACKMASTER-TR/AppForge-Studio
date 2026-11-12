@@ -119,6 +119,7 @@ public final class FastActivity extends Activity {
         }
     }
 
+    private AppForgePdfReader pdfReader;
     private JSONObject config;
     private View splashView;
     private long splashStartedAt;
@@ -179,6 +180,10 @@ public final class FastActivity extends Activity {
         lanAttempted = savedInstanceState != null && savedInstanceState.getBoolean("appforge.lanAttempted", false);
 
         config = loadConfig();
+        if (config.optBoolean("pdfDocument", false)) {
+            openPdfReader();
+            return;
+        }
 
         captureDeepLink(
             getIntent()
@@ -662,6 +667,12 @@ public final class FastActivity extends Activity {
         } catch (Throwable ignored) {
             return new JSONObject();
         }
+    }
+
+    private void openPdfReader() {
+        pdfReader = new AppForgePdfReader(this, config);
+        configureWindow();
+        applyAppForgeSystemBarInsets();
     }
 
     private void configureWindow() {
@@ -3125,6 +3136,7 @@ public final class FastActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (documents != null) documents.close();
+        if (pdfReader != null) pdfReader.close();
         if (
             webView != null
         ) {

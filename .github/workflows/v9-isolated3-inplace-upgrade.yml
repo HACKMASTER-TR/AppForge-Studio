@@ -1,0 +1,123 @@
+name: AppForge V9 Isolated3 In-place Upgrade
+on:
+  push:
+    branches: ["codex/v9r2-inplace-upgrade-*"]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: isolated3-upgrade-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      APPFORGE_DEBUG_KEY_ALIAS: appforge-v9r2-isolated
+      APPFORGE_DEBUG_STORE_PASSWORD: ${{ secrets.APPFORGE_V9R2_ISOLATED2_KEYSTORE_PASSWORD }}
+      APPFORGE_DEBUG_KEY_PASSWORD: ${{ secrets.APPFORGE_V9R2_ISOLATED2_KEYSTORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Preserve original runtime fixes and production boundaries
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 404e0edb404fbf4826b48f6a7d7007b40508568a HEAD
+          test -z "$(git diff --name-only 404e0edb404fbf4826b48f6a7d7007b40508568a HEAD -- cloudflare .github/workflows/android-play-release.yml android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java)"
+          test -z "$(git diff --name-only 404e0edb404fbf4826b48f6a7d7007b40508568a HEAD -- android-app/app/src/main/assets/device-build/install-ndk-host-isolated-v7.sh android-app/app/src/main/assets/device-build/install-toolchain.sh android-app/app/src/main/assets/device-build/install-rust-prerequisites.sh)"
+          test "$GITHUB_REF_NAME" != main
+      - name: Install pinned Android toolchain
+        run: |
+          set -euo pipefail
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"; fi
+      - name: Restore the original isolated3 signer without exporting it
+        env:
+          TEST_KEYSTORE_B64: ${{ secrets.APPFORGE_V9R2_ISOLATED2_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$TEST_KEYSTORE_B64"
+          test -n "$APPFORGE_DEBUG_STORE_PASSWORD"
+          umask 077
+          KEYFILE="$RUNNER_TEMP/isolated3-upgrade-signing.p12"
+          printf '%s' "$TEST_KEYSTORE_B64" | base64 -d > "$KEYFILE"
+          CERT=$(openssl pkcs12 -in "$KEYFILE" -nokeys -clcerts -passin env:APPFORGE_DEBUG_STORE_PASSWORD | openssl x509 -outform DER | sha256sum | cut -d' ' -f1)
+          test "$CERT" = dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082
+          keytool -list -storetype PKCS12 -keystore "$KEYFILE" -storepass:env APPFORGE_DEBUG_STORE_PASSWORD -alias "$APPFORGE_DEBUG_KEY_ALIAS" >/dev/null
+          echo "APPFORGE_DEBUG_KEYSTORE_PATH=$KEYFILE" >> "$GITHUB_ENV"
+      - name: Download the exact installed APK reference
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 42891389496
+          name: v9-isolated3-apk-404e0edb404fbf4826b48f6a7d7007b40508568a
+          path: reference-apk
+      - name: Run V9 security tests without skips
+        run: |
+          set -euo pipefail
+          command -v gpgv
+          python3 -B -m unittest discover -s quality/tests -p 'test_v9_*.py' -v > /tmp/upgrade-v9-security.log 2>&1 || { tail -120 /tmp/upgrade-v9-security.log; exit 1; }
+          if grep -Eq 'skipped=|\.\.\. skipped ' /tmp/upgrade-v9-security.log; then exit 1; fi
+          tail -5 /tmp/upgrade-v9-security.log
+      - name: Verify upgrade guard and Termux driver regressions
+        run: |
+          python3 -m unittest discover -s quality/tests -p test_apk_inplace_upgrade.py -v
+          python3 -m unittest discover -s quality/tests -p test_termux_github_apk.py -v
+      - name: Prepare pinned Kotlin compiler
+        run: python3 quality/tools/v9_pinned_kotlin_compiler.py "$RUNNER_TEMP/appforge-pinned-kotlin-maven"
+      - name: Test and build the original package with a higher version
+        run: |
+          gradle -p android-app :app:testDebugUnitTest :app:assembleDebug \
+            -PappforgeV9R2Isolated3Acceptance=true -PappforgeV9R2Isolated3Upgrade=true \
+            -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/appforge-pinned-kotlin-maven" \
+            --no-daemon --max-workers=2 --no-configuration-cache --console=plain
+      - name: Compare package certificate SDK and version against the installed reference
+        run: |
+          set -euo pipefail
+          mkdir -p upgrade-artifacts
+          APK=android-app/app/build/outputs/apk/debug/app-debug.apk
+          OLD=reference-apk/AppForge-V9-R2-Isolated3-debug.apk
+          SIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          python3 quality/tools/verify_apk_upgrade.py --old-apk "$OLD" --new-apk "$APK" \
+            --aapt2 "$AAPT" --apksigner "$SIGNER" --source-sha "$GITHUB_SHA" \
+            --output upgrade-artifacts/upgrade-evidence.json
+          python3 - <<'PYTHON'
+          import json, pathlib, xml.etree.ElementTree as E
+          files=list(pathlib.Path('android-app/app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
+          assert files, 'Actual unit XML required'
+          results=[E.parse(file).getroot() for file in files]
+          counts={key:sum(int(item.get(key,0)) for item in results) for key in ('tests','failures','errors','skipped')}
+          assert counts['tests']>0 and all(counts[key]==0 for key in ('failures','errors','skipped')),counts
+          pathlib.Path('upgrade-artifacts/unit-tests.json').write_text(json.dumps(counts,indent=2))
+          PYTHON
+          cp "$APK" upgrade-artifacts/AppForgeStudio-v9r2isolated3-upgrade.apk
+          (cd upgrade-artifacts && sha256sum *.apk > SHA256SUMS.txt)
+      - name: Upload only a verified in-place upgrade candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppForge-v9r2isolated3-upgrade-${{ github.sha }}
+          path: upgrade-artifacts/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolated3-upgrade-tests-${{ github.sha }}
+          path: android-app/app/build/test-results/testDebugUnitTest/
+          retention-days: 14
+      - name: Remove temporary signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/isolated3-upgrade-signing.p12"

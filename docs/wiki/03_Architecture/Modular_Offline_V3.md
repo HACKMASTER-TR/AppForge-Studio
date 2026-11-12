@@ -21,6 +21,8 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/VerifiedModuleDownload.kt"
   - "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
   - "android-app/app/src/test/java/com/appforge/studio/build/ModularOfflineV3Test.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/InstalledModuleReadiness.kt"
+  - "android-app/app/src/test/java/com/appforge/studio/build/InstalledModuleReadinessTest.kt"
   - "android-app/app/src/test/java/com/appforge/studio/build/VerifiedModuleDownloadTest.kt"
 ---
 
@@ -308,3 +310,19 @@ unchanged working Node broken. All file/ownership/version checks still apply.
 The issue-specific debug APK uses `com.appforge.studio.v9r2issue78`, preserving
 existing app data and signing identities. See
 [the evidence and device procedure](../../reports/v9-offline-module-center-r2-20261104.md).
+
+## Existing installations on startup and resume (2026-11-11)
+
+The module screen now inspects persisted installations on entry, activity resume,
+and explicit refresh. A module overview and selector show `HAZIR` only after the
+existing recipe/version, witness SHA-256, ownership, APT and dependency checks
+pass. The inspection is read-only and never starts a download or installation.
+An operation journal is not needed to recognize a previously verified module.
+
+A per-refresh dependency cache avoids repeatedly hashing shared dependencies for
+each card. Pending lifecycle work, invalid receipts, missing dependencies and
+cycles fail closed. Readiness is published before slower cleanup/history
+inspection; active installations defer inspection until they finish. Older local
+files without a valid current proof are explicitly shown as present and needing
+verification, rather than absent or READY. Existing build-time readiness checks
+remain enforced. Resume observers are removed when the screen leaves composition.

@@ -18,6 +18,8 @@ source_files: []
 
 ## Start Here
 
+- [[HTML_PDF_Integration]] — HTTPS bundle, native PDF source, document export and verification boundaries.
+
 - [[Current_State_Handoff]] — generated recovery view; `01_Project/current_state.json` is the canonical claim registry, subordinate to Git/evidence.
 
 - [[Hot_Context]]

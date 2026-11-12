@@ -53,8 +53,8 @@ fun main() {
  listOf("apk", "aab", "both", "apk+aab", "android", "all", "apk+aab+exe").forEach { output ->
   urlAdvanced.forEach { advancedUrl ->
    val draft = advancedUrl.copy(buildOutput=output)
-   check(FastHtmlApkPolicy.isCandidate(draft) == (output=="apk"))
-   if(output=="apk" || output in listOf("all","apk+aab+exe")) WebviewProjectSettings.validate(draft) else { check(runCatching{WebviewProjectSettings.validate(draft)}.isFailure);WebviewProjectSettings.validate(draft.copy(normalHtmlEngine=true)) }
+   check(FastHtmlApkPolicy.isCandidate(draft) == (output !in listOf("all","apk+aab+exe")))
+   WebviewProjectSettings.validate(draft)
    listOf("ftp://example.com", "https://user:pass@example.com", "https://@example.com",
     "https:///missing-host", "https://bad_host", "https://example.com/invalid space",
     "https://example.com/" + "a".repeat(2048)).forEach { unsafe ->
@@ -125,12 +125,12 @@ fun main() {
   for (output in listOf("apk", "aab", "both")) {
    val selected = complete.copy(sourceMode=mode, webUrl="https://example.com", buildOutput=output)
    val plain = WizardReadinessEvaluator.evaluate(selected)
-   check(plain.normalRouteReasons.isNotEmpty() == (mode == SourceMode.URL && output != "apk"))
+   check(plain.normalRouteReasons.isEmpty())
    advanced.forEach { toggled ->
-    val fastWeb = mode==SourceMode.URL && output=="apk" && (toggled.camera || toggled.microphone || toggled.location)
+    val fastWeb = mode==SourceMode.URL && (toggled.camera || toggled.microphone || toggled.location)
     check(WizardReadinessEvaluator.evaluate(toggled.copy(sourceMode=mode,webUrl="https://example.com",buildOutput=output)).normalRouteReasons.isNotEmpty() != fastWeb)
    }
-   check(WizardReadinessEvaluator.evaluate(ProjectDraft(appName="Defaults",importedFolder="/test",sourceMode=mode,webUrl="https://example.com",buildOutput=output)).normalRouteReasons.isNotEmpty() == (mode == SourceMode.URL && output != "apk"))
+   check(WizardReadinessEvaluator.evaluate(ProjectDraft(appName="Defaults",importedFolder="/test",sourceMode=mode,webUrl="https://example.com",buildOutput=output)).normalRouteReasons.isEmpty())
    for (engine in listOf("node-web", "expo", "android-gradle")) {
     for (upload in listOf(false,true)) {
      val other = WizardReadinessEvaluator.evaluate(selected.copy(sourceBuildEngine=engine,fileUpload=upload))
@@ -194,7 +194,7 @@ fun main() {
  check(!WizardReadinessEvaluator.evaluate(complete.copy(buildOutput="invalid")).ready)
  check(!WizardReadinessEvaluator.evaluate(complete.copy(sourceMode=SourceMode.URL,webUrl="https://example.com:99999")).ready)
  listOf("aab","both","apk+aab","android","").forEach { output ->
-  check(!FastHtmlApkPolicy.isCandidate(complete.copy(buildOutput=output,sourceMode=SourceMode.URL,webUrl="https://example.com")))
+  check(FastHtmlApkPolicy.isCandidate(complete.copy(buildOutput=output,sourceMode=SourceMode.URL,webUrl="https://example.com")))
   check(!FastHtmlApkPolicy.isCandidate(complete.copy(buildOutput=output,minSdk=27)))
  }
  check(!WizardReadinessEvaluator.evaluate(complete.copy(sourceBuildEngine="expo",sourceBuildReady=false)).ready)

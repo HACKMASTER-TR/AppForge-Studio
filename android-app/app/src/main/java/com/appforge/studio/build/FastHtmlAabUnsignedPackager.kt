@@ -21,40 +21,46 @@ internal object FastHtmlAabUnsignedPackager {
         "base/dex/classes.dex", "base/resources.pb"
     )
 
-    fun buildUnsignedCandidate(context: Context, draft: ProjectDraft, workspace: File): File {
+    fun buildUnsignedCandidate(context: Context, draft: ProjectDraft, workspace: File, stages: BuildStageTimings = BuildStageTimings()): File {
         val snapshot = draft.copy()
         requireSource(snapshot)
         require(workspace.isDirectory && !java.nio.file.Files.isSymbolicLink(workspace.toPath())) {
             "Existing internal workspace required."
         }
-        val project = FastHtmlApkPackager.readHtmlProject(snapshot)
+        val project = stages.measure(BuildStageTimings.Stage.ASSETS) {
+            if (snapshot.sourceMode == SourceMode.LOCAL) FastHtmlApkPackager.readHtmlProject(snapshot) else null
+        }
         val additions = LinkedHashMap<String, ByteArray>()
-        for ((path, value) in project.second) {
+        for ((path, value) in project?.second.orEmpty()) {
             require(path.startsWith("assets/site/"))
             val name = "base/$path"
             FastHtmlAabVerification.requireSafeName(name, false)
             require(additions.put(name, value) == null) { "Duplicate source ZIP path." }
         }
-        val jsonEntry = project.first
-        require(additions.containsKey("base/assets/site/$jsonEntry")) {
+        val jsonEntry = project?.first.orEmpty()
+        require(project == null || additions.containsKey("base/assets/site/$jsonEntry")) {
             "Missing HTML entry in AAB additions."
         }
         val config = FastHtmlApkPackager.runtimeConfig(snapshot, jsonEntry)
         additions["base/assets/appforge-html-config.json"] = config
 
-        val template = context.assets.open("html-aab-template.aab").use { readLimited(it, LIMIT) }
-        TemplateIntegrity.requireAsset(context, "html-aab-template.aab", template)
-        val entries = readTemplate(template)
+        val entries = stages.measure(BuildStageTimings.Stage.TEMPLATE) {
+            val template = context.assets.open("html-aab-template.aab").use { readLimited(it, LIMIT) }
+            TemplateIntegrity.requireAsset(context, "html-aab-template.aab", template)
+            readTemplate(template)
+        }
         val icon = FastHtmlIcon.read(context, snapshot)
         require(FastHtmlIcon.AAB_PATH in entries) { "Pinned icon resource missing." }
-        val manifest = FastHtmlAabProtoManifest.rewrite(
+        val manifest = stages.measure(BuildStageTimings.Stage.MANIFEST) { FastHtmlAabProtoManifest.rewrite(
             entries.getValue("base/manifest/AndroidManifest.xml"), snapshot,
             TemplateIntegrity.expected(context, "html-aab-manifest"), FastHtmlApkPolicy.templatePermissions(snapshot), FastHtmlApkPolicy.applicationCategory(snapshot), rewriteDeepLinks = true, mediaService = snapshot.mediaPlayerBridge, billing = snapshot.billingEnabled
-        )
+        ) }
         require(additions.keys.none { it in entries }) { "Template/source ZIP entry collision." }
         val outputEntries = LinkedHashMap(entries)
         outputEntries["base/manifest/AndroidManifest.xml"] = manifest
-        outputEntries["base/resources.pb"] = FastHtmlResourceColor.proto(entries.getValue("base/resources.pb"), snapshot.primaryColor, snapshot.packageName)
+        outputEntries["base/resources.pb"] = stages.measure(BuildStageTimings.Stage.RESOURCES) {
+            FastHtmlResourceColor.proto(entries.getValue("base/resources.pb"), snapshot.primaryColor, snapshot.packageName)
+        }
         if (icon != null) outputEntries[FastHtmlIcon.AAB_PATH] = icon
         outputEntries.putAll(additions)
         require(outputEntries.size <= 2048 && outputEntries.values.sumOf { it.size.toLong() } <= LIMIT) {
@@ -63,14 +69,16 @@ internal object FastHtmlAabUnsignedPackager {
         val temp = File.createTempFile("appforge-internal-unsigned-", ".aab", workspace)
         var ready = false
         try {
-            ZipOutputStream(temp.outputStream().buffered()).use { zip ->
-                for ((name, data) in outputEntries) {
-                    FastHtmlAabVerification.requireSafeName(name, false)
-                    require(data.size <= ENTRY_LIMIT)
-                    val entry = ZipEntry(name).apply { time = 315532800000L }
-                    zip.putNextEntry(entry)
-                    zip.write(data)
-                    zip.closeEntry()
+            stages.measure(BuildStageTimings.Stage.PACKAGING) {
+                ZipOutputStream(temp.outputStream().buffered()).use { zip ->
+                    for ((name, data) in outputEntries) {
+                        FastHtmlAabVerification.requireSafeName(name, false)
+                        require(data.size <= ENTRY_LIMIT)
+                        val entry = ZipEntry(name).apply { time = 315532800000L }
+                        zip.putNextEntry(entry)
+                        zip.write(data)
+                        zip.closeEntry()
+                    }
                 }
             }
             require(temp.length() in 1024..LIMIT.toLong()) { "Invalid unsigned AAB candidate length." }
@@ -104,12 +112,12 @@ internal object FastHtmlAabUnsignedPackager {
         .digest(bytes).joinToString("") { "%02x".format(it.toInt() and 255) }
 
     internal fun requireSource(draft: ProjectDraft) {
-        require(draft.sourceMode == SourceMode.LOCAL) { "URL AAB is unsupported." }
-        require(draft.buildOutput.trim().lowercase() in setOf("aab", "both", "apk+aab")) {
+        require(draft.buildOutput.trim().lowercase() in setOf("aab", "both", "apk+aab", "android", "")) {
             "Explicit AAB/BOTH request required."
         }
         require(draft.sourceBuildEngine.trim().lowercase() == "webview-static" &&
-            draft.sourceTechnology.trim().lowercase() in setOf("html", "web-static", "webview"))
+            (draft.sourceMode == SourceMode.URL ||
+                draft.sourceTechnology.trim().lowercase() in setOf("html", "web-static", "webview")))
         require(draft.signingMode == com.appforge.studio.model.SigningMode.DEBUG ||
             draft.signingMode == com.appforge.studio.model.SigningMode.CUSTOM) {
             "Hızlı AAB yalnız debug veya seçilmiş yükleme anahtarıyla üretilir."
@@ -119,6 +127,12 @@ internal object FastHtmlAabUnsignedPackager {
         ))
         require(draft.minSdk == 26 && draft.targetSdk == 37) {
             "Unsigned static AAB requires pinned SDK 26/37."
+        }
+        if (draft.sourceMode == SourceMode.URL) {
+            require(WebviewProjectSettings.webSourceUri(draft.webUrl)?.scheme.equals("https", true)) {
+                "Hızlı URL AAB için geçerli HTTPS adresi gerekir."
+            }
+            return // URL runtime configuration needs no local source or synthetic entry.
         }
         val supplied = File(requireNotNull(draft.importedFolder))
         require(!java.nio.file.Files.isSymbolicLink(supplied.toPath()))

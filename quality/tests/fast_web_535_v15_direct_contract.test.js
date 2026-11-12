@@ -14,7 +14,7 @@ const fast = read(build + 'FastHtmlApkPackager.kt');
 test('static AAB and BOTH are explicit and do not switch non-static engines', () => {
   assert.match(manager,/DeviceArtifactKind\.AAB in selected/);
   assert.match(manager,/FastHtmlAabUnsignedPackager\.requireSource\(draft\)/);
-  assert.match(source,/draft\.sourceMode == SourceMode\.LOCAL/);
+  assert.match(source,/snapshot\.sourceMode == SourceMode\.LOCAL/);
   assert.match(source,/draft\.minSdk == 26 && draft\.targetSdk == 37/);
   assert.match(engine,/if \(FastHtmlApkPolicy\.isCandidate\(draft\)\)/);
   assert.match(engine,/val wantsAab = DeviceArtifactKind\.AAB in fastOutputs/);
