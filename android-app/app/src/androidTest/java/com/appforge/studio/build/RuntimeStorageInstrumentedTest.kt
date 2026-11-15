@@ -14,7 +14,11 @@ import java.util.concurrent.CancellationException
 class RuntimeStorageInstrumentedTest {
     @Test fun twentyFailuresPreserveActiveAndBoundQuarantineOnAndroidFilesystem() {
         val context=InstrumentationRegistry.getInstrumentation().targetContext
-        val parent=Files.createTempDirectory(context.cacheDir.toPath(),"storage-acceptance-").toFile()
+        // Production normalizes only Android's system-owned app-data path alias.
+        // Do the same for this disposable fixture; reject all arbitrary symlinks.
+        val cache=RecoveryPathAnchor.androidPlatformPath(context.cacheDir)
+        RecoveryPathAnchor.check(cache)
+        val parent=Files.createTempDirectory(cache.toPath(),"storage-acceptance-").toFile()
         try {
             val active=File(parent,"rootfs").apply{mkdir()};File(active,"vendor").writeText("keep")
             val store=RuntimeGenerationStore(active);val before=store.snapshot()
@@ -23,7 +27,10 @@ class RuntimeStorageInstrumentedTest {
                 try {
                     store.prepare(OfflineModuleId.NODE_WEB).use{tx->File(tx.root,"failed").writeText("partial install");throw CancellationException()}
                     fail("Expected cancellation or admission denial")
-                } catch(_:CancellationException) {} catch(e:IllegalArgumentException){assertTrue(e.message.orEmpty().contains("STORAGE_BUDGET"))}
+                } catch(_:CancellationException) {} catch(e:IllegalArgumentException) {
+                    assertTrue("Unexpected storage admission error on attempt ${n+1}: ${e.javaClass.simpleName}: ${e.message}",
+                        e.message.orEmpty().contains("STORAGE_BUDGET"))
+                }
                 store.recover();assertEquals(before,store.snapshot())
                 assertEquals(1,store.quarantinedDirectories().size)
                 val bytes=RuntimeStorageBudget.measure(parent).logicalBytes
