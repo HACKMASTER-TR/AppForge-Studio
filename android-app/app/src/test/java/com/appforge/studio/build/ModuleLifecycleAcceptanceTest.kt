@@ -50,10 +50,17 @@ internal class ModuleLifecycleAcceptanceTest(private val id:OfflineModuleId) {
         RuntimeGenerationStore(root).prepareOwner("REMOVE:${id.name}").use{tx->ModuleOwnershipStore(root).restoreInto(id,tx.root);tx.commit(verify={})}
         assertFalse(File(root,relative).exists());assertEquals("fixture user data, not a real key",File(root,"root/signing.key").readText())
     }
-    @Test fun activationFailuresPreservePreviouslyWorkingFiles()=fixture{_,root->
-        install(root,"v1")
-        for(point in listOf("before-switch","old-moved","new-moved")) {
+    @Test fun activationFailuresPreservePreviouslyWorkingFiles() {
+        // Each boundary gets a fresh installation: a retained failed stage must
+        // now block subsequent installations rather than accumulate more copies.
+        for(point in listOf("before-switch","old-moved","new-moved"))fixture { base,root ->
+            install(root,"v1")
             assertThrows(IllegalStateException::class.java){install(root,"v2"){if(it==point)error("injected activation failure")}}
+            assertEquals("v1",File(root,relative).readText());assertTrue(ModuleOwnershipStore(root).verifyNamespace(id))
+            assertEquals(1,RuntimeGenerationStore(root).quarantinedDirectories().size)
+            val blocked=assertThrows(IllegalArgumentException::class.java){install(root,"v3")}
+            assertTrue(blocked.message.orEmpty().contains("STORAGE_BUDGET"))
+            assertFalse(base.listFiles()!!.any{it.name.startsWith(".v3-stage-")})
             assertEquals("v1",File(root,relative).readText());assertTrue(ModuleOwnershipStore(root).verifyNamespace(id))
         }
     }

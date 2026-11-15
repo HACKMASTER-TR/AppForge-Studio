@@ -187,6 +187,7 @@ internal object ModuleInstallOperations {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     var history by remember{mutableStateOf<List<String>>(emptyList())}
+    var downloadedModules by remember{mutableStateOf<Set<OfflineModuleId>>(emptySet())}
     var chosen by remember { mutableStateOf<OfflineModuleId?>(null) }
     var selectedName by rememberSaveable { mutableStateOf(OfflineModuleId.NODE_WEB.name) }
     var moduleMenuOpen by remember { mutableStateOf(false) }
@@ -213,6 +214,7 @@ internal object ModuleInstallOperations {
     }
     var sdkConsent by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf("") }
+    var reviewedStoragePlan by remember{mutableStateOf<RuntimeGenerationStore.CleanupPlan?>(null)}
     var confirmPrune by remember{mutableStateOf(false)}
     var confirmDuplicateQuarantine by remember{mutableStateOf(false)}
     var duplicateQuarantineBusy by remember{mutableStateOf(false)}
@@ -242,6 +244,7 @@ internal object ModuleInstallOperations {
                 OfflineModules.all.filter { OfflineBuildPackManager.hasExistingFiles(context,it.id) }.map { it.id }.toSet()
         }
         existingFiles=inspected.second
+        downloadedModules=withContext(Dispatchers.IO){DownloadCoordinator.verifiedDownloadedModules()}
         ready=inspected.first
     }
     LaunchedEffect(selected,recovered,busy,events[selected]?.phase,refreshRevision) {
@@ -299,14 +302,16 @@ internal object ModuleInstallOperations {
     }
     LaunchedEffect(confirmDuplicateQuarantine) {
         if(!confirmDuplicateQuarantine)return@LaunchedEffect
-        val result=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.duplicateQuarantineBytes(context)}}
-        duplicateQuarantineBytes=result.getOrNull()
+        val result=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.duplicateCleanupPlan(context)}}
+        reviewedStoragePlan=result.getOrNull()
+        duplicateQuarantineBytes=result.getOrNull()?.logicalBytes
         duplicateQuarantineError=result.exceptionOrNull()?.message
     }
     LaunchedEffect(confirmPrune) {
         if(!confirmPrune)return@LaunchedEffect
-        val result=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.prunableSnapshotBytes(context)}}
-        pruneBytes=result.getOrNull()
+        val result=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.snapshotCleanupPlan(context)}}
+        reviewedStoragePlan=result.getOrNull()
+        pruneBytes=result.getOrNull()?.logicalBytes
         pruneReason=result.exceptionOrNull()?.message
     }
     fun begin(id:OfflineModuleId) {
@@ -475,7 +480,7 @@ internal object ModuleInstallOperations {
             duplicateQuarantineBusy=true
             scope.launch {
                 try {
-                    detail=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.pruneDuplicateQuarantines(context)}
+                    detail=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.executeDuplicateCleanup(context,requireNotNull(reviewedStoragePlan))}
                         .fold({"${it/1024/1024} MiB birebir aynı ayrılmış kopya temizlendi; diğerleri korundu."},
                             {"Güvenli temizlik engellendi: ${it.message}"})}
                 } finally { duplicateQuarantineBusy=false }
@@ -492,7 +497,7 @@ internal object ModuleInstallOperations {
         confirmButton={TextButton(enabled=!busy && pruneBytes!=null,onClick={
             confirmPrune=false
             scope.launch {
-                detail=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.pruneUnusedSnapshots(context)}
+                detail=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.executeDuplicateCleanup(context,requireNotNull(reviewedStoragePlan))}
                     .fold({"${it/1024/1024} MiB eski snapshot temizlendi."},{"Temizleme engellendi: ${it.message}"})}
             }
         }){Text("Onayla ve temizle")}},
@@ -550,7 +555,8 @@ internal object ModuleInstallOperations {
                                     Text(when {
                                         !ready.containsKey(module.id) -> "Kontrol ediliyor…"
                                         ready[module.id]==true -> "HAZIR ✓"
-                                        module.id in existingFiles -> "Dosyalar mevcut • doğrulama gerekli"
+                                        module.id in existingFiles -> "Dosyalar mevcut · doğrulama gerekli"
+                                        module.id in downloadedModules -> "İndirildi · kurulum gerekli"
                                         else -> "Kurulu değil"
                                     },style=MaterialTheme.typography.bodySmall)
                                 }
@@ -684,7 +690,8 @@ internal object ModuleInstallOperations {
                                 installed && updateRequired -> "HAZIR ✓ • Güncelleme mevcut"
                                 installed -> "HAZIR ✓ • Doğrulanmış kurulum"
                                 migrationReason!=null -> "Güvenli runtime geçişi gerekli"
-                                selected in existingFiles -> "Dosyalar mevcut • doğrulama gerekli"
+                                selected in existingFiles -> "Dosyalar mevcut · doğrulama gerekli"
+                                selected in downloadedModules -> "İndirildi · kurulum gerekli"
                                 event?.phase==ModulePhase.READY -> "Kurulum kaydı var • doğrulama gerekli"
                                 updateRequired -> "Güncelleme mevcut"
                                 recordedVersion!=null -> "Kurulum kaydı var"
@@ -902,6 +909,9 @@ internal object ModuleInstallOperations {
                 }}
             }
             plan?.let{p->item{Text(p.error?:"Bu proje için: "+p.modules.joinToString{OfflineModules.spec(it).title})}}
+            if(section in setOf("modules","diagnostics") && recovered)item {
+                RuntimeStorageDashboard(onChanged={refreshRevision++})
+            }
             if(section=="diagnostics" && recovered)item {
                 Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(

@@ -37,6 +37,7 @@ internal object V9R2ObjectTransfer {
                  canceled: () -> Boolean = { false },
                  open: (URL) -> HttpURLConnection = { DownloadNetwork.open(it) },
                  available: (File) -> Long = { it.usableSpace },
+                 onNetwork: (Long, Long) -> Unit = { _, _ -> },
                  progress: (Long, Long) -> Unit = { _, _ -> }): File {
         require(bytes in 1..MAX_BYTES)
         val url = URL(V9SignedR2CandidateDownload.urlForSha(sha256))
@@ -44,10 +45,17 @@ internal object V9R2ObjectTransfer {
         val parent = requireNotNull(target.parentFile)
         parent.mkdirs()
         require(parent.isDirectory && parent.canonicalFile == parent.absoluteFile)
+        return RuntimeMutationLock.acquire(parent,".artifact-$sha256.lock").use {
+        var gets=0L;var networkBytes=0L
+        onNetwork(0,0)
         val partial = File(target.path + ".part")
         for (file in listOf(target, partial)) require(!Files.isSymbolicLink(file.toPath()))
+        if (VerifiedArtifactCache.reuse(target,sha256,bytes,MAX_BYTES)) {
+            progress(bytes,bytes)
+            return target
+        }
         if (target.exists()) {
-            require(target.isFile && target.length() == bytes && VerifiedModuleDownload.sha(target) == sha256) {
+            require(VerifiedArtifactCache.matches(target,sha256,bytes)) {
                 "Corrupt R2 cache; existing object preserved"
             }
             progress(bytes, bytes)
@@ -60,7 +68,9 @@ internal object V9R2ObjectTransfer {
             val start = partial.length()
             val end = minOf(bytes - 1, start + V9SignedR2CandidateDownload.CHUNK_BYTES - 1)
             require(available(parent) > end - start + 1 + 64L * 1024 * 1024) { "Insufficient R2 storage" }
-            val connection = open(url)
+            val connection = MeasuredDownloadConnection(open(url),onResponse={gets++;onNetwork(gets,networkBytes)}) {
+                networkBytes+=it;onNetwork(gets,networkBytes)
+            }
             try {
                 connection.instanceFollowRedirects = false
                 connection.connectTimeout = 20_000
@@ -103,5 +113,6 @@ internal object V9R2ObjectTransfer {
         require(!target.exists() && !Files.isSymbolicLink(target.toPath()))
         Files.move(partial.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE)
         return target
+        }
     }
 }

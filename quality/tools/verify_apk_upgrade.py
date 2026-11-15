@@ -44,6 +44,7 @@ def check(reference, old, new, old_hash, new_hash, source_sha):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--reference', type=Path, default=DEFAULT_REFERENCE)
     parser.add_argument('--old-apk', required=True, type=Path)
     parser.add_argument('--new-apk', required=True, type=Path)
     parser.add_argument('--aapt2', required=True)
@@ -55,7 +56,7 @@ def main():
     if args.output.is_symlink(): raise SystemExit('STOP: UNSAFE_OUTPUT')
     # A failed repeat must never leave a stale positive report.
     args.output.write_text(json.dumps({'update_compatible': False})+'\n')
-    reference = json.loads(DEFAULT_REFERENCE.read_text())
+    reference = json.loads(args.reference.read_text())
     result = check(reference, identity(args.old_apk, args.aapt2, args.apksigner),
                    identity(args.new_apk, args.aapt2, args.apksigner),
                    sha256(args.old_apk), sha256(args.new_apk), args.source_sha)

@@ -1,7 +1,7 @@
 # Updating the existing isolated3 app from Termux
 
 The user-provided old APK was independently inspected. Its package is
-`com.appforge.studio.v9r2isolated3`, versionCode 534, and certificate SHA-256
+`com.appforge.studio.v9r2isolated3`, versionCode 536, and certificate SHA-256
 `dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082`.
 The previous standard `com.appforge.studio` APK used a different certificate and
 therefore installed alongside it. **Do not uninstall either app or clear data.**
@@ -16,8 +16,8 @@ It preserves the old R2 source history, pushes a fresh codex upgrade branch and
 opens a draft PR. The push triggers `v9-isolated3-inplace-upgrade.yml`; no new
 workflow needs to be merged into main for dispatch. The runner restores the
 original isolated signer from the existing isolated2/3 repository secrets, checks
-its pinned certificate, builds the original package with versionCode **535**,
-and compares the actual result against the exact old artifact. A missing/wrong
+its pinned certificate, builds the original package with versionCode **537**,
+and compares the actual result against the exact v536 artifact and immutable release manifest. A missing/wrong
 key, package, certificate, SDK, version, source SHA, APK hash or failed/skipped
 unit test prevents an upgrade artifact from being delivered. Secrets are never
 included in the package or requested through chat.

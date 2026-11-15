@@ -12,14 +12,17 @@ class StorageAndCacheFixTest {
         try {
             val active=File(base,"rootfs").apply{mkdir()}
             File(active,"valid").writeText("original")
+            BaseRuntimeOwnership.captureFresh(active)
             val duplicate=File(base,".v3-discard-${java.util.UUID.randomUUID()}").apply{mkdir()}
             File(duplicate,"valid").writeText("original")
+            File(active,BaseRuntimeOwnership.FILE).copyTo(File(duplicate,BaseRuntimeOwnership.FILE))
             val divergent=File(base,".v3-discard-${java.util.UUID.randomUUID()}").apply{mkdir()}
             File(divergent,"valid").writeText("different-user-content")
             val external=File(base,"private-project").apply{writeText("keep me")}
             val store=RuntimeGenerationStore(active)
-            assertEquals(8L,store.duplicateQuarantineBytes())
-            assertEquals(8L,store.pruneDuplicateQuarantines())
+            val expected=8L+File(active,BaseRuntimeOwnership.FILE).length()
+            assertEquals(expected,store.duplicateQuarantineBytes())
+            assertEquals(expected,store.pruneDuplicateQuarantines())
             assertFalse(duplicate.exists())
             assertTrue(divergent.isDirectory)
             assertEquals("different-user-content",File(divergent,"valid").readText())

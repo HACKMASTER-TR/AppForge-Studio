@@ -46,6 +46,12 @@ internal class PersistentDownloads(private val directory:File,private val roots:
         if(!seal.isFile || seal.length()!=64L || seal.readText()!=VerifiedModuleDownload.sha(part))return 0L
         return part.length()
     }
+    /** Display evidence only; installation must still validate the signed recipe and dependencies. */
+    @Synchronized fun verifiedArtifactForDisplay(record:ArtifactDownloadRecord):Boolean {
+        val identity=record.stagingIdentity?:return false
+        val sha=record.expectedSha256?:return false
+        return VerifiedArtifactCache.matches(resolve(identity),sha,record.expectedBytes,2L*1024*1024*1024)
+    }
     fun operationGraph()=PersistentOperationGraph(File(directory,"operations.json"))
     private fun safe(path:File) {
         var current:File?=path.absoluteFile

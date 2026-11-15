@@ -3,7 +3,7 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-19
-updated: 2026-10-01
+updated: 2026-11-15
 last_verified: 2026-10-01
 confidence: high
 tags:
@@ -14,6 +14,9 @@ related:
   - "[[System_Architecture]]"
   - "[[Build_And_Worker_Architecture]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/RuntimeStorageBudget.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/RuntimeGenerationStore.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/RuntimeFileClone.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/AndroidArtifactPublication.kt"
   - "android-app/app/build.gradle.kts"
   - "quality/tests/t21_android_publication_runtime.test.js"
@@ -199,3 +202,53 @@ It excludes environment, secrets, local properties and generated outputs: it is
 neither a complete source attestation nor an artifact digest. JVM tests exercise
 the fingerprint function, not Gradle/AGP task execution. Android build and physical
 acceptance remain NOT_RUN for this remediation.
+
+## V537 storage candidate: bounded admission and optional reflink
+
+The storage candidate is based on `1acce4b9ea703abc7bd1dbb858d9dfe33042b186`;
+it does not attest a physical update or authorize production delivery.
+`RuntimeStorageBudget` is admission policy, independent of installed readiness.
+Any retained failed stage/quarantine blocks another generation clone. Unknown
+copies remain untouched. Obsolete previous generations have a 256 MiB / 16-entry
+admission ceiling; required receipt references and a verified rollback are kept.
+A new transaction reserves a full independent root copy plus 256 MiB, even if
+reflink is supported. Module expansion reservations are explicit upper limits:
+Node 2 GiB; Rust/Python 4 GiB; Linux/Windows Native 8 GiB; NDK 12 GiB;
+Android Core/Expo 16 GiB; Portable 1 GiB. They are not measured package sizes.
+The installer checks expansion and remaining free space during execution. A denied
+installation does not invalidate receipts or disable existing builds/files/cache.
+
+`RuntimeFileClone` probes FICLONE on the actual destination filesystem using two
+files and writes in both directions. JNI failure or unsupported reflink uses a
+real independent copy. No active/staged hardlinks are created. Allocation reports
+use lstat blocks when available, report unknown otherwise, and never interpret
+shared extent counts as exclusive reclaimable bytes. Native support alone does
+not prove reflink support on Android.
+
+`RuntimeMutationLock` holds an OS file lock across generation preparation through
+commit/recovery/close, root activation, and initial rootfs installation. Leases
+can cross coroutine threads; initial activation borrows its installer's lease.
+Process death releases the lock but leaves existing journals and protected files.
+An interrupted initial extraction blocks another extraction until reviewed.
+Existing schema-2 recovery stays fail closed. Unknown historical journals and
+ownership failures are preserved, not migrated by filename pattern.
+
+Cleanup previews bind the active tree digest, exact candidate names/digests,
+logical byte count and cleanup scope. Execution recomputes the same plan under
+both the mutation lease and filesystem lock. Changed or unowned trees are not
+removed. At least one verified rollback and all receipt references are retained.
+Different historical quarantines are intentionally not eligible. An interrupted
+partial cleanup may require manual inspection; it is never blindly swept.
+
+Verified transport shares existing signed R2/native CAS locations without changing
+pinned input catalogs. Cache validation precedes network policy/acquisition; cache
+hits report zero network and do not assert READY. SHA-256 remains mandatory even
+when expected size is available. npm/Gradle lock/offline verification remains with
+its existing package manager. No installer recipe, signed metadata, witness,
+anti-rollback, GPG, Ed25519, TLS or production verifier is weakened.
+
+The dedicated update workflow preserves the old v534 reference and separately
+pins the real v536 artifact. It requires v537, the isolated3 package and original
+certificate before upload, adds immutable source/APK/pin-catalog evidence, and
+requires disposable emulator storage/update tests before publishing a candidate.
+Physical acceptance and actual hosted execution remain separate evidence gates.

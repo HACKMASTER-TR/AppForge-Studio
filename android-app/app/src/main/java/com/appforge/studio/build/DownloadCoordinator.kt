@@ -135,6 +135,15 @@ internal object DownloadCoordinator {
         val tree=graphStore.recover(compact)
         records.value=compact;operations.value=tree;journal=store
     }
+    fun verifiedDownloadedModules():Set<OfflineModuleId> {
+        val snapshot=records.value
+        val store=journal?:return emptySet()
+        return snapshot.groupBy{it.moduleId}.filterValues { rows ->
+            val latest=rows.maxByOrNull{it.updatedAt}?.operationId
+            val selected=rows.filter{it.operationId==latest}
+            selected.isNotEmpty() && selected.all{runCatching{store.verifiedArtifactForDisplay(it)}.getOrDefault(false)}
+        }.keys
+    }
     @Synchronized fun bind(operation:String,artifact:String,target:java.io.File):Int {
         journal?.let{targets[operation+":"+artifact]=it.staging(target)}
         val count=records.value.filter{it.artifactId==artifact && it.stagingIdentity==targets[operation+":"+artifact] && it.downloadState!=DownloadState.COMPLETED}.maxOfOrNull{it.retryCount}?:0

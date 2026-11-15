@@ -11,6 +11,14 @@ class PersistentDownloadsTest {
         val dir=Files.createTempDirectory("persistent-download").toFile()
         try{test(dir,PersistentDownloads(File(dir,"journal"),mapOf("private" to dir)))}finally{dir.deleteRecursively()}
     }
+    @Test fun downloadedDisplayRechecksTheFileRatherThanTrustingCompletedJournalState()=fixture{dir,store->
+        val target=File(dir,"archive").apply{writeText("verified archive")}
+        val row=record().copy(expectedSha256=VerifiedModuleDownload.sha(target),expectedBytes=target.length(),downloadState=DownloadState.COMPLETED,verificationState="SHA256_VERIFIED")
+        assertTrue(store.verifiedArtifactForDisplay(row))
+        target.writeText("tampered archive")
+        assertFalse(store.verifiedArtifactForDisplay(row))
+        assertFalse(store.verifiedArtifactForDisplay(row.copy(stagingIdentity=null)))
+    }
     @Test fun atomicRoundTripRetainsRetryAndNeverStoresSourceUrl()=fixture{dir,store->
         val row=record();store.save(listOf(row));assertEquals(listOf(row),store.read())
         val text=File(dir,"journal/artifacts.json").readText();assertFalse(text.contains("https:"));assertFalse(File(dir,"journal/artifacts.json.tmp").exists())

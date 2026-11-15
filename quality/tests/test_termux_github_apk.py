@@ -35,11 +35,13 @@ elif name=='gh':
   apk=dest/('AppForgeStudio-v9r2isolated3-upgrade.apk' if os.environ.get('UPGRADE') else 'AppForgeStudio-latest.apk')
   with zipfile.ZipFile(apk,'w') as z:z.writestr('AndroidManifest.xml','test boundary only')
   if os.environ.get('UPGRADE') and not os.environ.get('MISSING_UPGRADE_EVIDENCE'):
-   proof={'update_compatible':True,'source_sha':'b'*40,'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'package':'com.appforge.studio.v9r2isolated3','version_code':535,'min_sdk':26,'target_sdk':37,'certificate_sha256':'dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082','reference_sha256':'720bfb85a8dd77645391042a247b6954ad64aa1cbd382dea647cd32232c46e4d'}
+   proof={'update_compatible':True,'source_sha':'b'*40,'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'package':'com.appforge.studio.v9r2isolated3','version_code':537,'min_sdk':26,'target_sdk':37,'certificate_sha256':'dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082','reference_sha256':'7b25ea712b26e702f3c515eba306a305a781c4159f458c7a9dba7b51246527d1'}
    if os.environ.get('BAD_UPGRADE_CERT'):proof['certificate_sha256']='a'*64
    if os.environ.get('BAD_UPGRADE_PACKAGE'):proof['package']='com.appforge.studio'
    if os.environ.get('BAD_UPGRADE_APK_HASH'):proof['apk_sha256']='a'*64
+   if os.environ.get('BAD_UPGRADE_VERSION'):proof['version_code']=535
    (dest/'upgrade-evidence.json').write_text(json.dumps(proof))
+   if not os.environ.get('MISSING_RELEASE_MANIFEST'):(dest/('release-manifest-'+('b'*40)+'.json')).write_text(json.dumps(proof))
    (dest/'unit-tests.json').write_text(json.dumps({'tests':722,'failures':0,'errors':0,'skipped':0}))
 '''
 
@@ -147,7 +149,7 @@ class TermuxGitHubApkTest(unittest.TestCase):
         self.assertFalse(any(c[:3]==['gh','run','download'] for c in self.calls()))
 
     def test_upgrade_rejects_missing_or_wrong_identity_evidence(self):
-        for flag in ['MISSING_UPGRADE_EVIDENCE','BAD_UPGRADE_CERT','BAD_UPGRADE_PACKAGE','BAD_UPGRADE_APK_HASH']:
+        for flag in ['MISSING_UPGRADE_EVIDENCE','BAD_UPGRADE_CERT','BAD_UPGRADE_PACKAGE','BAD_UPGRADE_APK_HASH','BAD_UPGRADE_VERSION','MISSING_RELEASE_MANIFEST']:
             with self.subTest(flag=flag):
                 r=self.run_driver('upgrade',UPGRADE='1',**{flag:'1'});self.assertNotEqual(r.returncode,0)
                 self.assertNotIn('Güncelleme kimliği doğrulandı',r.stdout)
@@ -157,7 +159,7 @@ class TermuxGitHubApkTest(unittest.TestCase):
         for _ in range(2):
             r=self.run_driver('upgrade',UPGRADE='1',APPFORGE_DOWNLOAD_ROOT=str(shared));self.assertEqual(r.returncode,0,r.stderr)
         self.assertEqual(old.read_bytes(),b'old user APK')
-        self.assertEqual(len(list(shared.glob('AppForge-v9r2isolated3-v535-*.apk'))),2)
+        self.assertEqual(len(list(shared.glob('AppForge-v9r2isolated3-v537-*.apk'))),2)
 
     def test_default_download_rejects_the_previously_wrong_standard_apk(self):
         r=self.run_driver('download');self.assertNotEqual(r.returncode,0)
