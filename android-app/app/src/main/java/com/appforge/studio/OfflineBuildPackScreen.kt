@@ -591,7 +591,7 @@ internal object ModuleInstallOperations {
                             style=MaterialTheme.typography.titleLarge
                         )
                         Text(
-                            "Tüm modüller tek seçimden yönetilir. İndirme, SHA-256, kurulum ve son bütünlük kontrolü aynı alandadır.",
+                            "Modülü seçip İndir ve Kur düğmesine basın. Doğrulanmış paketler tekrar indirilmez.",
                             style=MaterialTheme.typography.bodySmall
                         )
                         Text("Modül",style=MaterialTheme.typography.labelLarge)
@@ -712,7 +712,7 @@ internal object ModuleInstallOperations {
                             LinearProgressIndicator(progress={1f},modifier=Modifier.fillMaxWidth())
                             Text("Kurulum tamamlandı · %100")
                         }
-                        if(!installingSelected && event!=null && event.elapsedMs>0L) {
+                        if(moduleDetails && !installingSelected && event!=null && event.elapsedMs>0L) {
                             val total=event.elapsedMs/1000L
                             Text("Son işlem süresi: ${total/60} dk ${total%60} sn",style=MaterialTheme.typography.bodySmall)
                             Text("İndirme: ${event.downloadElapsedMs/1000L} sn • "+

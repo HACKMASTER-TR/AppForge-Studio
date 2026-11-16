@@ -751,12 +751,33 @@ internal object OfflineBuildPackManager {
         val brokerJob=broker?.let{launch(kotlinx.coroutines.Dispatchers.IO){it.serve()}}
         val initialStageBytes=if(module!=null)RuntimeStorageBudget.measure(rootfs).logicalBytes else 0L
         var lastStorageCheck=0L
+        var lastFreeSpaceCheck=0L
+        var unstableSamples=0
         val poller=launch(kotlinx.coroutines.Dispatchers.IO) {
             while(kotlinx.coroutines.currentCoroutineContext().isActive) {
-                if(module!=null && android.os.SystemClock.elapsedRealtime()-lastStorageCheck>2000L) {
-                    lastStorageCheck=android.os.SystemClock.elapsedRealtime()
-                    require(rootfs.usableSpace>RuntimeStorageBudget.RESERVE){"STORAGE_BUDGET: Güvenlik payına ulaşıldı; aktif ortam ve cache korunur."}
-                    require(RuntimeStorageBudget.measure(rootfs).logicalBytes<=Math.addExact(initialStageBytes,RuntimeStorageBudget.expansionLimit(module))){"STORAGE_BUDGET: İşlem genişleme sınırına ulaşıldı."}
+                if(module!=null) {
+                    val now=android.os.SystemClock.elapsedRealtime()
+                    // Check free space cheaply and frequently; no per-file stat during every poll.
+                    if(now-lastFreeSpaceCheck>2000L) {
+                        lastFreeSpaceCheck=now
+                        require(rootfs.usableSpace>RuntimeStorageBudget.RESERVE){"STORAGE_BUDGET: Güvenlik payına ulaşıldı; aktif ortam ve cache korunur."}
+                    }
+                    if(now-lastStorageCheck>15000L) {
+                        lastStorageCheck=now
+                        // dpkg renames transient .dpkg-tmp files while the guest is running.
+                        // An unstable *measurement* may be retried, but the budget may not
+                        // remain unchecked indefinitely and security inventories stay strict.
+                        val bytes=RuntimeStorageBudget.sampleVolatile {
+                            RuntimeStorageBudget.measure(rootfs).logicalBytes
+                        }
+                        if(bytes==null) {
+                            unstableSamples++
+                            require(unstableSamples<12){"STORAGE_BUDGET_SCAN_BUSY: Kurulum dosyaları değişirken depolama ölçümü kararlı değil; çalışan ortam korundu."}
+                        } else {
+                            unstableSamples=0
+                            require(bytes<=Math.addExact(initialStageBytes,RuntimeStorageBudget.expansionLimit(module))){"STORAGE_BUDGET: İşlem genişleme sınırına ulaşıldı."}
+                        }
+                    }
                 }
                 val consent=module?.let{AptDownloadConsent.poll(workspace,it,operation)}
                 val aptPhase=module?.let{AptPhaseProgress.poll(workspace,it,operation)}

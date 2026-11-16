@@ -170,7 +170,7 @@ internal object V9R2BundleReader {
                 } catch(e:Exception){status="R2 kaynağı reddedildi: ${e.message}"}
                 finally{active=false}
             }
-        }){Text("Kur")}
+        }){Text("İndir ve Kur")}
     if(partial)Text("Manifest ve imza birlikte seçilmeli.",color=MaterialTheme.colorScheme.error)
     if(requiresSource && !sourceReady && manifest==null)Text("İmzalı R2 sürümü gerekli. Eksik Packages indeksleri varsa işlem güvenle durur.",style=MaterialTheme.typography.bodySmall)
     if(active)LinearProgressIndicator(modifier=Modifier.fillMaxWidth())

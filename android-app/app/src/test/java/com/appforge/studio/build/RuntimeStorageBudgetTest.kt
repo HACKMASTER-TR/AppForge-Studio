@@ -8,6 +8,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RuntimeStorageBudgetTest {
+    @Test fun liveDpkgRenameIsRetriedButOtherFilesystemErrorsRemainFatal() {
+        assertNull(RuntimeStorageBudget.sampleVolatile<Long> {
+            throw java.nio.file.NoSuchFileException("utf8.pm.dpkg-tmp")
+        })
+        assertEquals(17L,RuntimeStorageBudget.sampleVolatile { 17L })
+        assertThrows(java.nio.file.AccessDeniedException::class.java) {
+            RuntimeStorageBudget.sampleVolatile<Long> {
+                throw java.nio.file.AccessDeniedException("protected")
+            }
+        }
+    }
     private fun fixture(block:(File,File)->Unit) {
         val parent=Files.createTempDirectory("bounded-storage").toFile()
         try {val root=File(parent,"rootfs").apply{mkdir()};File(root,"vendor").writeText("verified vendor")

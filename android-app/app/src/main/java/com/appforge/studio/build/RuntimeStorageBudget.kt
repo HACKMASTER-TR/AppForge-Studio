@@ -8,6 +8,12 @@ import java.nio.file.attribute.BasicFileAttributes
 internal object RuntimeStorageBudget {
     const val RESERVE = 256L * 1024 * 1024
     data class Usage(val logicalBytes:Long, val allocatedBytes:Long?, val files:Long)
+    /** Only for a live staging scan while guest dpkg is actively renaming temporary files.
+     *  Strict inventory/ownership checks for cleanup and activation never call this helper.
+     *  The caller must bound consecutive unstable samples and retain the free-space guard.
+     */
+    internal fun <T> sampleVolatile(scan:()->T):T? = try { scan() }
+        catch(_:NoSuchFileException) { null }
     data class Report(val active:Usage, val rollback:Usage, val quarantine:Usage,
                       val unknown:Usage, val cache:Usage, val available:Long,
                       val required:Long, val blockedReason:String?, val retainedCopies:Int)
