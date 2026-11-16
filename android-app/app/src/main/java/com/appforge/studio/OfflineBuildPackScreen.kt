@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.appforge.studio
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -218,6 +220,31 @@ internal object ModuleInstallOperations {
     var confirmPrune by remember{mutableStateOf(false)}
     var confirmDuplicateQuarantine by remember{mutableStateOf(false)}
     var duplicateQuarantineBusy by remember{mutableStateOf(false)}
+    var failedBackupConfirm by remember { mutableStateOf(false) }
+    var failedBackupBusy by remember { mutableStateOf(false) }
+    var failedBackupName by remember { mutableStateOf<String?>(null) }
+    val failedBackupChooser=rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/gzip")) { uri ->
+        val name=failedBackupName
+        failedBackupName=null
+        if(uri!=null && name!=null && !failedBackupBusy) scope.launch {
+            failedBackupBusy=true
+            detail="Karantina arşivi oluşturuluyor ve geri okunarak doğrulanıyor."
+            try {
+                val released=withContext(Dispatchers.IO) {
+                    OfflineBuildPackManager.backupAndCleanQuarantine(context,name,
+                        output={context.contentResolver.openOutputStream(uri,"w")
+                            ?:error("Yedek belgesi yazılamadı")},
+                        reopen={context.contentResolver.openInputStream(uri)
+                            ?:error("Yedek belgesi geri okunamadı")})
+                }
+                detail="Yedek doğrulandı; ${released/1024/1024} MiB karantina temizlendi. Paket önbelleği korundu."
+                refreshRevision++
+            } catch(e:Exception) {
+                detail="Güvenli kurtarma durdu: ${e.message}. Karantina korunmuş olabilir; depolamayı yeniden inceleyin."
+            } finally {failedBackupBusy=false}
+        }
+    }
     var duplicateQuarantineBytes by remember(confirmDuplicateQuarantine){mutableStateOf<Long?>(null)}
     var duplicateQuarantineError by remember(confirmDuplicateQuarantine){mutableStateOf<String?>(null)}
     var confirmHistoryCleanup by remember{mutableStateOf(false)}
@@ -468,6 +495,27 @@ internal object ModuleInstallOperations {
             confirmButton={TextButton(enabled=!busy && permission?.allowed==true,onClick={pendingLifecycle=null;ModuleInstallOperations.lifecycle(context,id,action)}){Text("Onayla")}},
             dismissButton={TextButton(onClick={pendingLifecycle=null}){Text("Vazgeç")}})
     }
+    if(failedBackupConfirm)AlertDialog(
+        onDismissRequest={failedBackupConfirm=false},
+        title={Text("Başarısız kurulumun yedeğini al ve engeli kaldır")},
+        text={Text("Yalnızca seçilecek bir .v3-discard karantinası arşivlenir. " +
+            "Arşiv kullanıcı tarafından seçilen konuma yazılıp geri okunarak SHA-256 ile doğrulanmadan " +
+            "hiçbir dosya silinmez. Aktif rootfs, projeler, paket önbelleği ve geri alma kopyaları korunur. " +
+            "Yedek alanı sağlayıcının kapasitesine bağlıdır; başarı garanti edilmez.")},
+        confirmButton={TextButton(enabled=!busy && !preparing && !failedBackupBusy,onClick={
+            failedBackupConfirm=false
+            scope.launch {
+                val candidate=withContext(Dispatchers.IO) {
+                    runCatching {OfflineBuildPackManager.firstQuarantineForBackup(context)}
+                }
+                candidate.fold({ name ->
+                    if(name==null)detail="Temizlenecek başarısız kurulum karantinası bulunamadı."
+                    else {failedBackupName=name;failedBackupChooser.launch("AppForge-kurtarma-$name.tar.gz")}
+                },{e->detail="Karantina incelemesi başarısız: ${e.message}"})
+            }
+        }){Text("Yedek dosyası seç")}},
+        dismissButton={TextButton(onClick={failedBackupConfirm=false}){Text("Vazgeç")}}
+    )
     if(confirmDuplicateQuarantine)AlertDialog(
         onDismissRequest={confirmDuplicateQuarantine=false},
         title={Text("Aynı içerikli ayrılmış Ubuntu kopyalarını temizle")},
@@ -914,6 +962,11 @@ internal object ModuleInstallOperations {
             }
             if(section=="diagnostics" && recovered)item {
                 Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        enabled=!busy && !preparing && !failedBackupBusy && BuildModuleUsage.mutationBlockedReason()==null,
+                        onClick={failedBackupConfirm=true}
+                    ){Text("Başarısız kurulumu yedekle ve temizle")}
+                    if(failedBackupBusy)LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
                     OutlinedButton(
                         enabled=!busy && !preparing && !duplicateQuarantineBusy && BuildModuleUsage.mutationBlockedReason()==null,
                         onClick={confirmPrune=true}

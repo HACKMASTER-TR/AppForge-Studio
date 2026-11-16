@@ -665,6 +665,21 @@ internal object OfflineBuildPackManager {
             RuntimeGenerationStore(root).executeReviewedCleanup(plan,canceled={if(job?.isActive==false)throw kotlinx.coroutines.CancellationException()})
         }
     }
+    /** Caller supplies a SAF CreateDocument output and reopens it after close. */
+    suspend fun backupAndCleanQuarantine(context:Context,name:String,
+        output:()->java.io.OutputStream, reopen:()->java.io.InputStream):Long = installMutex.withLock {
+        BuildModuleUsage.mutationLease().use {
+            val root=runtimeRootfs(context)?:error("Ortak Linux ortamı bulunamadı")
+            val job=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
+            RuntimeGenerationStore(root).archiveAndPruneQuarantine(name,output(),reopen,
+                canceled={if(job?.isActive==false)throw kotlinx.coroutines.CancellationException("Kurtarma iptal edildi")})
+        }
+    }
+    fun firstQuarantineForBackup(context:Context):String? {
+        require(BuildModuleUsage.mutationBlockedReason()==null){"Etkin kurulum varken yedekleme yapılamaz."}
+        val root=runtimeRootfs(context)?:return null
+        return RuntimeGenerationStore(root).quarantinedDirectories().firstOrNull()?.name
+    }
     fun duplicateQuarantineBytes(context:Context):Long {
         require(BuildModuleUsage.mutationBlockedReason()==null){"Etkin işlem varken ayrılmış ortam incelemesi yapılmaz."}
         val root=runtimeRootfs(context)?:error("Runtime yok")

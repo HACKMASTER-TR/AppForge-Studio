@@ -8,6 +8,48 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RuntimeStorageBudgetTest {
+    @Test fun approvedBackupVerifiesRawTarThenAllowsRetryWithoutChangingActive()=fixture { parent,root ->
+        val store=RuntimeGenerationStore(root)
+        val original=store.snapshot()
+        store.prepare(OfflineModuleId.NODE_WEB).use { tx ->
+            File(tx.root,"failure-only.txt").writeText("installer-created output")
+        }
+        val quarantine=store.quarantinedDirectories().single()
+        assertThrows(IllegalArgumentException::class.java){RuntimeStorageBudget.requireAdmission(root)}
+        val archive=java.io.ByteArrayOutputStream()
+        val released=store.archiveAndPruneQuarantine(quarantine.name,archive,
+            reread={java.io.ByteArrayInputStream(archive.toByteArray())})
+        assertTrue(released>0L)
+        assertTrue(archive.toByteArray().isNotEmpty())
+        assertTrue(store.quarantinedDirectories().isEmpty())
+        assertEquals(original,store.snapshot())
+        store.prepare(OfflineModuleId.NODE_WEB).use {assertTrue(it.root.isDirectory)}
+    }
+    @Test fun corruptOrMovingBackupNeverDeletesQuarantine()=fixture { parent,root ->
+        val store=RuntimeGenerationStore(root)
+        store.prepare(OfflineModuleId.NODE_WEB).use{File(it.root,"failure.txt").writeText("keep")}
+        val candidate=store.quarantinedDirectories().single()
+        val archive=java.io.ByteArrayOutputStream()
+        assertThrows(Exception::class.java){store.archiveAndPruneQuarantine(candidate.name,archive,
+            reread={java.io.ByteArrayInputStream(byteArrayOf(0,1,2,3))})}
+        assertTrue(candidate.isDirectory)
+        assertThrows(IllegalArgumentException::class.java){store.archiveAndPruneQuarantine("rootfs",
+            java.io.ByteArrayOutputStream(),reread={java.io.ByteArrayInputStream(byteArrayOf())})}
+        assertTrue(File(root,"vendor").isFile)
+        assertTrue(candidate.isDirectory)
+    }
+    @Test fun quarantineBackupRefusesPendingJournalAndOutsideFiles()=fixture { parent,root ->
+        val store=RuntimeGenerationStore(root)
+        store.prepare(OfflineModuleId.NODE_WEB).use{File(it.root,"temporary").writeText("working")}
+        val candidate=store.quarantinedDirectories().single()
+        val external=File(parent,"user-project").apply{writeText("untouched")}
+        val journal=File(parent,".module-generation.json").apply{writeText("unrecovered")}
+        assertThrows(IllegalArgumentException::class.java){store.archiveAndPruneQuarantine(candidate.name,
+            java.io.ByteArrayOutputStream(),reread={java.io.ByteArrayInputStream(byteArrayOf())})}
+        assertTrue(candidate.isDirectory)
+        assertEquals("untouched",external.readText())
+        assertTrue(journal.delete())
+    }
     @Test fun liveDpkgRenameIsRetriedButOtherFilesystemErrorsRemainFatal() {
         assertNull(RuntimeStorageBudget.sampleVolatile<Long> {
             throw java.nio.file.NoSuchFileException("utf8.pm.dpkg-tmp")

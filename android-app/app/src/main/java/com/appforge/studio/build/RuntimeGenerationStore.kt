@@ -100,6 +100,78 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         return parent.listFiles().orEmpty().filter{it.name.matches(Regex("\\.v3-discard-[0-9a-f-]{36}"))}.onEach{require(!Files.isSymbolicLink(it.toPath()))}.sortedBy{it.name}
     }
     fun quarantinedBytes():Long = quarantinedDirectories().sumOf{dir->inventory(dir,{}).values.sumOf{it.size}}
+    /** Reviewable, explicitly approved failure-stage recovery. The backup URI must be
+     *  selected by the user, reopened and verified before ANY source deletion.
+     *  Rootfs and package caches are not removal targets.
+     *  Toybox tar preserves Linux file modes and symlinks; it is never extracted here.
+     */
+    fun archiveAndPruneQuarantine(name:String,backup:java.io.OutputStream,
+            reread:()->java.io.InputStream,canceled:()->Unit={}):Long = RuntimeMutationLock.acquire(parent).use {
+        checkAnchor()
+        val activationJournal=File(parent,".rootfs-activation.json")
+        require(!journal.exists() && !Files.isSymbolicLink(journal.toPath()) &&
+            !activationJournal.exists() && !Files.isSymbolicLink(activationJournal.toPath())){
+            "Kesilmiş kurulum günlüğü var; hiçbir dosya silinmedi."
+        }
+        require(name.matches(Regex("\\.v3-discard-[0-9a-f-]{36}"))){"Yalnız tek bir karantina seçilebilir."}
+        val target=child(name)
+        require(target.isDirectory && !Files.isSymbolicLink(target.toPath())){"Karantina yok veya bağlantı içeriyor."}
+        val activeBefore=inventory(active,canceled)
+        val before=inventory(target,canceled)
+        require(before.size>1){"Boş veya eksik karantina yedeklenmedi."}
+        val bytes=before.values.sumOf{it.size}
+        require(bytes>0){"Karantinanın içeriği doğrulanamadı."}
+        val compressed=java.util.zip.GZIPOutputStream(backup)
+        val initial=MessageDigest.getInstance("SHA-256")
+        compressed.use { output ->
+            streamTar(name,canceled) { chunk,n ->
+                initial.update(chunk,0,n)
+                output.write(chunk,0,n)
+            }
+        }
+        val expected=initial.digest()
+        // Read the actual user-selected archive back, checking gzip CRC and all raw TAR bytes.
+        val replay=MessageDigest.getInstance("SHA-256")
+        reread().use { input ->
+            java.util.zip.GZIPInputStream(input).use { decoded ->
+                val buf=ByteArray(65536)
+                while(true){canceled();val n=decoded.read(buf);if(n<0)break;if(n>0)replay.update(buf,0,n)}
+            }
+        }
+        require(java.util.Arrays.equals(expected,replay.digest())){"Yedek geri okunamadı veya içeriği değişti; karantina korundu."}
+        // Recreate the archive from disk and compare its raw bytes to rule out a moving
+        // source between backup and review. This never extracts untrusted symlinks.
+        val after=MessageDigest.getInstance("SHA-256")
+        streamTar(name,canceled) { chunk,n -> after.update(chunk,0,n) }
+        require(java.util.Arrays.equals(expected,after.digest())){"Karantina yedekleme sırasında değişti; korunuyor."}
+        canceled()
+        require(!journal.exists() && !activationJournal.exists() &&
+            inventory(active,canceled)==activeBefore){"Aktif Linux ortamı veya işlem günlüğü değişti; karantina korundu."}
+        require(inventory(target,canceled)==before){"Karantina son kontrolde değişti; silinmedi."}
+        require(target.parentFile.canonicalFile==parent && !Files.isSymbolicLink(target.toPath()))
+        // The archive is verified at the selected document URI and remains with the user.
+        // Explicit backup/cleanup consent has already been collected by the UI.
+        removeOwned(target)
+        require(inventory(active,canceled)==activeBefore){"Aktif ortam bütünlüğü değişti."}
+        bytes
+    }
+
+    private fun streamTar(name:String,canceled:()->Unit,chunk:(ByteArray,Int)->Unit) {
+        val executable=when {
+            File("/system/bin/tar").canExecute()->"/system/bin/tar"
+            File("/usr/bin/tar").canExecute()->"/usr/bin/tar" // desktop unit tests
+            else->error("Güvenli TAR arşivleyici bulunamadı; silme yapılmadı.")
+        }
+        val proc=ProcessBuilder(executable,"-cf","-","-C",parent.absolutePath,name)
+            .redirectError(ProcessBuilder.Redirect.to(File("/dev/null"))).start()
+        try {
+            proc.inputStream.use { source ->
+                val buf=ByteArray(65536)
+                while(true){canceled();val n=source.read(buf);if(n<0)break;if(n>0)chunk(buf,n)}
+            }
+            require(proc.waitFor(900,java.util.concurrent.TimeUnit.SECONDS) && proc.exitValue()==0){"TAR yedeklemesi başarısız; karantina korundu."}
+        } finally { if(proc.isAlive)proc.destroyForcibly() }
+    }
     /** Read-only, heavyweight SHA-256 comparison. Never count an unverified quarantine. */
     fun duplicateQuarantineBytes():Long {
         checkAnchor()

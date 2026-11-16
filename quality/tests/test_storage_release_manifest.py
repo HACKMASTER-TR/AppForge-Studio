@@ -14,26 +14,26 @@ manifest=module('storage_release_manifest')
 upgrade=module('verify_apk_upgrade')
 
 class StorageReleaseTest(unittest.TestCase):
-    def test_actual_v537_reference_requires_v538_and_same_identity(self):
-        ref=json.loads((ROOT/'quality/fixtures/appforge-v9r2isolated3-v537-reference.json').read_text())
+    def test_actual_v538_reference_requires_v539_and_same_identity(self):
+        ref=json.loads((ROOT/'quality/fixtures/appforge-v9r2isolated3-v538-reference.json').read_text())
         old={k:ref[k] for k in ['package','version_code','version_name','min_sdk','target_sdk','certificate_sha256']}
-        new=dict(old,version_code=538)
+        new=dict(old,version_code=539)
         good=upgrade.check(ref,old,new,ref['apk_sha256'],'a'*64,'b'*40)
         self.assertTrue(good['update_compatible'])
-        for key,value in [('package','com.example.other'),('certificate_sha256','c'*64),('version_code',537)]:
+        for key,value in [('package','com.example.other'),('certificate_sha256','c'*64),('version_code',538)]:
             with self.subTest(key=key),self.assertRaises(ValueError):
                 upgrade.check(ref,old,dict(new,**{key:value}),ref['apk_sha256'],'a'*64,'b'*40)
 
     def test_manifest_rejects_changed_apk_or_unverified_identity(self):
         with tempfile.TemporaryDirectory() as d:
             apk=Path(d)/'fixture.apk';apk.write_bytes(b'fixture-only-not-a-real-apk')
-            evidence=dict(package=manifest.PACKAGE,certificate_sha256=manifest.CERT,version_code=538,
+            evidence=dict(package=manifest.PACKAGE,certificate_sha256=manifest.CERT,version_code=539,
                           apk_sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),update_compatible=True,
                           source_sha='a'*40,reference_sha256='b'*64)
             result=manifest.create(evidence,apk)
             self.assertEqual(result['apk_bytes'],apk.stat().st_size)
             self.assertEqual(result['physical_device'],'NOT_RUN')
-            for key,value in [('package','other'),('certificate_sha256','c'*64),('version_code',537),('update_compatible',False)]:
+            for key,value in [('package','other'),('certificate_sha256','c'*64),('version_code',538),('update_compatible',False)]:
                 with self.subTest(key=key),self.assertRaises(ValueError):manifest.create(dict(evidence,**{key:value}),apk)
             apk.write_bytes(b'modified')
             with self.assertRaises(ValueError):manifest.create(evidence,apk)
