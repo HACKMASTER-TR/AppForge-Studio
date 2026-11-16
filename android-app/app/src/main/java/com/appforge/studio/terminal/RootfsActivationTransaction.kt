@@ -8,8 +8,9 @@ import java.util.UUID
 import org.json.JSONObject
 
 /** Journaled root+metadata swap. Old roots are retained; failure never recursively deletes user state. */
-internal class RootfsActivationTransaction(private val root:File,private val restore:File,private val metadata:File,private val availableBytes:(File)->Long={it.usableSpace}) {
-    private val parent=root.absoluteFile.parentFile
+internal class RootfsActivationTransaction(private val root:File,private val restore:File,private val metadata:File,private val availableBytes:(File)->Long={it.usableSpace},private val heldLease:com.appforge.studio.build.RuntimeMutationLock.Lease?=null) {
+    private val parent=requireNotNull(root.absoluteFile.parentFile)
+    private fun mutationLease()=heldLease?.borrow(parent)?:com.appforge.studio.build.RuntimeMutationLock.acquire(parent)
     private val journal=File(parent,".rootfs-activation.json")
     private fun safe(file:File){var p:File?=file.absoluteFile;while(p!=null){require(!Files.isSymbolicLink(p.toPath())){"Rootfs geçiş yolu symlink olamaz"};p=p.parentFile}}
     private fun checked(file:File) {safe(file);require(file.absoluteFile==file.canonicalFile && file.parentFile.canonicalFile==parent)}
@@ -25,12 +26,14 @@ internal class RootfsActivationTransaction(private val root:File,private val res
         try {
             FileOutputStream(tmp).use{it.write(bytes);it.fd.sync()}
             Files.move(tmp.toPath(),journal.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+            com.appforge.studio.build.RuntimeFileClone.sync(parent,true)
         } catch(e:Throwable) {
             if(!Files.isSymbolicLink(tmp.toPath()))Files.deleteIfExists(tmp.toPath())
             throw e
         }
     }
-    fun recover() {
+    fun recover() = mutationLease().use {recoverLocked()}
+    private fun recoverLocked() {
         val staleTmp=File(journal.path+".tmp")
         RecoveryPathAnchor.siblings(root,metadata,journal,restore,staleTmp)
         if(!journal.exists()){Files.deleteIfExists(staleTmp.toPath());return}
@@ -53,10 +56,11 @@ internal class RootfsActivationTransaction(private val root:File,private val res
         Files.deleteIfExists(staleTmp.toPath())
         Files.deleteIfExists(journal.toPath())
     }
-    fun activate(staged:File,writeMetadata:()->Unit,fault:(String)->Unit={}) {
-        recover();checked(root);checked(metadata)
+    fun activate(staged:File,writeMetadata:()->Unit,fault:(String)->Unit={}) = mutationLease().use {
+        recoverLocked();checked(root);checked(metadata)
         require(staged.isDirectory && staged.absoluteFile==staged.canonicalFile)
         require(staged.toPath().startsWith(File(parent,"staging").toPath()))
+        require(restore.listFiles().orEmpty().none{it.isDirectory}){"Korunan runtime geri alma kopyası var; yeni değiştirme öncesi inceleme gerekli."}
         val old=backup("rootfs-before-${UUID.randomUUID()}");restore.mkdirs()
         val saved=File(restore,old.name+".metadata")
         require(!metadata.exists() || metadata.isFile && metadata.length()<=32768)
@@ -75,6 +79,6 @@ internal class RootfsActivationTransaction(private val root:File,private val res
             writeMetadata();fault("metadata-written")
             j.put("state","COMMITTED");write(j)
             Files.deleteIfExists(journal.toPath())
-        }catch(e:Throwable){recover();throw e}
+        }catch(e:Throwable){recoverLocked();throw e}
     }
 }

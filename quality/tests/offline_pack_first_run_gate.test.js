@@ -84,8 +84,9 @@ test("first-run pack defers installation and cleanup verification to their actio
   assert.match(pack, /diagnosticOperation\.value=null[\s\S]*?busy\.value=true/);
   assert.match(pack, /it\.parentOperationId==null && it\.operationId in rootIds/);
   assert.match(pack, /LaunchedEffect\(chosen\)[\s\S]*?blocked to OfflineModules\.resolve\(setOf\(id\)\)/);
-  assert.match(pack, /LaunchedEffect\(confirmPrune\) \{\s*if\(!confirmPrune\)return@LaunchedEffect\s*val result=.*prunableSnapshotBytes/);
-  assert.match(pack, /LaunchedEffect\(section,selected,moduleDetails,recovered,busy,usageRevision\)[\s\S]*?if\(moduleDetails\) \{[\s\S]*?lifecycleStatus/);
+  assert.match(pack, /executeDuplicateCleanup\(context,requireNotNull\(reviewedStoragePlan\)\)/);
+  assert.match(pack, /LaunchedEffect\(confirmPrune\) \{\s*if\(!confirmPrune\)return@LaunchedEffect\s*val result=.*snapshotCleanupPlan/);
+  assert.match(pack, /LaunchedEffect\(section,selected,moduleDetails,recovered,busy,usageRevision,refreshRevision\)[\s\S]*?if\(moduleDetails\) \{[\s\S]*?lifecycleStatus/);
   assert.match(pack, /"Araç indirmeden devam et"/);
 });
 

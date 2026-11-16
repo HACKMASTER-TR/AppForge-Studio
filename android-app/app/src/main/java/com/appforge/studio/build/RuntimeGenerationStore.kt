@@ -21,6 +21,7 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         try {
             FileOutputStream(tmp).use{it.write(bytes);it.fd.sync()}
             Files.move(tmp.toPath(),target.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+            RuntimeFileClone.sync(parent,true)
         } catch(e:Throwable) {
             if(!Files.isSymbolicLink(tmp.toPath()))Files.deleteIfExists(tmp.toPath())
             throw e
@@ -43,7 +44,8 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
             Files.deleteIfExists(sidecar.toPath())
         }
     }
-    fun recover() {
+    fun recover() = RuntimeMutationLock.acquire(parent).use { recoverLocked() }
+    private fun recoverLocked() {
         RecoveryPathAnchor.siblings(active,journal,activeSeal,snapshotRegistry,
             File(journal.path+".tmp"),File(activeSeal.path+".tmp"),File(snapshotRegistry.path+".tmp"))
         if(!journal.exists()){cleanStaleTmpSidecars();return}
@@ -69,8 +71,10 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
                 require(treeDigest(inventory(active,{}))==j.getString("stagedDigest")){"Yeni ortamda yabancı değişiklik var; kurtarma tüm dosyaları koruyarak durdu."}
                 // Retain the failed activated environment as quarantine, never erase it.
                 Files.move(active.toPath(),child(".v3-discard-${UUID.randomUUID()}").toPath(),StandardCopyOption.ATOMIC_MOVE)
+                RuntimeFileClone.sync(parent,true)
             }
             Files.move(old.toPath(),active.toPath(),StandardCopyOption.ATOMIC_MOVE)
+            RuntimeFileClone.sync(parent,true)
             seal(j.getString("previousDigest"))
         } else {
             if(state=="COPYING")checkAnchor()
@@ -85,6 +89,7 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
                 removeOwned(stage)
             } else {
                 Files.move(stage.toPath(),child(".v3-discard-${UUID.randomUUID()}").toPath(),StandardCopyOption.ATOMIC_MOVE)
+                RuntimeFileClone.sync(parent,true)
             }
         }
         cleanStaleTmpSidecars()
@@ -95,6 +100,78 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         return parent.listFiles().orEmpty().filter{it.name.matches(Regex("\\.v3-discard-[0-9a-f-]{36}"))}.onEach{require(!Files.isSymbolicLink(it.toPath()))}.sortedBy{it.name}
     }
     fun quarantinedBytes():Long = quarantinedDirectories().sumOf{dir->inventory(dir,{}).values.sumOf{it.size}}
+    /** Reviewable, explicitly approved failure-stage recovery. The backup URI must be
+     *  selected by the user, reopened and verified before ANY source deletion.
+     *  Rootfs and package caches are not removal targets.
+     *  Toybox tar preserves Linux file modes and symlinks; it is never extracted here.
+     */
+    fun archiveAndPruneQuarantine(name:String,backup:java.io.OutputStream,
+            reread:()->java.io.InputStream,canceled:()->Unit={}):Long = RuntimeMutationLock.acquire(parent).use {
+        checkAnchor()
+        val activationJournal=File(parent,".rootfs-activation.json")
+        require(!journal.exists() && !Files.isSymbolicLink(journal.toPath()) &&
+            !activationJournal.exists() && !Files.isSymbolicLink(activationJournal.toPath())){
+            "Kesilmiş kurulum günlüğü var; hiçbir dosya silinmedi."
+        }
+        require(name.matches(Regex("\\.v3-discard-[0-9a-f-]{36}"))){"Yalnız tek bir karantina seçilebilir."}
+        val target=child(name)
+        require(target.isDirectory && !Files.isSymbolicLink(target.toPath())){"Karantina yok veya bağlantı içeriyor."}
+        val activeBefore=inventory(active,canceled)
+        val before=inventory(target,canceled)
+        require(before.size>1){"Boş veya eksik karantina yedeklenmedi."}
+        val bytes=before.values.sumOf{it.size}
+        require(bytes>0){"Karantinanın içeriği doğrulanamadı."}
+        val compressed=java.util.zip.GZIPOutputStream(backup)
+        val initial=MessageDigest.getInstance("SHA-256")
+        compressed.use { output ->
+            streamTar(name,canceled) { chunk,n ->
+                initial.update(chunk,0,n)
+                output.write(chunk,0,n)
+            }
+        }
+        val expected=initial.digest()
+        // Read the actual user-selected archive back, checking gzip CRC and all raw TAR bytes.
+        val replay=MessageDigest.getInstance("SHA-256")
+        reread().use { input ->
+            java.util.zip.GZIPInputStream(input).use { decoded ->
+                val buf=ByteArray(65536)
+                while(true){canceled();val n=decoded.read(buf);if(n<0)break;if(n>0)replay.update(buf,0,n)}
+            }
+        }
+        require(java.util.Arrays.equals(expected,replay.digest())){"Yedek geri okunamadı veya içeriği değişti; karantina korundu."}
+        // Recreate the archive from disk and compare its raw bytes to rule out a moving
+        // source between backup and review. This never extracts untrusted symlinks.
+        val after=MessageDigest.getInstance("SHA-256")
+        streamTar(name,canceled) { chunk,n -> after.update(chunk,0,n) }
+        require(java.util.Arrays.equals(expected,after.digest())){"Karantina yedekleme sırasında değişti; korunuyor."}
+        canceled()
+        require(!journal.exists() && !activationJournal.exists() &&
+            inventory(active,canceled)==activeBefore){"Aktif Linux ortamı veya işlem günlüğü değişti; karantina korundu."}
+        require(inventory(target,canceled)==before){"Karantina son kontrolde değişti; silinmedi."}
+        require(target.parentFile.canonicalFile==parent && !Files.isSymbolicLink(target.toPath()))
+        // The archive is verified at the selected document URI and remains with the user.
+        // Explicit backup/cleanup consent has already been collected by the UI.
+        removeOwned(target)
+        require(inventory(active,canceled)==activeBefore){"Aktif ortam bütünlüğü değişti."}
+        bytes
+    }
+
+    private fun streamTar(name:String,canceled:()->Unit,chunk:(ByteArray,Int)->Unit) {
+        val executable=when {
+            File("/system/bin/tar").canExecute()->"/system/bin/tar"
+            File("/usr/bin/tar").canExecute()->"/usr/bin/tar" // desktop unit tests
+            else->error("Güvenli TAR arşivleyici bulunamadı; silme yapılmadı.")
+        }
+        val proc=ProcessBuilder(executable,"-cf","-","-C",parent.absolutePath,name)
+            .redirectError(ProcessBuilder.Redirect.to(File("/dev/null"))).start()
+        try {
+            proc.inputStream.use { source ->
+                val buf=ByteArray(65536)
+                while(true){canceled();val n=source.read(buf);if(n<0)break;if(n>0)chunk(buf,n)}
+            }
+            require(proc.waitFor(900,java.util.concurrent.TimeUnit.SECONDS) && proc.exitValue()==0){"TAR yedeklemesi başarısız; karantina korundu."}
+        } finally { if(proc.isAlive)proc.destroyForcibly() }
+    }
     /** Read-only, heavyweight SHA-256 comparison. Never count an unverified quarantine. */
     fun duplicateQuarantineBytes():Long {
         checkAnchor()
@@ -102,11 +179,11 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         val activeEntries=inventory(active,{})
         val bytes=activeEntries.values.sumOf{it.size}
         return quarantinedDirectories().sumOf { candidate ->
-            if(runCatching { inventory(candidate,{}) }.getOrNull()==activeEntries) bytes else 0L
+            if(runCatching { val entries=inventory(candidate,{});requireOwnedSnapshot(candidate,entries);entries }.getOrNull()==activeEntries) bytes else 0L
         }
     }
     /** User-approved and serialized by the manager. No symlinks followed; no non-identical tree removed. */
-    fun pruneDuplicateQuarantines(canceled:()->Unit={}):Long {
+    fun pruneDuplicateQuarantines(canceled:()->Unit={}):Long = RuntimeMutationLock.acquire(parent).use {
         checkAnchor()
         require(!journal.exists()) { "Önce yarım kalmış generation işlemi kurtarılmalı." }
         val activeEntries=inventory(active,canceled)
@@ -115,6 +192,7 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         for(candidate in quarantinedDirectories()) {
             canceled()
             if(runCatching { inventory(candidate,canceled) }.getOrNull()!=activeEntries) continue
+            requireOwnedSnapshot(candidate,activeEntries)
             // Recheck both immediately before deletion. Files lacking exact proof are retained.
             require(!journal.exists() && inventory(active,canceled)==activeEntries)
             require(inventory(candidate,canceled)==activeEntries)
@@ -123,10 +201,69 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         }
         return reclaimed
     }
+    enum class CleanupScope { DUPLICATES, UNUSED, ALL }
+    data class CleanupPlan(val activeDigest:String,val candidates:Map<String,String>,val logicalBytes:Long,val scope:CleanupScope=CleanupScope.DUPLICATES)
+    fun duplicateCleanupPlan(canceled:()->Unit={}):CleanupPlan {
+        checkAnchor();require(!journal.exists())
+        val entries=inventory(active,canceled)
+        val candidates=quarantinedDirectories().filter { candidate ->
+            val contents=inventory(candidate,canceled)
+            contents==entries && runCatching{requireOwnedSnapshot(candidate,contents)}.isSuccess
+        }.associate{it.name to treeDigest(entries)}
+        return CleanupPlan(treeDigest(entries),candidates,candidates.size*entries.values.sumOf{it.size})
+    }
+    fun unusedCleanupPlan(canceled:()->Unit={}):CleanupPlan {
+        checkAnchor();require(!journal.exists())
+        val keep=ModuleOwnershipStore(active).protectedSnapshots().toMutableSet()
+        val latest=File(active,"opt/appforge-device/generations-v4/latest.json")
+        if(latest.isFile){RecoveryPathAnchor.check(latest);require(latest.length()<=4L*1024*1024);keep.add(JSONObject(latest.readText()).getString("previous"))}
+        val registered=registry()
+        val snapshots=registered.keys().asSequence().map{child(it)}.filter{it.isDirectory}.toList()
+        // Keep at least one *verified* rollback, regardless of wall-clock timestamps.
+        val verified=snapshots.filter{candidate->runCatching{treeDigest(inventory(candidate,canceled))==registered.getString(candidate.name)}.getOrDefault(false)}
+        if(snapshots.isNotEmpty())require(verified.isNotEmpty()){"Doğrulanmış geri alma yok; tüm kopyalar korundu."}
+        if(keep.none{name->verified.any{it.name==name}})verified.maxByOrNull{it.lastModified()}?.let{keep.add(it.name)}
+        val candidates=linkedMapOf<String,String>();var bytes=0L
+        for(candidate in snapshots.filter{it.name !in keep}) {
+            canceled();val entries=inventory(candidate,canceled)
+            if(runCatching{requireOwnedSnapshot(candidate,entries);require(treeDigest(entries)==registered.getString(candidate.name))}.isFailure)continue
+            candidates[candidate.name]=treeDigest(entries);bytes=Math.addExact(bytes,entries.values.sumOf{it.size})
+        }
+        return CleanupPlan(treeDigest(inventory(active,canceled)),candidates,bytes,CleanupScope.UNUSED)
+    }
+    fun reviewedCleanupPlan(canceled:()->Unit={}):CleanupPlan {
+        val duplicate=duplicateCleanupPlan(canceled);val unused=unusedCleanupPlan(canceled)
+        require(duplicate.activeDigest==unused.activeDigest)
+        return CleanupPlan(duplicate.activeDigest,duplicate.candidates+unused.candidates,Math.addExact(duplicate.logicalBytes,unused.logicalBytes),CleanupScope.ALL)
+    }
+    fun executeDuplicateCleanup(plan:CleanupPlan,canceled:()->Unit={}):Long = executeReviewedCleanup(plan,canceled)
+    fun executeReviewedCleanup(plan:CleanupPlan,canceled:()->Unit={}):Long = RuntimeMutationLock.acquire(parent).use {
+        val currentPlan=when(plan.scope){CleanupScope.DUPLICATES->duplicateCleanupPlan(canceled);CleanupScope.UNUSED->unusedCleanupPlan(canceled);CleanupScope.ALL->reviewedCleanupPlan(canceled)}
+        require(currentPlan==plan){"Temizleme planı değişti; yeniden inceleme ve onay gerekli."}
+        var removed=0L
+        for((name,digest) in plan.candidates) {
+            canceled();val target=child(name)
+            val current=inventory(target,canceled)
+            require(treeDigest(current)==digest && treeDigest(inventory(active,canceled))==plan.activeDigest)
+            requireOwnedSnapshot(target,current)
+            removeOwned(target);removed=Math.addExact(removed,current.values.sumOf{it.size})
+            val records=registry();if(records.has(name)){records.remove(name);saveRegistry(records)}
+        }
+        removed
+    }
     fun prepare(module:OfflineModuleId,availableBytes:()->Long=defaultAvailableBytes,canceled:()->Unit={}):Prepared=prepareOwner(module.name,availableBytes,canceled)
     fun prepareOwner(owner:String,availableBytes:()->Long=defaultAvailableBytes,canceled:()->Unit={}):Prepared {
+        val lease=RuntimeMutationLock.acquire(parent)
+        try {
         require(owner.matches(Regex("[A-Z0-9_:-]{1,100}")))
-        recover();checkAnchor()
+        recoverLocked();checkAnchor()
+        RuntimeStorageBudget.requireAdmission(active,available=availableBytes())
+        val keep=ModuleOwnershipStore(active).protectedSnapshots().toMutableSet()
+        val latest=File(active,"opt/appforge-device/generations-v4/latest.json")
+        if(latest.isFile){require(!Files.isSymbolicLink(latest.toPath()) && latest.length()<=4L*1024*1024);keep.add(JSONObject(latest.readText()).getString("previous"))}
+        val previous=parent.listFiles().orEmpty().filter{it.name.startsWith(".v3-previous-")}
+        val obsolete=previous.filter{it.name !in keep}
+        require(obsolete.size<16 && obsolete.sumOf{RuntimeStorageBudget.measure(it,canceled).logicalBytes}<=RuntimeStorageBudget.RESERVE){"STORAGE_BUDGET: Eski sürüm bütçesi dolu; yeni kopya öncesi onaylı temizlik gerekli."}
         val before=inventory(active,canceled)
         val bytes=before.values.sumOf{it.size}
         require(availableBytes()>bytes+256L*1024*1024){"İzole sürüm için yeterli depolama yok; çalışan modüller değişmedi."}
@@ -136,15 +273,16 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         try {
             copyTree(active,stage,canceled,availableBytes)
             check(inventory(stage,canceled)==before){"Sürüm kopyası bütünlüğü doğrulanamadı."}
-            return Prepared(stage,old,j,before,canceled,availableBytes)
+            return Prepared(stage,old,j,before,canceled,availableBytes,lease)
         } catch(e:Throwable) {
             // Prepared.close does not exist yet. Recover the known clone even if its
             // post-copy inventory/cancellation check failed; preserve the original cause.
-            try { recover() } catch(cleanup:Throwable) { e.addSuppressed(cleanup) }
+            try { recoverLocked() } catch(cleanup:Throwable) { e.addSuppressed(cleanup) }
             throw e
         }
+        } catch(e:Throwable) {lease.close();throw e}
     }
-    inner class Prepared internal constructor(val root:File,private val old:File,private val j:JSONObject,private val before:Map<String,Entry>,private val canceled:()->Unit,private val availableBytes:()->Long=defaultAvailableBytes):AutoCloseable {
+    inner class Prepared internal constructor(val root:File,private val old:File,private val j:JSONObject,private val before:Map<String,Entry>,private val canceled:()->Unit,private val availableBytes:()->Long=defaultAvailableBytes,private val lease:java.io.Closeable):AutoCloseable {
         val previousRootName:String get()=old.name
         private var committed=false
         fun commit(verify:(File)->Unit,fault:(String)->Unit={}) {
@@ -163,14 +301,16 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
             j.put("stagedDigest",stagedDigest)
             j.put("state","STAGED");write(j,availableBytes);fault("before-switch")
             Files.move(active.toPath(),old.toPath(),StandardCopyOption.ATOMIC_MOVE)
+            RuntimeFileClone.sync(parent,true)
             try {
                 fault("old-moved")
                 Files.move(root.toPath(),active.toPath(),StandardCopyOption.ATOMIC_MOVE)
+                RuntimeFileClone.sync(parent,true)
                 fault("new-moved")
                 j.put("state","COMMITTED");write(j,availableBytes);fault("committed-marker");seal(stagedDigest,availableBytes);committed=true;journal.delete()
-            }catch(e:Throwable){recover();throw e}
+            }catch(e:Throwable){recoverLocked();throw e}
         }
-        override fun close(){if(!committed)recover()}
+        override fun close(){try{if(!committed)recoverLocked()}finally{lease.close()}}
     }
     fun rollbackReason(module:OfflineModuleId):String?=runCatching {
         checkAnchor();require(!journal.exists()){"Kesilmiş işlem önce güvenle kurtarılmalı."}
@@ -184,7 +324,8 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
     }.getOrElse{it.message?:"Generation doğrulanamadı."}
     fun rollbackAvailable(module:OfflineModuleId):Boolean=rollbackReason(module)==null
     fun rollback(module:OfflineModuleId,availableBytes:()->Long=defaultAvailableBytes,fault:(String)->Unit={},canceled:()->Unit={}) {
-        recover();checkAnchor();require(rollbackReason(module)==null){rollbackReason(module)?:"Geri alma engellendi."}
+        RuntimeMutationLock.acquire(parent).use {
+        recoverLocked();checkAnchor();require(rollbackReason(module)==null){rollbackReason(module)?:"Geri alma engellendi."}
         val record=JSONObject(File(active,"opt/appforge-device/generations-v4/latest.json").readText())
         val old=child(record.getString("previous"));val target=inventory(old,canceled)
         require(availableBytes()>target.values.sumOf{it.size}+256L*1024*1024){"Geri alma stage'i için depolama yetersiz; çalışan ortam korundu."}
@@ -199,9 +340,12 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
             require(inventory(active,canceled)==before){"Aktif ortam geri alma sırasında değişti; geçiş engellendi."}
             j.put("state","STAGED");write(j,availableBytes);fault("before-switch")
             Files.move(active.toPath(),current.toPath(),StandardCopyOption.ATOMIC_MOVE);fault("old-moved")
+            RuntimeFileClone.sync(parent,true)
             Files.move(stage.toPath(),active.toPath(),StandardCopyOption.ATOMIC_MOVE);fault("new-moved")
+            RuntimeFileClone.sync(parent,true)
             j.put("state","COMMITTED");write(j,availableBytes);seal(j.getString("stagedDigest"),availableBytes);Files.delete(journal.toPath())
-        }catch(e:Throwable){recover();throw e}
+        }catch(e:Throwable){recoverLocked();throw e}
+    }
     }
     private val snapshotRegistry=File(parent,".v3-snapshots.json")
     private fun registry():JSONObject {
@@ -254,8 +398,8 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
             val files=inventory(candidate,{});requireOwnedSnapshot(candidate,files);require(treeDigest(files)==j.getString(candidate.name)){"Eski snapshot değiştirilmiş; silinebilir alan doğrulanamadı."};files.values.sumOf{it.size}
         }
     }
-    fun pruneUnused(protected:Set<String>,retain:Int=1,canceled:()->Unit={}):Long {
-        recover();checkAnchor();require(retain in 1..10)
+    fun pruneUnused(protected:Set<String>,retain:Int=1,canceled:()->Unit={}):Long = RuntimeMutationLock.acquire(parent).use {
+        recoverLocked();checkAnchor();require(retain in 1..10)
         val j=registry();val keep=protected.toMutableSet()
         for(name in j.keys().asSequence().toList()) {
             val candidate=child(name)
@@ -323,6 +467,7 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
     }
     private fun copyTree(from:File,to:File,canceled:()->Unit,availableBytes:()->Long=defaultAvailableBytes) {
         require(!to.exists() && !Files.isSymbolicLink(to.toPath()))
+        val reflink=RuntimeFileClone.supported(parent)
         Files.walkFileTree(from.toPath(),object:SimpleFileVisitor<Path>() {
             override fun preVisitDirectory(dir:Path,attrs:BasicFileAttributes):FileVisitResult {canceled();Files.createDirectory(to.toPath().resolve(from.toPath().relativize(dir)));return FileVisitResult.CONTINUE}
             override fun visitFile(file:Path,attrs:BasicFileAttributes):FileVisitResult {
@@ -330,7 +475,7 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
                 if(Files.isSymbolicLink(file))Files.createSymbolicLink(dst,Files.readSymbolicLink(file)) else {
                     require(attrs.isRegularFile)
                     require(availableBytes()>attrs.size()+64L*1024*1024){"Kopyalama sırasında depolama alanı tükendi; aktif ortam korundu."}
-                    Files.copy(file,dst,StandardCopyOption.COPY_ATTRIBUTES)
+                    RuntimeFileClone.copy(file,dst,reflink)
                 }
                 return FileVisitResult.CONTINUE
             }

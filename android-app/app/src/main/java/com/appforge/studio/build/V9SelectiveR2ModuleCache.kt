@@ -174,7 +174,9 @@ internal object V9SelectiveR2ModuleCache {
     @Synchronized fun fetchSelectedWithConsent(
         context: Context, manifest: ByteArray, signature: ByteArray, persistedFloor: Long,
         selected: Set<OfflineModuleId>, architecture: String, userApproved: Boolean,
-        canceled: () -> Boolean = { false }, onProgress: (Int, Int, Long, Long) -> Unit = { _, _, _, _ -> }
+        canceled: () -> Boolean = { false }, onProgress: (Int, Int, Long, Long) -> Unit = { _, _, _, _ -> },
+        onNetwork: (Int, Int, Long, Long) -> Unit = { _, _, _, _ -> },
+        onCacheHit: (Int, Int, Long) -> Unit = { _, _, _ -> }
     ): Map<String, File> {
         check(userApproved) { "User approval required for V9 selective package prefetch" }
         val plan = signedPlan(context, manifest, signature, persistedFloor, selected, architecture)
@@ -191,9 +193,16 @@ internal object V9SelectiveR2ModuleCache {
         val count = plan.objects.size
         for ((index, obj) in plan.objects.withIndex()) {
             if (canceled()) throw java.util.concurrent.CancellationException("V9 prefetch canceled")
+            val target=File(cache,obj.sha256)
+            if(VerifiedArtifactCache.reuse(target,obj.sha256,obj.bytes,V9R2ObjectTransfer.MAX_BYTES)) {
+                result[obj.sha256]=target
+                onCacheHit(index+1,count,obj.bytes)
+                continue
+            }
             val file = V9SignedR2CandidateDownload.fetchWithConsent(
                 context, manifest, signature, persistedFloor, obj.sha256, true,
                 canceled = canceled,
+                onNetwork = { gets,bytes -> onNetwork(index+1,count,gets,bytes) },
                 onProgress = { done, total -> onProgress(index + 1, count, done, total) }
             )
             // The canary verifies stored content as well, including on cache reuse.

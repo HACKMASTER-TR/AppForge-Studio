@@ -60,8 +60,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: 42891389496
-          name: v9-isolated3-apk-404e0edb404fbf4826b48f6a7d7007b40508568a
+          run-id: 43913262268
+          name: AppForge-v9r2isolated3-upgrade-0401e7b07867398dfb354a34c545564a7a700551
           path: reference-apk
       - name: Run V9 security tests without skips
         run: |
@@ -73,12 +73,13 @@ jobs:
       - name: Verify upgrade guard and Termux driver regressions
         run: |
           python3 -m unittest discover -s quality/tests -p test_apk_inplace_upgrade.py -v
+          python3 -m unittest discover -s quality/tests -p test_storage_release_manifest.py -v
           python3 -m unittest discover -s quality/tests -p test_termux_github_apk.py -v
       - name: Prepare pinned Kotlin compiler
         run: python3 quality/tools/v9_pinned_kotlin_compiler.py "$RUNNER_TEMP/appforge-pinned-kotlin-maven"
       - name: Test and build the original package with a higher version
         run: |
-          gradle -p android-app :app:testDebugUnitTest :app:assembleDebug \
+          gradle -p android-app :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest \
             -PappforgeV9R2Isolated3Acceptance=true -PappforgeV9R2Isolated3Upgrade=true \
             -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/appforge-pinned-kotlin-maven" \
             --no-daemon --max-workers=2 --no-configuration-cache --console=plain
@@ -87,10 +88,10 @@ jobs:
           set -euo pipefail
           mkdir -p upgrade-artifacts
           APK=android-app/app/build/outputs/apk/debug/app-debug.apk
-          OLD=reference-apk/AppForge-V9-R2-Isolated3-debug.apk
+          OLD=reference-apk/AppForgeStudio-v9r2isolated3-upgrade.apk
           SIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt2"
-          python3 quality/tools/verify_apk_upgrade.py --old-apk "$OLD" --new-apk "$APK" \
+          python3 quality/tools/verify_apk_upgrade.py --reference quality/fixtures/appforge-v9r2isolated3-v538-reference.json --old-apk "$OLD" --new-apk "$APK" \
             --aapt2 "$AAPT" --apksigner "$SIGNER" --source-sha "$GITHUB_SHA" \
             --output upgrade-artifacts/upgrade-evidence.json
           python3 - <<'PYTHON'
@@ -104,6 +105,20 @@ jobs:
           PYTHON
           cp "$APK" upgrade-artifacts/AppForgeStudio-v9r2isolated3-upgrade.apk
           (cd upgrade-artifacts && sha256sum *.apk > SHA256SUMS.txt)
+          python3 quality/tools/storage_release_manifest.py --evidence upgrade-artifacts/upgrade-evidence.json --apk upgrade-artifacts/AppForgeStudio-v9r2isolated3-upgrade.apk --output "upgrade-artifacts/release-manifest-$GITHUB_SHA.json"
+      - name: Enable KVM for disposable update acceptance
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify v538 data preservation and storage on disposable emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: python3 quality/tools/emulator_storage_upgrade.py --serial emulator-5554 --old-apk reference-apk/AppForgeStudio-v9r2isolated3-upgrade.apk --new-apk upgrade-artifacts/AppForgeStudio-v9r2isolated3-upgrade.apk --test-apk android-app/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk --output upgrade-artifacts/emulator-storage-evidence.json
       - name: Upload only a verified in-place upgrade candidate
         uses: actions/upload-artifact@v4
         with:

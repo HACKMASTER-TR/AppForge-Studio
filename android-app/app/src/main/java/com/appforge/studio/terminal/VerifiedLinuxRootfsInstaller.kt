@@ -72,9 +72,14 @@ internal class VerifiedLinuxRootfsInstaller(
             )
 
             layout.runtimeDirectory.mkdirs()
-            RootfsActivationTransaction(layout.rootfsDirectory,layout.restoreDirectory,layout.metadataFile).recover()
+            com.appforge.studio.build.RuntimeMutationLock.acquire(layout.runtimeDirectory).use { mutation ->
+            RootfsActivationTransaction(layout.rootfsDirectory,layout.restoreDirectory,layout.metadataFile,heldLease=mutation).recover()
             layout.stagingDirectory.mkdirs()
             layout.restoreDirectory.mkdirs()
+            require(layout.stagingDirectory.listFiles()?.isEmpty()==true){"Önceki rootfs staging içeriği korunuyor; yeni kurulum öncesi inceleme gerekli."}
+            require(layout.restoreDirectory.listFiles()?.none{it.isDirectory}==true){"Geri alma rootfs kopyası korunuyor; yeni değiştirme engellendi."}
+            val required=com.appforge.studio.build.RuntimeStorageBudget.RESERVE + manifest.maxArchiveBytes*2 + 6L*1024*1024*1024
+            require(layout.runtimeDirectory.usableSpace>required){"Rootfs genişleme rezervi için yeterli alan yok; mevcut ortam ve cache korunur."}
 
             val transaction =
                 File(
@@ -158,7 +163,8 @@ internal class VerifiedLinuxRootfsInstaller(
                 activateRootfs(
                     layout = layout,
                     stagedRootfs = extractedRootfs,
-                    manifest = manifest
+                    manifest = manifest,
+                    mutation = mutation
                 )
 
                 onProgress(
@@ -171,6 +177,7 @@ internal class VerifiedLinuxRootfsInstaller(
                 )
             } finally {
                 transaction.deleteRecursively()
+            }
             }
         }
 
@@ -271,9 +278,10 @@ internal class VerifiedLinuxRootfsInstaller(
     private fun activateRootfs(
         layout: LinuxRuntimeLayout,
         stagedRootfs: File,
-        manifest: LinuxRootfsManifest
+        manifest: LinuxRootfsManifest,
+        mutation:com.appforge.studio.build.RuntimeMutationLock.Lease
     ) {
-        RootfsActivationTransaction(layout.rootfsDirectory,layout.restoreDirectory,layout.metadataFile).activate(stagedRootfs,writeMetadata={
+        RootfsActivationTransaction(layout.rootfsDirectory,layout.restoreDirectory,layout.metadataFile,heldLease=mutation).activate(stagedRootfs,writeMetadata={
             LinuxRootfsMetadataCodec.write(layout.metadataFile,LinuxRootfsMetadata(
                 distribution=manifest.distribution,architecture=manifest.architecture,release=manifest.release,archiveSha256=manifest.archiveSha256))
         })

@@ -18,7 +18,7 @@ internal object VerifiedModuleDownload {
         canceled:()->Boolean={false}, clock:()->Long={System.nanoTime()/1_000_000},
         open:(URL)->HttpURLConnection={DownloadNetwork.open(it)},
         progress:(ModuleProgress)->Unit={}, availableBytes:(File)->Long={it.usableSpace},maxBytes:Long=1024L*1024*1024,
-        waitForRetry:(Long)->Unit={Thread.sleep(it)}, maxRetries:Int=3) {
+        waitForRetry:(Long)->Unit={Thread.sleep(it)}, maxRetries:Int=3,expectedBytes:Long?=null) {
         require(maxRetries in 0..5)
         DownloadNetwork.prepareJournal()
         val requestPolicy=DownloadNetwork.policy
@@ -28,14 +28,19 @@ internal object VerifiedModuleDownload {
         val key=nativeTarget.canonicalPath
         DownloadCoordinator.claim(key)
         val identity=MessageDigest.getInstance("SHA-256").digest(url.toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
-        val report:(ModuleProgress)->Unit={ event ->
+        var networkGets=0L
+        var networkBytes=0L
+        val report:(ModuleProgress)->Unit={ raw ->
+            val event=raw.copy(networkGetCount=networkGets.takeIf{it>0},networkBytes=networkBytes)
             DownloadCoordinator.observe(DownloadCoordinator.Transfer(expected,expected,identity,event,
                 DownloadCoordinator.ResumeCapability.VERIFIED_HTTP_RANGE))
             progress(event)
         }
+        var fileLease:java.io.Closeable?=null
         try {
+            nativeTarget.parentFile.mkdirs()
+            fileLease=RuntimeMutationLock.acquire(nativeTarget.parentFile,".artifact-$expected.lock")
             var attempt=DownloadCoordinator.bind(operation,expected,nativeTarget)
-            require(attempt<=maxRetries){"Kalıcı yeniden deneme sınırı doldu; otomatik devam engellendi."}
             // A verified local archive requires neither a network connection nor a misleading CONNECTING phase.
             // The existing transfer() still performs independent path, range and SHA-256 checks for misses.
             require(maxBytes in 1..(2L*1024*1024*1024))
@@ -43,22 +48,24 @@ internal object VerifiedModuleDownload {
             require(cacheAddress.protocol=="https" && cacheAddress.userInfo==null && cacheAddress.ref==null)
             require(expected.matches(Regex("[0-9a-f]{64}")))
             require(!Files.isSymbolicLink(nativeTarget.toPath())) { "Önbellek hedefi symlink olamaz." }
-            if(nativeTarget.isFile && nativeTarget.length() in 1..maxBytes && sha(nativeTarget)==expected) {
+            if(VerifiedArtifactCache.reuse(nativeTarget,expected,expectedBytes,maxBytes)) {
                 val bytes=nativeTarget.length()
                 report(ModuleProgress(module,operation,ModulePhase.VERIFYING,bytes,bytes,
                     detail="Yerel önbellek SHA-256 ile doğrulandı; ağ isteği yapılmadı."))
                 DownloadCoordinator.observe(DownloadCoordinator.Transfer(expected,expected,identity,
                     ModuleProgress(module,operation,ModulePhase.PREPARING,bytes,bytes,
-                        detail="ÖNBELLEKTEN KULLANILDI ✓ • Ağdan 0 bayt aktarıldı."),
+                        detail="ÖNBELLEKTEN KULLANILDI ✓ • Ağdan 0 bayt",cacheHit=true,networkGetCount=0,networkBytes=0),
                     DownloadCoordinator.ResumeCapability.VERIFIED_HTTP_RANGE,verificationStatus="SHA256_VERIFIED"))
                 progress(ModuleProgress(module,operation,ModulePhase.PREPARING,bytes,bytes,
-                    detail="ÖNBELLEKTEN KULLANILDI ✓ • Ağdan 0 bayt aktarıldı."))
+                    detail="ÖNBELLEKTEN KULLANILDI ✓ • Ağdan 0 bayt",cacheHit=true,networkGetCount=0,networkBytes=0))
                 return
             }
+            require(attempt<=maxRetries){"Kalıcı yeniden deneme sınırı doldu; otomatik devam engellendi."}
             report(ModuleProgress(module,operation,ModulePhase.CONNECTING,detail="Doğrulanmış yerel dosya bulunamadı; aktarım hazırlanıyor."))
             while(true) {
                 try {
-                    DownloadNetwork.withPolicy(requestPolicy){transfer(url,expected,nativeTarget,module,operation,canceled,clock,{address->DownloadNetwork.check(requestPolicy);open(address)},report,availableBytes,maxBytes,requestPolicy)}
+                    DownloadNetwork.withPolicy(requestPolicy){transfer(url,expected,nativeTarget,module,operation,canceled,clock,{address->DownloadNetwork.check(requestPolicy);MeasuredDownloadConnection(open(address),onResponse={networkGets++}){networkBytes+=it}},report,availableBytes,maxBytes,requestPolicy)}
+                    require(expectedBytes==null || nativeTarget.length()==expectedBytes){"Paket boyutu uyuşmuyor; kurulum engellendi."}
                     val last=DownloadCoordinator.snapshot(operation).lastOrNull{it.artifactId==expected && it.sourceIdentity==identity}
                     DownloadCoordinator.observe(DownloadCoordinator.Transfer(expected,expected,identity,
                         last?.progress?.copy(phase=ModulePhase.PREPARING,bytesDownloaded=nativeTarget.length(),bytesTotal=nativeTarget.length())?:ModuleProgress(module,operation,ModulePhase.PREPARING,bytesDownloaded=nativeTarget.length(),bytesTotal=nativeTarget.length()),
@@ -86,7 +93,7 @@ internal object VerifiedModuleDownload {
             DownloadCoordinator.observe(DownloadCoordinator.Transfer(expected,expected,identity,
                 ModuleProgress(module,operation,phase,bytesDownloaded=File(nativeTarget.path+".part").takeIf{it.isFile}?.length()?:0,bytesTotal=DownloadCoordinator.snapshot(operation).lastOrNull{it.artifactId==expected}?.progress?.bytesTotal,errorCode=e.javaClass.simpleName),DownloadCoordinator.ResumeCapability.VERIFIED_HTTP_RANGE))
             throw e
-        } finally {DownloadCoordinator.release(key)}
+        } finally {try{fileLease?.close()}finally{DownloadCoordinator.release(key)}}
     }
     private fun transfer(url:String,expected:String,target:File,module:OfflineModuleId,operation:String,
         canceled:()->Boolean={false}, clock:()->Long={System.nanoTime()/1_000_000},

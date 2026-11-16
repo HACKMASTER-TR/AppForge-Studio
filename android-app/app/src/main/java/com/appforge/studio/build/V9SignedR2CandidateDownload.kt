@@ -68,12 +68,13 @@ internal object V9SignedR2CandidateDownload {
     @Synchronized fun fetchWithConsent(context: Context, manifest: ByteArray, signature: ByteArray,
                          persistedFloor: Long, sha256: String, userApproved: Boolean,
                          canceled: () -> Boolean = { false },
+                         onNetwork: (Long, Long) -> Unit = { _, _ -> },
                          onProgress: (Long, Long) -> Unit = { _, _ -> }): File {
         check(userApproved) { "Explicit V9 canary download consent required" }
         val plan = planSignedObject(manifest, signature, persistedFloor, sha256)
         val directory = privateCacheDirectory(context.applicationContext.noBackupFilesDir)
         V9R2ObjectTransfer.quarantineDamaged(File(directory,plan.sha256),plan.sha256,plan.bytes,userApproved)
         return V9R2ObjectTransfer.download(File(directory, plan.sha256), plan.sha256, plan.bytes,
-            canceled = canceled, progress = onProgress)
+            canceled = canceled, onNetwork = onNetwork, progress = onProgress)
     }
 }

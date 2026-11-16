@@ -62,18 +62,21 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
                     val url=URL(fields[0]);require(allowed(url));val sha=fields[1];require(sha.matches(Regex("[a-f0-9]{64}")))
                     transferring=true
                     val component=url.path.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._+-]"),"_").take(150)
-                    progress(ModuleProgress(module,operation,ModulePhase.CONNECTING,detail="Doğrulanmış native aktarım • $component"))
+                    progress(ModuleProgress(module,operation,ModulePhase.VERIFYING,detail="Yerel arşiv doğrulanıyor • $component"))
                     val job=currentCoroutineContext()[Job]!!
                     val target=File(cache,"$sha.archive")
                     val isR2=url.host=="appforge-v9-packages-readonly.28550040284a.workers.dev"
                     if(isR2) {
                         require(url.toString()==V9SignedR2CandidateDownload.urlForSha(sha) && fields.size==3)
                         val expectedBytes=fields[2].toLong()
+                        val hit=VerifiedArtifactCache.reuse(target,sha,expectedBytes,V9R2ObjectTransfer.MAX_BYTES)
+                        var gets=0L;var received=0L
                         V9R2ObjectTransfer.quarantineDamaged(target,sha,expectedBytes,true)
-                        V9R2ObjectTransfer.download(target,sha,expectedBytes,canceled={!job.isActive || stopRequested()},open=open,
-                            progress={done,total->progress(ModuleProgress(module,operation,ModulePhase.DOWNLOADING,done,total,
-                                detail="R2 • $component • SHA-256 doğrulaması bekleniyor"))})
-                    } else VerifiedModuleDownload.download(url.toString(),sha,target,module,operation,canceled={!job.isActive || stopRequested()},open=open,progress={progress(it.copy(detail="Doğrulanmış native aktarım • $component • "+it.detail))},maxBytes=2L*1024*1024*1024)
+                        V9R2ObjectTransfer.download(target,sha,expectedBytes,canceled={!job.isActive || stopRequested()},open={url->MeasuredDownloadConnection(open(url),onResponse={gets++}){received+=it}},
+                            progress={done,total->progress(ModuleProgress(module,operation,if(hit)ModulePhase.PREPARING else ModulePhase.DOWNLOADING,done,total,
+                                detail=if(hit)"ÖNBELLEKTEN KULLANILDI ✓ • Ağdan 0 bayt" else "R2 • $component • SHA-256 doğrulaması bekleniyor",
+                                networkGetCount=gets,networkBytes=received,cacheHit=hit))})
+                    } else VerifiedModuleDownload.download(url.toString(),sha,target,module,operation,canceled={!job.isActive || stopRequested()},open=open,progress={progress(it.copy(detail="Doğrulanmış native aktarım • $component • "+it.detail))},maxBytes=2L*1024*1024*1024,expectedBytes=fields.getOrNull(2)?.toLong())
                     job.ensureActive();require(directory.usableSpace>target.length()+64L*1024*1024){"Arşiv aktarımı için boş alan yetersiz."}
                     val result=File(directory,"$id.archive");require(!Files.isSymbolicLink(result.toPath()))
                     val part=File(directory,"$id.archive.part");require(!Files.isSymbolicLink(part.toPath()))

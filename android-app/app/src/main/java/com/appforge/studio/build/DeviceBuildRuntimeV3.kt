@@ -432,6 +432,7 @@ internal object DeviceBuildRuntimeV3 {
         val plan=V9SelectiveR2ModuleCache.preview(
             app,selected,arch
         )
+        VerifiedArtifactCache.configure(context.applicationContext.noBackupFilesDir,null)
         val cache=V9SignedR2CandidateDownload.privateCacheDirectory(
             app.noBackupFilesDir
         )

@@ -6,6 +6,7 @@ add_library(
     appforge_pty
     SHARED
     appforge_pty.c
+    runtime_clone.c
 )
 
 target_compile_features(

@@ -223,6 +223,7 @@ internal object OfflineBuildPackManager {
         require(selected.isNotEmpty()){ "Önce kurulacak modülü seçin." }
         val app=context.applicationContext
         DownloadNetwork.configure(app);DownloadNetwork.prepareJournal()
+        VerifiedArtifactCache.configure(app.noBackupFilesDir,runtimeRootfs(app)?.parentFile)
         val plan=OfflineModules.resolve(selected)
         val operation=UUID.randomUUID().toString()
         if(plan.any{it !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE)})require(DeviceBuildRuntimeV3.platformError()==null){DeviceBuildRuntimeV3.platformError()!!}
@@ -240,6 +241,10 @@ internal object OfflineBuildPackManager {
         val aptModules=pending.filter{it in setOf(OfflineModuleId.ANDROID_CORE,
             OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE,
             OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST,OfflineModuleId.RUST_ANDROID_NDK)}
+        runtimeRootfs(app)?.takeIf{it.isDirectory}?.let { existing ->
+            val expansion=pending.maxOf{RuntimeStorageBudget.expansionLimit(it)}
+            RuntimeStorageBudget.requireAdmission(existing,expansion)
+        }
         val r2Bundle=if(aptModules.isNotEmpty())V9R2ReleaseStore.load(app) else runCatching{V9R2ReleaseStore.load(app)}.getOrNull()
         val minimum=selected.mapNotNull{OfflineModules.spec(it).diskBytes}.sum()
         require(app.noBackupFilesDir.usableSpace>minimum+256L*1024*1024){"Kurulum için yeterli boş alan yok."}
@@ -253,7 +258,7 @@ internal object OfflineBuildPackManager {
             phase(active,ModulePhase.RESOLVING,"Yalnız gerekli modüller: "+pending.joinToString{OfflineModules.spec(it).title})
             if(OfflineModuleId.WINDOWS_PORTABLE in pending) {
                 active=OfflineModuleId.WINDOWS_PORTABLE
-                phase(active,ModulePhase.CONNECTING,"Windows Portable: Android SDK lisansı veya Linux kurulumu gerekmez.")
+                phase(active,ModulePhase.PREPARING,"Windows Portable: Android SDK lisansı veya Linux kurulumu gerekmez.")
                 val hostSource=java.security.MessageDigest.getInstance("SHA-256").digest(WindowsPortableHostStore.HOST_URL.toByteArray()).joinToString(""){"%02x".format(it)}
                 DownloadCoordinator.bind(operation,WindowsPortableHostStore.HOST_SHA256,WindowsPortableHostStore.journalTarget(app))
                 WindowsPortableHostStore.install(app, onProgress={message->phase(OfflineModuleId.WINDOWS_PORTABLE,ModulePhase.INSTALLING,message)}, onBytes={bytes->
@@ -281,11 +286,15 @@ internal object OfflineBuildPackManager {
                 }}.toSet()
                 phase(active,ModulePhase.VERIFYING,"Ed25519 sürümü ve R2 paket önbelleği doğrulanıyor.")
                 val transferJob=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
+                var r2Gets=0L;var r2Bytes=0L
                 V9SelectiveR2ModuleCache.fetchSelectedWithConsent(app,r2Bundle.manifest,r2Bundle.signature,
                     r2Bundle.sequence,selection,architecture,true,
                     canceled={transferJob?.isActive==false || control.request!=DownloadControl.Request.NONE},
                     onProgress={index,total,done,bytes->progress(ModuleProgress(active,operation,ModulePhase.DOWNLOADING,
-                        done,bytes,detail="R2 nesnesi $index/$total • $done/$bytes bayt; kurulum henüz hazır değil."))})
+                        done,bytes,detail="R2 nesnesi $index/$total • $done/$bytes bayt; kurulum henüz hazır değil.",networkGetCount=r2Gets,networkBytes=r2Bytes))},
+                    onNetwork={_,_,gets,bytes->r2Gets=gets;r2Bytes=bytes},
+                    onCacheHit={index,total,bytes->progress(ModuleProgress(active,operation,ModulePhase.PREPARING,
+                        bytes,bytes,detail="ÖNBELLEKTEN KULLANILDI ✓ • Ağdan 0 bayt • R2 nesnesi $index/$total",cacheHit=true,networkGetCount=0,networkBytes=0))})
             }
             val linux=pending.filter{it !in setOf(OfflineModuleId.WINDOWS_PORTABLE,OfflineModuleId.FAST_HTML)}
             if(linux.isNotEmpty()) {
@@ -628,6 +637,49 @@ internal object OfflineBuildPackManager {
             }
         }
     }
+    fun storageReport(context:Context,canceled:()->Unit={}):RuntimeStorageBudget.Report {
+        val root=runtimeRootfs(context)?:error("Linux ortamı henüz kurulu değil.")
+        val report=RuntimeStorageBudget.inspect(root,canceled=canceled)
+        val caches=listOf("module-downloads","v9-signed-r2-canary","verified-rootfs-downloads").map {
+            RuntimeStorageBudget.measure(RecoveryPathAnchor.androidPlatformPath(File(context.noBackupFilesDir,it)),canceled)
+        }+report.cache
+        return report.copy(cache=RuntimeStorageBudget.Usage(caches.sumOf{it.logicalBytes},
+            if(caches.all{it.allocatedBytes!=null})caches.sumOf{it.allocatedBytes!!} else null,caches.sumOf{it.files}))
+    }
+    fun duplicateCleanupPlan(context:Context,canceled:()->Unit={}):RuntimeGenerationStore.CleanupPlan {
+        val root=runtimeRootfs(context)?:error("Linux ortamı henüz kurulu değil.")
+        return RuntimeGenerationStore(root).duplicateCleanupPlan(canceled)
+    }
+    fun storageCleanupPlan(context:Context,canceled:()->Unit={}):RuntimeGenerationStore.CleanupPlan {
+        val root=runtimeRootfs(context)?:error("Linux ortamı henüz kurulu değil.")
+        return RuntimeGenerationStore(root).reviewedCleanupPlan(canceled)
+    }
+    fun snapshotCleanupPlan(context:Context):RuntimeGenerationStore.CleanupPlan {
+        val root=runtimeRootfs(context)?:error("Linux ortamı henüz kurulu değil.")
+        return RuntimeGenerationStore(root).unusedCleanupPlan()
+    }
+    suspend fun executeDuplicateCleanup(context:Context,plan:RuntimeGenerationStore.CleanupPlan) = installMutex.withLock {
+        BuildModuleUsage.mutationLease().use {
+            val root=runtimeRootfs(context)?:error("Linux ortamı yok")
+            val job=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
+            RuntimeGenerationStore(root).executeReviewedCleanup(plan,canceled={if(job?.isActive==false)throw kotlinx.coroutines.CancellationException()})
+        }
+    }
+    /** Caller supplies a SAF CreateDocument output and reopens it after close. */
+    suspend fun backupAndCleanQuarantine(context:Context,name:String,
+        output:()->java.io.OutputStream, reopen:()->java.io.InputStream):Long = installMutex.withLock {
+        BuildModuleUsage.mutationLease().use {
+            val root=runtimeRootfs(context)?:error("Ortak Linux ortamı bulunamadı")
+            val job=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
+            RuntimeGenerationStore(root).archiveAndPruneQuarantine(name,output(),reopen,
+                canceled={if(job?.isActive==false)throw kotlinx.coroutines.CancellationException("Kurtarma iptal edildi")})
+        }
+    }
+    fun firstQuarantineForBackup(context:Context):String? {
+        require(BuildModuleUsage.mutationBlockedReason()==null){"Etkin kurulum varken yedekleme yapılamaz."}
+        val root=runtimeRootfs(context)?:return null
+        return RuntimeGenerationStore(root).quarantinedDirectories().firstOrNull()?.name
+    }
     fun duplicateQuarantineBytes(context:Context):Long {
         require(BuildModuleUsage.mutationBlockedReason()==null){"Etkin işlem varken ayrılmış ortam incelemesi yapılmaz."}
         val root=runtimeRootfs(context)?:error("Runtime yok")
@@ -712,8 +764,36 @@ internal object OfflineBuildPackManager {
         val channels=module?.let{ExternalTelemetryChannels(telemetry,it,operation)}
         val broker=module?.let{ModuleArtifactBroker(workspace,File(rootfs.parentFile,".module-archive-cache-v5"),it,operation,progress,stopRequested={control.request!=DownloadControl.Request.NONE})}
         val brokerJob=broker?.let{launch(kotlinx.coroutines.Dispatchers.IO){it.serve()}}
+        val initialStageBytes=if(module!=null)RuntimeStorageBudget.measure(rootfs).logicalBytes else 0L
+        var lastStorageCheck=0L
+        var lastFreeSpaceCheck=0L
+        var unstableSamples=0
         val poller=launch(kotlinx.coroutines.Dispatchers.IO) {
             while(kotlinx.coroutines.currentCoroutineContext().isActive) {
+                if(module!=null) {
+                    val now=android.os.SystemClock.elapsedRealtime()
+                    // Check free space cheaply and frequently; no per-file stat during every poll.
+                    if(now-lastFreeSpaceCheck>2000L) {
+                        lastFreeSpaceCheck=now
+                        require(rootfs.usableSpace>RuntimeStorageBudget.RESERVE){"STORAGE_BUDGET: Güvenlik payına ulaşıldı; aktif ortam ve cache korunur."}
+                    }
+                    if(now-lastStorageCheck>15000L) {
+                        lastStorageCheck=now
+                        // dpkg renames transient .dpkg-tmp files while the guest is running.
+                        // An unstable *measurement* may be retried, but the budget may not
+                        // remain unchecked indefinitely and security inventories stay strict.
+                        val bytes=RuntimeStorageBudget.sampleVolatile {
+                            RuntimeStorageBudget.measure(rootfs).logicalBytes
+                        }
+                        if(bytes==null) {
+                            unstableSamples++
+                            require(unstableSamples<12){"STORAGE_BUDGET_SCAN_BUSY: Kurulum dosyaları değişirken depolama ölçümü kararlı değil; çalışan ortam korundu."}
+                        } else {
+                            unstableSamples=0
+                            require(bytes<=Math.addExact(initialStageBytes,RuntimeStorageBudget.expansionLimit(module))){"STORAGE_BUDGET: İşlem genişleme sınırına ulaşıldı."}
+                        }
+                    }
+                }
                 val consent=module?.let{AptDownloadConsent.poll(workspace,it,operation)}
                 val aptPhase=module?.let{AptPhaseProgress.poll(workspace,it,operation)}
                 if(consent!=null) {
