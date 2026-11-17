@@ -18,14 +18,14 @@ test('only module center is visible; old navigation and disk card are gone', () 
   assert.match(screen, /Kurulumları yeniden kontrol et/);
 });
 
-test('blocking quarantine has a contextual, verified recovery path', () => {
-  assert.match(screen, /STORAGE_BUDGET/);
-  assert.match(screen, /Başarısız kurulumu güvenli kurtar/);
-  assert.match(screen, /failedBackupConfirm=true/);
-  assert.match(screen, /OfflineBuildPackManager\.backupAndCleanQuarantine/);
+test('one-tap retry keeps guarded private recovery but no manual recovery UI', () => {
+  assert.doesNotMatch(screen, /Başarısız kurulumu güvenli kurtar/);
+  assert.doesNotMatch(screen, /failedBackupConfirm=true/);
+  assert.match(screen, /geçici kurulum alanı sıfırdan hazırlanır/);
   assert.match(manager, /fun firstQuarantineForBackup/);
   assert.match(manager, /backupAndCleanQuarantine/);
   assert.match(budget, /fun requireAdmission/);
+  assert.match(budget, /val abandoned=children.filter/);
 });
 
 test('module install and network consent protections remain intact', () => {

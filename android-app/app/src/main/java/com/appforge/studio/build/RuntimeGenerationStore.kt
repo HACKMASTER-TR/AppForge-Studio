@@ -83,12 +83,11 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         if(stage.exists()) {
             require(!Files.isSymbolicLink(stage.toPath()))
             val activeEntries=if(active.isDirectory)runCatching{inventory(active,{})}.getOrNull() else null
-            // A disposable install stage is never the active runtime. If the
-            // original active inventory is unchanged and switching has not
-            // started, always restart from a fresh stage; no user backup needed.
-            // If switching began, retain the uncertain generation, fail closed.
-            if(state in setOf("COPYING","STAGED") && !old.exists() &&
-                    activeEntries!=null && treeDigest(activeEntries)==j.getString("previousDigest")) {
+            val stageEntries=if(state=="COPYING" && !old.exists() && stage.isDirectory)runCatching{inventory(stage,{})}.getOrNull() else null
+            // Only an unmodified COPY of the active tree can be deleted
+            // automatically. Modified/in-progress installer data remains in
+            // private quarantine, not in the new installation workspace.
+            if(state=="COPYING" && !old.exists() && activeEntries!=null && stageEntries!=null && treeDigest(activeEntries)==j.getString("previousDigest") && stageEntries.all{(k,v)->activeEntries[k]==v}) {
                 removeOwned(stage)
             } else {
                 Files.move(stage.toPath(),child(".v3-discard-${UUID.randomUUID()}").toPath(),StandardCopyOption.ATOMIC_MOVE)

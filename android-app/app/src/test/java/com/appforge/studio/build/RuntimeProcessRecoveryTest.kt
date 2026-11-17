@@ -41,7 +41,12 @@ class RuntimeProcessRecoveryTest {
             assertEquals(before,store.snapshot())
             assertEquals(1,store.quarantinedDirectories().size)
             assertFalse(File(parent,".module-generation.json").exists())
-            assertThrows(IllegalArgumentException::class.java){store.prepare(OfflineModuleId.NODE_WEB)}
+            val retained=store.quarantinedDirectories().single()
+            assertEquals("preserved partial installation",File(retained,"interrupted-install").readText())
+            // A new independent transaction can begin; crash evidence remains.
+            store.prepare(OfflineModuleId.NODE_WEB).use { assertTrue(it.root.isDirectory) }
+            assertTrue(retained.isDirectory)
+            assertEquals(before,store.snapshot())
         } finally {parent.deleteRecursively()}
     }
 }
