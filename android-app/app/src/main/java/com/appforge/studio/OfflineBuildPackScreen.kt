@@ -159,16 +159,13 @@ internal object ModuleInstallOperations {
 }
 
 @Composable internal fun OfflineBuildPackScreen(onBack:()->Unit,firstRun:Boolean=false,onFirstRunComplete:((Boolean)->Unit)?=null,project:ProjectDraft?=null,onRustPrepared:((ProjectDraft)->Unit)?=null) {
-    var section by rememberSaveable { mutableStateOf("modules") }
+    val section="modules" // Only module installation UI is exposed.
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     val journalError by ModuleInstallOperations.journalError.collectAsState()
     val events by ModuleInstallOperations.updates.collectAsState()
     val busy by ModuleInstallOperations.busy.collectAsState()
     val stopPending by ModuleInstallOperations.stopPending.collectAsState()
-    val artifacts by DownloadCoordinator.records.collectAsState()
-    val operationTree by DownloadCoordinator.operations.collectAsState()
-    val networkStatus by DownloadNetwork.status.collectAsState()
     val preparing by ProjectDependencyPreparation.busy.collectAsState()
     var networkPolicy by remember{mutableStateOf(DownloadNetwork.policy)}
     var confirmAnyNetwork by remember{mutableStateOf(false)}
@@ -183,7 +180,6 @@ internal object ModuleInstallOperations {
     var existingFiles by remember { mutableStateOf(InstalledReadinessPresentationCache.peek()?.existingFiles.orEmpty()) }
     var refreshRevision by remember { mutableIntStateOf(0) }
     var scannedRefreshRevision by remember { mutableIntStateOf(0) }
-    var history by remember{mutableStateOf<List<String>>(emptyList())}
     var downloadedModules by remember{mutableStateOf(InstalledReadinessPresentationCache.peek()?.downloadedModules.orEmpty())}
     var chosen by remember { mutableStateOf<OfflineModuleId?>(null) }
     var selectedName by rememberSaveable { mutableStateOf(OfflineModuleId.NODE_WEB.name) }
@@ -242,8 +238,6 @@ internal object ModuleInstallOperations {
     }
     var duplicateQuarantineBytes by remember(confirmDuplicateQuarantine){mutableStateOf<Long?>(null)}
     var duplicateQuarantineError by remember(confirmDuplicateQuarantine){mutableStateOf<String?>(null)}
-    var confirmHistoryCleanup by remember{mutableStateOf(false)}
-    var historyDetails by rememberSaveable { mutableStateOf(false) }
     var pruneBytes by remember(confirmPrune){mutableStateOf<Long?>(null)}
     var pruneReason by remember(confirmPrune){mutableStateOf<String?>(null)}
     val selected=OfflineModuleId.entries.firstOrNull { it.name==selectedName } ?: OfflineModuleId.NODE_WEB
@@ -295,10 +289,6 @@ internal object ModuleInstallOperations {
         }
         recordedVersion=recorded.first
         updateRequired=recorded.second
-    }
-    LaunchedEffect(section,recovered,busy) {
-        if(section in setOf("history","diagnostics") && recovered && !busy)
-            history=withContext(Dispatchers.IO){ModuleInstallOperations.history()}
     }
     LaunchedEffect(section,selected,moduleDetails,recovered,busy,usageRevision,refreshRevision) {
         lifecycle=null
@@ -564,22 +554,6 @@ internal object ModuleInstallOperations {
         }){Text("Onayla ve temizle")}},
         dismissButton={TextButton(onClick={confirmPrune=false}){Text("Vazgeç")}}
     )
-    if(confirmHistoryCleanup)AlertDialog(
-        onDismissRequest={confirmHistoryCleanup=false},
-        title={Text("Eski indirme kayıtlarını bırak")},
-        text={Text("Yalnız kurtarma gerektiren ve doğrulanmış kısmi baytı olmayan eski geçmiş kayıtları kaldırılır. İndirilen dosyalar, paket önbelleği ve kullanıcı projeleri silinmez. Bu kayıtlar üzerinden devam etme bilgisi kaybolur; sonraki kurulum yeniden açık onay ister.")},
-        confirmButton={TextButton(enabled=!busy && !preparing && !stopPending,onClick={
-            confirmHistoryCleanup=false
-            scope.launch {
-                detail=withContext(Dispatchers.IO) {
-                    runCatching { DownloadCoordinator.releaseUnverifiedRecoveryHistory() }
-                        .fold({"Geçmişten $it doğrulanmamış kayıt bırakıldı. Paket dosyaları korunuyor."},
-                              {"İndirme geçmişi temizliği engellendi: ${it.message}"})
-                }
-            }
-        }){Text("Kayıtları bırak • dosyaları koru")}},
-        dismissButton={TextButton(onClick={confirmHistoryCleanup=false}){Text("Vazgeç")}}
-    )
     if(chosen!=null) {
         val id=chosen!!
         val modules=installPlan
@@ -602,7 +576,6 @@ internal object ModuleInstallOperations {
     }
     Scaffold(topBar={TopAppBar(title={Text("Birleşik Modül Merkezi V9")},navigationIcon={TextButton(onClick=onBack){Text("Geri")}})}){padding->
         LazyColumn(modifier=Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            item { ModuleManagerNavigation(section) { section=it } }
             if(section=="modules")item {
                 Card(modifier=Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -901,101 +874,22 @@ internal object ModuleInstallOperations {
                     }
                 }
             }
-            if(section=="network")item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("İndirme ağı",style=MaterialTheme.typography.titleMedium);Text(networkStatus)
-                for(policy in DownloadNetworkPolicy.entries)OutlinedButton(enabled=!busy && !preparing,onClick={if(policy==DownloadNetworkPolicy.ALLOW_ANY)confirmAnyNetwork=true else {networkPolicy=policy;DownloadNetwork.select(policy)}}){Text(when(policy){DownloadNetworkPolicy.WIFI_ONLY->"Yalnız Wi-Fi";DownloadNetworkPolicy.WIFI_PREFERRED->"Wi-Fi tercih et; mobil veri için onay iste";DownloadNetworkPolicy.ALLOW_ANY->"Wi-Fi ve mobil veriye izin ver"})}
-                Text("Varsayılan politika: ${DownloadNetwork.policy}. VPN veya ölçümlü Wi-Fi, kısıtlı politikada engellenir. Dış paket yöneticilerinde ağ geçişi kısıtı garanti edilemediğinden açık ağ izni gerekir.")
-            }}}
-            if(section=="diagnostics")item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("Son işlem",style=MaterialTheme.typography.titleMedium)
-                Text("Geçmiş kayıtlar komut veya kurulum yetkisi değildir. Dosya tamamlanması, modül Hazır ve proje Çevrimdışı Hazır ayrı doğrulanır.")
-                val rootIds=diagnosticOperation?.let { operation ->
-                    OfflineModuleId.entries.map { PersistentOperationGraph.moduleId(operation,it) }.toSet()
-                }.orEmpty()
-                val currentRoots=operationTree.filter { it.parentOperationId==null && it.operationId in rootIds }
-                if(currentRoots.isEmpty())Text(if(busy)"İşlem hazırlanıyor…" else "Bu oturumda işlem kaydı yok.")
-                currentRoots.asReversed().forEach{root->
-                    Text("${OfflineModules.spec(root.moduleId).title} • ${root.operationState} • ${root.operationId.take(12)}")
-                    operationTree.filter{it.parentOperationId==root.operationId}.takeLast(12).forEach{child->
-                        Text("  ${child.stage} • ${child.operationState}"+(if(child.stage==OperationStage.ARTIFACT_DOWNLOAD)" • ${child.downloadCapability}" else ""))
-                    }
-                }
-                Text("APT/npm/Gradle/pip/sdkmanager: kısıtlı ağda BLOCKED. Çevrimdışı bayrağı, alt süreç soketlerini engelleyen bir izolasyon değildir.")
-            }}}
-            if(section=="history")item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("İndirme geçmişi: ${artifacts.size}/128 kayıt")
-                val eligible=PersistentDownloads.retainAfterUserCleanup(artifacts)
-                val count=artifacts.size-eligible.size
-                Text("Güvenli olarak bırakılabilecek doğrulanmamış kurtarma kaydı: $count")
-                Button(enabled=!busy && !preparing && !stopPending && count>0,onClick={confirmHistoryCleanup=true}) {
-                    Text("Eski kayıtları bırak • dosyaları koru")
-                }
-            }}}
-            if(section=="history")item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("Güncel indirmeler — modül başına tek durum",style=MaterialTheme.typography.titleMedium)
-                Text("Görünen durum bir kurulum/READY kanıtı değildir. Her paketin doğrulanmış kaldığı yer arka planda ayrıca korunur.")
-                val modules=artifacts.groupBy{it.moduleId}
-                if(modules.isEmpty())Text("Bekleyen indirme kaydı yok.")
-                OfflineModules.all.filter{it.id in modules}.forEach{spec->
-                    val rows=modules.getValue(spec.id)
-                    val latest=rows.maxByOrNull{it.updatedAt}!!
-                    val verified=rows.sumOf{it.verifiedPartialBytes}
-                    Text("${spec.title} • ${rows.size} bekleyen paket • son durum: ${latest.downloadState}")
-                    Text("Doğrulanmış paket kontrol noktaları: ${verified/1024/1024} MiB (paketler arasında toplam yüzde hesaplanmaz)")
-                }
-                TextButton(onClick={historyDetails=!historyDetails}) {
-                    Text(if(historyDetails)"Paket ayrıntılarını gizle" else "Paket ayrıntılarını göster")
-                }
-            }}}
-            if(section=="history" && historyDetails)items(artifacts.takeLast(32).reversed(),key={"artifact-"+it.operationId+it.artifactId}){record->
-                Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Text(OfflineModules.spec(record.moduleId).title,style=MaterialTheme.typography.titleMedium)
-                    Text("Dosya: ${record.artifactId.take(16)} • ${record.downloadState}")
-                    record.parentOperationId?.let{Text("Üst işlem: ${it.take(12)}")}
-                    val live=DownloadCoordinator.snapshot(record.operationId).firstOrNull{it.artifactId==record.artifactId}?.progress?.takeIf{busy || preparing}
-                    live?.let{event->
-                        Text("${event.bytesDownloaded/1024/1024} MiB / "+(event.bytesTotal?.let{"${it/1024/1024} MiB • %${event.percent}"}?:"Boyut bilinmiyor"))
-                        Text("Hız: "+(event.speedBytesPerSecond?.let{"%.1f MiB/sn".format(it/1024/1024)}?:"Hesaplanıyor")+" • Kalan: "+(event.estimatedRemainingMs?.let{"${it/1000} sn"}?:"Hesaplanıyor"))
-                    }
-
-                    Text("${record.verifiedPartialBytes/1024/1024} MiB doğrulanmış kısmi / "+(record.expectedBytes?.let{"${it/1024/1024} MiB"}?:"Boyut bilinmiyor"))
-                    Text("Ağ: ${record.networkPolicy} • ${record.resumeCapability} • ${record.verificationState} • retry ${record.retryCount}")
-                    record.failureReason?.let{Text("Hata: $it")}
-                    if(record.downloadState==DownloadState.COMPLETED)Text("Dosya SHA-256 ile tamamlandı; modülün Hazır kontrolü ayrıdır.")
-                    else {
-                        Button(enabled=!busy && !preparing && record.stagingIdentity!=null && recovered && chosen==null,onClick={chosen=record.moduleId}){Text(if(record.downloadState==DownloadState.PAUSED)"Devam et • onayla" else "Güvenli yeniden dene • onayla")}
-                        if(record.stagingIdentity==null)Text("Paket yöneticisi kaydı: aynı projeden tekrar açık kod çalıştırma onayı gerekir; dosya düzeyinde devam sunulmaz.")
-                        OutlinedButton(enabled=!busy && !preparing && record.downloadState!=DownloadState.CANCELLED,onClick={scope.launch{runCatching{withContext(Dispatchers.IO){DownloadCoordinator.cancelRecord(record.operationId,record.artifactId)}}.onFailure{detail=it.message?:"Kayıt güncellenemedi"}}}){Text("Geçmiş kaydını iptal et • dosyaları koru")}
-                    }
-                }}
-            }
             plan?.let{p->item{Text(p.error?:"Bu proje için: "+p.modules.joinToString{OfflineModules.spec(it).title})}}
-            if(section in setOf("modules","diagnostics") && recovered)item {
-                RuntimeStorageDashboard(onChanged={refreshRevision++})
-            }
-            if(section=="diagnostics" && recovered)item {
-                Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        enabled=!busy && !preparing && !failedBackupBusy && BuildModuleUsage.mutationBlockedReason()==null,
-                        onClick={failedBackupConfirm=true}
-                    ){Text("Başarısız kurulumu yedekle ve temizle")}
-                    if(failedBackupBusy)LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
-                    OutlinedButton(
-                        enabled=!busy && !preparing && !duplicateQuarantineBusy && BuildModuleUsage.mutationBlockedReason()==null,
-                        onClick={confirmPrune=true}
-                    ){Text("Eski sürümleri temizle")}
-                    OutlinedButton(
-                        enabled=!busy && !preparing && !duplicateQuarantineBusy && BuildModuleUsage.mutationBlockedReason()==null,
-                        onClick={confirmDuplicateQuarantine=true}
-                    ){Text("Birebir aynı ayrılmış kopyaları denetle")}
-                    Text("Bu tarama dosya bütünlüğünü okur. Farklı/şüpheli kopyalar otomatik silinmez.",style=MaterialTheme.typography.bodySmall)
-                }
+            if(recovered && events.values.any { event ->
+                event.detail.contains("STORAGE_BUDGET",ignoreCase=true) &&
+                    (event.detail.contains("karantina",ignoreCase=true) ||
+                     event.detail.contains("staging",ignoreCase=true))
+            }) item {
+                OutlinedButton(
+                    enabled=!busy && !preparing && !failedBackupBusy &&
+                        BuildModuleUsage.mutationBlockedReason()==null,
+                    onClick={failedBackupConfirm=true}
+                ){Text("Başarısız kurulumu güvenli kurtar")}
             }
             if(section=="modules" && project!=null && (!FastHtmlApkPolicy.isCandidate(project) || RustProjectPolicy.hasRust(project)))item { ProjectDependencyPreparationCard(project,onRustPrepared) }
             if(section=="modules" && selected==OfflineModuleId.WINDOWS_PORTABLE && portableReady)item { WindowsModuleSmokeCard() }
             item { Text("Kullanıcının başlattığı kurulum Android veri aktarımı servisiyle izlenir. Android zaman sınırı veya süreç ölümü işlemi durdurabilir. Yeniden açınca kayıt geri yüklenir; devam için onay gerekir, dosyalar yeniden doğrulanır.") }
             if(journalError.isNotBlank())item{Text(journalError)}
-            if(section in setOf("diagnostics","history") && history.isNotEmpty())item{Column {Text("Son işlem kayıtları (hazır olma kanıtı değildir)");history.takeLast(8).forEach{Text(it)}}}
             if(detail.isNotBlank())item{Text(detail)}
             if(firstRun)item{Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text("İlk açılışta araç indirme zorunluluğu yok. Fast HTML gömülüdür; diğer modüller ihtiyaç olduğunda kurulur.")
@@ -1046,21 +940,6 @@ private fun ModulePhase.turkishLabel():String = when(this) {
     ModulePhase.ERROR -> "Hata oluştu"
 }
 
-/** Compact navigation preserves operation state; network consent stays in its own section. */
-@Composable private fun ModuleManagerNavigation(selected:String,onSelect:(String)->Unit) {
-    Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
-        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            listOf("modules" to "Modüller","network" to "Ağ ayarları").forEach { (id,label) ->
-                OutlinedButton(onClick={onSelect(id)},modifier=Modifier.weight(1f),enabled=selected!=id){Text(label)}
-            }
-        }
-        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            listOf("history" to "İndirme geçmişi","diagnostics" to "Gelişmiş / Tanılama").forEach { (id,label) ->
-                OutlinedButton(onClick={onSelect(id)},modifier=Modifier.weight(1f),enabled=selected!=id){Text(label)}
-            }
-        }
-    }
-}
 @Composable private fun ModuleCompactHeader(title:String,verified:Boolean,expanded:Boolean,onDetails:()->Unit) {
     Column {
         Text(title,style=MaterialTheme.typography.titleMedium)
