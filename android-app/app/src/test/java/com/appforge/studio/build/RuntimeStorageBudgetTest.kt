@@ -229,16 +229,28 @@ class RuntimeStorageBudgetTest {
         val external=File(parent,"project").apply{writeText("external")}
         Files.createLink(File(root,"hardlinked-input").toPath(),external.toPath())
         val original=File(root,"vendor").readText()
-        RuntimeGenerationStore(root).prepare(OfflineModuleId.NODE_WEB).use { tx ->
-            val staged=File(tx.root,"vendor")
-            File(root,"vendor").writeText("active change")
-            assertEquals(original,staged.readText())
-            staged.writeText("stage change")
-            assertEquals("active change",File(root,"vendor").readText())
-            File(tx.root,"hardlinked-input").writeText("staged only")
-            assertEquals("external",external.readText())
-            assertFalse(Files.isSameFile(File(tx.root,"hardlinked-input").toPath(),external.toPath()))
+        val store=RuntimeGenerationStore(root)
+        // Active state was edited while the stage was in progress. Fail closed.
+        assertThrows(IllegalArgumentException::class.java) {
+            store.prepare(OfflineModuleId.NODE_WEB).use { tx ->
+                val staged=File(tx.root,"vendor")
+                File(root,"vendor").writeText("active change")
+                assertEquals(original,staged.readText())
+                staged.writeText("stage change")
+                assertEquals("active change",File(root,"vendor").readText())
+                File(tx.root,"hardlinked-input").writeText("staged only")
+                assertEquals("external",external.readText())
+                assertFalse(Files.isSameFile(File(tx.root,"hardlinked-input").toPath(),external.toPath()))
+            }
         }
+        assertEquals("external",external.readText())
+        assertEquals("active change",File(root,"vendor").readText())
+        val journal=File(parent,".module-generation.json")
+        assertTrue(journal.isFile)
+        val staged=File(parent,JSONObject(journal.readText()).getString("stage"))
+        assertEquals("staged only",File(staged,"hardlinked-input").readText())
+        assertThrows(IllegalArgumentException::class.java){store.recover()}
+        assertTrue(journal.isFile)
     }
     @Test fun processLockDeniesConcurrentPrepareAndRecovery()=fixture { parent,root ->
         RuntimeGenerationStore(root).prepare(OfflineModuleId.NODE_WEB).use {
