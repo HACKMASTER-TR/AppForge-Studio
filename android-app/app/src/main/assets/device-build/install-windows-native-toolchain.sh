@@ -140,7 +140,13 @@ CPP
 
 repair_interrupted_dpkg
 
-if [ "${APPFORGE_MODULE_REFRESH:-0}" != 1 ] && have_tools; then
+WINDOWS_LOCK="/opt/appforge-device/apt-locks-v5/WINDOWS_NATIVE/snapshot-v1"
+have_windows_lock() {
+  [ -d "$WINDOWS_LOCK" ] && [ ! -L "$WINDOWS_LOCK" ] || return 1
+  find "$WINDOWS_LOCK" -mindepth 2 -maxdepth 2 -name installed.tsv -type f -print -quit | grep -q .
+}
+
+if [ "${APPFORGE_MODULE_REFRESH:-0}" != 1 ] && have_tools && have_windows_lock; then
   verify_smoke
 
   printf '%s\n' \
@@ -165,6 +171,7 @@ install_packages() {
   apt-get install \
     -y \
     --no-install-recommends \
+    --reinstall \
     ca-certificates \
     cmake \
     ninja-build \
@@ -183,12 +190,7 @@ if ! install_packages; then
 
   dpkg --configure -a
 
-  apt-get \
-    -f \
-    install \
-    -y \
-    --no-install-recommends
-
+  # Only the requested pinned packages may be retried.
   install_packages
 
   echo "APPFORGE_WINDOWS_NATIVE_APT_REPAIR=PASS"

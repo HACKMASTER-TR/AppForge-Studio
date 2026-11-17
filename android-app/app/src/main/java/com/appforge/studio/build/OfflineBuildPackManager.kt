@@ -356,6 +356,11 @@ internal object OfflineBuildPackManager {
                         OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST,OfflineModuleId.RUST_ANDROID_NDK
                     )) {
                         val reuse=V9R2AptInstallReuse.seedForDebug(app,staged,id)
+                        if(id==OfflineModuleId.WINDOWS_NATIVE && reuse.missing>0) {
+                            throw IllegalStateException(
+                                "APPFORGE_WINDOWS_R2_INCOMPLETE: ${reuse.missing} of 46 signed packages missing after prefetch; " +
+                                    "no APT installation attempted; verified cache preserved.")
+                        }
                         if(reuse.available>0) phase(id,ModulePhase.PREPARING,
                             "R2 SHA-256 önbelleği: "+reuse.available+" paket hazır, "+
                             reuse.missing+" eksik; "+reuse.verifiedBytes+" bayt yeniden indirilmeyecek. "+

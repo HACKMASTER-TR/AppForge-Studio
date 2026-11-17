@@ -2,7 +2,7 @@
 # V8: signed, pinned Ubuntu ARM64 host tools with explicit glibc loader.
 # NEVER apt-install, dpkg-install or overwrite shared libc. Fail closed on any unverified byte.
 set -eu
-[ "${APPFORGE_MODULE_ID:-}" = RUST_ANDROID_NDK ] || exit 60
+case "${APPFORGE_MODULE_ID:-}" in RUST_ANDROID_NDK|EXPO_REACT_NATIVE) ;; *) exit 60;; esac
 [ "${APPFORGE_APT_MANAGED_INSTALL:-0}" = 1 ] || exit 60
 [ "${APPFORGE_R2_RELEASE_AUTHORIZED:-0}" = 1 ] || exit 60
 [ "$(dpkg --print-architecture)" = arm64 ] || exit 60
@@ -148,7 +148,21 @@ if [ "$name" = cmake ];then
   [ -s "$cmake_modules" ] || {
     echo 'APPFORGE_NDK_HOST_CMAKE_DATA_MISSING' >&2;exit 66;
   }
-  exec "$interpreter" --argv0 "$executable" --library-path "$libpath" "$executable" "$@"
+  # Only the installation probe may temporarily choose a launcher.
+  # Normal use reads the launcher which passed a real CMAKE_ROOT check.
+  cmake_mode=${APPFORGE_CMAKE_PROBE_MODE:-}
+  if [ -z "$cmake_mode" ];then
+    cmake_mode_file="$prefix/cmake-launch-mode-v9"
+    [ -f "$cmake_mode_file" ] && [ ! -L "$cmake_mode_file" ] || {
+      echo 'APPFORGE_NDK_HOST_CMAKE_NOT_VERIFIED' >&2;exit 66;
+    }
+    cmake_mode=$(cat "$cmake_mode_file")
+  fi
+  case "$cmake_mode" in
+    direct) exec "$executable" "$@";;
+    loader-argv0) exec "$interpreter" --argv0 "$executable" --library-path "$libpath" "$executable" "$@";;
+    *) echo 'APPFORGE_NDK_HOST_CMAKE_LAUNCH_DENIED' >&2;exit 66;;
+  esac
 fi
 exec "$interpreter" --library-path "$libpath" "$executable" "$@"
 WRAPPER
@@ -165,6 +179,30 @@ done
 # refuse READY until actual tool execution succeeds on this physical host.
 [ ! -e "$PREFIX" ] || exit 66
 mv -T "$STAGE" "$PREFIX"
+trap - 0 HUP INT TERM
+# Select a safe launcher on THIS device. PRoot can expose a different
+# /proc/self/exe to CMake's relocation logic. Do not guess from --version.
+cmake_probe_dir=$(mktemp -d /tmp/appforge-cmake-select.XXXXXXXX) || exit 68
+trap 'rm -rf -- "$cmake_probe_dir"' 0 HUP INT TERM
+cat > "$cmake_probe_dir/check.cmake" <<'CMAKE'
+if(NOT EXISTS "${CMAKE_ROOT}/Modules/CMakeDetermineSystem.cmake")
+  message(FATAL_ERROR "APPFORGE_NDK_HOST_CMAKE_ROOT_INVALID")
+endif()
+CMAKE
+[ -s "$PREFIX/sysroot/usr/share/cmake-3.28/Modules/CMakeDetermineSystem.cmake" ] || exit 68
+for cmake_mode in loader-argv0 direct;do
+  if APPFORGE_CMAKE_PROBE_MODE="$cmake_mode" "$BIN/cmake" -P "$cmake_probe_dir/check.cmake" >"$cmake_probe_dir/log" 2>&1;then
+    printf '%s\n' "$cmake_mode" > "$PREFIX/cmake-launch-mode-v9"
+    break
+  fi
+done
+if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
+  cat "$cmake_probe_dir/log" >&2
+  echo 'APPFORGE_NDK_HOST_CMAKE_NO_VERIFIED_LAUNCHER' >&2
+  exit 68
+fi
+printf 'APPFORGE_NDK_HOST_CMAKE_LAUNCH=%s\n' "$(cat "$PREFIX/cmake-launch-mode-v9")"
+rm -rf -- "$cmake_probe_dir"
 trap - 0 HUP INT TERM
 if ! "$BIN/clang" --version >/dev/null ||
    ! "$BIN/ld.lld" --version >/dev/null ||
