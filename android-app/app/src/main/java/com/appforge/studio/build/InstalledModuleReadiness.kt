@@ -24,3 +24,22 @@ internal object InstalledModuleReadiness {
         return result
     }
 }
+
+/** Process-scoped UI snapshot only. Build/installation authorization always checks disk.
+ *  Never persists READY across process death, reinstall or application restart.
+ */
+internal object InstalledReadinessPresentationCache {
+    data class Snapshot(
+        val ready:Map<OfflineModuleId,Boolean>,
+        val existingFiles:Set<OfflineModuleId>,
+        val downloadedModules:Set<OfflineModuleId>,
+        val mutationRevision:Long,
+        val eventReadiness:Map<OfflineModuleId,Boolean>
+    )
+    @Volatile private var snapshot:Snapshot?=null
+    fun peek():Snapshot?=snapshot
+    @Synchronized fun cached(mutationRevision:Long,eventReadiness:Map<OfflineModuleId,Boolean>):Snapshot? =
+        snapshot?.takeIf{it.mutationRevision==mutationRevision && it.eventReadiness==eventReadiness}
+    @Synchronized fun publish(value:Snapshot){snapshot=value}
+    @Synchronized fun reset(){snapshot=null}
+}

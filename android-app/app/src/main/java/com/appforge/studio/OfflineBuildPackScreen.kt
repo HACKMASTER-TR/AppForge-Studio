@@ -12,9 +12,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.appforge.studio.build.*
 import com.appforge.studio.model.ProjectDraft
 import kotlinx.coroutines.*
@@ -177,19 +174,17 @@ internal object ModuleInstallOperations {
     var confirmAnyNetwork by remember{mutableStateOf(false)}
     var mobileModule by remember{mutableStateOf<OfflineModuleId?>(null)}
     val usageRevision by BuildModuleUsage.changes.collectAsState()
+    val mutationRevision by BuildModuleUsage.mutationChanges.collectAsState()
     var recovered by remember{mutableStateOf(false)}
     var pendingLifecycle by remember { mutableStateOf<Pair<OfflineModuleId,String>?>(null) }
-    var ready by remember { mutableStateOf<Map<OfflineModuleId,Boolean>>(emptyMap()) }
-    var existingFiles by remember { mutableStateOf<Set<OfflineModuleId>>(emptySet()) }
+    // Process-scoped display cache survives screen navigation and background/resume.
+    // It never replaces live readiness checks used by installs, builds or lifecycle actions.
+    var ready by remember { mutableStateOf(InstalledReadinessPresentationCache.peek()?.ready.orEmpty()) }
+    var existingFiles by remember { mutableStateOf(InstalledReadinessPresentationCache.peek()?.existingFiles.orEmpty()) }
     var refreshRevision by remember { mutableIntStateOf(0) }
-    val lifecycleOwner=LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer=LifecycleEventObserver { _,event -> if(event==Lifecycle.Event.ON_RESUME)refreshRevision++ }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
+    var scannedRefreshRevision by remember { mutableIntStateOf(0) }
     var history by remember{mutableStateOf<List<String>>(emptyList())}
-    var downloadedModules by remember{mutableStateOf<Set<OfflineModuleId>>(emptySet())}
+    var downloadedModules by remember{mutableStateOf(InstalledReadinessPresentationCache.peek()?.downloadedModules.orEmpty())}
     var chosen by remember { mutableStateOf<OfflineModuleId?>(null) }
     var selectedName by rememberSaveable { mutableStateOf(OfflineModuleId.NODE_WEB.name) }
     var moduleMenuOpen by remember { mutableStateOf(false) }
@@ -263,16 +258,34 @@ internal object ModuleInstallOperations {
 
     LaunchedEffect(Unit){withContext(Dispatchers.IO){runCatching{ModuleInstallOperations.restore(context)}.onFailure{detail="İndirme günlüğü reddedildi: ${it.message}"};runCatching{OfflineBuildPackManager.recoverPending(context)}.onFailure{detail="Kurtarma güvenli biçimde durdu: ${it.message}"}};recovered=true}
     val readinessChanges=events.mapValues { it.value.phase==ModulePhase.READY }
-    LaunchedEffect(recovered,busy,usageRevision,refreshRevision,readinessChanges) {
-        ready=emptyMap()
+    LaunchedEffect(recovered,busy,mutationRevision,refreshRevision,readinessChanges) {
         if(!recovered || busy)return@LaunchedEffect
-        val inspected=withContext(Dispatchers.IO) {
-            OfflineBuildPackManager.installedReadiness(context) to
-                OfflineModules.all.filter { OfflineBuildPackManager.hasExistingFiles(context,it.id) }.map { it.id }.toSet()
+        val cached=if(refreshRevision==scannedRefreshRevision)
+            InstalledReadinessPresentationCache.cached(mutationRevision,readinessChanges)
+        else null
+        if(cached!=null) {
+            ready=cached.ready
+            existingFiles=cached.existingFiles
+            downloadedModules=cached.downloadedModules
+            return@LaunchedEffect
         }
-        existingFiles=inspected.second
-        downloadedModules=withContext(Dispatchers.IO){DownloadCoordinator.verifiedDownloadedModules()}
-        ready=inspected.first
+        // A genuine mutation, a changed operation journal or an explicit user refresh
+        // invalidates the display; ordinary ON_RESUME/navigation does not.
+        ready=emptyMap()
+        val inspected=withContext(Dispatchers.IO) {
+            val statuses=OfflineBuildPackManager.installedReadiness(context)
+            val files=OfflineModules.all.filter {
+                OfflineBuildPackManager.hasExistingFiles(context,it.id)
+            }.map { it.id }.toSet()
+            val downloads=DownloadCoordinator.verifiedDownloadedModules()
+            InstalledReadinessPresentationCache.Snapshot(
+                statuses,files,downloads,mutationRevision,readinessChanges)
+        }
+        InstalledReadinessPresentationCache.publish(inspected)
+        existingFiles=inspected.existingFiles
+        downloadedModules=inspected.downloadedModules
+        ready=inspected.ready
+        scannedRefreshRevision=refreshRevision
     }
     LaunchedEffect(selected,recovered,busy,events[selected]?.phase,refreshRevision) {
         if(!recovered || busy)return@LaunchedEffect

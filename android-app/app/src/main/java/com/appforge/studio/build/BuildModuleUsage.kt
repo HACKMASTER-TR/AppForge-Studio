@@ -6,6 +6,9 @@ import java.io.Closeable
 internal object BuildModuleUsage {
     private val revisions=kotlinx.coroutines.flow.MutableStateFlow(0L)
     val changes:kotlinx.coroutines.flow.StateFlow<Long> get()=revisions
+    // Unlike build/preparation leases, only runtime mutations invalidate UI readiness.
+    private val mutationRevisions=kotlinx.coroutines.flow.MutableStateFlow(0L)
+    val mutationChanges:kotlinx.coroutines.flow.StateFlow<Long> get()=mutationRevisions
     private fun changed(){revisions.value=revisions.value+1}
     private var builds=0
     private var mutation=false
@@ -34,6 +37,6 @@ internal object BuildModuleUsage {
         check(builds==0 && !mutation && preparation==null){"Etkin derleme veya modül işlemi var; çalışan araçlar değiştirilmez."}
         mutation=true;changed()
         var closed=false
-        return Closeable {synchronized(this){if(!closed){closed=true;mutation=false;changed()}}}
+        return Closeable {synchronized(this){if(!closed){closed=true;mutation=false;mutationRevisions.value=mutationRevisions.value+1;changed()}}}
     }
 }

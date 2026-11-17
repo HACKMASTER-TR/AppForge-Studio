@@ -37,4 +37,41 @@ class InstalledModuleReadinessTest {
         val result = InstalledModuleReadiness.inspect(listOf("a","b"), { if(it=="a")setOf("b")else setOf("a") }, { true }, { false })
         assertFalse(result.getValue("a"));assertFalse(result.getValue("b"))
     }
+
+    @Test fun displayCacheSurvivesNavigationAndResume() {
+        InstalledReadinessPresentationCache.reset()
+        try {
+            val snapshot=InstalledReadinessPresentationCache.Snapshot(
+                mapOf(OfflineModuleId.NODE_WEB to true),
+                setOf(OfflineModuleId.NODE_WEB),
+                emptySet(),
+                0L,
+                emptyMap()
+            )
+            InstalledReadinessPresentationCache.publish(snapshot)
+            assertSame(snapshot,InstalledReadinessPresentationCache.peek())
+            assertSame(snapshot,InstalledReadinessPresentationCache.cached(0L,emptyMap()))
+            assertTrue(InstalledReadinessPresentationCache.cached(0L,emptyMap())!!
+                .ready.getValue(OfflineModuleId.NODE_WEB))
+        } finally { InstalledReadinessPresentationCache.reset() }
+    }
+
+    @Test fun displayCacheInvalidatedByMutationOrOperationEvent() {
+        InstalledReadinessPresentationCache.reset()
+        try {
+            val event=mapOf(OfflineModuleId.NODE_WEB to true)
+            val snapshot=InstalledReadinessPresentationCache.Snapshot(
+                mapOf(OfflineModuleId.NODE_WEB to true),
+                setOf(OfflineModuleId.NODE_WEB),
+                emptySet(),
+                7L,event
+            )
+            InstalledReadinessPresentationCache.publish(snapshot)
+            assertSame(snapshot,InstalledReadinessPresentationCache.cached(7L,event))
+            assertNull(InstalledReadinessPresentationCache.cached(8L,event))
+            assertNull(InstalledReadinessPresentationCache.cached(7L,mapOf(OfflineModuleId.NODE_WEB to false)))
+            InstalledReadinessPresentationCache.reset()
+            assertNull(InstalledReadinessPresentationCache.peek())
+        } finally { InstalledReadinessPresentationCache.reset() }
+    }
 }
