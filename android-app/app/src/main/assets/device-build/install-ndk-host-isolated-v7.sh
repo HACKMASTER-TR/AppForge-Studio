@@ -138,6 +138,18 @@ libpath="$sysroot/usr/lib/llvm-18/lib:$sysroot/usr/lib/aarch64-linux-gnu:$sysroo
 export LD_LIBRARY_PATH="$libpath"
 export PATH="$prefix/bin:$PATH"
 export PROROOT_GUEST_EXE="$executable"
+# CMake 3.28 locates CMAKE_ROOT relative to argv[0] (its executable path).
+# When invoked through the explicit glibc loader, argv[0] can become the
+# loader path under PRoot even though the signed cmake-data payload exists.
+# glibc 2.39 supports --argv0; use it only for CMake, preserving all other
+# verified private-tool launch paths and the guest-exe override.
+if [ "$name" = cmake ];then
+  cmake_modules="$sysroot/usr/share/cmake-3.28/Modules/CMake.cmake"
+  [ -s "$cmake_modules" ] || {
+    echo 'APPFORGE_NDK_HOST_CMAKE_DATA_MISSING' >&2;exit 66;
+  }
+  exec "$interpreter" --argv0 "$executable" --library-path "$libpath" "$executable" "$@"
+fi
 exec "$interpreter" --library-path "$libpath" "$executable" "$@"
 WRAPPER
 chmod 0755 "$STAGE/bin/host-tool"

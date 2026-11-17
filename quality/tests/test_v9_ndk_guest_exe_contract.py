@@ -15,6 +15,17 @@ class NdkGuestExeContract(unittest.TestCase):
         self.assertNotIn('exec "$executable" "$@"',s)
         self.assertIn('APPFORGE_NDK_HOST_EXPLICIT_LOADER_WITH_GUEST_EXE=PASS',s)
 
+    def test_cmake_executable_identity_and_signed_data(self):
+        s=HOST.read_text()
+        self.assertIn('if [ "$name" = cmake ];then',s)
+        self.assertIn('cmake_modules="$sysroot/usr/share/cmake-3.28/Modules/CMake.cmake"',s)
+        self.assertIn('APPFORGE_NDK_HOST_CMAKE_DATA_MISSING',s)
+        self.assertIn('exec "$interpreter" --argv0 "$executable" --library-path "$libpath" "$executable" "$@"',s)
+        self.assertIn('export PROROOT_GUEST_EXE="$executable"',s)
+        self.assertIn('"$BIN/cmake" -P "$probe_dir/check.cmake"',s)
+        self.assertLess(s.index('if [ "$name" = cmake ];then'),
+                        s.index('exec "$interpreter" --library-path "$libpath" "$executable" "$@"'))
+
     def test_isolation_and_integrity_guards(self):
         s=HOST.read_text()
         for item in ('APPFORGE_R2_RELEASE_AUTHORIZED','as_verify_indices',
