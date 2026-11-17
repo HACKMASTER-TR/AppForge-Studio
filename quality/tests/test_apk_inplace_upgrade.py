@@ -42,8 +42,11 @@ class ApkUpgradeTest(unittest.TestCase):
         self.assertNotIn('gh release',workflow)
         self.assertIn('verify_apk_upgrade.py',workflow)
         self.assertIn('git merge-base --is-ancestor bf934eb4650550f9a6349dee965f4416977bdc77 HEAD',workflow)
-        self.assertIn('git diff --quiet bf934eb4650550f9a6349dee965f4416977bdc77 HEAD -- android-app/app/src/main/assets/device-build/install-ndk-host-isolated-v7.sh',workflow)
-        self.assertIn('git diff --name-only 404e0edb404fbf4826b48f6a7d7007b40508568a HEAD -- android-app/app/src/main/assets/device-build/install-toolchain.sh android-app/app/src/main/assets/device-build/install-rust-prerequisites.sh',workflow)
+        self.assertIn('git rev-parse HEAD:android-app/app/src/main/assets/device-build/install-ndk-host-isolated-v7.sh',workflow)
+        self.assertIn('34ceb30a3e9df189db7fc724c2b7241394b631c2',workflow)
+        self.assertIn('git rev-parse HEAD:android-app/app/src/main/assets/device-build/install-toolchain.sh',workflow)
+        self.assertIn('01d07c8330f304957f10b43d2cd10fed24a8ca52',workflow)
+        self.assertIn('git diff --name-only 404e0edb404fbf4826b48f6a7d7007b40508568a HEAD -- android-app/app/src/main/assets/device-build/install-rust-prerequisites.sh',workflow)
         self.assertIn('V9ReleaseSignatureVerifier.java',workflow)
 
 if __name__=='__main__':unittest.main()
