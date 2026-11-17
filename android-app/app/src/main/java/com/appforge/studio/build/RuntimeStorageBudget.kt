@@ -106,7 +106,7 @@ internal object RuntimeStorageBudget {
             "STORAGE_BUDGET: Korunan staging/karantina var. Disk alanı panosundan inceleyin; mevcut modüller kullanılabilir."
         }
         require(children.none{it.name.startsWith(".v3-") && it.isDirectory && !it.name.startsWith(".v3-previous-")}){"STORAGE_BUDGET: Sahipsiz/şüpheli runtime konumu korunuyor."}
-        val oldBudget=oldSnapshotBudget(active,children)
+        val oldBudget=oldSnapshotBudget(active,children.toList())
         require(!oldBudget.exceeded){
             "STORAGE_BUDGET: Eski sürüm bütçesi dolu (${oldBudget.detail()}); doğrulanmamış dosyalar korunuyor."
         }
