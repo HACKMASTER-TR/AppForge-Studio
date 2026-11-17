@@ -82,7 +82,11 @@ test("first-run pack defers installation and cleanup verification to their actio
   assert.match(pack, /active.phase==ModulePhase.READY -> "Kurulum devam ediyor"/);
   assert.match(pack, /!busy && completedInstall==selected/);
   assert.match(pack, /diagnosticOperation\.value=null[\s\S]*?busy\.value=true/);
-  assert.match(pack, /it\.parentOperationId==null && it\.operationId in rootIds/);
+  // Operations remain persisted even though the old diagnostics tab is hidden.
+  assert.match(pack, /diagnosticOperation\.value=event\.operationId/);
+  const graph = read("android-app/app/src/main/java/com/appforge/studio/build/PersistentOperationGraph.kt");
+  assert.match(graph, /fun artifactNodeId/);
+  assert.match(graph, /node\.parentOperationId in recoveredRoots/);
   assert.match(pack, /LaunchedEffect\(chosen\)[\s\S]*?blocked to OfflineModules\.resolve\(setOf\(id\)\)/);
   assert.match(pack, /executeDuplicateCleanup\(context,requireNotNull\(reviewedStoragePlan\)\)/);
   assert.match(pack, /LaunchedEffect\(confirmPrune\) \{\s*if\(!confirmPrune\)return@LaunchedEffect\s*val result=.*snapshotCleanupPlan/);
