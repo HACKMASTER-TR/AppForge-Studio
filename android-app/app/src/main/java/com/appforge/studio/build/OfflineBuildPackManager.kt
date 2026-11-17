@@ -245,6 +245,9 @@ internal object OfflineBuildPackManager {
         // a Linux generation; unrelated old Linux snapshots cannot block it.
         val runtimePending=RuntimeStorageBudget.runtimePending(pending)
         if(runtimePending.isNotEmpty())runtimeRootfs(app)?.takeIf{it.isDirectory}?.let { existing ->
+            // Interrupted prior install: safely reconcile the journal before
+            // starting a completely new transaction. No user rollback UI.
+            RuntimeGenerationStore(existing).recover()
             val expansion=runtimePending.maxOf{RuntimeStorageBudget.expansionLimit(it)}
             RuntimeStorageBudget.requireAdmission(existing,expansion)
         }

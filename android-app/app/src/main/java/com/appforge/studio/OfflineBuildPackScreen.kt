@@ -78,6 +78,7 @@ internal object ModuleInstallOperations {
             }
             try {
                 var retries=0
+                var cleanRetries=0
                 while(true) {
                     val last=java.util.concurrent.atomic.AtomicReference<ModuleProgress?>(null)
                     try {
@@ -97,7 +98,21 @@ internal object ModuleInstallOperations {
                     }catch(e:CancellationException){throw e}
                     catch(e:Exception) {
                         val event=last.get()
-                        if(event?.phase!=ModulePhase.WAITING_CONNECTION || retries>=5)throw e
+                        if(event?.phase!=ModulePhase.WAITING_CONNECTION) {
+                            val reason=e.message.orEmpty()
+                            val securityOrCapacity=listOf("STORAGE_BUDGET","ED25519","SHA-256","SIGNATURE",
+                                "CERTIFICATE","LICENSE","LISANS","PERMISSION","INTEGRITY").any {
+                                reason.contains(it,ignoreCase=true)
+                            }
+                            if(securityOrCapacity || cleanRetries>=2)throw e
+                            cleanRetries++
+                            publish(ModuleProgress(selected,event?.operationId?:"clean-retry",
+                                ModulePhase.PREPARING,detail="Kurulum tamamlanmadı; geçici ortam temizlenerek " +
+                                    "önbellekteki doğrulanmış paketlerle yeniden başlatılıyor ($cleanRetries/2)."))
+                            delay(1200L*cleanRetries)
+                            continue
+                        }
+                        if(retries>=5)throw e
                         retries++
                         val started=android.os.SystemClock.elapsedRealtime()
                         while(!OfflineBuildPackManager.hasValidatedInternet(context.applicationContext)) {
@@ -211,31 +226,6 @@ internal object ModuleInstallOperations {
     var confirmPrune by remember{mutableStateOf(false)}
     var confirmDuplicateQuarantine by remember{mutableStateOf(false)}
     var duplicateQuarantineBusy by remember{mutableStateOf(false)}
-    var failedBackupConfirm by remember { mutableStateOf(false) }
-    var failedBackupBusy by remember { mutableStateOf(false) }
-    var failedBackupName by remember { mutableStateOf<String?>(null) }
-    val failedBackupChooser=rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/gzip")) { uri ->
-        val name=failedBackupName
-        failedBackupName=null
-        if(uri!=null && name!=null && !failedBackupBusy) scope.launch {
-            failedBackupBusy=true
-            detail="Karantina arşivi oluşturuluyor ve geri okunarak doğrulanıyor."
-            try {
-                val released=withContext(Dispatchers.IO) {
-                    OfflineBuildPackManager.backupAndCleanQuarantine(context,name,
-                        output={context.contentResolver.openOutputStream(uri,"w")
-                            ?:error("Yedek belgesi yazılamadı")},
-                        reopen={context.contentResolver.openInputStream(uri)
-                            ?:error("Yedek belgesi geri okunamadı")})
-                }
-                detail="Yedek doğrulandı; ${released/1024/1024} MiB karantina temizlendi. Paket önbelleği korundu."
-                refreshRevision++
-            } catch(e:Exception) {
-                detail="Güvenli kurtarma durdu: ${e.message}. Karantina korunmuş olabilir; depolamayı yeniden inceleyin."
-            } finally {failedBackupBusy=false}
-        }
-    }
     var duplicateQuarantineBytes by remember(confirmDuplicateQuarantine){mutableStateOf<Long?>(null)}
     var duplicateQuarantineError by remember(confirmDuplicateQuarantine){mutableStateOf<String?>(null)}
     var pruneBytes by remember(confirmPrune){mutableStateOf<Long?>(null)}
@@ -498,27 +488,6 @@ internal object ModuleInstallOperations {
             confirmButton={TextButton(enabled=!busy && permission?.allowed==true,onClick={pendingLifecycle=null;ModuleInstallOperations.lifecycle(context,id,action)}){Text("Onayla")}},
             dismissButton={TextButton(onClick={pendingLifecycle=null}){Text("Vazgeç")}})
     }
-    if(failedBackupConfirm)AlertDialog(
-        onDismissRequest={failedBackupConfirm=false},
-        title={Text("Başarısız kurulumun yedeğini al ve engeli kaldır")},
-        text={Text("Yalnızca seçilecek bir .v3-discard karantinası arşivlenir. " +
-            "Arşiv kullanıcı tarafından seçilen konuma yazılıp geri okunarak SHA-256 ile doğrulanmadan " +
-            "hiçbir dosya silinmez. Aktif rootfs, projeler, paket önbelleği ve geri alma kopyaları korunur. " +
-            "Yedek alanı sağlayıcının kapasitesine bağlıdır; başarı garanti edilmez.")},
-        confirmButton={TextButton(enabled=!busy && !preparing && !failedBackupBusy,onClick={
-            failedBackupConfirm=false
-            scope.launch {
-                val candidate=withContext(Dispatchers.IO) {
-                    runCatching {OfflineBuildPackManager.firstQuarantineForBackup(context)}
-                }
-                candidate.fold({ name ->
-                    if(name==null)detail="Temizlenecek başarısız kurulum karantinası bulunamadı."
-                    else {failedBackupName=name;failedBackupChooser.launch("AppForge-kurtarma-$name.tar.gz")}
-                },{e->detail="Karantina incelemesi başarısız: ${e.message}"})
-            }
-        }){Text("Yedek dosyası seç")}},
-        dismissButton={TextButton(onClick={failedBackupConfirm=false}){Text("Vazgeç")}}
-    )
     if(confirmDuplicateQuarantine)AlertDialog(
         onDismissRequest={confirmDuplicateQuarantine=false},
         title={Text("Aynı içerikli ayrılmış Ubuntu kopyalarını temizle")},
@@ -865,30 +834,15 @@ internal object ModuleInstallOperations {
                                     enabled=!busy && !prefetchBusy && lc.remove.allowed,
                                     onClick={pendingLifecycle=selected to "remove"}
                                 ){Text("Güvenli kaldır")}
-                                OutlinedButton(
-                                    enabled=!busy && !prefetchBusy && lc.rollback.allowed,
-                                    onClick={pendingLifecycle=selected to "rollback"}
-                                ){Text("Önceki doğrulanmış sürüme dön")}
                             }
                         }
                     }
                 }
             }
             plan?.let{p->item{Text(p.error?:"Bu proje için: "+p.modules.joinToString{OfflineModules.spec(it).title})}}
-            if(recovered && events.values.any { event ->
-                event.detail.contains("STORAGE_BUDGET",ignoreCase=true) &&
-                    (event.detail.contains("karantina",ignoreCase=true) ||
-                     event.detail.contains("staging",ignoreCase=true))
-            }) item {
-                OutlinedButton(
-                    enabled=!busy && !preparing && !failedBackupBusy &&
-                        BuildModuleUsage.mutationBlockedReason()==null,
-                    onClick={failedBackupConfirm=true}
-                ){Text("Başarısız kurulumu güvenli kurtar")}
-            }
             if(section=="modules" && project!=null && (!FastHtmlApkPolicy.isCandidate(project) || RustProjectPolicy.hasRust(project)))item { ProjectDependencyPreparationCard(project,onRustPrepared) }
             if(section=="modules" && selected==OfflineModuleId.WINDOWS_PORTABLE && portableReady)item { WindowsModuleSmokeCard() }
-            item { Text("Kullanıcının başlattığı kurulum Android veri aktarımı servisiyle izlenir. Android zaman sınırı veya süreç ölümü işlemi durdurabilir. Yeniden açınca kayıt geri yüklenir; devam için onay gerekir, dosyalar yeniden doğrulanır.") }
+            item { Text("Kurulum kesilirse sonraki İndir ve Kur işleminde geçici kurulum alanı sıfırdan hazırlanır; SHA-256 doğrulanmış paketler yeniden indirilmez. Çalışan modüller korunur.") }
             if(journalError.isNotBlank())item{Text(journalError)}
             if(detail.isNotBlank())item{Text(detail)}
             if(firstRun)item{Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {

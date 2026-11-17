@@ -78,7 +78,6 @@ internal object RuntimeStorageBudget {
         // This also bounds legacy installations without claiming ownership of their contents.
         val reason=when {
             stages.isNotEmpty()->"Yarım kalmış staging korunuyor; kurtarma/inceleme gerekli."
-            quarantine.isNotEmpty()->"Karantina bütçesi dolu; korunan kopyaları inceleyip güvenli temizliği onaylayın."
             unknown.isNotEmpty()->"Sahipliği belirsiz kopyalar korunuyor; yeni kurulum engellendi."
             oldBudget.exceeded->"STORAGE_BUDGET: Eski sürüm bütçesi dolu (${oldBudget.detail()}); korunan kopyalar silinmedi."
             available<=required->"Depolama bütçesi yetersiz; çalışan modüller ve çevrimdışı işlemler kullanılabilir."
@@ -102,10 +101,18 @@ internal object RuntimeStorageBudget {
         // Admission does not hash/crawl historical trees. An unreadable retained tree still blocks safely.
         RecoveryPathAnchor.check(active)
         val children=requireNotNull(active.absoluteFile.parentFile).listFiles()?:error("Depolama envanteri okunamadı")
-        require(children.none{it.name.startsWith(".v3-stage-") || it.name.startsWith(".v3-discard-") || it.name.startsWith(".clone-probe-") || it.name=="staging" && it.listFiles()?.isNotEmpty()!=false}) {
-            "STORAGE_BUDGET: Korunan staging/karantina var. Disk alanı panosundan inceleyin; mevcut modüller kullanılabilir."
+        // Retained failed attempts are never deleted or re-entered. They do not
+        // prevent a fresh, isolated install when the real disk budget permits it.
+        // A live/stale stage still requires journal recovery before any install.
+        val abandoned=children.filter{it.name.startsWith(".v3-discard-")}
+        require(abandoned.all{it.name.matches(Regex("\\.v3-discard-[0-9a-f-]{36}")) &&
+            it.isDirectory && !Files.isSymbolicLink(it.toPath())}) {
+            "STORAGE_BUDGET: Gecersiz veya baglanti iceren karantina konumu korunuyor."
         }
-        require(children.none{it.name.startsWith(".v3-") && it.isDirectory && !it.name.startsWith(".v3-previous-")}){"STORAGE_BUDGET: Sahipsiz/şüpheli runtime konumu korunuyor."}
+        require(children.none{it.name.startsWith(".v3-stage-") || it.name.startsWith(".clone-probe-") || it.name=="staging" && it.listFiles()?.isNotEmpty()!=false}) {
+            "STORAGE_BUDGET: Tamamlanmamis kurulum var; yeni kurulumdan once guvenli kurtarma gerekli."
+        }
+        require(children.none{it.name.startsWith(".v3-") && it.isDirectory && !it.name.startsWith(".v3-previous-") && !it.name.startsWith(".v3-discard-")}){"STORAGE_BUDGET: Sahipsiz/şüpheli runtime konumu korunuyor."}
         val oldBudget=oldSnapshotBudget(active,children.toList())
         require(!oldBudget.exceeded){
             "STORAGE_BUDGET: Eski sürüm bütçesi dolu (${oldBudget.detail()}); doğrulanmamış dosyalar korunuyor."

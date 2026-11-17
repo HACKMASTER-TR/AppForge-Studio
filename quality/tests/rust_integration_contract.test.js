@@ -17,7 +17,7 @@ test('Compact module screen hides removed tabs while preserving guarded lifecycl
  const ui=read('android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt');
  assert.match(ui,/DropdownMenu/);
  assert.match(ui,/if\(moduleDetails\)\s*\{[\s\S]*lifecycle\?\.let/);
- assert.match(ui,/lc\.rollback\.allowed/);assert.match(ui,/lc\.remove\.allowed/);
+ assert.doesNotMatch(ui,/pendingLifecycle=selected to "rollback"/);assert.match(ui,/lc\.remove\.allowed/);
  assert.match(ui,/val section="modules"/);
  for(const removed of [
    /ModuleManagerNavigation\(/,
@@ -26,11 +26,10 @@ test('Compact module screen hides removed tabs while preserving guarded lifecycl
    /if\(section=="history"\)item/,
    /if\(section=="diagnostics"\)item/,
  ]) assert.doesNotMatch(ui,removed);
- assert.match(ui,/Başarısız kurulumu güvenli kurtar/);
- assert.match(ui,/OfflineBuildPackManager\.backupAndCleanQuarantine\(/);
+ assert.doesNotMatch(ui,/Başarısız kurulumu güvenli kurtar/);
+ assert.match(ui,/geçici kurulum alanı sıfırdan hazırlanır/);
  assert.match(ui,/DownloadNetwork\.allowMobileOnce\(/);
  assert.match(ui,/rememberSaveable/);
- assert.match(ui,/pendingLifecycle=selected to "rollback"/);
 });
 test('Cargo vendor adapter validates real directory-source checksums and fails closed',()=>{
  const result=spawnSync('python3',['quality/rust_vendor_test.py'],{cwd:base,encoding:'utf8'});

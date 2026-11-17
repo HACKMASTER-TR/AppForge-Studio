@@ -73,11 +73,10 @@ class RuntimeStorageBudgetTest {
     @Test fun approvedBackupVerifiesRawTarThenAllowsRetryWithoutChangingActive()=fixture { parent,root ->
         val store=RuntimeGenerationStore(root)
         val original=store.snapshot()
-        store.prepare(OfflineModuleId.NODE_WEB).use { tx ->
-            File(tx.root,"failure-only.txt").writeText("installer-created output")
-        }
-        val quarantine=store.quarantinedDirectories().single()
-        assertThrows(IllegalArgumentException::class.java){RuntimeStorageBudget.requireAdmission(root)}
+        val quarantine=File(parent,".v3-discard-${UUID.randomUUID()}")
+        root.copyRecursively(quarantine,overwrite=true)
+        File(quarantine,"failure-only.txt").writeText("installer-created output")
+        RuntimeStorageBudget.requireAdmission(root)
         val archive=java.io.ByteArrayOutputStream()
         val released=store.archiveAndPruneQuarantine(quarantine.name,archive,
             reread={java.io.ByteArrayInputStream(archive.toByteArray())})
@@ -89,8 +88,9 @@ class RuntimeStorageBudgetTest {
     }
     @Test fun corruptOrMovingBackupNeverDeletesQuarantine()=fixture { parent,root ->
         val store=RuntimeGenerationStore(root)
-        store.prepare(OfflineModuleId.NODE_WEB).use{File(it.root,"failure.txt").writeText("keep")}
-        val candidate=store.quarantinedDirectories().single()
+        val candidate=File(parent,".v3-discard-${UUID.randomUUID()}")
+        root.copyRecursively(candidate,overwrite=true)
+        File(candidate,"failure.txt").writeText("keep")
         val archive=java.io.ByteArrayOutputStream()
         assertThrows(Exception::class.java){store.archiveAndPruneQuarantine(candidate.name,archive,
             reread={java.io.ByteArrayInputStream(byteArrayOf(0,1,2,3))})}
@@ -102,8 +102,9 @@ class RuntimeStorageBudgetTest {
     }
     @Test fun quarantineBackupRefusesPendingJournalAndOutsideFiles()=fixture { parent,root ->
         val store=RuntimeGenerationStore(root)
-        store.prepare(OfflineModuleId.NODE_WEB).use{File(it.root,"temporary").writeText("working")}
-        val candidate=store.quarantinedDirectories().single()
+        val candidate=File(parent,".v3-discard-${UUID.randomUUID()}")
+        root.copyRecursively(candidate,overwrite=true)
+        File(candidate,"temporary").writeText("working")
         val external=File(parent,"user-project").apply{writeText("untouched")}
         val journal=File(parent,".module-generation.json").apply{writeText("unrecovered")}
         assertThrows(IllegalArgumentException::class.java){store.archiveAndPruneQuarantine(candidate.name,
@@ -165,12 +166,53 @@ class RuntimeStorageBudgetTest {
             assertTrue(store.rollbackAvailable(OfflineModuleId.NODE_WEB))
             assertEquals("user source",project.readText())
             assertEquals("verified bytes",File(cache,"verified.archive").readText())
-            assertEquals(1,store.quarantinedDirectories().size)
+            assertEquals(0,store.quarantinedDirectories().size)
             assertFalse(parent.listFiles()!!.any{it.name.startsWith(".v3-stage-")})
             val measured=RuntimeStorageBudget.measure(parent).logicalBytes
             if(attempt==0)stableBytes=measured else assertEquals(stableBytes,measured)
         }
         println("STORAGE_20_ATTEMPTS before_logical_bytes=$beforeBytes after_logical_bytes=$stableBytes before_inodes=$beforeInodes after_inodes=${inodes()} before_du_kib=$beforeDu after_du_kib=${measuredDu()} quarantine_copies=1 staging_copies=0 freed_bytes=0")
+    }
+    @Test fun repeatedFailedInstallWithChangedStageRestartsCleanly()=fixture { parent,root ->
+        val original=RuntimeGenerationStore(root).snapshot()
+        val project=File(parent,"user-project.txt").apply{writeText("keep project")}
+        val store=RuntimeGenerationStore(root)
+        repeat(8) { index ->
+            store.prepare(OfflineModuleId.RUST_ANDROID_NDK,availableBytes={Long.MAX_VALUE}).use { stage ->
+                File(stage.root,"installer-temp-$index").writeText("incomplete")
+            }
+            store.recover()
+            assertTrue(store.quarantinedDirectories().isEmpty())
+            assertEquals(original,store.snapshot())
+            assertEquals("keep project",project.readText())
+            RuntimeStorageBudget.requireAdmission(root,available=Long.MAX_VALUE)
+        }
+    }
+    @Test fun retainedFailedGenerationCanCoexistWithFreshInstall()=fixture { parent,root ->
+        val copy=File(parent,".v3-discard-${UUID.randomUUID()}")
+        root.copyRecursively(copy,overwrite=true)
+        File(copy,"unknown-user-file").writeText("retain intact")
+        RuntimeStorageBudget.requireAdmission(root,available=Long.MAX_VALUE)
+        val store=RuntimeGenerationStore(root)
+        store.prepare(OfflineModuleId.NODE_WEB,availableBytes={Long.MAX_VALUE}).use { stage ->
+            assertTrue(stage.root.isDirectory)
+        }
+        assertEquals("retain intact",File(copy,"unknown-user-file").readText())
+        assertEquals(1,store.quarantinedDirectories().size)
+    }
+    @Test fun liveStagingStillBlocksAndUntrustedQuarantineLinkIsRejected()=fixture { parent,root ->
+        val stage=File(parent,".v3-stage-${UUID.randomUUID()}").apply{mkdirs()}
+        assertThrows(IllegalArgumentException::class.java) {
+            RuntimeStorageBudget.requireAdmission(root,available=Long.MAX_VALUE)
+        }
+        assertTrue(stage.delete())
+        val external=File(parent,"private-user-file").apply{writeText("keep")}
+        val link=File(parent,".v3-discard-${UUID.randomUUID()}")
+        Files.createSymbolicLink(link.toPath(),external.toPath())
+        assertThrows(IllegalArgumentException::class.java) {
+            RuntimeStorageBudget.requireAdmission(root,available=Long.MAX_VALUE)
+        }
+        assertEquals("keep",external.readText())
     }
     @Test fun twentyCanceledUnmodifiedCopiesAreRecoveredWithoutQuarantine()=fixture { parent,root ->
         val store=RuntimeGenerationStore(root);val before=store.snapshot()
@@ -208,7 +250,7 @@ class RuntimeStorageBudgetTest {
         assertThrows(IllegalArgumentException::class.java){RuntimeStorageBudget.requireAdmission(root,available=0)}
         val foreign=File(parent,".v3-discard-${UUID.randomUUID()}").apply{mkdir()}
         File(foreign,"unknown").writeText("keep")
-        repeat(20){assertThrows(IllegalArgumentException::class.java){RuntimeStorageBudget.requireAdmission(root,available=Long.MAX_VALUE)}}
+        repeat(20){RuntimeStorageBudget.requireAdmission(root,available=Long.MAX_VALUE)}
         assertEquals(before,RuntimeGenerationStore(root).snapshot());assertEquals("keep",File(foreign,"unknown").readText())
     }
     @Test fun cleanupRequiresOwnershipAndRejectsAChangedReviewedPlan()=fixture { parent,root ->
