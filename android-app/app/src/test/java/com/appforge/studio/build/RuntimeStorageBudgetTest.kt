@@ -8,6 +8,50 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RuntimeStorageBudgetTest {
+    @Test fun windowsPortableDoesNotRequireLinuxGenerationAdmission() {
+        assertTrue(RuntimeStorageBudget.runtimePending(listOf(OfflineModuleId.WINDOWS_PORTABLE)).isEmpty())
+        assertTrue(RuntimeStorageBudget.runtimePending(listOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE)).isEmpty())
+        assertEquals(listOf(OfflineModuleId.RUST),RuntimeStorageBudget.runtimePending(
+            listOf(OfflineModuleId.WINDOWS_PORTABLE,OfflineModuleId.RUST)))
+    }
+    @Test fun belowLimitSnapshotAgreesBetweenDashboardAndInstallation()=fixture { parent,root ->
+        val snapshot=File(parent,".v3-previous-${UUID.randomUUID()}").apply{mkdir()}
+        val marker=File(snapshot,"existing.txt").apply{writeText("keep")}
+        val report=RuntimeStorageBudget.inspect(root,available=Long.MAX_VALUE)
+        assertEquals(1,report.obsoleteSnapshotCount)
+        assertEquals(4L,report.obsoleteSnapshotBytes)
+        assertNull(report.blockedReason)
+        RuntimeStorageBudget.requireAdmission(root,available=Long.MAX_VALUE)
+        assertEquals("keep",marker.readText())
+    }
+    @Test fun oversizedUnownedSnapshotFailsClosedWithActualCounts()=fixture { parent,root ->
+        val snapshot=File(parent,".v3-previous-${UUID.randomUUID()}").apply{mkdir()}
+        val marker=File(snapshot,"large-preserved")
+        java.io.RandomAccessFile(marker,"rw").use{it.setLength(RuntimeStorageBudget.RESERVE+1L)}
+        val report=RuntimeStorageBudget.inspect(root,available=Long.MAX_VALUE)
+        assertEquals(1,report.obsoleteSnapshotCount)
+        assertEquals(RuntimeStorageBudget.RESERVE+1L,report.obsoleteSnapshotBytes)
+        assertTrue(report.blockedReason.orEmpty().contains("STORAGE_BUDGET"))
+        val error=assertThrows(IllegalArgumentException::class.java) {
+            RuntimeStorageBudget.requireAdmission(root,available=Long.MAX_VALUE)
+        }
+        assertTrue(error.message.orEmpty().contains("adet=1"))
+        assertTrue(marker.isFile)
+        assertEquals(RuntimeStorageBudget.RESERVE+1L,marker.length())
+        assertTrue(File(root,"vendor").isFile)
+    }
+    @Test fun sixteenSmallUnownedSnapshotsRemainProtectedAndDiagnosed()=fixture { parent,root ->
+        val old=(1..16).map { id ->
+            File(parent,".v3-previous-${UUID.randomUUID()}").apply { mkdir();File(this,"marker-$id").writeText("keep") }
+        }
+        val report=RuntimeStorageBudget.inspect(root,available=Long.MAX_VALUE)
+        assertEquals(16,report.obsoleteSnapshotCount)
+        assertTrue(report.blockedReason.orEmpty().contains("adet=16"))
+        assertThrows(IllegalArgumentException::class.java) {
+            RuntimeStorageBudget.requireAdmission(root,available=Long.MAX_VALUE)
+        }
+        assertTrue(old.all{it.isDirectory})
+    }
     @Test fun approvedBackupVerifiesRawTarThenAllowsRetryWithoutChangingActive()=fixture { parent,root ->
         val store=RuntimeGenerationStore(root)
         val original=store.snapshot()

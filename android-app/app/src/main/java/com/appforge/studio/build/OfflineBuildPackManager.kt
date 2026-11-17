@@ -241,8 +241,11 @@ internal object OfflineBuildPackManager {
         val aptModules=pending.filter{it in setOf(OfflineModuleId.ANDROID_CORE,
             OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE,
             OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST,OfflineModuleId.RUST_ANDROID_NDK)}
-        runtimeRootfs(app)?.takeIf{it.isDirectory}?.let { existing ->
-            val expansion=pending.maxOf{RuntimeStorageBudget.expansionLimit(it)}
+        // Windows Portable Host installs in app-owned storage and never mutates
+        // a Linux generation; unrelated old Linux snapshots cannot block it.
+        val runtimePending=RuntimeStorageBudget.runtimePending(pending)
+        if(runtimePending.isNotEmpty())runtimeRootfs(app)?.takeIf{it.isDirectory}?.let { existing ->
+            val expansion=runtimePending.maxOf{RuntimeStorageBudget.expansionLimit(it)}
             RuntimeStorageBudget.requireAdmission(existing,expansion)
         }
         val r2Bundle=if(aptModules.isNotEmpty())V9R2ReleaseStore.load(app) else runCatching{V9R2ReleaseStore.load(app)}.getOrNull()

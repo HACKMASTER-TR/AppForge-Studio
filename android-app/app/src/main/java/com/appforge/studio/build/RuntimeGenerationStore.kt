@@ -258,12 +258,9 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         require(owner.matches(Regex("[A-Z0-9_:-]{1,100}")))
         recoverLocked();checkAnchor()
         RuntimeStorageBudget.requireAdmission(active,available=availableBytes())
-        val keep=ModuleOwnershipStore(active).protectedSnapshots().toMutableSet()
-        val latest=File(active,"opt/appforge-device/generations-v4/latest.json")
-        if(latest.isFile){require(!Files.isSymbolicLink(latest.toPath()) && latest.length()<=4L*1024*1024);keep.add(JSONObject(latest.readText()).getString("previous"))}
-        val previous=parent.listFiles().orEmpty().filter{it.name.startsWith(".v3-previous-")}
-        val obsolete=previous.filter{it.name !in keep}
-        require(obsolete.size<16 && obsolete.sumOf{RuntimeStorageBudget.measure(it,canceled).logicalBytes}<=RuntimeStorageBudget.RESERVE){"STORAGE_BUDGET: Eski sürüm bütçesi dolu; yeni kopya öncesi onaylı temizlik gerekli."}
+        // The shared admission check above has already verified the old-snapshot
+        // budget under the exclusive runtime mutation lock. Do not rescan it
+        // with a divergent, unreportable second decision.
         val before=inventory(active,canceled)
         val bytes=before.values.sumOf{it.size}
         require(availableBytes()>bytes+256L*1024*1024){"İzole sürüm için yeterli depolama yok; çalışan modüller değişmedi."}
