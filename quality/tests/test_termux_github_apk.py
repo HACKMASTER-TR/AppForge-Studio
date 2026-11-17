@@ -35,7 +35,7 @@ elif name=='gh':
   apk=dest/('AppForgeStudio-v9r2isolated3-upgrade.apk' if os.environ.get('UPGRADE') else 'AppForgeStudio-latest.apk')
   with zipfile.ZipFile(apk,'w') as z:z.writestr('AndroidManifest.xml','test boundary only')
   if os.environ.get('UPGRADE') and not os.environ.get('MISSING_UPGRADE_EVIDENCE'):
-   proof={'update_compatible':True,'source_sha':'b'*40,'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'package':'com.appforge.studio.v9r2isolated3','version_code':539,'min_sdk':26,'target_sdk':37,'certificate_sha256':'dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082','reference_sha256':'f51ccd8acc6b18b99b7f1336561abc0569e9a8610b39e5ea02d8237adffabc34'}
+   proof={'update_compatible':True,'source_sha':'b'*40,'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'package':'com.appforge.studio.v9r2isolated3','version_code':540,'min_sdk':26,'target_sdk':37,'certificate_sha256':'dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082','reference_sha256':'25215ca5e6ddd908337d8b7f96bf1d0b8767537cc6f8e563fdca91d679d2e2d2'}
    if os.environ.get('BAD_UPGRADE_CERT'):proof['certificate_sha256']='a'*64
    if os.environ.get('BAD_UPGRADE_PACKAGE'):proof['package']='com.appforge.studio'
    if os.environ.get('BAD_UPGRADE_APK_HASH'):proof['apk_sha256']='a'*64
@@ -159,7 +159,7 @@ class TermuxGitHubApkTest(unittest.TestCase):
         for _ in range(2):
             r=self.run_driver('upgrade',UPGRADE='1',APPFORGE_DOWNLOAD_ROOT=str(shared));self.assertEqual(r.returncode,0,r.stderr)
         self.assertEqual(old.read_bytes(),b'old user APK')
-        self.assertEqual(len(list(shared.glob('AppForge-v9r2isolated3-v539-*.apk'))),2)
+        self.assertEqual(len(list(shared.glob('AppForge-v9r2isolated3-v540-*.apk'))),2)
 
     def test_default_download_rejects_the_previously_wrong_standard_apk(self):
         r=self.run_driver('download');self.assertNotEqual(r.returncode,0)

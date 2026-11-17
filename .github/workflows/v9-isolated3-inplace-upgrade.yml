@@ -63,9 +63,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: 43913262268
-          name: AppForge-v9r2isolated3-upgrade-0401e7b07867398dfb354a34c545564a7a700551
+          run-id: 44054962868
+          name: AppForge-v9r2isolated3-upgrade-a1ed9628bec355236e90cc9361957b790f0f72d6
           path: reference-apk
+      - name: Verify pinned v539 APK reference digest
+        run: |
+          set -euo pipefail
+          test -s reference-apk/AppForgeStudio-v9r2isolated3-upgrade.apk
+          echo "25215ca5e6ddd908337d8b7f96bf1d0b8767537cc6f8e563fdca91d679d2e2d2  reference-apk/AppForgeStudio-v9r2isolated3-upgrade.apk" | sha256sum -c -
       - name: Run V9 security tests without skips
         run: |
           set -euo pipefail
@@ -94,7 +99,7 @@ jobs:
           OLD=reference-apk/AppForgeStudio-v9r2isolated3-upgrade.apk
           SIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt2"
-          python3 quality/tools/verify_apk_upgrade.py --reference quality/fixtures/appforge-v9r2isolated3-v538-reference.json --old-apk "$OLD" --new-apk "$APK" \
+          python3 quality/tools/verify_apk_upgrade.py --reference quality/fixtures/appforge-v9r2isolated3-v539-reference.json --old-apk "$OLD" --new-apk "$APK" \
             --aapt2 "$AAPT" --apksigner "$SIGNER" --source-sha "$GITHUB_SHA" \
             --output upgrade-artifacts/upgrade-evidence.json
           python3 - <<'PYTHON'
@@ -114,7 +119,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Verify v538 data preservation and storage on disposable emulator
+      - name: Verify v539 data preservation and storage on disposable emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35

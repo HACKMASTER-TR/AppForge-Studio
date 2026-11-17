@@ -12,7 +12,7 @@ ASSETS = Path(__file__).resolve().parents[2]/'android-app/app/src/main/assets/de
 def create(evidence, apk):
     digest = hashlib.sha256(apk.read_bytes()).hexdigest()
     if (evidence.get('package') != PACKAGE or evidence.get('certificate_sha256') != CERT
-            or evidence.get('version_code') != 539 or evidence.get('apk_sha256') != digest
+            or evidence.get('version_code') != 540 or evidence.get('apk_sha256') != digest
             or evidence.get('update_compatible') is not True):
         raise ValueError('UNVERIFIED_UPDATE_IDENTITY')
     source = evidence.get('source_sha', '')
@@ -23,7 +23,7 @@ def create(evidence, apk):
         data=(ASSETS/name).read_bytes()
         catalogs[name]=dict(sha256=hashlib.sha256(data).hexdigest(),bytes=len(data),
                             contents=json.loads(data) if name.endswith('.json') else data.decode())
-    return dict(schema=1, source_sha=source, package=PACKAGE, version_code=539,
+    return dict(schema=1, source_sha=source, package=PACKAGE, version_code=540,
                 certificate_sha256=CERT, apk_sha256=digest, apk_bytes=apk.stat().st_size,
                 reference_sha256=evidence['reference_sha256'], pin_catalogs=catalogs, physical_device='NOT_RUN')
 

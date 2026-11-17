@@ -23,7 +23,7 @@ def main():
     adb('install','-r',args.old_apk)
     # Synthetic fixture only, written before update to exercise Android package-manager preservation.
     adb('shell','run-as',PACKAGE,'mkdir','-p','files/storage-upgrade-fixture')
-    fixture='appforge-v538-project-cache-receipt-fixture'
+    fixture='appforge-v539-project-cache-receipt-fixture'
     for name in ['project.txt','receipt.json','verified-cache.bin']:
         subprocess.run(['adb','-s',args.serial,'shell','run-as',PACKAGE,'sh','-c',
                         f"'cat > files/storage-upgrade-fixture/{name}'"],input=fixture,text=True,check=True)
@@ -37,6 +37,6 @@ def main():
     if 'FAILURES' in result or 'OK (' not in result:
         raise RuntimeError('INSTRUMENTATION_FAILED: '+result)
     Path(args.output).write_text(json.dumps(dict(emulator='PASS',physical_device='NOT_RUN',
-        from_version=538,to_version=539,synthetic_fixtures_preserved=True,instrumentation=result),indent=2)+'\n')
+        from_version=539,to_version=540,synthetic_fixtures_preserved=True,instrumentation=result),indent=2)+'\n')
 
 if __name__=='__main__':main()
