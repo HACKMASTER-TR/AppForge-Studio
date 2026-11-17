@@ -1,6 +1,7 @@
 package com.appforge.studio.build
 
 import java.io.File
+import org.json.JSONObject
 import java.nio.file.Files
 import java.util.UUID
 import java.util.concurrent.CancellationException
