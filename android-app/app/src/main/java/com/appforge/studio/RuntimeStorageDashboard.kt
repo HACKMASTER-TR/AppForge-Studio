@@ -50,8 +50,9 @@ internal fun RuntimeStorageDashboard(onChanged:()->Unit) {
             }
             Text("Boş alan: ${amount(r.available)} • staging + güvenlik payı: ${amount(r.required)}")
             Text("Modüle ait azami genişleme rezervi kurulum öncesinde ayrıca kontrol edilir.")
-            Text("Eski sürüm bütçesi: ${r.obsoleteSnapshotCount} korumasız kopya • " +
-                "${r.obsoleteSnapshotBytes} mantıksal bayt / ${RuntimeStorageBudget.RESERVE} bayt sınırı")
+            Text("Eski kopyalar: ${r.obsoleteSnapshotCount} • " +
+                "${r.obsoleteSnapshotBytes} mantıksal bayt (otomatik silinmez)")
+            Text("En fazla 15 eski kopya; kurulum öncesi gerçek boş alan ve 256 MiB güvenlik payı ayrıca denetlenir.")
             Text("Korunan geri alma konumu: ${r.retainedCopies}")
             r.blockedReason?.let{Text(it,color=MaterialTheme.colorScheme.error)}
             Text("Onayla temizlenebilir: ${amount(plan?.logicalBytes?:0)} (mantıksal boyut)")

@@ -24,21 +24,39 @@ class RuntimeStorageBudgetTest {
         RuntimeStorageBudget.requireAdmission(root,available=Long.MAX_VALUE)
         assertEquals("keep",marker.readText())
     }
-    @Test fun oversizedUnownedSnapshotFailsClosedWithActualCounts()=fixture { parent,root ->
-        val snapshot=File(parent,".v3-previous-${UUID.randomUUID()}").apply{mkdir()}
-        val marker=File(snapshot,"large-preserved")
-        java.io.RandomAccessFile(marker,"rw").use{it.setLength(RuntimeStorageBudget.RESERVE+1L)}
-        val report=RuntimeStorageBudget.inspect(root,available=Long.MAX_VALUE)
-        assertEquals(1,report.obsoleteSnapshotCount)
-        assertEquals(RuntimeStorageBudget.RESERVE+1L,report.obsoleteSnapshotBytes)
-        assertTrue(report.blockedReason.orEmpty().contains("STORAGE_BUDGET"))
-        val error=assertThrows(IllegalArgumentException::class.java) {
-            RuntimeStorageBudget.requireAdmission(root,available=Long.MAX_VALUE)
+
+    @Test fun twoLargeHistoricalSnapshotsDoNotBlockWhenDiskHasHeadroom()=fixture { parent,root ->
+        val sizes=listOf(1_600_000_000L,1_703_065_227L)
+        val files=sizes.map { size ->
+            val snapshot=File(parent,".v3-previous-${UUID.randomUUID()}").apply{mkdir()}
+            File(snapshot,"historical-preserved").also { file ->
+                java.io.RandomAccessFile(file,"rw").use{it.setLength(size)}
+            }
         }
-        assertTrue(error.message.orEmpty().contains("adet=1"))
-        assertTrue(marker.isFile)
-        assertEquals(RuntimeStorageBudget.RESERVE+1L,marker.length())
+        val report=RuntimeStorageBudget.inspect(root,available=Long.MAX_VALUE)
+        assertEquals(2,report.obsoleteSnapshotCount)
+        assertEquals(3_303_065_227L,report.obsoleteSnapshotBytes)
+        assertNull(report.blockedReason)
+
+        RuntimeStorageBudget.requireAdmission(root,
+            expansion=12L*1024*1024*1024,available=Long.MAX_VALUE)
+
+        RuntimeGenerationStore(root).prepare(OfflineModuleId.NODE_WEB,
+            availableBytes={Long.MAX_VALUE}).use { assertTrue(it.root.isDirectory) }
+
+        assertTrue(files.all{it.isFile})
+        assertEquals(sizes,files.map{it.length()})
         assertTrue(File(root,"vendor").isFile)
+
+        val blocked=RuntimeStorageBudget.inspect(root,
+            expansion=12L*1024*1024*1024,available=0L)
+        assertTrue(blocked.blockedReason.orEmpty().contains("yetersiz"))
+
+        assertThrows(IllegalArgumentException::class.java) {
+            RuntimeStorageBudget.requireAdmission(root,
+                expansion=12L*1024*1024*1024,available=0L)
+        }
+        assertTrue(files.all{it.isFile})
     }
     @Test fun sixteenSmallUnownedSnapshotsRemainProtectedAndDiagnosed()=fixture { parent,root ->
         val old=(1..16).map { id ->

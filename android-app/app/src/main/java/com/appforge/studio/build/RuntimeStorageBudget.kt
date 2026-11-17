@@ -37,11 +37,11 @@ internal object RuntimeStorageBudget {
     private fun sum(items:List<Usage>)=Usage(items.sumOf{it.logicalBytes},
         if(items.all{it.allocatedBytes!=null})items.sumOf{it.allocatedBytes!!} else null,items.sumOf{it.files})
     /** Shared, read-only snapshot budget for BOTH the dashboard and admission.
-     * Unknown or unowned snapshot bytes are still counted; no automatic deletion.
+     * Historic snapshot bytes are diagnostic; the real free-space and expansion checks remain mandatory. No automatic deletion.
      */
     data class OldSnapshotBudget(val count:Int,val logicalBytes:Long) {
-        val exceeded:Boolean get()=count>=16 || logicalBytes>RESERVE
-        fun detail():String="adet=$count, mantiksalBayt=$logicalBytes, sinirAdet=15, sinirBayt=$RESERVE"
+        val exceeded:Boolean get()=count>=16
+        fun detail():String="adet=$count, mantiksalBayt=$logicalBytes, sinirAdet=15"
     }
     /** Windows Portable Host uses its own app-managed directory, not a Linux generation. */
     fun runtimePending(modules:Collection<OfflineModuleId>):List<OfflineModuleId> =
