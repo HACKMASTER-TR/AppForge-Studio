@@ -57,12 +57,10 @@ internal class ModuleLifecycleAcceptanceTest(private val id:OfflineModuleId) {
             install(root,"v1")
             assertThrows(IllegalStateException::class.java){install(root,"v2"){if(it==point)error("injected activation failure")}}
             assertEquals("v1",File(root,relative).readText());assertTrue(ModuleOwnershipStore(root).verifyNamespace(id))
-            val retained=RuntimeGenerationStore(root).quarantinedDirectories().single()
-            assertEquals("v2",File(retained,relative).readText())
-            // Fresh install reuses verified packages without deleting
-            // the failed generation or the original user-owned files.
+            assertEquals(0,RuntimeGenerationStore(root).quarantinedDirectories().size)
+            // Fresh install reuses verified packages and does not retain a failed generation.
             install(root,"v3")
-            assertEquals("v2",File(retained,relative).readText())
+            assertEquals(0,RuntimeGenerationStore(root).quarantinedDirectories().size)
             assertFalse(base.listFiles()!!.any{it.name.startsWith(".v3-stage-")})
             assertEquals("v3",File(root,relative).readText());assertTrue(ModuleOwnershipStore(root).verifyNamespace(id))
             assertEquals("fixture user data, not a real key",File(root,"root/signing.key").readText())

@@ -97,7 +97,7 @@ class LifecycleStorageSafetyV7Test {
         }
     }
 
-    @Test fun partialCopyingStageReclaimsUnmodifiedCloneWhileModifiedStageIsQuarantined() {
+    @Test fun partialAndModifiedFailedStagesAreAutomaticallyRemovedAfterActiveIntegrityCheck() {
         val base=Files.createTempDirectory("v7-stage-reclaim").toFile()
         try {
             val root=File(base,"rootfs").apply{mkdir()}
@@ -117,8 +117,9 @@ class LifecycleStorageSafetyV7Test {
                     tx.commit(verify={},fault={if(it=="before-switch")error("abort after stage edit")})
                 }
             }
-            assertEquals(1,store.quarantinedDirectories().size)
-            assertTrue(store.quarantinedBytes()>0L)
+            assertEquals(0,store.quarantinedDirectories().size)
+            assertEquals(0L,store.quarantinedBytes())
+            assertFalse(base.listFiles()!!.any{it.name.startsWith(".v3-stage-")})
             assertEquals("alpha",File(root,"a.txt").readText())
         } finally {
             base.deleteRecursively()

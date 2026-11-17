@@ -39,13 +39,11 @@ class RuntimeProcessRecoveryTest {
             assertTrue(File(parent,".module-generation.json").isFile)
             store.recover();store.recover()
             assertEquals(before,store.snapshot())
-            assertEquals(1,store.quarantinedDirectories().size)
+            assertEquals(0,store.quarantinedDirectories().size)
             assertFalse(File(parent,".module-generation.json").exists())
-            val retained=store.quarantinedDirectories().single()
-            assertEquals("preserved partial installation",File(retained,"interrupted-install").readText())
-            // A new independent transaction can begin; crash evidence remains.
+            // Process death must not leave failed installer files behind.
             store.prepare(OfflineModuleId.NODE_WEB).use { assertTrue(it.root.isDirectory) }
-            assertTrue(retained.isDirectory)
+            assertTrue(store.quarantinedDirectories().isEmpty())
             assertEquals(before,store.snapshot())
         } finally {parent.deleteRecursively()}
     }

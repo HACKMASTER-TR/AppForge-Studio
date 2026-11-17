@@ -166,14 +166,13 @@ class RuntimeStorageBudgetTest {
             assertTrue(store.rollbackAvailable(OfflineModuleId.NODE_WEB))
             assertEquals("user source",project.readText())
             assertEquals("verified bytes",File(cache,"verified.archive").readText())
-            assertEquals(attempt+1,store.quarantinedDirectories().size)
-            assertTrue(store.quarantinedDirectories().all{File(it,"failed-install").isFile})
+            assertEquals(0,store.quarantinedDirectories().size)
             assertFalse(parent.listFiles()!!.any{it.name.startsWith(".v3-stage-")})
             val measured=RuntimeStorageBudget.measure(parent).logicalBytes
-            if(attempt>0)assertTrue(measured>=stableBytes!!)
+            if(attempt>0)assertEquals(stableBytes,measured)
             stableBytes=measured
         }
-        println("STORAGE_20_ATTEMPTS before_logical_bytes=$beforeBytes after_logical_bytes=$stableBytes before_inodes=$beforeInodes after_inodes=${inodes()} before_du_kib=$beforeDu after_du_kib=${measuredDu()} quarantine_copies=20 staging_copies=0 freed_bytes=0")
+        println("STORAGE_20_ATTEMPTS before_logical_bytes=$beforeBytes after_logical_bytes=$stableBytes before_inodes=$beforeInodes after_inodes=${inodes()} before_du_kib=$beforeDu after_du_kib=${measuredDu()} quarantine_copies=0 staging_copies=0 freed_bytes=0")
     }
     @Test fun repeatedFailedInstallWithChangedStageRestartsCleanly()=fixture { parent,root ->
         val original=RuntimeGenerationStore(root).snapshot()
@@ -184,8 +183,8 @@ class RuntimeStorageBudgetTest {
                 File(stage.root,"installer-temp-$index").writeText("incomplete")
             }
             store.recover()
-            assertEquals(index+1,store.quarantinedDirectories().size)
-            assertTrue(store.quarantinedDirectories().any { File(it,"installer-temp-$index").isFile })
+            assertTrue(store.quarantinedDirectories().isEmpty())
+            assertFalse(parent.listFiles().orEmpty().any{it.name.startsWith(".v3-stage-")})
             assertEquals(original,store.snapshot())
             assertEquals("keep project",project.readText())
             RuntimeStorageBudget.requireAdmission(root,available=Long.MAX_VALUE)

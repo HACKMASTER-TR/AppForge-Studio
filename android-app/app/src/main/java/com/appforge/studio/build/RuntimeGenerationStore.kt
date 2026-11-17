@@ -61,16 +61,32 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         if(state!="COPYING")require(j.getString("stagedDigest").matches(Regex("[a-f0-9]{64}")))
         RecoveryPathAnchor.siblings(active,stage,old)
         require(state!="COPYING" || !old.exists()){"COPYING kaydı önceki generation geçişi içeremez"}
+        // Only a discard recorded by THIS transaction can be automatically
+        // reclaimed. Older/unowned quarantines are never silently erased.
+        var ownedFailedActivation=j.optString("failedActivationDiscard","").takeIf{it.isNotEmpty()}?.let { name ->
+            child(name).also { candidate ->
+                require(candidate.name.startsWith(".v3-discard-"))
+                RecoveryPathAnchor.siblings(active,candidate)
+            }
+        }
         // Validate the complete record before any temporary-file cleanup.
         if(state=="COMMITTED") {
+            require(ownedFailedActivation==null) { "A completed generation cannot own a failed activation discard." }
             require(treeDigest(inventory(active,{}))==j.getString("stagedDigest")){"Aktifleştirme sonrası ortam değişmiş; kurtarma engellendi, dosyalar korundu."}
             seal(j.getString("stagedDigest"))
         } else if(old.exists()) {
             require(treeDigest(inventory(old,{}))==j.getString("previousDigest")){"Önceki generation bozuk; mevcut ortam değiştirilmedi."}
             if(active.exists()) {
                 require(treeDigest(inventory(active,{}))==j.getString("stagedDigest")){"Yeni ortamda yabancı değişiklik var; kurtarma tüm dosyaları koruyarak durdu."}
-                // Retain the failed activated environment as quarantine, never erase it.
-                Files.move(active.toPath(),child(".v3-discard-${UUID.randomUUID()}").toPath(),StandardCopyOption.ATOMIC_MOVE)
+                // Write an exact, transaction-bound cleanup target before moving
+                // the failed activation. On process death, recovery can finish it.
+                val failed=ownedFailedActivation ?: child(".v3-discard-${UUID.randomUUID()}").also {
+                    j.put("failedActivationDiscard",it.name)
+                    write(j)
+                    ownedFailedActivation=it
+                }
+                require(!Files.exists(failed.toPath(),LinkOption.NOFOLLOW_LINKS))
+                Files.move(active.toPath(),failed.toPath(),StandardCopyOption.ATOMIC_MOVE)
                 RuntimeFileClone.sync(parent,true)
             }
             Files.move(old.toPath(),active.toPath(),StandardCopyOption.ATOMIC_MOVE)
@@ -83,15 +99,29 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         if(stage.exists()) {
             require(!Files.isSymbolicLink(stage.toPath()))
             val activeEntries=if(active.isDirectory)runCatching{inventory(active,{})}.getOrNull() else null
-            val stageEntries=if(state=="COPYING" && !old.exists() && stage.isDirectory)runCatching{inventory(stage,{})}.getOrNull() else null
-            // Only an unmodified COPY of the active tree can be deleted
-            // automatically. Modified/in-progress installer data remains in
-            // private quarantine, not in the new installation workspace.
-            if(state=="COPYING" && !old.exists() && activeEntries!=null && stageEntries!=null && treeDigest(activeEntries)==j.getString("previousDigest") && stageEntries.all{(k,v)->activeEntries[k]==v}) {
+            // A journal-owned installation workspace is disposable if the active
+            // tree has not changed. Installer-generated partial files must not
+            // accumulate across retries. Never delete if switching is uncertain.
+            if(state in setOf("COPYING","STAGED") && !old.exists() &&
+                    activeEntries!=null && treeDigest(activeEntries)==j.getString("previousDigest")) {
                 removeOwned(stage)
             } else {
-                Files.move(stage.toPath(),child(".v3-discard-${UUID.randomUUID()}").toPath(),StandardCopyOption.ATOMIC_MOVE)
-                RuntimeFileClone.sync(parent,true)
+                // Ownership/activation cannot be proven: keep data, fail closed.
+                require(false) { "Kurulum geçişi belirsiz; aktif ortam ve stage korunuyor." }
+            }
+        }
+        ownedFailedActivation?.let { failed ->
+            // Original runtime has been restored. A current-generation discard
+            // must exactly match the already journaled staged digest to be removed.
+            require(state=="STAGED" && !old.exists() && active.isDirectory &&
+                treeDigest(inventory(active,{}))==j.getString("previousDigest")) {
+                "Etkin ortam doğrulanamadı; başarısız kurulum kopyası korunuyor."
+            }
+            if(Files.exists(failed.toPath(),LinkOption.NOFOLLOW_LINKS)) {
+                require(treeDigest(inventory(failed,{}))==j.getString("stagedDigest")) {
+                    "Başarısız kurulum dosyaları değişmiş; otomatik silinmedi."
+                }
+                removeOwned(failed)
             }
         }
         cleanStaleTmpSidecars()

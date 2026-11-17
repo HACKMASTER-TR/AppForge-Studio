@@ -117,7 +117,8 @@ test('V7 ModuleOperationJournal and RuntimeGenerationStore enforce disk prefligh
   assert.match(generation, /private fun atomicWrite\(target:File,bytes:ByteArray,availableBytes:\(\)->Long=defaultAvailableBytes\)/);
   assert.match(generation, /require\(availableBytes\(\)>bytes\.size\+65536L\)/);
   assert.match(generation, /require\(availableBytes\(\)>attrs\.size\(\)\+64L\*1024\*1024\)\{"Kopyalama sırasında depolama alanı tükendi; aktif ortam korundu\."\}/);
-  assert.match(generation, /if\(state=="COPYING" && !old\.exists\(\) && activeEntries!=null && stageEntries!=null && treeDigest\(activeEntries\)==j\.getString\("previousDigest"\) && stageEntries\.all\{\(k,v\)->activeEntries\[k\]==v\}\)/);
+  assert.match(generation, /if\(state in setOf\("COPYING","STAGED"\) && !old\.exists\(\) &&/);
+  assert.match(generation, /removeOwned\(stage\)/);
   assert.match(generation, /fun quarantinedDirectories\(\):List<File>/);
   assert.match(generation, /fun quarantinedBytes\(\):Long/);
 });
