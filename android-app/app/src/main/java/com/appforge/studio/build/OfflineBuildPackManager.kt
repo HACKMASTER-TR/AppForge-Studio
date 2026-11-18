@@ -224,7 +224,7 @@ internal object OfflineBuildPackManager {
         val app=context.applicationContext
         DownloadNetwork.configure(app);DownloadNetwork.prepareJournal()
         VerifiedArtifactCache.configure(app.noBackupFilesDir,runtimeRootfs(app)?.parentFile)
-        val plan=OfflineModules.resolve(selected)
+        val plan=ModuleIsolationV1.legacyDependencyOrder(selected)
         val operation=UUID.randomUUID().toString()
         if(plan.any{it !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE)})require(DeviceBuildRuntimeV3.platformError()==null){DeviceBuildRuntimeV3.platformError()!!}
         val pending=plan.filterNot{moduleReady(app,it)}
