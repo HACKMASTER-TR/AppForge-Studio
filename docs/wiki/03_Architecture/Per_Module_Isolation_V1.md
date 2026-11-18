@@ -16,6 +16,9 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
   - "android-app/app/src/test/java/com/appforge/studio/build/ModuleIsolationV1Test.kt"
   - "quality/tests/module_isolation_v1_contract.test.js"
+  - "android-app/app/src/main/java/com/appforge/studio/build/IsolatedModuleRuntimeV2.kt"
+  - "android-app/app/src/test/java/com/appforge/studio/build/IsolatedModuleRuntimeV2Test.kt"
+  - "quality/tests/module_isolation_v2_contract.test.js"
 ---
 
 # AppForge — İhtiyaca Göre Bağımsız Modül Mimarisi (V1)
@@ -43,3 +46,27 @@ Durum: **FAZ 1 — yalnız planlama ve güvenli dosya alanı altyapısı**. Bu b
 5. Geriye uyumluluk: V540 yüklü modüller korunur, yeni modül motoru kabul edilene kadar eski install UI akışına hiç müdahale edilmez.
 
 Kapsam dışı: üretim yayımlama, `main` birleştirme, Play Store, kullanıcı verilerini sıfırlama, cihazda ADB kurulumu ve otomatik migrasyon.
+
+
+## Faz 2 — Modül başına imzalı Ubuntu kökü (2026-11-18)
+
+`IsolatedModuleRuntimeV2` her açıkça seçilen hedef için birbirinden ayrı Ubuntu
+rootfs yolları, `var/lib/dpkg/status`, `var/lib/dpkg/info`, `var/lib/apt/lists`
+ve özel indirme/state/apt alanları oluşturur. Yeni ortam eski V540 çalışma
+kökünden klonlanmaz; izin verilen Ubuntu manifestindeki SHA-256 sabitli kaynak
+`VerifiedLinuxRootfsInstaller` ile kurulur. İndirme önbelleği hedef rootfs
+konumuna göre ayrı isimlendirilir; kurulan dosyalar başka modülün rootfs'inden
+alınmaz. Android sistem TLS kökleri ve özgün vendor dpkg durumunun kanıtı yalnız
+hedef rootfs içinde oluşturulur.
+
+Bu kod **yalnız açık kullanıcı onayıyla debug kabul yapısında** çağrılabilen
+bir staging yoludur. V540 mevcut kurulum akışına bağlanmamıştır; `HAZIR` statüsü
+vermez, mevcut proje/kurulum dosyalarını taşımaz veya silmez. Yarım kalmış veya
+sahibi belirsiz izole klasör otomatik sıfırlanmaz, incelenene kadar korunur.
+Ayrı rootfs temelinin oluşturulması, Expo/Rust/MinGW paketlerinin kurulup
+fonksiyon testlerini geçmiş olduğu anlamına gelmez.
+
+**Takip:** Faz 2 gerçek ARM64 Ubuntu kurulum kabulü; Faz 3 seçilen modülün kendi
+rootfs içinde imzalı APT/dpkg kurulumu ve gerçek derleme testleri; sonrasında
+kontrollü varsayılan kurulum geçişi. `main`/üretim yayını ve APK kurulumuna bu
+fazda dokunulmaz.
