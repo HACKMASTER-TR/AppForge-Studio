@@ -108,6 +108,27 @@ cmp -s "$LIBEDIT_REAL" "$LIBDIR/.libedit.so.2.v8.$$" || exit 66
 mv -f "$LIBDIR/.libedit.so.2.v8.$$" "$LIBEDIT_SONAME"
 [ -f "$LIBEDIT_SONAME" ] && [ ! -L "$LIBEDIT_SONAME" ] || exit 66
 printf 'APPFORGE_NDK_LIBEDIT_PRIVATE_SONAME=PASS\n'
+# CMake's signed Ubuntu dependency libarchive13t64 is present in the 73
+# verified package payloads. The pinned PRoot loader cannot always follow its
+# SONAME symlink. Materialize ONLY the package-authenticated bytes, in this
+# private stage, without touching the shared /usr or libc6.
+LIBARCHIVE_REAL="$LIBDIR/libarchive.so.13.7.2"
+LIBARCHIVE_SONAME="$LIBDIR/libarchive.so.13"
+[ -f "$LIBARCHIVE_REAL" ] && [ ! -L "$LIBARCHIVE_REAL" ] || {
+  echo 'APPFORGE_NDK_LIBARCHIVE_SIGNED_PAYLOAD_MISSING' >&2;exit 66;
+}
+[ -L "$LIBARCHIVE_SONAME" ] &&
+[ "$(readlink "$LIBARCHIVE_SONAME")" = libarchive.so.13.7.2 ] || {
+  echo 'APPFORGE_NDK_LIBARCHIVE_UNEXPECTED_SONAME' >&2;exit 66;
+}
+file -L "$LIBARCHIVE_REAL" | grep -Eqi 'aarch64|ARM aarch64' || {
+  echo 'APPFORGE_NDK_LIBARCHIVE_ARM64_ABI_MISMATCH' >&2;exit 66;
+}
+cp -p "$LIBARCHIVE_REAL" "$LIBDIR/.libarchive.so.13.v540.$$"
+cmp -s "$LIBARCHIVE_REAL" "$LIBDIR/.libarchive.so.13.v540.$$" || exit 66
+mv -f "$LIBDIR/.libarchive.so.13.v540.$$" "$LIBARCHIVE_SONAME"
+[ -f "$LIBARCHIVE_SONAME" ] && [ ! -L "$LIBARCHIVE_SONAME" ] || exit 66
+printf 'APPFORGE_NDK_LIBARCHIVE_PRIVATE_SONAME=PASS\n'
 
 # Wrapper resolves only executables extracted from the verified Ubuntu payload.
 # Child processes see the same isolated library path, but never an alternate libc.

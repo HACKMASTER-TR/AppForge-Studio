@@ -23,57 +23,47 @@ have_tools() {
   command -v file >/dev/null 2>&1
 }
 
-versioned_gcc() {
-  variant="$1"
-  result=""
-
-  for candidate in \
-    /usr/bin/x86_64-w64-mingw32-gcc-[0-9]*-"$variant"
-  do
-    if [ -x "$candidate" ]; then
-      result="$candidate"
-    fi
-  done
-
-  [ -n "$result" ] || return 1
-  printf '%s\n' "$result"
-}
-
-repair_variant_links() {
-  variant="$1"
-
-  gcc_real="$(
-    versioned_gcc "$variant" 2>/dev/null ||
-    true
-  )"
-
-  [ -n "$gcc_real" ] || return 0
-
-  gcc_link="/usr/bin/x86_64-w64-mingw32-gcc-$variant"
-  gxx_link="/usr/bin/x86_64-w64-mingw32-g++-$variant"
-  cxx_link="/usr/bin/x86_64-w64-mingw32-c++-$variant"
-
-  if [ ! -e "$gcc_link" ]; then
-    rm -f "$gcc_link"
-    ln -s "$(basename "$gcc_real")" "$gcc_link"
-  fi
-
-  # Debian/Ubuntu MinGW g++ is reached through the g++ driver name.
-  # Repair only missing/broken unpacked links; valid package files stay intact.
-  if [ ! -e "$gxx_link" ]; then
-    rm -f "$gxx_link"
-    ln -s "$(basename "$gcc_real")" "$gxx_link"
-  fi
-
-  if [ ! -e "$cxx_link" ]; then
-    rm -f "$cxx_link"
-    ln -s "$(basename "$gcc_real")" "$cxx_link"
-  fi
-}
-
+# Ubuntu's g++-mingw POSIX postinst registers the package's own g++ driver
+# with update-alternatives. An interrupted unpack can leave that file absent.
+# Restore ONLY its signed, version-pinned package file in the disposable rootfs.
+# Never substitute the C driver for a missing C++ driver, and never force dpkg.
 repair_mingw_links() {
-  repair_variant_links posix
-  repair_variant_links win32
+  target=/usr/bin/x86_64-w64-mingw32-g++-posix
+  [ -x "$target" ] && return 0
+  [ ! -e "$target" ] && [ ! -L "$target" ] || {
+    echo 'APPFORGE_WINDOWS_GXX_EXISTING_PATH_UNTRUSTED' >&2;return 43;
+  }
+  [ "$(dpkg --print-architecture)" = arm64 ] || return 43
+  [ "${APPFORGE_R2_RELEASE_AUTHORIZED:-0}" = 1 ] || return 43
+  archive=/opt/appforge-device/apt-snapshot-v1/arm64-20261018T000000Z/archives/8314d76080dc9979f8ebcfb2d70852804a6b765e38028990d8ff67ced712c99d.deb
+  [ -f "$archive" ] && [ ! -L "$archive" ] || {
+    echo 'APPFORGE_WINDOWS_GXX_SIGNED_ARCHIVE_MISSING' >&2;return 44;
+  }
+  printf '%s  %s\n' 8314d76080dc9979f8ebcfb2d70852804a6b765e38028990d8ff67ced712c99d "$archive" | sha256sum -c - >/dev/null || return 44
+  [ "$(dpkg-deb -f "$archive" Package)" = g++-mingw-w64-x86-64-posix ] || return 44
+  [ "$(dpkg-deb -f "$archive" Version)" = '13.2.0-6ubuntu1+26.1' ] || return 44
+  [ "$(dpkg-deb -f "$archive" Architecture)" = arm64 ] || return 44
+  recover=$(mktemp -d /tmp/appforge-signed-gxx.XXXXXXXX) || return 44
+  dpkg-deb -x "$archive" "$recover" || { rm -rf -- "$recover";return 44; }
+  source_driver="$recover/usr/bin/x86_64-w64-mingw32-g++-posix"
+  if [ -L "$source_driver" ];then
+    link=$(readlink "$source_driver") || { rm -rf -- "$recover";return 44; }
+    case "$link" in x86_64-w64-mingw32-g++-[0-9]*-posix) ;; *) rm -rf -- "$recover";return 44;;esac
+    [ -x "/usr/bin/$link" ] || { echo 'APPFORGE_WINDOWS_GXX_TARGET_MISSING' >&2;rm -rf -- "$recover";return 44; }
+    ln -s "$link" "/usr/bin/.appforge-gxx-v540.$$" || { rm -rf -- "$recover";return 44; }
+    mv -T "/usr/bin/.appforge-gxx-v540.$$" "$target" || { rm -rf -- "$recover";return 44; }
+  elif [ -f "$source_driver" ] && [ ! -L "$source_driver" ] && [ -x "$source_driver" ];then
+    file -L "$source_driver" | grep -Eqi 'aarch64|ARM aarch64' || { rm -rf -- "$recover";return 44; }
+    cp -p "$source_driver" "/usr/bin/.appforge-gxx-v540.$$" || { rm -rf -- "$recover";return 44; }
+    cmp -s "$source_driver" "/usr/bin/.appforge-gxx-v540.$$" || { rm -rf -- "$recover";return 44; }
+    mv -T "/usr/bin/.appforge-gxx-v540.$$" "$target" || { rm -rf -- "$recover";return 44; }
+  else
+    echo 'APPFORGE_WINDOWS_GXX_AUTHENTIC_FILE_NOT_FOUND' >&2
+    rm -rf -- "$recover";return 44
+  fi
+  rm -rf -- "$recover"
+  [ -x "$target" ] || return 44
+  echo 'APPFORGE_WINDOWS_GXX_SIGNED_DRIVER_RESTORED=PASS'
 }
 
 repair_interrupted_dpkg() {
@@ -97,7 +87,26 @@ repair_interrupted_dpkg() {
   echo "APPFORGE_WINDOWS_NATIVE_DPKG_REPAIR=START"
 
   repair_mingw_links
-
+  # Satisfy the C compiler dependency before g++'s postinst alternatives.
+  # Already-configured packages must not be needlessly reconfigured.
+  gcc_state=$(dpkg-query -W -f='${db:Status-Abbrev}' gcc-mingw-w64-x86-64-posix 2>/dev/null || true)
+  case "$gcc_state" in
+    ii*) ;;
+    iU*|iF*|iH*)
+      dpkg --configure gcc-mingw-w64-x86-64-posix || {
+        echo 'APPFORGE_WINDOWS_GCC_POSIX_CONFIGURE_BLOCKED' >&2;return 44;
+      };;
+    *) echo 'APPFORGE_WINDOWS_GCC_POSIX_STATE_UNVERIFIED' >&2;return 44;;
+  esac
+  gxx_state=$(dpkg-query -W -f='${db:Status-Abbrev}' g++-mingw-w64-x86-64-posix 2>/dev/null || true)
+  case "$gxx_state" in
+    ii*) ;;
+    iU*|iF*|iH*)
+      dpkg --configure g++-mingw-w64-x86-64-posix || {
+        echo 'APPFORGE_WINDOWS_GXX_POSIX_CONFIGURE_BLOCKED' >&2;return 44;
+      };;
+    *) echo 'APPFORGE_WINDOWS_GXX_POSIX_STATE_UNVERIFIED' >&2;return 44;;
+  esac
   dpkg --configure -a
 
   echo "APPFORGE_WINDOWS_NATIVE_DPKG_REPAIR=PASS"
