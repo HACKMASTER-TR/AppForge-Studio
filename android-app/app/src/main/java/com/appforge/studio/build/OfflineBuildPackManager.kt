@@ -155,6 +155,11 @@ internal object OfflineBuildPackManager {
             val unsupported=DeviceBuildRuntimeV3.platformError()
             if(unsupported!=null)return OfflineBuildRequirementCheck(false,"platform-unsupported",listOf(unsupported))
         }
+        // Debug acceptance: a signed, hash-verified module-owned root can
+        // satisfy exactly one project's dependency closure. No legacy root change.
+        if (com.appforge.studio.BuildConfig.DEBUG &&
+            IsolatedModuleInstallerV3.rootForProject(context,draft,plan)!=null)
+            return OfflineBuildRequirementCheck(true,draft.sourceBuildEngine,emptyList(),emptySet())
         val missing=plan.modules.filterNot{moduleReady(context,it)}
         return OfflineBuildRequirementCheck(missing.isEmpty(),draft.sourceBuildEngine,
             missing.filter{it!=OfflineModuleId.LINUX_RUNTIME}.map{OfflineModules.spec(it).title},missing.toSet())
@@ -748,6 +753,19 @@ internal object OfflineBuildPackManager {
             file.isFile && file.canonicalFile.toPath().startsWith(root.canonicalFile.toPath())
         }
     }.getOrDefault(false)
+
+    /** Reuse the existing APT/network/telemetry broker with a module-owned root. */
+    internal suspend fun executeIsolatedForAcceptance(
+        context:Context, rootfs:File, workspace:File, module:OfflineModuleId,
+        operation:String, command:String, progress:(ModuleProgress)->Unit,
+        control:DownloadControl
+    ) {
+        require(com.appforge.studio.BuildConfig.DEBUG)
+        require(rootfs.canonicalFile.toPath().startsWith(
+            File(context.noBackupFilesDir,"isolated-modules-v1").canonicalFile.toPath()))
+        execute(LinuxShellEngine(context),rootfs,workspace,"isolated-${module.name.lowercase()}",
+            command,module,operation,progress,control,r2Authorized=true)
+    }
 
     private suspend fun execute(
         shell: LinuxShellEngine,

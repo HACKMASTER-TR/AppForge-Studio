@@ -138,6 +138,55 @@ internal object ModuleInstallOperations {
             } finally {stalledWatch.cancel();try{runCatching{persist()}}finally{activeProgress.value=null;busy.value=false;DownloadNetwork.restorePreference()}}
         }
     }
+    /** Explicit test channel: do not change existing one-tap legacy installs. */
+    @Synchronized fun startIsolated(context:android.content.Context, selected:OfflineModuleId,
+                                    consent:Boolean) {
+        if (busy.value) return
+        if (!com.appforge.studio.BuildConfig.DEBUG) return
+        try { restore(context) } catch(e:Exception) {
+            journalError.value="İzole işlem günlüğü doğrulanamadı: ${e.message}";return
+        }
+        installTarget.value=selected
+        completedInstall.value=null
+        diagnosticOperation.value=null
+        startedAt.value=android.os.SystemClock.elapsedRealtime()
+        busy.value=true;pauseRequested=false;downloadControl=DownloadControl();stopPending.value=false
+        try { ModuleDownloadService.start(context.applicationContext) }
+        catch(e:RuntimeException) {
+            busy.value=false
+            journalError.value="İzole kurulum hizmeti açılamadı: ${e.message}"
+            DownloadNetwork.restorePreference();return
+        }
+        val networkContext=DownloadNetwork.takeOperationConsent()
+        job=scope.launch(networkContext) {
+            val operation="isolated-${java.util.UUID.randomUUID()}"
+            try {
+                IsolatedModuleInstallerV3.installSelected(context.applicationContext,
+                    selected,consent,downloadControl) { event ->
+                        diagnosticOperation.value=event.operationId
+                        publish(event)
+                    }
+                check(IsolatedModuleInstallerV3.ready(context.applicationContext,selected)) {
+                    "İzole kurulum tüm fiziksel kontrolleri geçmeden hazır olamaz."
+                }
+                publish(ModuleProgress(selected,operation,ModulePhase.READY,
+                    detail="Bağımsız Ubuntu + APT/dpkg + cihaz fonksiyon testleri PASS."))
+                completedInstall.value=selected
+            } catch(e:CancellationException) {
+                publish(ModuleProgress(selected,operation,ModulePhase.CANCELED,
+                    detail="İzole işlem iptal edildi; eski modüller ve kullanıcı dosyaları korunur."))
+            } catch(e:Exception) {
+                publish(ModuleProgress(selected,operation,ModulePhase.ERROR,
+                    errorCode=e.javaClass.simpleName,
+                    detail=(e.message?:"İzole kurulum başarısız")+
+                        " • Eski doğrulanmış modüller değiştirilmedi."))
+            } finally {
+                activeProgress.value=null;busy.value=false;stopPending.value=false
+                DownloadNetwork.restorePreference()
+            }
+        }
+    }
+
     @Synchronized fun lifecycle(context:android.content.Context,id:OfflineModuleId,action:String) {
         require(action in setOf("remove","rollback"));if(busy.value)return
         try{restore(context)}catch(e:Exception){journalError.value="İndirme kaydı reddedildi; yaşam döngüsü işlemi başlamadı: ${e.message}";return}
@@ -185,6 +234,7 @@ internal object ModuleInstallOperations {
     var networkPolicy by remember{mutableStateOf(DownloadNetwork.policy)}
     var confirmAnyNetwork by remember{mutableStateOf(false)}
     var mobileModule by remember{mutableStateOf<OfflineModuleId?>(null)}
+    var mobileIsolated by remember{mutableStateOf(false)}
     val usageRevision by BuildModuleUsage.changes.collectAsState()
     val mutationRevision by BuildModuleUsage.mutationChanges.collectAsState()
     var recovered by remember{mutableStateOf(false)}
@@ -233,6 +283,7 @@ internal object ModuleInstallOperations {
     val selected=OfflineModuleId.entries.firstOrNull { it.name==selectedName } ?: OfflineModuleId.NODE_WEB
     var recordedVersion by remember(selected) { mutableStateOf<String?>(null) }
     var updateRequired by remember(selected) { mutableStateOf(false) }
+    var isolatedReady by remember(selected) { mutableStateOf(false) }
     var lifecycle by remember(selected) { mutableStateOf<ModuleLifecycleStatus?>(null) }
     var aptState by remember(selected) { mutableStateOf("") }
     var migrationReason by remember(selected) { mutableStateOf<String?>(null) }
@@ -279,6 +330,9 @@ internal object ModuleInstallOperations {
         }
         recordedVersion=recorded.first
         updateRequired=recorded.second
+        isolatedReady=withContext(Dispatchers.IO) {
+            IsolatedModuleInstallerV3.ready(context,selected)
+        }
     }
     LaunchedEffect(section,selected,moduleDetails,recovered,busy,usageRevision,refreshRevision) {
         lifecycle=null
@@ -335,8 +389,16 @@ internal object ModuleInstallOperations {
         pruneReason=result.exceptionOrNull()?.message
     }
     fun begin(id:OfflineModuleId) {
-        if(DownloadNetwork.policy==DownloadNetworkPolicy.WIFI_PREFERRED && !DownloadNetwork.allowed()){mobileModule=id;return}
+        if(DownloadNetwork.policy==DownloadNetworkPolicy.WIFI_PREFERRED && !DownloadNetwork.allowed()){
+            mobileIsolated=false;mobileModule=id;return
+        }
         ModuleInstallOperations.start(context,id,sdkConsent)
+    }
+    fun beginIsolated(id:OfflineModuleId) {
+        if(DownloadNetwork.policy==DownloadNetworkPolicy.WIFI_PREFERRED && !DownloadNetwork.allowed()){
+            mobileIsolated=true;mobileModule=id;return
+        }
+        ModuleInstallOperations.startIsolated(context,id,sdkConsent)
     }
     if(recoveryConfirm) AlertDialog(
         onDismissRequest={recoveryConfirm=false},
@@ -478,8 +540,12 @@ internal object ModuleInstallOperations {
         Text("Mobil veri ve ölçümlü bağlantı kullanılabilir. Toplam kalan boyut bilinmiyor; yeni alt bağımlılıklar gerekebilir. Dosya bazındaki doğrulanmış miktarlar indirme geçmişinde gösterilir.")
     },confirmButton={TextButton(enabled=!busy && !preparing,onClick={
         val id=mobileModule;mobileModule=null;confirmAnyNetwork=false
-        if(id!=null){DownloadNetwork.allowMobileOnce();ModuleInstallOperations.start(context,id,sdkConsent)}
-        else {networkPolicy=DownloadNetworkPolicy.ALLOW_ANY;DownloadNetwork.select(networkPolicy)}
+        if(id!=null){
+            DownloadNetwork.allowMobileOnce()
+            if(mobileIsolated)ModuleInstallOperations.startIsolated(context,id,sdkConsent)
+            else ModuleInstallOperations.start(context,id,sdkConsent)
+            mobileIsolated=false
+        } else {networkPolicy=DownloadNetworkPolicy.ALLOW_ANY;DownloadNetwork.select(networkPolicy)}
     }){Text(if(mobileModule!=null)"Yalnız bu işlem için izin ver" else "Bu ağ tercihini kaydet")}},dismissButton={TextButton(onClick={confirmAnyNetwork=false;mobileModule=null}){Text("Reddet; kaydı koru")}})
     pendingLifecycle?.let{(id,action)->
         val permission=if(id!=selected)null else if(action=="remove")lifecycle?.remove else lifecycle?.rollback
@@ -538,10 +604,17 @@ internal object ModuleInstallOperations {
                 TextButton(onClick={android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://developer.android.com/studio/terms")).also{context.startActivity(it)}}){Text("Android SDK lisansını incele")}
                 Row{Checkbox(sdkConsent,{sdkConsent=it});Text("SDK lisansını kabul ediyorum")}
             }
-        }},confirmButton={TextButton(
-            enabled=!busy && !preparing && modules!=null && (!needsSdk||sdkConsent),
-            onClick={chosen=null;begin(id)}
-        ){Text("Onayla ve kur")}},dismissButton={TextButton(onClick={chosen=null}){Text("Vazgeç")}})
+        }},confirmButton={Row {
+            if (com.appforge.studio.BuildConfig.DEBUG &&
+                id !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE)) {
+                TextButton(enabled=!busy && !preparing && modules!=null && (!needsSdk||sdkConsent),
+                    onClick={chosen=null;beginIsolated(id)}) {
+                    Text("Bağımsız kur ve test et")
+                }
+            }
+            TextButton(enabled=!busy && !preparing && modules!=null && (!needsSdk||sdkConsent),
+                onClick={chosen=null;begin(id)}) { Text("Onayla ve kur • mevcut sistem") }
+        }},dismissButton={TextButton(onClick={chosen=null}){Text("Vazgeç")}})
     }
     Scaffold(topBar={TopAppBar(title={Text("Birleşik Modül Merkezi V9")},navigationIcon={TextButton(onClick=onBack){Text("Geri")}})}){padding->
         LazyColumn(modifier=Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -557,6 +630,7 @@ internal object ModuleInstallOperations {
                                     Text(module.title,style=MaterialTheme.typography.titleSmall)
                                     Text(when {
                                         !ready.containsKey(module.id) -> "Kontrol ediliyor…"
+                                        isolatedReady && module.id==selected -> "BAĞIMSIZ HAZIR ✓"
                                         ready[module.id]==true -> "HAZIR ✓"
                                         module.id in existingFiles -> "Dosyalar mevcut · doğrulama gerekli"
                                         module.id in downloadedModules -> "İndirildi · kurulum gerekli"

@@ -19,6 +19,10 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/IsolatedModuleRuntimeV2.kt"
   - "android-app/app/src/test/java/com/appforge/studio/build/IsolatedModuleRuntimeV2Test.kt"
   - "quality/tests/module_isolation_v2_contract.test.js"
+  - "android-app/app/src/main/java/com/appforge/studio/build/IsolatedModuleInstallerV3.kt"
+  - "android-app/app/src/main/assets/device-build/isolated-physical-acceptance.sh"
+  - "android-app/app/src/test/java/com/appforge/studio/build/IsolatedModuleInstallerV3Test.kt"
+  - "quality/tests/module_isolation_v3_unified_contract.test.js"
 ---
 
 # AppForge — İhtiyaca Göre Bağımsız Modül Mimarisi (V1)
@@ -70,3 +74,34 @@ fonksiyon testlerini geçmiş olduğu anlamına gelmez.
 rootfs içinde imzalı APT/dpkg kurulumu ve gerçek derleme testleri; sonrasında
 kontrollü varsayılan kurulum geçişi. `main`/üretim yayını ve APK kurulumuna bu
 fazda dokunulmaz.
+
+
+## Faz 3–6: Birleşik izole kurulum kabulü (2026-11-18)
+
+`IsolatedModuleInstallerV3` test sürümüne ve açık kullanıcı onayına bağlıdır.
+Yalnız seçilen hedefin `ModuleIsolationV1.request` kapanışındaki bağımlılıkları
+kurar; her hedefin ayrı Ubuntu rootfs, APT/dpkg veritabanı, doğrulanmış arşiv
+kopyaları, kurulum kopyası, çevrimdışı fonksiyon testi ve `isolated-v3`
+kanıt kaydı vardır. Aynı imzalı R2 arşivi ağdan tekrar alınmadan da
+kullanılabilir, fakat kurulu dosyalar asla başka modülün Linux kökünden
+kullanılmaz. Kod mevcut V540 ortamını taşımaz veya değiştirmez.
+
+Fiziksel kabul testleri Linux/NDK için `CMAKE_ROOT` ve gerçek CMake -P
+çalıştırma, Windows için gerçek C++ MinGW PE32+ çıktı, diğerlerinde
+`module-functional-test.sh` ile gerçek derleme/çalıştırma testleridir.
+Başarısız işlem seçilen hedefin sürüm aşamasında durur; önceki rootfs korunur.
+Ancak hem bütün gerçek testler hem de SHA-256 dosya envanteri geçerse
+`opt/appforge-device/isolated-v3/receipt.json` yazılabilir. `HAZIR` sorgusu
+kanıt ve kurulu dosya hash'lerini tekrar inceler.
+
+**Yayın sınırı:** Android Studio/CI PASS gerçek ARM64 kabul değildir. Yeni yol
+fiziksel kabulden önce yalnız `BuildConfig.DEBUG` ile açılır; varsayılan
+release ve eski kullanıcı projeleri etkilenmez. Yeni debug kanıtı doğrulanmışsa
+yalnız birebir örtüşen tek hedefli proje izole köke yönlendirilebilir;
+karışık/universal çıktılar mevcut proven rotada kalır. Önceden doğrulanmış
+103 R2 nesnesi, kullanıcı projeleri ve mevcut modüller silinmez.
+
+**Tam kabul için açık kalan adım:** Kullanıcı yeni imzalı APK'yı Android paket
+yükleyicisiyle onaylayıp üç hatalı modülün ve kalan hedeflerin telefondaki
+kurulum/fonksiyon testlerini çalıştırmalıdır. CI başarısı bu adımın yerini
+alamaz; `main` otomatik birleştirilmez, ADB kullanılmaz.
