@@ -23,6 +23,7 @@ source_files:
   - "android-app/app/src/main/assets/device-build/isolated-physical-acceptance.sh"
   - "android-app/app/src/test/java/com/appforge/studio/build/IsolatedModuleInstallerV3Test.kt"
   - "quality/tests/module_isolation_v3_unified_contract.test.js"
+  - "quality/tests/windows_native_pinned_r2_mobile_contract.test.js"
 ---
 
 # AppForge — İhtiyaca Göre Bağımsız Modül Mimarisi (V1)
@@ -105,3 +106,17 @@ karışık/universal çıktılar mevcut proven rotada kalır. Önceden doğrulan
 yükleyicisiyle onaylayıp üç hatalı modülün ve kalan hedeflerin telefondaki
 kurulum/fonksiyon testlerini çalıştırmalıdır. CI başarısı bu adımın yerini
 alamaz; `main` otomatik birleştirilmez, ADB kullanılmaz.
+
+## Windows Native mobil veri / imzalı APT düzeltmesi (2026-11-18)
+
+Fiziksel V541 testinde Windows Native, mevcut 46/46 doğrulanmış R2 nesnesine
+rağmen doğrudan `apt-get` ile `ports.ubuntu.com` DNS çözümlemesine gitti.
+Bu, doğrulanmış Snapshot APT geçişini atlıyordu; boş paket indeksi yüzünden
+`cmake`, `ninja`, MinGW bulunamadı. Onarım ayrıca ilk kurulumda mevcut olmayan
+`file(1)` aracına bağımlıydı. Windows kurulumunda yalnız `telemetry-bin/apt-get`
+üzerinden imzalı indeks ve kilitli paket çözümleme kullanılır;
+`APPFORGE_APT_MANAGED_INSTALL` ve `APPFORGE_R2_RELEASE_AUTHORIZED` zorunludur.
+İmzalı MinGW sürücüsünün AArch64 ELF64 LE başlığı `od` ile doğrulanır.
+Uygulama/diğer modüller, mevcut R2 önbelleği veya eski runtime değiştirilmez.
+Bu kod değişikliği cihazda yeniden çalıştırılıp PE32+ üretimi kanıtlanmadan
+`BAĞIMSIZ HAZIR` kabul edilmez.

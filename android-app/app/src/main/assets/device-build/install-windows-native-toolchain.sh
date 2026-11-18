@@ -53,7 +53,14 @@ repair_mingw_links() {
     ln -s "$link" "/usr/bin/.appforge-gxx-v540.$$" || { rm -rf -- "$recover";return 44; }
     mv -T "/usr/bin/.appforge-gxx-v540.$$" "$target" || { rm -rf -- "$recover";return 44; }
   elif [ -f "$source_driver" ] && [ ! -L "$source_driver" ] && [ -x "$source_driver" ];then
-    file -L "$source_driver" | grep -Eqi 'aarch64|ARM aarch64' || { rm -rf -- "$recover";return 44; }
+    # file(1) is not yet installed in a fresh root. Validate AArch64 ELF64 LE
+    # directly using coreutils od; signed package SHA256/identity checks above stay.
+    command -v od >/dev/null 2>&1 || { echo 'APPFORGE_WINDOWS_ELF_OD_MISSING' >&2;rm -rf -- "$recover";return 44; }
+    header=$(od -An -tx1 -N6 "$source_driver" | tr -d ' \n') || { rm -rf -- "$recover";return 44; }
+    machine=$(od -An -tx1 -j18 -N2 "$source_driver" | tr -d ' \n') || { rm -rf -- "$recover";return 44; }
+    [ "$header" = 7f454c460201 ] && [ "$machine" = b700 ] || {
+      echo 'APPFORGE_WINDOWS_GXX_AUTHENTIC_DRIVER_WRONG_ELF_ARCH' >&2;rm -rf -- "$recover";return 44;
+    }
     cp -p "$source_driver" "/usr/bin/.appforge-gxx-v540.$$" || { rm -rf -- "$recover";return 44; }
     cmp -s "$source_driver" "/usr/bin/.appforge-gxx-v540.$$" || { rm -rf -- "$recover";return 44; }
     mv -T "/usr/bin/.appforge-gxx-v540.$$" "$target" || { rm -rf -- "$recover";return 44; }
@@ -174,10 +181,26 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 
-apt-get update
+# A plain apt-get would bypass authenticated R2 snapshot, use ports.ubuntu.com
+# and fail DNS on mobile data. The module manager supplies the mandatory release
+# authorization and separately owns this Linux filesystem.
+managed_apt() {
+  [ "${APPFORGE_APT_MANAGED_INSTALL:-0}" = 1 ] &&
+  [ "${APPFORGE_R2_RELEASE_AUTHORIZED:-0}" = 1 ] || {
+    echo 'APPFORGE_WINDOWS_SIGNED_R2_APT_AUTHORIZATION_REQUIRED' >&2;return 60;
+  }
+  wrapper=/opt/appforge-device/telemetry-bin/apt-get
+  [ -f "$wrapper" ] && [ ! -L "$wrapper" ] &&
+  [ -f /workspace/runtime/apt-download-telemetry.sh ] &&
+  [ -f /workspace/runtime/apt-snapshot-lock.sh ] || {
+    echo 'APPFORGE_WINDOWS_SIGNED_R2_APT_WRAPPER_MISSING' >&2;return 60;
+  }
+  /bin/sh "$wrapper" "$@"
+}
+managed_apt update
 
 install_packages() {
-  apt-get install \
+  managed_apt install \
     -y \
     --no-install-recommends \
     --reinstall \
