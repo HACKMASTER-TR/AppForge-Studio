@@ -1,3 +1,23 @@
+---
+type: architecture
+status: draft
+project: AppForge Studio
+created: 2026-11-18
+updated: 2026-11-18
+last_verified: 2026-11-18
+confidence: low
+tags:
+  - on-demand
+  - module-isolation
+related:
+  - "[[Device_Build_Runtime_V3]]"
+source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/ModuleIsolationV1.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
+  - "android-app/app/src/test/java/com/appforge/studio/build/ModuleIsolationV1Test.kt"
+  - "quality/tests/module_isolation_v1_contract.test.js"
+---
+
 # AppForge — İhtiyaca Göre Bağımsız Modül Mimarisi (V1)
 
 Durum: **FAZ 1 — yalnız planlama ve güvenli dosya alanı altyapısı**. Bu belge veya yeni kod fiziksel modülleri henüz ayrı rootfs üzerinden çalıştırmaz; mevcut kurulum motoru değiştirilmeden korunur. Özellik fiziksel testlerden önce `HAZIR` olarak ilan edilmez.
