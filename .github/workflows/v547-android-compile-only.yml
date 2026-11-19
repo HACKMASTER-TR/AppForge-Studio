@@ -14,9 +14,12 @@ jobs:
     if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
     runs-on: ubuntu-24.04
     timeout-minutes: 50
-    env:
-      GRADLE_USER_HOME: ${{ runner.temp }}/v547-r17-gradle
     steps:
+      - name: Initialize isolated Gradle home at runner runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "GRADLE_USER_HOME=$RUNNER_TEMP/v547-r17-gradle" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
