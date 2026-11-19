@@ -1,0 +1,87 @@
+name: AppForge V547 AGP 9.1.1 ARM64 Offline Candidate Proof
+on:
+  push:
+    branches: ["codex/v547-agp-arm64-proof-*"]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v547-agp-arm64-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-arm64-offline:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Check signed-source ancestry and exact GitHub candidate provenance
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = aarch64
+          git merge-base --is-ancestor 7d0994b6582a859c516967fd162fbd4e3d1b054a HEAD
+          repo='HACKMASTER-TR/AppForge-Studio'
+          run=44570760969
+          expected=7d0994b6582a859c516967fd162fbd4e3d1b054a
+          test "$(gh api "repos/$repo/actions/runs/$run" --jq '.head_sha')" = "$expected"
+          test "$(gh api "repos/$repo/actions/runs/$run" --jq '.conclusion')" = success
+          test "$(gh api "repos/$repo/actions/artifacts/14554148259" --jq '.name')" = "v547-agp911-gradle931-ci-candidate-$expected"
+          test "$(gh api "repos/$repo/actions/artifacts/14554148259" --jq '.digest')" = sha256:fa745ccdf122f86d77d5b971d2c2db0300db2b77d8d0984ec9628cec67fe85c0
+          test "$(gh api "repos/$repo/actions/artifacts/14554148259" --jq '.expired')" = false
+          echo 'APPFORGE_V547_AGP_CANDIDATE_PROVENANCE=PASS'
+      - uses: actions/download-artifact@v4
+        with:
+          repository: HACKMASTER-TR/AppForge-Studio
+          run-id: 44570760969
+          name: v547-agp911-gradle931-ci-candidate-7d0994b6582a859c516967fd162fbd4e3d1b054a
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/agp-v547-candidate
+      - name: Verify every candidate byte into disposable ARM64 Gradle cache
+        shell: bash
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/v547-arm64-gradle
+        run: |
+          set -euo pipefail
+          mkdir -p "$GRADLE_USER_HOME"
+          python3 quality/tools/v547_agp_arm64_candidate_probe.py \
+            "$RUNNER_TEMP/agp-v547-candidate" \
+            "$GRADLE_USER_HOME/caches"
+          test -d "$GRADLE_USER_HOME/caches/modules-2/files-2.1/com.android.tools.build/gradle/9.1.1"
+          echo 'APPFORGE_V547_AGP_CANDIDATE_ARM64_CACHE=VERIFIED'
+      - name: Resolve AGP 9.1.1 plugin with zero Gradle network downloads on native ARM64
+        shell: bash
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/v547-arm64-gradle
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/arm64-gradle-proof"
+          cd "$RUNNER_TEMP/arm64-gradle-proof"
+          cat > settings.gradle.kts <<'EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          rootProject.name = "AppForgeV547Arm64AgpOfflineResolution"
+          EOF
+          cat > build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application") version "9.1.1" apply false
+          }
+          EOF
+          gradle --offline --no-daemon --no-configuration-cache --console=plain help
+          echo 'APPFORGE_V547_AGP_ARM64_OFFLINE_PLUGIN_RESOLUTION=PASS'
+          echo 'APPFORGE_V547_AGP_FULL_ARM64_APK_BUILD=NOT_TESTED'
+          echo 'APPFORGE_V547_AGP_SIGNED_RELEASE=NO'
+          echo 'APPFORGE_V547_AGP_DEVICE_INSTALL=NOT_STARTED'
