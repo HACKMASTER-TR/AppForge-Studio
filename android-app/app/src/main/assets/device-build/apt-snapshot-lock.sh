@@ -121,7 +121,7 @@ as_r2_object() {
   [ -n "${APPFORGE_NATIVE_DOWNLOAD_BROKER:-}" ] || { as_fail 'R2 verified downloader unavailable; snapshot fallback prohibited';return 60; }
   . /workspace/runtime/native-download-broker.sh
   as_prefix=$(printf '%s' "$as_object_sha" | cut -c1-2)
-  as_url="https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/$as_prefix/$as_object_sha"
+  as_url="https://packages.appforgecloud.com/v9/objects/sha256/$as_prefix/$as_object_sha"
   appforge_native_download "$as_url" "$as_object_sha" "$as_object_target.part" "$as_object_size" || { as_fail 'R2 object unavailable; signed metadata or package must be published by the owner';return 60; }
  fi
  [ "$(wc -c < "$as_object_target.part" | tr -d ' ')" = "$as_object_size" ] && printf '%s  %s\n' "$as_object_sha" "$as_object_target.part" | sha256sum -c - >/dev/null || return 60

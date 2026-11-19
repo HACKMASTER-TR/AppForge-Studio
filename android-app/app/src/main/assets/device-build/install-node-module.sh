@@ -25,8 +25,18 @@ case "$(uname -m)" in
 esac
 # No SDK, JDK, Gradle, Python, Expo or Windows installation here.
 if ! command -v curl >/dev/null || ! command -v xz >/dev/null; then
- apt-get update
- apt-get install -y --no-install-recommends --no-upgrade ca-certificates curl tar xz-utils
+ # Fail closed: never fall back to live ports.ubuntu.com / implicit APT.
+ # The app's owned, signed-snapshot APT shim verifies Ubuntu signatures,
+ # exact package hashes/versions and uses --no-download for installation.
+ APPFORGE_PINNED_APT=/opt/appforge-device/telemetry-bin/apt-get
+ if [ ! -x "$APPFORGE_PINNED_APT" ] ||
+    [ ! -r /workspace/runtime/apt-download-telemetry.sh ] ||
+    [ ! -r /workspace/runtime/apt-snapshot-lock.sh ]; then
+  echo 'APPFORGE_NODE_PINNED_APT_REQUIRED: live Ubuntu APT prohibited' >&2
+  exit 63
+ fi
+ "$APPFORGE_PINNED_APT" update
+ "$APPFORGE_PINNED_APT" install -y --no-install-recommends --no-upgrade ca-certificates curl tar xz-utils
 fi
 command -v curl >/dev/null
 command -v tar >/dev/null
