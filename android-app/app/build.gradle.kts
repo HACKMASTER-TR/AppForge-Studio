@@ -429,6 +429,18 @@ require(!appforgeV9R2Isolated3UpgradeV547 ||
     "V547 in-place candidate requires original isolated3 test identity and exclusive version flag."
 }
 
+// V548 R20: isolated3-only CI upgrade; never changes release/default variants.
+val appforgeV9R2Isolated3UpgradeV548 =
+    providers.gradleProperty("appforgeV9R2Isolated3UpgradeV548").orNull == "true"
+require(!appforgeV9R2Isolated3UpgradeV548 ||
+    (appforgeV9R2Isolated3Acceptance && !appforgeV9R2Isolated3Upgrade &&
+     !appforgeV9R2Isolated3UpgradeV542 && !appforgeV9R2Isolated3UpgradeV543 &&
+     !appforgeV9R2Isolated3UpgradeV544 && !appforgeV9R2Isolated3UpgradeV545 &&
+     !appforgeV9R2Isolated3UpgradeV546 && !appforgeV9R2Isolated3UpgradeV547 &&
+     appforgeIntegrationDebugVersionCode == null)) {
+    "V548 in-place candidate requires original isolated3 identity and exclusive version flag."
+}
+
 android {
     namespace = "com.appforge.studio"
     compileSdk = 37
@@ -803,6 +815,12 @@ androidComponents {
     }
 
     onVariants(selector().withBuildType("debug")) { variant ->
+        if (appforgeV9R2Isolated3UpgradeV548) {
+            variant.outputs.forEach { output ->
+                output.versionCode.set(548)
+                output.versionName.set("5.0.48-isolated3-upgrade")
+            }
+        }
         if (appforgeV9R2Isolated3UpgradeV547) {
             variant.outputs.forEach { output ->
                 output.versionCode.set(547)
