@@ -49,3 +49,10 @@ test('signed cache remains reusable and validated',()=>{
  assert.match(cache,/inspectCache\(cache, plan.objects\)/);
  assert.match(cache,/VerifiedArtifactCache\.reuse/);
 });
+
+test('V544 pins the signed R2 object source to the verified custom domain',()=>{
+ const source=read('android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt');
+ assert.match(source,/private const val ORIGIN = \"https:\/\/packages\.appforgecloud\.com\"/);
+ assert.doesNotMatch(source,/appforge-v9-packages-readonly\.28550040284a\.workers\.dev/);
+ assert.match(source,/V9ReleaseCandidatePolicy\.verify\(manifest, signature, persistedFloor\)/);
+});
