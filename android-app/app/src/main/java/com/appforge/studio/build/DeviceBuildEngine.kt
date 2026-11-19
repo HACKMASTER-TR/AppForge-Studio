@@ -444,7 +444,11 @@ object DeviceBuildEngine {
             advanceProgress(state, 8, "Kaynak hazır")
             advanceProgress(state, 10, "Runtime hazırlanıyor")
 
+            // Only a physically verified debug-acceptance root is eligible.
+            // The legacy runtime is never migrated or replaced implicitly.
             val rootfs = runtimeOverride ?:
+                (if (com.appforge.studio.BuildConfig.DEBUG)
+                    IsolatedModuleInstallerV3.rootForProject(context,draft) else null) ?:
                 runBlocking {
                     DeviceBuildRuntimeV3
                         .ensureReady(

@@ -2,7 +2,7 @@
 # V8: signed, pinned Ubuntu ARM64 host tools with explicit glibc loader.
 # NEVER apt-install, dpkg-install or overwrite shared libc. Fail closed on any unverified byte.
 set -eu
-[ "${APPFORGE_MODULE_ID:-}" = RUST_ANDROID_NDK ] || exit 60
+case "${APPFORGE_MODULE_ID:-}" in RUST_ANDROID_NDK|EXPO_REACT_NATIVE) ;; *) exit 60;; esac
 [ "${APPFORGE_APT_MANAGED_INSTALL:-0}" = 1 ] || exit 60
 [ "${APPFORGE_R2_RELEASE_AUTHORIZED:-0}" = 1 ] || exit 60
 [ "$(dpkg --print-architecture)" = arm64 ] || exit 60
@@ -108,6 +108,27 @@ cmp -s "$LIBEDIT_REAL" "$LIBDIR/.libedit.so.2.v8.$$" || exit 66
 mv -f "$LIBDIR/.libedit.so.2.v8.$$" "$LIBEDIT_SONAME"
 [ -f "$LIBEDIT_SONAME" ] && [ ! -L "$LIBEDIT_SONAME" ] || exit 66
 printf 'APPFORGE_NDK_LIBEDIT_PRIVATE_SONAME=PASS\n'
+# CMake's signed Ubuntu dependency libarchive13t64 is present in the 73
+# verified package payloads. The pinned PRoot loader cannot always follow its
+# SONAME symlink. Materialize ONLY the package-authenticated bytes, in this
+# private stage, without touching the shared /usr or libc6.
+LIBARCHIVE_REAL="$LIBDIR/libarchive.so.13.7.2"
+LIBARCHIVE_SONAME="$LIBDIR/libarchive.so.13"
+[ -f "$LIBARCHIVE_REAL" ] && [ ! -L "$LIBARCHIVE_REAL" ] || {
+  echo 'APPFORGE_NDK_LIBARCHIVE_SIGNED_PAYLOAD_MISSING' >&2;exit 66;
+}
+[ -L "$LIBARCHIVE_SONAME" ] &&
+[ "$(readlink "$LIBARCHIVE_SONAME")" = libarchive.so.13.7.2 ] || {
+  echo 'APPFORGE_NDK_LIBARCHIVE_UNEXPECTED_SONAME' >&2;exit 66;
+}
+file -L "$LIBARCHIVE_REAL" | grep -Eqi 'aarch64|ARM aarch64' || {
+  echo 'APPFORGE_NDK_LIBARCHIVE_ARM64_ABI_MISMATCH' >&2;exit 66;
+}
+cp -p "$LIBARCHIVE_REAL" "$LIBDIR/.libarchive.so.13.v540.$$"
+cmp -s "$LIBARCHIVE_REAL" "$LIBDIR/.libarchive.so.13.v540.$$" || exit 66
+mv -f "$LIBDIR/.libarchive.so.13.v540.$$" "$LIBARCHIVE_SONAME"
+[ -f "$LIBARCHIVE_SONAME" ] && [ ! -L "$LIBARCHIVE_SONAME" ] || exit 66
+printf 'APPFORGE_NDK_LIBARCHIVE_PRIVATE_SONAME=PASS\n'
 
 # Wrapper resolves only executables extracted from the verified Ubuntu payload.
 # Child processes see the same isolated library path, but never an alternate libc.
@@ -138,6 +159,32 @@ libpath="$sysroot/usr/lib/llvm-18/lib:$sysroot/usr/lib/aarch64-linux-gnu:$sysroo
 export LD_LIBRARY_PATH="$libpath"
 export PATH="$prefix/bin:$PATH"
 export PROROOT_GUEST_EXE="$executable"
+# CMake 3.28 locates CMAKE_ROOT relative to argv[0] (its executable path).
+# When invoked through the explicit glibc loader, argv[0] can become the
+# loader path under PRoot even though the signed cmake-data payload exists.
+# glibc 2.39 supports --argv0; use it only for CMake, preserving all other
+# verified private-tool launch paths and the guest-exe override.
+if [ "$name" = cmake ];then
+  cmake_modules="$sysroot/usr/share/cmake-3.28/Modules/CMake.cmake"
+  [ -s "$cmake_modules" ] || {
+    echo 'APPFORGE_NDK_HOST_CMAKE_DATA_MISSING' >&2;exit 66;
+  }
+  # Only the installation probe may temporarily choose a launcher.
+  # Normal use reads the launcher which passed a real CMAKE_ROOT check.
+  cmake_mode=${APPFORGE_CMAKE_PROBE_MODE:-}
+  if [ -z "$cmake_mode" ];then
+    cmake_mode_file="$prefix/cmake-launch-mode-v9"
+    [ -f "$cmake_mode_file" ] && [ ! -L "$cmake_mode_file" ] || {
+      echo 'APPFORGE_NDK_HOST_CMAKE_NOT_VERIFIED' >&2;exit 66;
+    }
+    cmake_mode=$(cat "$cmake_mode_file")
+  fi
+  case "$cmake_mode" in
+    direct) exec "$executable" "$@";;
+    loader-argv0) exec "$interpreter" --argv0 "$executable" --library-path "$libpath" "$executable" "$@";;
+    *) echo 'APPFORGE_NDK_HOST_CMAKE_LAUNCH_DENIED' >&2;exit 66;;
+  esac
+fi
 exec "$interpreter" --library-path "$libpath" "$executable" "$@"
 WRAPPER
 chmod 0755 "$STAGE/bin/host-tool"
@@ -153,6 +200,30 @@ done
 # refuse READY until actual tool execution succeeds on this physical host.
 [ ! -e "$PREFIX" ] || exit 66
 mv -T "$STAGE" "$PREFIX"
+trap - 0 HUP INT TERM
+# Select a safe launcher on THIS device. PRoot can expose a different
+# /proc/self/exe to CMake's relocation logic. Do not guess from --version.
+cmake_probe_dir=$(mktemp -d /tmp/appforge-cmake-select.XXXXXXXX) || exit 68
+trap 'rm -rf -- "$cmake_probe_dir"' 0 HUP INT TERM
+cat > "$cmake_probe_dir/check.cmake" <<'CMAKE'
+if(NOT EXISTS "${CMAKE_ROOT}/Modules/CMakeDetermineSystem.cmake")
+  message(FATAL_ERROR "APPFORGE_NDK_HOST_CMAKE_ROOT_INVALID")
+endif()
+CMAKE
+[ -s "$PREFIX/sysroot/usr/share/cmake-3.28/Modules/CMakeDetermineSystem.cmake" ] || exit 68
+for cmake_mode in loader-argv0 direct;do
+  if APPFORGE_CMAKE_PROBE_MODE="$cmake_mode" "$BIN/cmake" -P "$cmake_probe_dir/check.cmake" >"$cmake_probe_dir/log" 2>&1;then
+    printf '%s\n' "$cmake_mode" > "$PREFIX/cmake-launch-mode-v9"
+    break
+  fi
+done
+if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
+  cat "$cmake_probe_dir/log" >&2
+  echo 'APPFORGE_NDK_HOST_CMAKE_NO_VERIFIED_LAUNCHER' >&2
+  exit 68
+fi
+printf 'APPFORGE_NDK_HOST_CMAKE_LAUNCH=%s\n' "$(cat "$PREFIX/cmake-launch-mode-v9")"
+rm -rf -- "$cmake_probe_dir"
 trap - 0 HUP INT TERM
 if ! "$BIN/clang" --version >/dev/null ||
    ! "$BIN/ld.lld" --version >/dev/null ||

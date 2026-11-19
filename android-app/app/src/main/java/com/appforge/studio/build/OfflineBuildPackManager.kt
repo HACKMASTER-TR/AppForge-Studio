@@ -155,6 +155,11 @@ internal object OfflineBuildPackManager {
             val unsupported=DeviceBuildRuntimeV3.platformError()
             if(unsupported!=null)return OfflineBuildRequirementCheck(false,"platform-unsupported",listOf(unsupported))
         }
+        // Debug acceptance: a signed, hash-verified module-owned root can
+        // satisfy exactly one project's dependency closure. No legacy root change.
+        if (com.appforge.studio.BuildConfig.DEBUG &&
+            IsolatedModuleInstallerV3.rootForProject(context,draft,plan)!=null)
+            return OfflineBuildRequirementCheck(true,draft.sourceBuildEngine,emptyList(),emptySet())
         val missing=plan.modules.filterNot{moduleReady(context,it)}
         return OfflineBuildRequirementCheck(missing.isEmpty(),draft.sourceBuildEngine,
             missing.filter{it!=OfflineModuleId.LINUX_RUNTIME}.map{OfflineModules.spec(it).title},missing.toSet())
@@ -224,7 +229,7 @@ internal object OfflineBuildPackManager {
         val app=context.applicationContext
         DownloadNetwork.configure(app);DownloadNetwork.prepareJournal()
         VerifiedArtifactCache.configure(app.noBackupFilesDir,runtimeRootfs(app)?.parentFile)
-        val plan=OfflineModules.resolve(selected)
+        val plan=ModuleIsolationV1.legacyDependencyOrder(selected)
         val operation=UUID.randomUUID().toString()
         if(plan.any{it !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE)})require(DeviceBuildRuntimeV3.platformError()==null){DeviceBuildRuntimeV3.platformError()!!}
         val pending=plan.filterNot{moduleReady(app,it)}
@@ -241,8 +246,14 @@ internal object OfflineBuildPackManager {
         val aptModules=pending.filter{it in setOf(OfflineModuleId.ANDROID_CORE,
             OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE,
             OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST,OfflineModuleId.RUST_ANDROID_NDK)}
-        runtimeRootfs(app)?.takeIf{it.isDirectory}?.let { existing ->
-            val expansion=pending.maxOf{RuntimeStorageBudget.expansionLimit(it)}
+        // Windows Portable Host installs in app-owned storage and never mutates
+        // a Linux generation; unrelated old Linux snapshots cannot block it.
+        val runtimePending=RuntimeStorageBudget.runtimePending(pending)
+        if(runtimePending.isNotEmpty())runtimeRootfs(app)?.takeIf{it.isDirectory}?.let { existing ->
+            // Interrupted prior install: safely reconcile the journal before
+            // starting a completely new transaction. No user rollback UI.
+            RuntimeGenerationStore(existing).recover()
+            val expansion=runtimePending.maxOf{RuntimeStorageBudget.expansionLimit(it)}
             RuntimeStorageBudget.requireAdmission(existing,expansion)
         }
         val r2Bundle=if(aptModules.isNotEmpty())V9R2ReleaseStore.load(app) else runCatching{V9R2ReleaseStore.load(app)}.getOrNull()
@@ -350,6 +361,11 @@ internal object OfflineBuildPackManager {
                         OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST,OfflineModuleId.RUST_ANDROID_NDK
                     )) {
                         val reuse=V9R2AptInstallReuse.seedForDebug(app,staged,id)
+                        if(id==OfflineModuleId.WINDOWS_NATIVE && reuse.missing>0) {
+                            throw IllegalStateException(
+                                "APPFORGE_WINDOWS_R2_INCOMPLETE: ${reuse.missing} of 46 signed packages missing after prefetch; " +
+                                    "no APT installation attempted; verified cache preserved.")
+                        }
                         if(reuse.available>0) phase(id,ModulePhase.PREPARING,
                             "R2 SHA-256 önbelleği: "+reuse.available+" paket hazır, "+
                             reuse.missing+" eksik; "+reuse.verifiedBytes+" bayt yeniden indirilmeyecek. "+
@@ -737,6 +753,19 @@ internal object OfflineBuildPackManager {
             file.isFile && file.canonicalFile.toPath().startsWith(root.canonicalFile.toPath())
         }
     }.getOrDefault(false)
+
+    /** Reuse the existing APT/network/telemetry broker with a module-owned root. */
+    internal suspend fun executeIsolatedForAcceptance(
+        context:Context, rootfs:File, workspace:File, module:OfflineModuleId,
+        operation:String, command:String, progress:(ModuleProgress)->Unit,
+        control:DownloadControl
+    ) {
+        require(com.appforge.studio.BuildConfig.DEBUG)
+        require(rootfs.canonicalFile.toPath().startsWith(
+            File(context.noBackupFilesDir,"isolated-modules-v1").canonicalFile.toPath()))
+        execute(LinuxShellEngine(context),rootfs,workspace,"isolated-${module.name.lowercase()}",
+            command,module,operation,progress,control,r2Authorized=true)
+    }
 
     private suspend fun execute(
         shell: LinuxShellEngine,

@@ -14,7 +14,12 @@ test('V3 UI support decisions disable and guard switches through central matrix'
 test('V3 installer scopes SDK consent and never defaults to installing every module', () => {
   const manager=read(base+'java/com/appforge/studio/build/OfflineBuildPackManager.kt');
   const screen=read(base+'java/com/appforge/studio/OfflineBuildPackScreen.kt');
-  assert.match(manager,/OfflineModules\.resolve\(selected\)/);
+  // Legacy installer now delegates dependency selection to the on-demand planner.
+  // Verify its exact user selection and the planner's explicit dependency closure.
+  const planner=read(base+'java/com/appforge/studio/build/ModuleIsolationV1.kt');
+  assert.match(manager,/val plan=ModuleIsolationV1\.legacyDependencyOrder\(selected\)/);
+  assert.match(planner,/OfflineModules\.resolve\(setOf\(target\)\)/);
+  assert.match(planner,/requests\(selected\)\.flatMap \{ it\.dependencyOrder \}\.distinct\(\)/);
   assert.match(manager,/pending\.filterNot|plan\.filterNot/);
   assert.match(screen,/val needsSdk=modules\?\.any \{\s*it==OfflineModuleId\.ANDROID_CORE \|\| it==OfflineModuleId\.EXPO_REACT_NATIVE \|\|\s*it==OfflineModuleId\.RUST_ANDROID_NDK/);
   assert.match(screen,/Onayla ve kur/);

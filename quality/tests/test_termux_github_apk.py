@@ -35,11 +35,11 @@ elif name=='gh':
   apk=dest/('AppForgeStudio-v9r2isolated3-upgrade.apk' if os.environ.get('UPGRADE') else 'AppForgeStudio-latest.apk')
   with zipfile.ZipFile(apk,'w') as z:z.writestr('AndroidManifest.xml','test boundary only')
   if os.environ.get('UPGRADE') and not os.environ.get('MISSING_UPGRADE_EVIDENCE'):
-   proof={'update_compatible':True,'source_sha':'b'*40,'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'package':'com.appforge.studio.v9r2isolated3','version_code':539,'min_sdk':26,'target_sdk':37,'certificate_sha256':'dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082','reference_sha256':'f51ccd8acc6b18b99b7f1336561abc0569e9a8610b39e5ea02d8237adffabc34'}
+   proof={'update_compatible':True,'source_sha':'b'*40,'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'package':'com.appforge.studio.v9r2isolated3','version_code':541,'min_sdk':26,'target_sdk':37,'certificate_sha256':'dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082','reference_sha256':'d702b8c3a069f0151e541dc478d76f5c1e49d3ee10fcc1014eade36172aa13c3'}
    if os.environ.get('BAD_UPGRADE_CERT'):proof['certificate_sha256']='a'*64
    if os.environ.get('BAD_UPGRADE_PACKAGE'):proof['package']='com.appforge.studio'
    if os.environ.get('BAD_UPGRADE_APK_HASH'):proof['apk_sha256']='a'*64
-   if os.environ.get('BAD_UPGRADE_VERSION'):proof['version_code']=535
+   if os.environ.get('BAD_UPGRADE_VERSION'):proof['version_code']=540
    (dest/'upgrade-evidence.json').write_text(json.dumps(proof))
    if not os.environ.get('MISSING_RELEASE_MANIFEST'):(dest/('release-manifest-'+('b'*40)+'.json')).write_text(json.dumps(proof))
    (dest/'unit-tests.json').write_text(json.dumps({'tests':722,'failures':0,'errors':0,'skipped':0}))
@@ -159,7 +159,7 @@ class TermuxGitHubApkTest(unittest.TestCase):
         for _ in range(2):
             r=self.run_driver('upgrade',UPGRADE='1',APPFORGE_DOWNLOAD_ROOT=str(shared));self.assertEqual(r.returncode,0,r.stderr)
         self.assertEqual(old.read_bytes(),b'old user APK')
-        self.assertEqual(len(list(shared.glob('AppForge-v9r2isolated3-v539-*.apk'))),2)
+        self.assertEqual(len(list(shared.glob('AppForge-v9r2isolated3-v541-*.apk'))),2)
 
     def test_default_download_rejects_the_previously_wrong_standard_apk(self):
         r=self.run_driver('download');self.assertNotEqual(r.returncode,0)

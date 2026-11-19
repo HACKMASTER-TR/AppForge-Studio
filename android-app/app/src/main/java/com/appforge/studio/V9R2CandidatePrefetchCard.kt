@@ -69,11 +69,8 @@ internal object V9R2BundleReader {
         OfflineModuleId.RUST_ANDROID_NDK->OfflineModuleId.EXPO_REACT_NATIVE
         else->selected
     }
-    var manifest by remember { mutableStateOf<ByteArray?>(null) }
-    var signature by remember { mutableStateOf<ByteArray?>(null) }
     var active by remember { mutableStateOf(false) }
     var sourceReady by remember { mutableStateOf(false) }
-    var showSource by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
     var cacheStatus by remember(selected) { mutableStateOf("") }
     LaunchedEffect(active) { onBusyChange(active) }
@@ -95,44 +92,6 @@ internal object V9R2BundleReader {
             }.getOrElse{"Önbellek engeli: ${it.message}"}
         }
     }
-    LaunchedEffect(manifest,signature) {
-        val m=manifest;val sig=signature
-        if(m!=null && sig!=null) {
-            active=true
-            try {
-                withContext(Dispatchers.IO){com.appforge.studio.build.V9R2ReleaseStore.save(context,m,sig)}
-                sourceReady=true
-                status="Ed25519 R2 kaynağı doğrulandı ve kaydedildi; indirme başlamadı."
-            } catch(e:Exception){sourceReady=false;status="R2 kaynağı reddedildi: ${e.message}"}
-            finally{active=false}
-        }
-    }
-    val chooseManifest=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if(uri!=null && !active)scope.launch {
-            active=true;manifest=null
-            try {
-                manifest=withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.use{V9R2BundleReader.bounded(it,V9R2BundleReader.MAX_MANIFEST)}
-                        ?:error("Manifest okunamadı")
-                }
-                status="Manifest seçildi; özgün baytlar Ed25519 ile doğrulanacak."
-            } catch(e:Exception){status="Manifest reddedildi: ${e.message}"}
-            finally{active=false}
-        }
-    }
-    val chooseSignature=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if(uri!=null && !active)scope.launch {
-            active=true;signature=null
-            try {
-                signature=withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.use{V9R2BundleReader.bounded(it,V9R2BundleReader.SIGNATURE_BYTES)}
-                        ?.also{require(it.size==64)}?:error("64 baytlık imza okunamadı")
-                }
-                status="İmza seçildi."
-            } catch(e:Exception){status="İmza reddedildi: ${e.message}"}
-            finally{active=false}
-        }
-    }
     if(aptSource) {
         if(sourceReady && showCacheDetails) {
             Text(
@@ -144,35 +103,26 @@ internal object V9R2BundleReader {
         if(showCacheDetails)Text(cacheStatus.ifBlank{"Paket önbelleği denetleniyor…"},style=MaterialTheme.typography.bodySmall)
         if(showCacheDetails)Text("Kaynak: R2 ve doğrulanmış yerel önbellek. Ubuntu Snapshot yalnız sabit köken kaydıdır.",style=MaterialTheme.typography.bodySmall)
         if(showCacheDetails)Text("APT için ayrıca 4 Ubuntu imzası ve 16 Packages indeksi doğrulanır. Eksik metadata kurulumu engeller; paket sayısı READY anlamına gelmez.",style=MaterialTheme.typography.bodySmall)
-        if(showCacheDetails || !sourceReady)TextButton(enabled=!active,onClick={showSource=!showSource}) {
-            Text(if(sourceReady)"İmzalı R2 kaynağını değiştir" else "İmzalı R2 kaynağını seç")
-        }
-        if((showCacheDetails && showSource) || !sourceReady)Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(enabled=!active,onClick={chooseManifest.launch(arrayOf("*/*"))}){Text(if(manifest==null)"Manifest seç" else "Manifest ✓")}
-            OutlinedButton(enabled=!active,onClick={chooseSignature.launch(arrayOf("*/*"))}){Text(if(signature==null)"İmza seç" else "İmza ✓")}
-        }
     }
-    val partial=(manifest!=null || signature!=null) && (manifest==null || signature==null)
     val requiresSource=aptSource && selected!=OfflineModuleId.NODE_WEB
-    Button(enabled=installEnabled && !active && !partial &&
-        (!requiresSource || sourceReady || manifest!=null && signature!=null),
+    Button(enabled=installEnabled && !active && (!requiresSource || sourceReady),
         modifier=Modifier.fillMaxWidth(),onClick={
-            val target=selected;val m=manifest;val sig=signature
+            val target=selected
             active=true
             scope.launch {
                 try {
                     withContext(Dispatchers.IO) {
-                        if(m!=null && sig!=null)com.appforge.studio.build.V9R2ReleaseStore.save(context,m,sig)
-                        else if(requiresSource)com.appforge.studio.build.V9R2ReleaseStore.load(context)
+                        if(requiresSource)com.appforge.studio.build.V9R2ReleaseStore.load(context)
                     }
-                    status="Kaynak doğrulandı. Tek işlem indirme, doğrulama, kurulum ve fonksiyon testini yürütecek."
+                    status="İmzalı R2 doğrulandı. İndir, doğrula, kur ve test et."
                     onInstall(target)
-                } catch(e:Exception){status="R2 kaynağı reddedildi: ${e.message}"}
+                } catch(e:Exception){status="R2 doğrulaması başarısız: ${e.message}"}
                 finally{active=false}
             }
         }){Text("İndir ve Kur")}
-    if(partial)Text("Manifest ve imza birlikte seçilmeli.",color=MaterialTheme.colorScheme.error)
-    if(requiresSource && !sourceReady && manifest==null)Text("İmzalı R2 sürümü gerekli. Eksik Packages indeksleri varsa işlem güvenle durur.",style=MaterialTheme.typography.bodySmall)
+    if(requiresSource && !sourceReady)Text(
+        "İmzalı R2 sürümü eksik; güvenli kurulum başlamadı.",
+        style=MaterialTheme.typography.bodySmall)
     if(active)LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
     if(status.isNotBlank())Text(status,style=MaterialTheme.typography.bodySmall)
 }

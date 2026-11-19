@@ -57,11 +57,13 @@ internal class ModuleLifecycleAcceptanceTest(private val id:OfflineModuleId) {
             install(root,"v1")
             assertThrows(IllegalStateException::class.java){install(root,"v2"){if(it==point)error("injected activation failure")}}
             assertEquals("v1",File(root,relative).readText());assertTrue(ModuleOwnershipStore(root).verifyNamespace(id))
-            assertEquals(1,RuntimeGenerationStore(root).quarantinedDirectories().size)
-            val blocked=assertThrows(IllegalArgumentException::class.java){install(root,"v3")}
-            assertTrue(blocked.message.orEmpty().contains("STORAGE_BUDGET"))
+            assertEquals(0,RuntimeGenerationStore(root).quarantinedDirectories().size)
+            // Fresh install reuses verified packages and does not retain a failed generation.
+            install(root,"v3")
+            assertEquals(0,RuntimeGenerationStore(root).quarantinedDirectories().size)
             assertFalse(base.listFiles()!!.any{it.name.startsWith(".v3-stage-")})
-            assertEquals("v1",File(root,relative).readText());assertTrue(ModuleOwnershipStore(root).verifyNamespace(id))
+            assertEquals("v3",File(root,relative).readText());assertTrue(ModuleOwnershipStore(root).verifyNamespace(id))
+            assertEquals("fixture user data, not a real key",File(root,"root/signing.key").readText())
         }
     }
     @Test fun diskAndCancellationNeverStartDestructiveTransition()=fixture{_,root->

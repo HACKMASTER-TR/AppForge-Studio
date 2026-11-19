@@ -41,7 +41,11 @@ class NdkDirectExecContract(unittest.TestCase):
         self.assertIn('export LD_LIBRARY_PATH="$libpath"', s)
         self.assertIn('export PROROOT_GUEST_EXE="$executable"', s)
         self.assertIn('exec "$interpreter" --library-path "$libpath" "$executable" "$@"', s)
-        self.assertNotIn('exec "$executable" "$@"', s)
+        self.assertEqual(s.count('direct) exec "$executable" "$@";;'),1)
+        self.assertIn('for cmake_mode in loader-argv0 direct;do',s)
+        self.assertIn('APPFORGE_NDK_HOST_CMAKE_NO_VERIFIED_LAUNCHER',s)
+        self.assertIn('APPFORGE_CMAKE_PROBE_MODE="$cmake_mode" "$BIN/cmake" -P "$cmake_probe_dir/check.cmake"',s)
+        self.assertLess(s.index('if [ "$name" = cmake ];then'),s.index('direct) exec "$executable" "$@";;'))
         self.assertNotIn('APPFORGE_NDK_HOST_EXPLICIT_LOADER=PASS', s)
         self.assertIn('APPFORGE_NDK_HOST_EXPLICIT_LOADER_WITH_GUEST_EXE=PASS', s)
 

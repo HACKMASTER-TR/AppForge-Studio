@@ -25,7 +25,12 @@ class NdkIsolationContract(unittest.TestCase):
         self.assertIn('/bin/sh /workspace/runtime/install-ndk-host-isolated-v7.sh',s)
         self.assertIn('if [ "$NDK_HOST_ISOLATED" != 1 ];then repair_broken_openjdk;fi',s)
         self.assertIn('if [ "$NDK_HOST_ISOLATED" != 1 ];then repair_stale_node_packages;fi',s)
-        self.assertIn('fi # end shared APT package install;',s)
+        # Assert the actual isolated dispatch rather than a historical comment.
+        # Expo and Rust NDK must both avoid shared APT/dpkg modifications.
+        self.assertIn(
+            'case "$ENGINE:$HOST_ARCH" in rust-native:aarch64|rust-native:arm64|expo:aarch64|expo:arm64) NDK_HOST_ISOLATED=1;;esac',
+            s,
+        )
         self.assertIn('cmake_host="$ROOT/ndk-host-v7/bin/cmake"',s)
         self.assertIn('ndk_host_bin="$ROOT/ndk-host-v7/bin"',s)
         self.assertIn('APPFORGE_EXPO_ARM64_NDK_COMPILER_RT_LINK=PASS',s)

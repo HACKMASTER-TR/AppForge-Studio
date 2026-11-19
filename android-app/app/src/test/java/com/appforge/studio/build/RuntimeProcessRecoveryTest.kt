@@ -39,9 +39,12 @@ class RuntimeProcessRecoveryTest {
             assertTrue(File(parent,".module-generation.json").isFile)
             store.recover();store.recover()
             assertEquals(before,store.snapshot())
-            assertEquals(1,store.quarantinedDirectories().size)
+            assertEquals(0,store.quarantinedDirectories().size)
             assertFalse(File(parent,".module-generation.json").exists())
-            assertThrows(IllegalArgumentException::class.java){store.prepare(OfflineModuleId.NODE_WEB)}
+            // Process death must not leave failed installer files behind.
+            store.prepare(OfflineModuleId.NODE_WEB).use { assertTrue(it.root.isDirectory) }
+            assertTrue(store.quarantinedDirectories().isEmpty())
+            assertEquals(before,store.snapshot())
         } finally {parent.deleteRecursively()}
     }
 }

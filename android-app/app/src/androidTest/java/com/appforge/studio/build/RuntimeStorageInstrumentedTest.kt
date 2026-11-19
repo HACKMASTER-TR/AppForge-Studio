@@ -12,7 +12,7 @@ import java.util.concurrent.CancellationException
 /** Disposable fixtures only. Does not access the installed device-build runtime or user projects. */
 @RunWith(AndroidJUnit4::class)
 class RuntimeStorageInstrumentedTest {
-    @Test fun twentyFailuresPreserveActiveAndBoundQuarantineOnAndroidFilesystem() {
+    @Test fun twentyFailuresRestartCleanlyWithoutQuarantineOnAndroidFilesystem() {
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         // Production normalizes only Android's system-owned app-data path alias.
         // Do the same for this disposable fixture; reject all arbitrary symlinks.
@@ -32,9 +32,14 @@ class RuntimeStorageInstrumentedTest {
                         e.message.orEmpty().contains("STORAGE_BUDGET"))
                 }
                 store.recover();assertEquals(before,store.snapshot())
-                assertEquals(1,store.quarantinedDirectories().size)
+                assertEquals(0,store.quarantinedDirectories().size)
+                assertFalse(parent.listFiles().orEmpty().any{it.name.startsWith(".v3-stage-")})
                 val bytes=RuntimeStorageBudget.measure(parent).logicalBytes
                 if(n==0)first=bytes else assertEquals(first,bytes)
+                assertThrows(IllegalArgumentException::class.java) {
+                    RuntimeStorageBudget.requireAdmission(active,available=0L)
+                }
+                assertEquals(before,store.snapshot())
             }
         } finally {parent.deleteRecursively()}
     }

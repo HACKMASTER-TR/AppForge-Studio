@@ -74,7 +74,15 @@ class LifecycleCrashRecoveryTest {
                 tx.commit(verify={})
             }}
             assertEquals("source added while staging",File(root,"user-new-project").readText());assertEquals("old",File(root,"tool").readText())
-            assertFalse(File(base,".module-generation.json").exists())
+            // Live user changes are not owned by the failed installer.
+            // Recovery must stop, retaining exact journal/stage evidence.
+            val journal=File(base,".module-generation.json")
+            assertTrue(journal.isFile)
+            val staged=File(base,JSONObject(journal.readText()).getString("stage"))
+            assertTrue(staged.isDirectory)
+            assertEquals("new",File(staged,"tool").readText())
+            assertThrows(IllegalArgumentException::class.java){RuntimeGenerationStore(root).recover()}
+            assertTrue(journal.isFile)
         }finally{base.deleteRecursively()}
     }
     @Test fun simultaneousMutationRequestsAndActivePreparationCannotOverlap() {

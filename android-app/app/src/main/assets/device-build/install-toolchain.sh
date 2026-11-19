@@ -29,10 +29,10 @@ EXPO_ARM64_NDK_VERSION="27.1.12297006"
 EXPO_ARM64_NDK_RELEASE="r27b"
 EXPO_ARM64_NDK_SHA1="6fc476b2e57d7c01ac0c95817746b927035b9749"
 EXPO_ARM64_NDK_MARKER="$ROOT/.expo-arm64-ndk-host-v3"
-# The RUST_ANDROID_NDK host toolchain runs in a private, signed, pinned
-# prefix to preserve the existing verified libc6 2.39-0ubuntu8.7 baseline.
+# Rust NDK and Expo ARM64 use a private, signed, pinned host prefix.
+# No shared libc6 upgrade: preserve the verified 2.39-0ubuntu8.7 baseline.
 NDK_HOST_ISOLATED=0
-case "$ENGINE:$HOST_ARCH" in rust-native:aarch64|rust-native:arm64) NDK_HOST_ISOLATED=1;;esac
+case "$ENGINE:$HOST_ARCH" in rust-native:aarch64|rust-native:arm64|expo:aarch64|expo:arm64) NDK_HOST_ISOLATED=1;;esac
 
 CMDLINE_TOOLS_VERSION="15859902"
 CMDLINE_TOOLS_SHA256="4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
@@ -324,7 +324,7 @@ case "$ENGINE" in
     echo "APPFORGE_PYTHON_BUILD_RUNTIME=3.12"
     ;;
 esac
-fi # end shared APT package install; isolated Rust NDK never changes dpkg
+fi # end shared APT installation; isolated Rust NDK / Expo never modify dpkg
 
 mkdir -p "$ROOT" "$SDK/platforms" "$SDK/build-tools" "$ROOT/cache"
 
