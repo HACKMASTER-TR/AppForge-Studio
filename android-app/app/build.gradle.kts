@@ -381,6 +381,14 @@ require(!appforgeV9R2Isolated3UpgradeV542 ||
     "V542 in-place upgrade requires original isolated3 debug identity and an exclusive version flag."
 }
 
+val appforgeV9R2Isolated3UpgradeV543 =
+    providers.gradleProperty("appforgeV9R2Isolated3UpgradeV543").orNull == "true"
+require(!appforgeV9R2Isolated3UpgradeV543 ||
+    (appforgeV9R2Isolated3Acceptance && !appforgeV9R2Isolated3Upgrade &&
+     !appforgeV9R2Isolated3UpgradeV542 && appforgeIntegrationDebugVersionCode == null)) {
+    "V543 in-place upgrade requires the original isolated3 test identity and exclusive version flag."
+}
+
 android {
     namespace = "com.appforge.studio"
     compileSdk = 37
@@ -755,6 +763,12 @@ androidComponents {
     }
 
     onVariants(selector().withBuildType("debug")) { variant ->
+        if (appforgeV9R2Isolated3UpgradeV543) {
+            variant.outputs.forEach { output ->
+                output.versionCode.set(543)
+                output.versionName.set("5.0.43-isolated3-upgrade")
+            }
+        }
         if (appforgeV9R2Isolated3UpgradeV542) {
             variant.outputs.forEach { output ->
                 output.versionCode.set(542)

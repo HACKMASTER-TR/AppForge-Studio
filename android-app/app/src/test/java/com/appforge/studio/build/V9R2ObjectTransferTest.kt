@@ -37,18 +37,39 @@ class V9R2ObjectTransferTest {
         assertArrayEquals(bytes,target.readBytes());assertEquals(before,target.lastModified())
     }
     @Test fun interruptedConnectionResumesFromExactDurablePrefix()=fixture {target,bytes,sha->
-        assertThrows(EOFException::class.java){V9R2ObjectTransfer.download(target,sha,bytes.size.toLong(),open={Response(it,bytes,truncate=true)})}
-        assertFalse(target.exists());assertEquals(17L,File(target.path+".part").length())
-        var range=""
-        V9R2ObjectTransfer.download(target,sha,bytes.size.toLong(),open={url->object:HttpURLConnection(url){
-            lateinit var response:Response
-            override fun getResponseCode():Int {range=getRequestProperty("Range");response=Response(url,bytes);response.setRequestProperty("Range",range);return response.responseCode}
-            override fun getContentLengthLong()=response.contentLengthLong
-            override fun getHeaderField(n:String?)=response.getHeaderField(n)
-            override fun getInputStream()=response.inputStream
-            override fun connect(){};override fun disconnect(){};override fun usingProxy()=false
-        }})
-        assertEquals("bytes=17-${bytes.size-1}",range);assertArrayEquals(bytes,target.readBytes())
+        var opens=0
+        val requested=mutableListOf<String>()
+        V9R2ObjectTransfer.download(target,sha,bytes.size.toLong(),open={url->
+            val truncated=++opens==1
+            object:HttpURLConnection(url) {
+                private fun range():Pair<Int,Int> {
+                    val parts=getRequestProperty("Range").removePrefix("bytes=").split('-')
+                    return parts[0].toInt() to parts[1].toInt()
+                }
+                override fun getResponseCode():Int {requested+=getRequestProperty("Range");return 206}
+                override fun getContentLengthLong():Long {val (a,b)=range();return (b-a+1).toLong()}
+                override fun getHeaderField(name:String?):String? {val (a,b)=range()
+                    return if(name=="Content-Range")"bytes $a-$b/${bytes.size}" else null}
+                override fun getInputStream():InputStream {val (a,b)=range();val remaining=bytes.copyOfRange(a,b+1)
+                    return remaining.copyOf(if(truncated)minOf(17,remaining.size) else remaining.size).inputStream()}
+                override fun connect(){};override fun disconnect(){};override fun usingProxy()=false
+            }
+        })
+        assertEquals(2,opens)
+        assertEquals(listOf("bytes=0-${bytes.size-1}","bytes=17-${bytes.size-1}"),requested)
+        assertArrayEquals(bytes,target.readBytes())
+    }
+    @Test fun repeatedConnectionResetsHaveBoundedRetriesAndKeepPrefix()=fixture {target,bytes,sha->
+        var opens=0
+        assertThrows(SocketException::class.java) {
+            V9R2ObjectTransfer.download(target,sha,bytes.size.toLong(),open={url->
+                if(++opens==1) Response(url,bytes,truncate=true)
+                else throw SocketException("Connection reset")
+            })
+        }
+        assertEquals(4,opens)
+        assertFalse(target.exists())
+        assertEquals(17L,File(target.path+".part").length())
     }
     @Test fun digestFailureNeverPromotesOrPoisonsRetry()=fixture {target,bytes,sha->
         val bad=bytes.copyOf().apply{this[0]=(this[0].toInt() xor 1).toByte()}
