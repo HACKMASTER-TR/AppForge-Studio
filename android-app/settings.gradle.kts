@@ -1,5 +1,23 @@
 pluginManagement {
     repositories {
+        // R23: external Kotlin 2.4.10 BOM may be supplied only by CI, after
+        // a pinned SHA-256 check in a disposable GitHub runner directory.
+        val appforgeCIKotlinBomRepo = providers.gradleProperty("appforgeCIKotlinBomRepo").orNull
+        if (appforgeCIKotlinBomRepo != null) {
+            require(System.getenv("GITHUB_ACTIONS") == "true") { "CI-only Kotlin BOM repository" }
+            val runnerTemp = java.io.File(requireNotNull(System.getenv("RUNNER_TEMP"))).canonicalFile.toPath()
+            val bomRepo = java.io.File(appforgeCIKotlinBomRepo).canonicalFile.toPath()
+            require(bomRepo.startsWith(runnerTemp) && bomRepo != runnerTemp) {
+                "BOM repository must be under CI runner temporary storage"
+            }
+            maven {
+                name = "appforgeCiPinnedKotlinGradleBom"
+                url = uri(bomRepo.toFile())
+                content {
+                    includeModule("org.jetbrains.kotlin", "kotlin-gradle-plugins-bom")
+                }
+            }
+        }
         google()
         mavenCentral()
         gradlePluginPortal()
