@@ -20,6 +20,19 @@ dependencyResolutionManagement {
                 }
             }
         }
+        // Opt-in CI mirror only: official Google Cloud Storage mirror of Maven Central.
+        // Restricted to two groups that were unavailable in GitHub Actions.
+        // This flag is NOT passed in device builds, Play, or regular Gradle use.
+        if (providers.gradleProperty("appforgeCIMavenGcs").orNull == "true") {
+            maven {
+                name = "appforgeCIOnlyGcsMavenCentral"
+                url = uri("https://maven-central.storage-download.googleapis.com/maven2/")
+                content {
+                    includeGroup("com.google.zxing")
+                    includeGroup("org.jetbrains.kotlinx")
+                }
+            }
+        }
         google()
         mavenCentral()
         maven(url = "https://jitpack.io")

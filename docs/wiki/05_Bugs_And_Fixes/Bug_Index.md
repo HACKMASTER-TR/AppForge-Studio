@@ -69,3 +69,5 @@ Play Production access and protected-main integration gates remain separate.
 
 One-off visual defects should not be added here unless they establish reusable
 debugging knowledge.
+
+- [[V544_R2_CI_Download_Regression_2026-11-19]] — V544 R2 allowlist / Android CI dependency recovery; physical acceptance pending.

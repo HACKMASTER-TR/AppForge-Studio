@@ -110,6 +110,7 @@ jobs:
           gradle \
             -p android-app \
             :app:testDebugUnitTest \
+            -PappforgeCIMavenGcs=true \
             --no-daemon \
             --stacktrace
 

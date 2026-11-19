@@ -105,6 +105,7 @@ jobs:
           gradle -p android-app :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest \
             -PappforgeV9R2Isolated3Acceptance=true -PappforgeV9R2Isolated3UpgradeV544=true \
             -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/appforge-pinned-kotlin-maven" \
+            -PappforgeCIMavenGcs=true \
             --no-daemon --max-workers=2 --no-configuration-cache --console=plain
       - name: Compare package certificate SDK and version against the installed reference
         run: |

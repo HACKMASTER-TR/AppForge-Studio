@@ -31,3 +31,13 @@ test('V544 uses explicit exclusive in-place update version', () => {
  const pinned = manifest.objects.find(o => o.sha256 === 'd141e94ed3b32ea6540f2e927a83b3d42cd4378256a1aad60cda583ffdbd78af');
  assert.equal(pinned?.size,9654);
 });
+
+test('native broker allowlist recognizes only the approved content-addressed R2 host', () => {
+ const broker = read('android-app/app/src/main/java/com/appforge/studio/build/ModuleArtifactBroker.kt');
+ assert.match(broker, /"packages\.appforgecloud\.com"->Regex/);
+ assert.match(broker, /val isR2=url\.host=="packages\.appforgecloud\.com"/);
+ assert.doesNotMatch(broker, /appforge-v9-packages-readonly\.28550040284a\.workers\.dev/);
+ const unit = read('android-app/app/src/test/java/com/appforge/studio/build/V9R2ObjectTransferTest.kt');
+ assert.match(unit, /assertEquals\("packages\.appforgecloud\.com",it\.host\)/);
+ assert.match(unit, /assertFalse\(ModuleArtifactBroker\.allowed\(URL\("https:\/\/appforge-v9-packages-readonly/);
+});

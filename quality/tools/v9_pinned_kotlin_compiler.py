@@ -61,24 +61,41 @@ def fetch_jar(url: str, target: Path) -> bool:
 
 
 def fetch_official_pom(target: Path) -> None:
-    """POM only comes from the original Maven Central host over verified TLS."""
-    url = OFFICIAL_BASE + SUBPATH + POM_NAME
-    request = urllib.request.Request(url, headers={"User-Agent": "AppForge-CI-Pinned-Artifact/1.0"})
-    with urllib.request.urlopen(request, timeout=30) as response:
-        final = urllib.parse.urlsplit(response.geturl())
-        if final.scheme != "https" or final.hostname != "repo.maven.apache.org":
-            raise RuntimeError("KOTLIN_POM_ORIGIN_MISMATCH")
-        data = response.read(128 * 1024 + 1)
-        if len(data) > 128 * 1024:
-            raise RuntimeError("KOTLIN_POM_OVERSIZED")
-    root = ET.fromstring(data)
-    names = {child.tag.split("}")[-1]: (child.text or "").strip() for child in root}
-    if (root.tag.split("}")[-1] != "project" or
-        names.get("groupId") != GROUP or
-        names.get("artifactId") != ARTIFACT or
-        names.get("version") != VERSION):
-        raise RuntimeError("KOTLIN_POM_COORDINATES_INVALID")
-    target.write_bytes(data)
+    """Bounded official Maven Central POM lookup with GCS-hosted Central mirror.
+
+    Only approved HTTPS hosts and the exact pinned GAV are accepted; the JAR
+    continues to require its independent pinned size and JetBrains SHA-256.
+    """
+    sources = (
+        ("maven-central", OFFICIAL_BASE, "repo.maven.apache.org"),
+        ("google-central-mirror", "https://maven-central.storage-download.googleapis.com/maven2/",
+         "maven-central.storage-download.googleapis.com"),
+    )
+    for label, base, allowed_host in sources:
+        for attempt in range(1, 4):
+            try:
+                url = base + SUBPATH + POM_NAME
+                request = urllib.request.Request(url, headers={"User-Agent": "AppForge-CI-Pinned-Artifact/1.0"})
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    final = urllib.parse.urlsplit(response.geturl())
+                    if final.scheme != "https" or final.hostname != allowed_host or final.query or final.fragment:
+                        raise RuntimeError("KOTLIN_POM_ORIGIN_MISMATCH")
+                    data = response.read(128 * 1024 + 1)
+                    if len(data) > 128 * 1024:
+                        raise RuntimeError("KOTLIN_POM_OVERSIZED")
+                root = ET.fromstring(data)
+                names = {child.tag.split("}")[-1]: (child.text or "").strip() for child in root}
+                if (root.tag.split("}")[-1] != "project" or
+                    names.get("groupId") != GROUP or
+                    names.get("artifactId") != ARTIFACT or
+                    names.get("version") != VERSION):
+                    raise RuntimeError("KOTLIN_POM_COORDINATES_INVALID")
+                target.write_bytes(data)
+                print("KOTLIN_VERIFIED_POM_SOURCE=" + label)
+                return
+            except (OSError, urllib.error.URLError, RuntimeError, ET.ParseError) as ex:
+                print(f"KOTLIN_POM_FETCH={label}:{attempt}:FAILED:{type(ex).__name__}")
+    raise RuntimeError("KOTLIN_POM_APPROVED_SOURCES_UNAVAILABLE")
 
 
 def main() -> int:
@@ -114,7 +131,7 @@ def main() -> int:
     fetch_official_pom(pom)
     print("KOTLIN_COMPILER_SHA256=PASS")
     print("KOTLIN_VERSION=2.4.10")
-    print("KOTLIN_POM=OFFICIAL_MAVEN_CENTRAL")
+    print("KOTLIN_POM=VERIFIED_GAV_FROM_APPROVED_MAVEN_CENTRAL_SOURCE")
     print("KOTLIN_LOCAL_REPOSITORY=READY")
     return 0
 

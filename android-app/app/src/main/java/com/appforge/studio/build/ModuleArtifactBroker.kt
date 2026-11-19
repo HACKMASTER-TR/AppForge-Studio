@@ -15,7 +15,7 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
             return when(url.host.lowercase()) {
                 "dl.google.com"->url.path.startsWith("/android/repository/")
                 // Snapshot URLs are provenance only; no live request is permitted.
-                "appforge-v9-packages-readonly.28550040284a.workers.dev"->Regex("/v9/objects/sha256/([a-f0-9]{2})/([a-f0-9]{64})").matchEntire(url.path)?.let{it.groupValues[2].startsWith(it.groupValues[1])}==true
+                "packages.appforgecloud.com"->Regex("/v9/objects/sha256/([a-f0-9]{2})/([a-f0-9]{64})").matchEntire(url.path)?.let{it.groupValues[2].startsWith(it.groupValues[1])}==true
                 "nodejs.org"->url.path.startsWith("/dist/")
                 "services.gradle.org","downloads.gradle.org"->url.path.startsWith("/distributions/")
                 "github.com"->listOf("/adoptium/temurin17-binaries/releases/download/","/Commit451/android-arm-build-tools/releases/download/","/gradle/gradle-distributions/releases/download/").any{url.path.startsWith(it)}
@@ -65,7 +65,7 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
                     progress(ModuleProgress(module,operation,ModulePhase.VERIFYING,detail="Yerel arşiv doğrulanıyor • $component"))
                     val job=currentCoroutineContext()[Job]!!
                     val target=File(cache,"$sha.archive")
-                    val isR2=url.host=="appforge-v9-packages-readonly.28550040284a.workers.dev"
+                    val isR2=url.host=="packages.appforgecloud.com"
                     if(isR2) {
                         require(url.toString()==V9SignedR2CandidateDownload.urlForSha(sha) && fields.size==3)
                         val expectedBytes=fields[2].toLong()
