@@ -50,5 +50,7 @@ test('new build routing is only available after real acceptance and in debug bui
   assert.match(screen,/fun startIsolated\(/);
   assert.match(screen,/IsolatedModuleInstallerV3\.installSelected/);
   assert.match(screen,/Bağımsız kur ve test et/);
-  assert.match(screen,/Onayla ve kur • mevcut sistem/);
+  assert.doesNotMatch(screen,/Onayla ve kur • mevcut sistem/);
+  assert.match(screen,/onClick=\{chosen=null;beginIsolated\(id\)\}/);
+  assert.match(screen,/OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE/);
 });
