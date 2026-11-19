@@ -11,7 +11,8 @@ class V541ReferenceContract(unittest.TestCase):
         self.assertEqual(f['apk_sha256'],'d702b8c3a069f0151e541dc478d76f5c1e49d3ee10fcc1014eade36172aa13c3')
     def test_no_adb_in_ci(self):
         wf=(ROOT/'.github/workflows/v9-isolated3-inplace-upgrade.yml').read_text()
-        self.assertIn('gh release download appforge-v540-ci-reference',wf)
+        self.assertIn('actions/download-artifact@v4',wf)
+        self.assertIn('run-id: 44285015575',wf)
         self.assertIn("'physical_device':'NOT_RUN'",wf)
         self.assertNotIn('reactivecircus/android-emulator-runner',wf)
         self.assertNotIn('emulator-5554',wf)

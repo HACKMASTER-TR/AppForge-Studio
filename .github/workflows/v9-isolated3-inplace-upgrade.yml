@@ -62,14 +62,13 @@ jobs:
           test "$CERT" = dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082
           keytool -list -storetype PKCS12 -keystore "$KEYFILE" -storepass:env APPFORGE_DEBUG_STORE_PASSWORD -alias "$APPFORGE_DEBUG_KEY_ALIAS" >/dev/null
           echo "APPFORGE_DEBUG_KEYSTORE_PATH=$KEYFILE" >> "$GITHUB_ENV"
-      - name: Download signed V540 reference from draft vault
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          mkdir -p reference-apk
-          gh release download appforge-v540-ci-reference --repo "$GITHUB_REPOSITORY" --pattern 'AppForgeStudio-v9r2isolated3-upgrade.apk' --dir reference-apk
-          test -s reference-apk/AppForgeStudio-v9r2isolated3-upgrade.apk
+      - name: Download exact signed V540 APK from verified successful CI
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 44285015575
+          name: AppForge-v9r2isolated3-upgrade-366de04d35c107eebc38e5e95f36e1765cda38ba
+          path: reference-apk
       - name: Verify pinned v540 APK reference digest
         run: |
           set -euo pipefail

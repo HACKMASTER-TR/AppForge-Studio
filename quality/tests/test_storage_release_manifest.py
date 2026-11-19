@@ -27,7 +27,9 @@ class StorageReleaseTest(unittest.TestCase):
     def test_v541_workflow_uses_existing_verified_v540_reference(self):
         workflow=(ROOT/'.github/workflows/v9-isolated3-inplace-upgrade.yml').read_text()
         fixture=json.loads((ROOT/'quality/fixtures/appforge-v9r2isolated3-v540-reference.json').read_text())
-        self.assertIn('gh release download appforge-v540-ci-reference',workflow)
+        self.assertIn('actions/download-artifact@v4',workflow)
+        self.assertIn('run-id: 44285015575',workflow)
+        self.assertIn('name: AppForge-v9r2isolated3-upgrade-366de04d35c107eebc38e5e95f36e1765cda38ba',workflow)
         self.assertIn('appforge-v9r2isolated3-v540-reference.json',workflow)
         self.assertIn(fixture['apk_sha256'],workflow)
         self.assertNotIn('run-id: 44054962868',workflow)
