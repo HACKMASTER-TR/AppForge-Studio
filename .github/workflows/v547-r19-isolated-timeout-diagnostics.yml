@@ -1,0 +1,135 @@
+name: AppForge V547 R19 Isolated Timeout Diagnostics CI (No APK)
+on:
+  push:
+    branches:
+      - codex/v547-r19-isolated-timeout-diagnostics-20261119
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify-r19-timeout-policy:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - name: Initialize disposable R19 Gradle home
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "GRADLE_USER_HOME=$RUNNER_TEMP/v547-r19-verified-gradle" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Enforce R18 base, exact file scope, verified gates and Second Brain
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = codex/v547-r19-isolated-timeout-diagnostics-20261119
+          BASE=1b7dad90cbe2e3b06e330f3e41795679f52b85a2
+          git merge-base --is-ancestor "$BASE" HEAD
+          git diff --check "$BASE" HEAD
+          python3 - <<'PYCI'
+          import subprocess
+          base='1b7dad90cbe2e3b06e330f3e41795679f52b85a2'
+          actual=set(subprocess.check_output(['git','diff','--name-only',base,'HEAD'],text=True).splitlines())
+          expected={
+            '.github/workflows/v547-r19-isolated-timeout-diagnostics.yml',
+            'android-app/app/src/main/java/com/appforge/studio/terminal/LinuxShellEngine.kt',
+            'android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt',
+            'android-app/app/src/main/java/com/appforge/studio/build/IsolatedInstallTimeoutPolicy.kt',
+            'android-app/app/src/test/java/com/appforge/studio/build/IsolatedInstallTimeoutPolicyTest.kt',
+            'quality/tests/v547-r19-install-timeout-contract.test.js',
+            'quality/tests/appforge_terminal_stage10h_10i_final_contract.test.js',
+            'android-app/app/src/main/assets/second_brain_snapshot.json'
+          }
+          assert actual==expected,(actual,expected)
+          PYCI
+          for RUN in 44580945753 44580956606; do
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN" --jq .conclusion)" = success
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN" --jq .head_sha)" = "$BASE"
+          done
+          python3 scripts/generate-second-brain-snapshot.py --check
+          echo APPFORGE_V547_R19_TRUST_BOUNDARY=PASS
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run R19 focused offline contracts and isolation checks
+        run: |
+          set -euo pipefail
+          node --test quality/tests/v547-r19-install-timeout-contract.test.js quality/tests/module_isolation_v3_unified_contract.test.js
+          echo APPFORGE_V547_R19_STATIC_POLICY=PASS
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Require signed R16 AGP candidate provenance
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo=HACKMASTER-TR/AppForge-Studio
+          test "$(gh api "repos/$repo/actions/runs/44570760969" --jq .conclusion)" = success
+          test "$(gh api "repos/$repo/actions/artifacts/14554148259" --jq .expired)" = false
+          test "$(gh api "repos/$repo/actions/artifacts/14554148259" --jq .digest)" = sha256:fa745ccdf122f86d77d5b971d2c2db0300db2b77d8d0984ec9628cec67fe85c0
+          echo R19_AGP_SEED_PROVENANCE=PASS
+      - uses: actions/download-artifact@v4
+        with:
+          repository: HACKMASTER-TR/AppForge-Studio
+          run-id: 44570760969
+          name: v547-agp911-gradle931-ci-candidate-7d0994b6582a859c516967fd162fbd4e3d1b054a
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/v547-r19-agp-candidate
+      - name: Verify 471 pinned AGP files into isolated Gradle cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GRADLE_USER_HOME"
+          python3 quality/tools/v547_agp_arm64_candidate_probe.py "$RUNNER_TEMP/v547-r19-agp-candidate" "$GRADLE_USER_HOME/caches"
+          echo R19_VERIFIED_AGP_CACHE=PASS
+      - name: Confirm offline AGP 9.1.1 plugin resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v547-r19-plugin-proof"
+          cd "$RUNNER_TEMP/v547-r19-plugin-proof"
+          printf '%s\n' 'pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }' 'rootProject.name = "R19OfflinePluginProof"' > settings.gradle.kts
+          printf '%s\n' 'plugins { id("com.android.application") version "9.1.1" apply false }' > build.gradle.kts
+          gradle --offline help --no-daemon --no-configuration-cache --console=plain
+          echo R19_OFFLINE_AGP_RESOLUTION=PASS
+      - name: Prepare pinned Kotlin compiler repository
+        shell: bash
+        run: python3 quality/tools/v9_pinned_kotlin_compiler.py "$RUNNER_TEMP/v547-r19-kotlin-maven"
+      - name: Install pinned Android native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          test -d "$ANDROID_HOME/ndk/28.2.13676358"
+          test -d "$ANDROID_HOME/cmake/3.22.1"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Compile and run Android unit tests including R19 policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:testDebugUnitTest -PappforgeCIMavenGcs=true -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/v547-r19-kotlin-maven" --no-daemon --no-parallel --no-configuration-cache --console=plain --stacktrace
+          echo APPFORGE_V547_R19_ANDROID_REGRESSION=PASS
+      - name: Preserve no-device and no-artifact boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! find android-app -type f -name '*.apk' -print -quit | grep -q .
+          echo APPFORGE_V547_R19_APK=NOT_BUILT
+          echo APPFORGE_V547_R19_DEVICE_INSTALL=NOT_STARTED
+          echo APPFORGE_V547_R19_R2_CLOUDFLARE=UNCHANGED

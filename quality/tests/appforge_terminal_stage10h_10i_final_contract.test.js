@@ -82,7 +82,10 @@ test("Stage 10I adds one-tap AppForge-owned Linux developer environment", async 
   assert.match(panel, /LinuxShellEngine/);
   assert.match(panel, /\.developmentProfileCommand\(\)/);
   assert.match(panel, /timeoutMs\s*=\s*1_800_000L/);
-  assert.match(shell, /1_000L\.\.1_800_000L/);
+  // R19: the default shell budget remains 120 seconds; only the audited isolated Android
+  // Core installer may request 75 minutes through IsolatedInstallTimeoutPolicy.
+  assert.match(shell, /timeoutMs:\s*Long\s*=\s*120_000L/);
+  assert.match(shell, /1_000L\.\.4_500_000L/);
   assert.match(
     pipeline,
     /LinuxToolchainId\.ANDROID\s*->\s*setOf\("adb", "fastboot"\)/

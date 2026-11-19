@@ -51,7 +51,7 @@ internal class LinuxShellEngine(
             require(
                 sessionId.isNotBlank() &&
                     timeoutMs in
-                    1_000L..1_800_000L
+                    1_000L..4_500_000L
             ) {
                 "Linux oturumu geçersiz."
             }
