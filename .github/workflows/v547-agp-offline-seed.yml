@@ -1,0 +1,96 @@
+name: AppForge V547 AGP 9.1.1 Offline Seed Candidate
+on:
+  push:
+    branches: ["codex/v547-agp-mingw-repair-*"]
+permissions:
+  contents: read
+concurrency:
+  group: v547-agp-seed-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  agp-seed:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install exact Android SDK platform and build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)
+          test -n "$sdkmanager"
+          "$sdkmanager" 'platforms;android-37.0' 'build-tools;36.0.0'
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"; fi
+      - name: Resolve AGP 9.1.1 and all build dependencies from official HTTPS repositories
+        shell: bash
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/v547-agp-seed-cache
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v547-agp-probe/app/src/main"
+          cd "$RUNNER_TEMP/v547-agp-probe"
+          cat > settings.gradle.kts <<'EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "AppForgeV547AgpOfflineProbe"
+          include(":app")
+          EOF
+          cat > build.gradle.kts <<'EOF'
+          plugins { id("com.android.application") version "9.1.1" apply false }
+          EOF
+          cat > app/build.gradle.kts <<'EOF'
+          plugins { id("com.android.application") }
+          android {
+              namespace = "com.appforge.v547agpseed"
+              compileSdk = 37
+              defaultConfig { applicationId = "com.appforge.v547agpseed"; minSdk = 26; targetSdk = 37 }
+          }
+          EOF
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="AGP seed" /></manifest>
+          EOF
+          printf 'org.gradle.workers.max=2\norg.gradle.jvmargs=-Xmx2048m\nandroid.builder.sdkDownload=false\n' > gradle.properties
+          printf 'sdk.dir=%s\n' "$ANDROID_HOME" > local.properties
+          gradle --no-daemon --no-configuration-cache --console plain :app:assembleDebug
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          test -d "$GRADLE_USER_HOME/caches/modules-2/files-2.1/com.android.tools.build/gradle/9.1.1"
+          test -d "$GRADLE_USER_HOME/caches/modules-2/files-2.1/com.android.application/com.android.application.gradle.plugin/9.1.1"
+          echo 'APPFORGE_V547_CI_AGP911_REAL_ASSEMBLE=PASS'
+      - name: Inventory and seal downloaded files (candidate, not production-authorized)
+        shell: bash
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/v547-agp-seed-cache
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v547-seed-output"
+          # Only a disposable CI Gradle cache is modified; never user/device caches.
+          find "$GRADLE_USER_HOME/caches/modules-2" -type f -name '*.lock' -delete
+          python3 quality/tools/v547_agp_seed_manifest.py create \
+             "$GRADLE_USER_HOME/caches" "$RUNNER_TEMP/v547-seed-output/manifest.json"
+          python3 quality/tools/v547_agp_seed_manifest.py verify \
+             "$GRADLE_USER_HOME/caches" "$RUNNER_TEMP/v547-seed-output/manifest.json"
+          tar -C "$GRADLE_USER_HOME/caches" -czf \
+             "$RUNNER_TEMP/v547-seed-output/agp911-gradle931-modules2.tar.gz" modules-2
+          (cd "$RUNNER_TEMP/v547-seed-output" && sha256sum *.tar.gz > archive.sha256)
+          echo 'APPFORGE_V547_AGP_SEED_CANDIDATE=PASS'
+          echo 'APPFORGE_V547_SEED_NOT_SIGNED_NOT_DEPLOYED_TO_R2'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v547-agp911-gradle931-ci-candidate-${{ github.sha }}
+          path: ${{ runner.temp }}/v547-seed-output/
+          retention-days: 14
+          if-no-files-found: error
