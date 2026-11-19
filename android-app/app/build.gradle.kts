@@ -441,6 +441,20 @@ require(!appforgeV9R2Isolated3UpgradeV548 ||
     "V548 in-place candidate requires original isolated3 identity and exclusive version flag."
 }
 
+
+// V549 R22: isolated3-only signed CI upgrade based on R21 DNS repair.
+// Never changes the production identity, default variants, or existing V548 APK.
+val appforgeV9R2Isolated3UpgradeV549 =
+    providers.gradleProperty("appforgeV9R2Isolated3UpgradeV549").orNull == "true"
+require(!appforgeV9R2Isolated3UpgradeV549 ||
+    (appforgeV9R2Isolated3Acceptance && !appforgeV9R2Isolated3Upgrade &&
+     !appforgeV9R2Isolated3UpgradeV542 && !appforgeV9R2Isolated3UpgradeV543 &&
+     !appforgeV9R2Isolated3UpgradeV544 && !appforgeV9R2Isolated3UpgradeV545 &&
+     !appforgeV9R2Isolated3UpgradeV546 && !appforgeV9R2Isolated3UpgradeV547 &&
+     !appforgeV9R2Isolated3UpgradeV548 && appforgeIntegrationDebugVersionCode == null)) {
+    "V549 in-place candidate requires original isolated3 identity and an exclusive version flag."
+}
+
 android {
     namespace = "com.appforge.studio"
     compileSdk = 37
@@ -815,6 +829,12 @@ androidComponents {
     }
 
     onVariants(selector().withBuildType("debug")) { variant ->
+        if (appforgeV9R2Isolated3UpgradeV549) {
+            variant.outputs.forEach { output ->
+                output.versionCode.set(549)
+                output.versionName.set("5.0.49-isolated3-upgrade")
+            }
+        }
         if (appforgeV9R2Isolated3UpgradeV548) {
             variant.outputs.forEach { output ->
                 output.versionCode.set(548)
