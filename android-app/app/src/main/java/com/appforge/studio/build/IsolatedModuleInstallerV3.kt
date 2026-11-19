@@ -286,6 +286,12 @@ internal object IsolatedModuleInstallerV3 {
                         job.ensureActive(); control.checkpoint()
                         if (OfflineBuildPackManager.hasValidatedInternet(app))
                             DownloadNetwork.requireExternalConsent()
+                        // Android's validated active-network resolver must be provided to the
+                        // isolated, copy-on-write generation before guest SDK/Gradle executes.
+                        // The active rootfs, R2 cache and other modules are never changed.
+                        if (id == OfflineModuleId.ANDROID_CORE) {
+                            IsolatedResolverBridge.prepare(app, staged)
+                        }
                         phase(id, ModulePhase.INSTALLING, "${id.name}: $command")
                         val prefix = "APPFORGE_MODULE_REFRESH=0 APPFORGE_MODULE_ID=${id.name} " +
                             "APPFORGE_ANDROID_CORE_PREPARED=${if (id in setOf(OfflineModuleId.PYTHON_ANDROID, OfflineModuleId.EXPO_REACT_NATIVE, OfflineModuleId.RUST_ANDROID_NDK)) 1 else 0} " +
