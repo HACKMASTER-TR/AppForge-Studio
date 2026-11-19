@@ -61,24 +61,24 @@ download_run() {
         [[ -s "$destination/upgrade-evidence.json" ]] || fail "Güncelleme uyumluluk kanıtı yok."
         jq -e --arg sha "$head" --arg apk "$actual" '
             .update_compatible == true and .source_sha == $sha and .apk_sha256 == $apk and
-            .package == "com.appforge.studio.v9r2isolated3" and .version_code == 540 and
+            .package == "com.appforge.studio.v9r2isolated3" and .version_code == 541 and
             .min_sdk == 26 and .target_sdk == 37 and
             .certificate_sha256 == "dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082" and
-            .reference_sha256 == "25215ca5e6ddd908337d8b7f96bf1d0b8767537cc6f8e563fdca91d679d2e2d2"
+            .reference_sha256 == "d702b8c3a069f0151e541dc478d76f5c1e49d3ee10fcc1014eade36172aa13c3"
         ' "$destination/upgrade-evidence.json" >/dev/null || fail "Paket/imza/sürüm/SHA-256 eski APK ile eşleşmedi."
         [[ -s "$destination/release-manifest-$head.json" ]] || fail "Değişmez sürüm manifesti yok."
         jq -e --arg sha "$head" --arg apk "$actual" '
-            .source_sha == $sha and .apk_sha256 == $apk and .version_code == 540 and
+            .source_sha == $sha and .apk_sha256 == $apk and .version_code == 541 and
             .package == "com.appforge.studio.v9r2isolated3" and
             .certificate_sha256 == "dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082" and
-            .reference_sha256 == "25215ca5e6ddd908337d8b7f96bf1d0b8767537cc6f8e563fdca91d679d2e2d2"
+            .reference_sha256 == "d702b8c3a069f0151e541dc478d76f5c1e49d3ee10fcc1014eade36172aa13c3"
         ' "$destination/release-manifest-$head.json" >/dev/null || fail "Sürüm manifesti APK/kimlik ile eşleşmedi."
         [[ -s "$destination/unit-tests.json" ]] || fail "Birim test kanıtı yok."
         jq -e '.tests > 0 and .failures == 0 and .errors == 0 and .skipped == 0' "$destination/unit-tests.json" >/dev/null || fail "Birim test sonuçları başarılı değil."
         printf '%s\n' 'Güncelleme kimliği doğrulandı: com.appforge.studio.v9r2isolated3 / 540 / aynı sertifika.'
         local shared download_root="${APPFORGE_DOWNLOAD_ROOT:-$HOME/storage/downloads}"
         if [[ -d "$download_root" && -w "$download_root" ]] &&
-           shared=$(mktemp --suffix=.apk "$download_root/AppForge-v9r2isolated3-v540-${head:0:12}-XXXXXXXX" 2>/dev/null); then
+           shared=$(mktemp --suffix=.apk "$download_root/AppForge-v9r2isolated3-v541-${head:0:12}-XXXXXXXX" 2>/dev/null); then
             if cp "$destination/$filename" "$shared"; then
                 [[ $(sha256sum "$shared" | cut -d' ' -f1) == "$actual" ]] || fail "Download APK kopyasının SHA-256 özeti eşleşmedi."
                 printf 'Download klasörü: %s\n' "$shared"

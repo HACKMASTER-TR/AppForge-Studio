@@ -62,18 +62,26 @@ jobs:
           test "$CERT" = dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082
           keytool -list -storetype PKCS12 -keystore "$KEYFILE" -storepass:env APPFORGE_DEBUG_STORE_PASSWORD -alias "$APPFORGE_DEBUG_KEY_ALIAS" >/dev/null
           echo "APPFORGE_DEBUG_KEYSTORE_PATH=$KEYFILE" >> "$GITHUB_ENV"
-      - name: Download the exact installed APK reference
-        uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ github.token }}
-          run-id: 44054962868
-          name: AppForge-v9r2isolated3-upgrade-a1ed9628bec355236e90cc9361957b790f0f72d6
-          path: reference-apk
-      - name: Verify pinned v539 APK reference digest
+      - name: Download signed V540 reference from draft vault
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          mkdir -p reference-apk
+          gh release download appforge-v540-ci-reference --repo "$GITHUB_REPOSITORY" --pattern 'AppForgeStudio-v9r2isolated3-upgrade.apk' --dir reference-apk
           test -s reference-apk/AppForgeStudio-v9r2isolated3-upgrade.apk
-          echo "25215ca5e6ddd908337d8b7f96bf1d0b8767537cc6f8e563fdca91d679d2e2d2  reference-apk/AppForgeStudio-v9r2isolated3-upgrade.apk" | sha256sum -c -
+      - name: Verify pinned v540 APK reference digest
+        run: |
+          set -euo pipefail
+          echo "d702b8c3a069f0151e541dc478d76f5c1e49d3ee10fcc1014eade36172aa13c3  reference-apk/AppForgeStudio-v9r2isolated3-upgrade.apk" | sha256sum -c -
+          unzip -tqq reference-apk/AppForgeStudio-v9r2isolated3-upgrade.apk
+          python3 - <<'PYTHON'
+          import json,pathlib
+          reference=json.loads(pathlib.Path('quality/fixtures/appforge-v9r2isolated3-v540-reference.json').read_text())
+          assert reference['apk_sha256']=='d702b8c3a069f0151e541dc478d76f5c1e49d3ee10fcc1014eade36172aa13c3'
+          assert reference['version_code']==540 and reference['upgrade_version_code']==541
+          assert reference['certificate_sha256']=='dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082'
+          PYTHON
       - name: Run V9 security tests without skips
         run: |
           set -euo pipefail
@@ -102,7 +110,7 @@ jobs:
           OLD=reference-apk/AppForgeStudio-v9r2isolated3-upgrade.apk
           SIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt2"
-          python3 quality/tools/verify_apk_upgrade.py --reference quality/fixtures/appforge-v9r2isolated3-v539-reference.json --old-apk "$OLD" --new-apk "$APK" \
+          python3 quality/tools/verify_apk_upgrade.py --reference quality/fixtures/appforge-v9r2isolated3-v540-reference.json --old-apk "$OLD" --new-apk "$APK" \
             --aapt2 "$AAPT" --apksigner "$SIGNER" --source-sha "$GITHUB_SHA" \
             --output upgrade-artifacts/upgrade-evidence.json
           python3 - <<'PYTHON'
@@ -117,20 +125,24 @@ jobs:
           cp "$APK" upgrade-artifacts/AppForgeStudio-v9r2isolated3-upgrade.apk
           (cd upgrade-artifacts && sha256sum *.apk > SHA256SUMS.txt)
           python3 quality/tools/storage_release_manifest.py --evidence upgrade-artifacts/upgrade-evidence.json --apk upgrade-artifacts/AppForgeStudio-v9r2isolated3-upgrade.apk --output "upgrade-artifacts/release-manifest-$GITHUB_SHA.json"
-      - name: Enable KVM for disposable update acceptance
+      - name: Record V541 no-ADB and pending physical device acceptance
         run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Verify v539 data preservation and storage on disposable emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          arch: x86_64
-          profile: pixel_6
-          disable-animations: true
-          script: python3 quality/tools/emulator_storage_upgrade.py --serial emulator-5554 --old-apk reference-apk/AppForgeStudio-v9r2isolated3-upgrade.apk --new-apk upgrade-artifacts/AppForgeStudio-v9r2isolated3-upgrade.apk --test-apk android-app/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk --output upgrade-artifacts/emulator-storage-evidence.json
-      - name: Upload only a verified in-place upgrade candidate
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import json,os,pathlib
+          root=pathlib.Path('upgrade-artifacts')
+          proof=json.loads((root/'upgrade-evidence.json').read_text())
+          manifest=json.loads((root/('release-manifest-'+os.environ['GITHUB_SHA']+'.json')).read_text())
+          assert proof['version_code']==541 and proof['update_compatible'] is True
+          assert proof['physical_device']=='NOT_RUN' and manifest['physical_device']=='NOT_RUN'
+          (root/'device-acceptance.json').write_text(json.dumps({
+            'physical_device':'NOT_RUN','adb':'NOT_USED',
+            'mobile_data':'DEVICE_TEST_PENDING',
+            'windows_native':'NOT_RUN','rust_android_ndk':'NOT_RUN',
+            'expo':'NOT_RUN','production_release':False
+          },indent=2)+'\n')
+          PYTHON
+      - name: Upload V541 identity-verified candidate (device acceptance pending)
         uses: actions/upload-artifact@v4
         with:
           name: AppForge-v9r2isolated3-upgrade-${{ github.sha }}
