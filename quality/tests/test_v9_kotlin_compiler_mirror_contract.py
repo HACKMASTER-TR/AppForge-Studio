@@ -19,7 +19,15 @@ class KotlinCompilerMirrorContract(unittest.TestCase):
 
     def test_official_pom_and_mirrors_scoped(self):
         self.assertIn('OFFICIAL_BASE = "https://repo.maven.apache.org/maven2/"', TOOL)
-        self.assertIn('final.hostname != "repo.maven.apache.org"', TOOL)
+        # The Kotlin POM now supports two specifically allowlisted HTTPS hosts.
+        # Keep the origin/coordinate checks strict rather than weakening TLS.
+        self.assertIn('("maven-central", OFFICIAL_BASE, "repo.maven.apache.org")', TOOL)
+        self.assertIn('("google-central-mirror", "https://maven-central.storage-download.googleapis.com/maven2/"', TOOL)
+        self.assertIn('final.scheme != "https" or final.hostname != allowed_host', TOOL)
+        self.assertIn('names.get("groupId") != GROUP', TOOL)
+        self.assertIn('names.get("artifactId") != ARTIFACT', TOOL)
+        self.assertIn('names.get("version") != VERSION', TOOL)
+
         self.assertIn('"https://maven.wso2.org/nexus/content/repositories/central/"', TOOL)
         self.assertIn('"https://repository.liferay.com/nexus/content/repositories/gradle-plugins/"', TOOL)
         self.assertIn('includeModule("org.jetbrains.kotlin", "kotlin-compiler-embeddable")', SETTINGS)
