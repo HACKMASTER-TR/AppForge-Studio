@@ -29,7 +29,8 @@ test('one-tap retry keeps guarded private recovery but no manual recovery UI', (
 });
 
 test('module install and network consent protections remain intact', () => {
-  assert.match(screen, /Onayla ve kur/);
+  assert.match(screen, /Bağımsız kur ve test et/);
+  assert.doesNotMatch(screen, /Onayla ve kur • mevcut sistem/);
   assert.match(screen, /DownloadNetwork\.allowMobileOnce/);
   assert.match(screen, /check\(OfflineBuildPackManager\.moduleReady/);
   assert.match(screen, /hasPendingLifecycle/);

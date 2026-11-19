@@ -13,7 +13,9 @@ test('Windows Native cannot bypass the authenticated R2 APT wrapper',()=>{
   assert.doesNotMatch(shell,/^\s+apt-get install /m);
 });
 test('signed MinGW ARM64 C++ driver check does not depend on not-yet-installed file(1)',()=>{
-  assert.match(shell,/APPFORGE_WINDOWS_GXX_AUTHENTIC_DRIVER_WRONG_ELF_ARCH/);
+  assert.match(shell,/APPFORGE_WINDOWS_\$\{kind\}_SIGNED_ELF_ARCH_MISMATCH/);
+  assert.match(shell,/restore_signed_posix_driver gcc/);
+  assert.match(shell,/restore_signed_posix_driver gxx/);
   assert.match(shell,/\[ "\$header" = 7f454c460201 \]/);
   assert.match(shell,/\[ "\$machine" = b700 \]/);
   assert.match(shell,/dpkg-deb -f "\$archive" Architecture/);

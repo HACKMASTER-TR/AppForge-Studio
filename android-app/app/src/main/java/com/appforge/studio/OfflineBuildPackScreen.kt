@@ -605,15 +605,18 @@ internal object ModuleInstallOperations {
                 Row{Checkbox(sdkConsent,{sdkConsent=it});Text("SDK lisansını kabul ediyorum")}
             }
         }},confirmButton={Row {
-            if (com.appforge.studio.BuildConfig.DEBUG &&
-                id !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE)) {
+            if (id in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE)) {
+                // Bundled-only / portable installers never use shared Ubuntu APT/dpkg.
+                TextButton(enabled=!busy && !preparing && modules!=null && (!needsSdk||sdkConsent),
+                    onClick={chosen=null;begin(id)}) { Text("Kur ve doğrula") }
+            } else if (com.appforge.studio.BuildConfig.DEBUG) {
                 TextButton(enabled=!busy && !preparing && modules!=null && (!needsSdk||sdkConsent),
                     onClick={chosen=null;beginIsolated(id)}) {
                     Text("Bağımsız kur ve test et")
                 }
+            } else {
+                Text("Bağımsız kurulum fiziksel kabul sürümünde kullanılabilir.")
             }
-            TextButton(enabled=!busy && !preparing && modules!=null && (!needsSdk||sdkConsent),
-                onClick={chosen=null;begin(id)}) { Text("Onayla ve kur • mevcut sistem") }
         }},dismissButton={TextButton(onClick={chosen=null}){Text("Vazgeç")}})
     }
     Scaffold(topBar={TopAppBar(title={Text("Birleşik Modül Merkezi V9")},navigationIcon={TextButton(onClick=onBack){Text("Geri")}})}){padding->

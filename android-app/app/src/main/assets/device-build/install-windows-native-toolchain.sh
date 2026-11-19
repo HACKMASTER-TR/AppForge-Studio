@@ -23,54 +23,87 @@ have_tools() {
   command -v file >/dev/null 2>&1
 }
 
-# Ubuntu's g++-mingw POSIX postinst registers the package's own g++ driver
-# with update-alternatives. An interrupted unpack can leave that file absent.
-# Restore ONLY its signed, version-pinned package file in the disposable rootfs.
-# Never substitute the C driver for a missing C++ driver, and never force dpkg.
-repair_mingw_links() {
-  target=/usr/bin/x86_64-w64-mingw32-g++-posix
+# Restore only signed, version-pinned Ubuntu ARM64 MinGW POSIX drivers.
+# GCC must be restored before its dpkg postinst registers update-alternatives.
+# No --force, no reset of /var/lib/dpkg, and no shared rootfs mutation.
+restore_signed_posix_driver() {
+  kind="$1"
+  case "$kind" in
+    gcc)
+      target=/usr/bin/x86_64-w64-mingw32-gcc-posix
+      pkg=gcc-mingw-w64-x86-64-posix
+      hash=de7ed842e1a166be9726952538cfe520d6e55ff07e4fae009cddbee74ca5de64
+      ;;
+    gxx)
+      target=/usr/bin/x86_64-w64-mingw32-g++-posix
+      pkg=g++-mingw-w64-x86-64-posix
+      hash=8314d76080dc9979f8ebcfb2d70852804a6b765e38028990d8ff67ced712c99d
+      ;;
+    *) return 43;;
+  esac
   [ -x "$target" ] && return 0
-  [ ! -e "$target" ] && [ ! -L "$target" ] || {
-    echo 'APPFORGE_WINDOWS_GXX_EXISTING_PATH_UNTRUSTED' >&2;return 43;
-  }
+  # Only a package-style dangling alternatives symlink may be replaced.
+  # Any foreign symlink, non-executable real file or directory is untrusted.
+  if [ -L "$target" ]; then
+    old_link=$(readlink "$target") || return 43
+    case "$kind:$old_link" in
+      gcc:x86_64-w64-mingw32-gcc-[0-9]*-posix|gxx:x86_64-w64-mingw32-g++-[0-9]*-posix) ;;
+      *) echo "APPFORGE_WINDOWS_${kind}_EXISTING_PATH_UNTRUSTED" >&2;return 43;;
+    esac
+  elif [ -e "$target" ]; then
+    echo "APPFORGE_WINDOWS_${kind}_EXISTING_PATH_UNTRUSTED" >&2;return 43
+  fi
   [ "$(dpkg --print-architecture)" = arm64 ] || return 43
   [ "${APPFORGE_R2_RELEASE_AUTHORIZED:-0}" = 1 ] || return 43
-  archive=/opt/appforge-device/apt-snapshot-v1/arm64-20261018T000000Z/archives/8314d76080dc9979f8ebcfb2d70852804a6b765e38028990d8ff67ced712c99d.deb
+  archive="/opt/appforge-device/apt-snapshot-v1/arm64-20261018T000000Z/archives/$hash.deb"
   [ -f "$archive" ] && [ ! -L "$archive" ] || {
-    echo 'APPFORGE_WINDOWS_GXX_SIGNED_ARCHIVE_MISSING' >&2;return 44;
+    echo "APPFORGE_WINDOWS_${kind}_SIGNED_ARCHIVE_MISSING" >&2;return 44;
   }
-  printf '%s  %s\n' 8314d76080dc9979f8ebcfb2d70852804a6b765e38028990d8ff67ced712c99d "$archive" | sha256sum -c - >/dev/null || return 44
-  [ "$(dpkg-deb -f "$archive" Package)" = g++-mingw-w64-x86-64-posix ] || return 44
+  printf '%s  %s\n' "$hash" "$archive" | sha256sum -c - >/dev/null || return 44
+  [ "$(dpkg-deb -f "$archive" Package)" = "$pkg" ] || return 44
   [ "$(dpkg-deb -f "$archive" Version)" = '13.2.0-6ubuntu1+26.1' ] || return 44
   [ "$(dpkg-deb -f "$archive" Architecture)" = arm64 ] || return 44
-  recover=$(mktemp -d /tmp/appforge-signed-gxx.XXXXXXXX) || return 44
-  dpkg-deb -x "$archive" "$recover" || { rm -rf -- "$recover";return 44; }
-  source_driver="$recover/usr/bin/x86_64-w64-mingw32-g++-posix"
-  if [ -L "$source_driver" ];then
-    link=$(readlink "$source_driver") || { rm -rf -- "$recover";return 44; }
-    case "$link" in x86_64-w64-mingw32-g++-[0-9]*-posix) ;; *) rm -rf -- "$recover";return 44;;esac
-    [ -x "/usr/bin/$link" ] || { echo 'APPFORGE_WINDOWS_GXX_TARGET_MISSING' >&2;rm -rf -- "$recover";return 44; }
-    ln -s "$link" "/usr/bin/.appforge-gxx-v540.$$" || { rm -rf -- "$recover";return 44; }
-    mv -T "/usr/bin/.appforge-gxx-v540.$$" "$target" || { rm -rf -- "$recover";return 44; }
-  elif [ -f "$source_driver" ] && [ ! -L "$source_driver" ] && [ -x "$source_driver" ];then
-    # file(1) is not yet installed in a fresh root. Validate AArch64 ELF64 LE
-    # directly using coreutils od; signed package SHA256/identity checks above stay.
-    command -v od >/dev/null 2>&1 || { echo 'APPFORGE_WINDOWS_ELF_OD_MISSING' >&2;rm -rf -- "$recover";return 44; }
-    header=$(od -An -tx1 -N6 "$source_driver" | tr -d ' \n') || { rm -rf -- "$recover";return 44; }
-    machine=$(od -An -tx1 -j18 -N2 "$source_driver" | tr -d ' \n') || { rm -rf -- "$recover";return 44; }
-    [ "$header" = 7f454c460201 ] && [ "$machine" = b700 ] || {
-      echo 'APPFORGE_WINDOWS_GXX_AUTHENTIC_DRIVER_WRONG_ELF_ARCH' >&2;rm -rf -- "$recover";return 44;
+  stage=$(mktemp -d /tmp/appforge-signed-posix.XXXXXXXX) || return 44
+  dpkg-deb -x "$archive" "$stage" || { rm -rf -- "$stage";return 44; }
+  source_driver="$stage$target"
+  tmp="/usr/bin/.appforge-${kind}-posix.$$"
+  [ ! -e "$tmp" ] && [ ! -L "$tmp" ] || { rm -rf -- "$stage";return 43; }
+  if [ -L "$source_driver" ]; then
+    link=$(readlink "$source_driver") || { rm -rf -- "$stage";return 44; }
+    case "$kind:$link" in
+      gcc:x86_64-w64-mingw32-gcc-[0-9]*-posix|gxx:x86_64-w64-mingw32-g++-[0-9]*-posix) ;;
+      *) rm -rf -- "$stage";return 44;;
+    esac
+    [ -x "/usr/bin/$link" ] || {
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_TARGET_MISSING" >&2
+      rm -rf -- "$stage";return 44;
     }
-    cp -p "$source_driver" "/usr/bin/.appforge-gxx-v540.$$" || { rm -rf -- "$recover";return 44; }
-    cmp -s "$source_driver" "/usr/bin/.appforge-gxx-v540.$$" || { rm -rf -- "$recover";return 44; }
-    mv -T "/usr/bin/.appforge-gxx-v540.$$" "$target" || { rm -rf -- "$recover";return 44; }
+    ln -s "$link" "$tmp" || { rm -rf -- "$stage";return 44; }
+  elif [ -f "$source_driver" ] && [ -x "$source_driver" ]; then
+    command -v od >/dev/null 2>&1 || { rm -rf -- "$stage";return 44; }
+    header=$(od -An -tx1 -N6 "$source_driver" | tr -d ' \n') || { rm -rf -- "$stage";return 44; }
+    machine=$(od -An -tx1 -j18 -N2 "$source_driver" | tr -d ' \n') || { rm -rf -- "$stage";return 44; }
+    [ "$header" = 7f454c460201 ] && [ "$machine" = b700 ] || {
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_ELF_ARCH_MISMATCH" >&2
+      rm -rf -- "$stage";return 44;
+    }
+    cp -p "$source_driver" "$tmp" || { rm -rf -- "$stage";return 44; }
+    cmp -s "$source_driver" "$tmp" || { rm -f -- "$tmp";rm -rf -- "$stage";return 44; }
   else
-    echo 'APPFORGE_WINDOWS_GXX_AUTHENTIC_FILE_NOT_FOUND' >&2
-    rm -rf -- "$recover";return 44
+    echo "APPFORGE_WINDOWS_${kind}_AUTHENTIC_DRIVER_MISSING" >&2
+    rm -rf -- "$stage";return 44
   fi
-  rm -rf -- "$recover"
+  # Atomic replacement only after the fixed package and executable checks.
+  if ! mv -T "$tmp" "$target"; then
+    rm -f -- "$tmp";rm -rf -- "$stage";return 44
+  fi
+  rm -rf -- "$stage"
   [ -x "$target" ] || return 44
-  echo 'APPFORGE_WINDOWS_GXX_SIGNED_DRIVER_RESTORED=PASS'
+  echo "APPFORGE_WINDOWS_${kind}_SIGNED_DRIVER_RESTORED=PASS"
+}
+repair_mingw_links() {
+  restore_signed_posix_driver gcc
+  restore_signed_posix_driver gxx
 }
 
 repair_interrupted_dpkg() {

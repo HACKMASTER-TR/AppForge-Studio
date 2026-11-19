@@ -22,7 +22,8 @@ test('V3 installer scopes SDK consent and never defaults to installing every mod
   assert.match(planner,/requests\(selected\)\.flatMap \{ it\.dependencyOrder \}\.distinct\(\)/);
   assert.match(manager,/pending\.filterNot|plan\.filterNot/);
   assert.match(screen,/val needsSdk=modules\?\.any \{\s*it==OfflineModuleId\.ANDROID_CORE \|\| it==OfflineModuleId\.EXPO_REACT_NATIVE \|\|\s*it==OfflineModuleId\.RUST_ANDROID_NDK/);
-  assert.match(screen,/Onayla ve kur/);
+  assert.match(screen,/Bağımsız kur ve test et/);
+  assert.doesNotMatch(screen,/Onayla ve kur • mevcut sistem/);
   assert.match(screen,/Araç indirmeden devam et/);
 });
 test('standalone Node module pins and verifies archive without Android toolchain install', () => {
