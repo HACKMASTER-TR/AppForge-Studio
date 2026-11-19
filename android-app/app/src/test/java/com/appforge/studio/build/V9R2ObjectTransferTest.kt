@@ -85,7 +85,7 @@ class V9R2ObjectTransferTest {
     }
     @Test fun missingObjectNeverFallsBackToSnapshot()=fixture {target,bytes,sha->
         var opens=0
-        assertThrows(IOException::class.java){V9R2ObjectTransfer.download(target,sha,bytes.size.toLong(),open={opens++;assertEquals("appforge-v9-packages-readonly.28550040284a.workers.dev",it.host);Response(it,bytes,404)})}
+        assertThrows(IOException::class.java){V9R2ObjectTransfer.download(target,sha,bytes.size.toLong(),open={opens++;assertEquals("packages.appforgecloud.com",it.host);Response(it,bytes,404)})}
         assertEquals(1,opens);assertFalse(target.exists())
     }
     @Test fun invalidRangeNeverWritesPayload()=fixture {target,bytes,sha->
