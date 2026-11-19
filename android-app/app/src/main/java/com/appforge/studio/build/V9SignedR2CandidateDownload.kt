@@ -6,7 +6,7 @@ import java.nio.file.Files
 
 /** Explicit-consent, read-only V9 canary. This never authorizes package installation. */
 internal object V9SignedR2CandidateDownload {
-    private const val ORIGIN = "https://appforge-v9-packages-readonly.28550040284a.workers.dev"
+    private const val ORIGIN = "https://packages.appforgecloud.com"
     internal const val CHUNK_BYTES = 8L * 1024 * 1024
     private const val MAX_CANARY_BYTES = 40L * 1024 * 1024
     private val HASH = Regex("[a-f0-9]{64}")

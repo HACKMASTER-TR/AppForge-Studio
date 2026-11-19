@@ -12,7 +12,7 @@ class V9SignedR2CandidateDownloadTest {
 
     @Test fun fixedHttpsHostAndDigestPath() {
         assertEquals(
-            "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/16/$sha",
+            "https://packages.appforgecloud.com/v9/objects/sha256/16/$sha",
             V9SignedR2CandidateDownload.urlForSha(sha)
         )
     }
