@@ -32,6 +32,10 @@ The runtime blocker ledger currently has no active blocker.
 This page keeps only reusable active/closed regression knowledge; full historical
 detail is preserved in [[archive/Bug_Index_History_2026-10-02]].
 
+## Tekrarlayan arızalarda ilk başvuru (2026-11-19)
+
+- [[Recurring_Incident_Runbook_2026-11-19]] — `Connection reset` / mobil veri R2 adresi, ortak Linux ve izole modül READY, 35 GB depolama riski, SDK/MinGW sorunları, Second Brain snapshot ve CI hızlı tanı prosedürü. Fiziksel kabul edilmeyen işlere `PASS` verilmez.
+
 ## Closed / protected regressions
 
 - Terminal native viewport touch ownership and mirror lifecycle regressions:
