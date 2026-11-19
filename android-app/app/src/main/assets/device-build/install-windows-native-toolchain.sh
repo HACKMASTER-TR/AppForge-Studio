@@ -42,16 +42,22 @@ restore_signed_posix_driver() {
     *) return 43;;
   esac
   [ -x "$target" ] && return 0
-  # Only a package-style dangling alternatives symlink may be replaced.
-  # Any foreign symlink, non-executable real file or directory is untrusted.
-  if [ -L "$target" ]; then
-    old_link=$(readlink "$target") || return 43
-    case "$kind:$old_link" in
-      gcc:x86_64-w64-mingw32-gcc-[0-9]*-posix|gxx:x86_64-w64-mingw32-g++-[0-9]*-posix) ;;
-      *) echo "APPFORGE_WINDOWS_${kind}_EXISTING_PATH_UNTRUSTED" >&2;return 43;;
-    esac
-  elif [ -e "$target" ]; then
-    echo "APPFORGE_WINDOWS_${kind}_EXISTING_PATH_UNTRUSTED" >&2;return 43
+  # A failed Ubuntu postinst can leave an existing non-executable file or
+  # dangling alternatives link. The previous name-only check incorrectly
+  # rejected such dpkg-owned paths. Never replace an unowned/foreign path.
+  if [ -L "$target" ] || [ -e "$target" ]; then
+    if [ ! -L "$target" ] && [ ! -f "$target" ]; then
+      echo "APPFORGE_WINDOWS_${kind}_EXISTING_PATH_UNTRUSTED" >&2;return 43
+    fi
+    owner=$(dpkg-query -S "$target" 2>/dev/null || :) 
+    [ "$owner" = "$pkg: $target" ] || {
+      echo "APPFORGE_WINDOWS_${kind}_EXISTING_PATH_UNTRUSTED" >&2;return 43
+    }
+    installed_version=$(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null || :)
+    [ "$installed_version" = '13.2.0-6ubuntu1+26.1' ] || {
+      echo "APPFORGE_WINDOWS_${kind}_EXISTING_VERSION_UNTRUSTED" >&2;return 43
+    }
+    echo "APPFORGE_WINDOWS_${kind}_OWNED_INTERRUPTED_PATH_VERIFIED"
   fi
   [ "$(dpkg --print-architecture)" = arm64 ] || return 43
   [ "${APPFORGE_R2_RELEASE_AUTHORIZED:-0}" = 1 ] || return 43

@@ -1161,6 +1161,39 @@ accept_android_sdk_license() {
     fi
   fi
 
+  if [ ! -s "$SDK/licenses/android-sdk-license" ]; then
+    # sdkmanager --licenses can report success when Google's XML is unreachable.
+    # Only the user's explicit in-app terms checkbox authorizes an offline record.
+    [ "$SDK_LICENSE_ACCEPTED" = "1" ] || {
+      echo "APPFORGE_ANDROID_SDK_LICENSE_EXPLICIT_CONSENT_REQUIRED" >&2
+      exit 43
+    }
+    # The SDK command-line tools are an exact, pinned Google archive; reject a
+    # substituted SDK or writable/symlinked license directory. No network bypass.
+    cmd_archive="$ROOT/cache/commandlinetools-linux-${CMDLINE_TOOLS_VERSION}_latest.zip"
+    [ -f "$cmd_archive" ] && [ ! -L "$cmd_archive" ] &&
+      printf '%s  %s\n' "$CMDLINE_TOOLS_SHA256" "$cmd_archive" | sha256sum -c - >/dev/null || {
+      echo "APPFORGE_ANDROID_SDK_PINNED_COMMANDLINE_TOOLS_UNVERIFIED" >&2
+      exit 44
+    }
+    [ ! -L "$SDK/licenses" ] && [ ! -L "$SDK/licenses/android-sdk-license" ] || {
+      echo "APPFORGE_ANDROID_SDK_LICENSE_PATH_UNTRUSTED" >&2
+      exit 44
+    }
+    mkdir -p "$SDK/licenses"
+    # Android's android-sdk-license known SHA-1 record; this is NOT a signature
+    # or substitute for explicit acceptance of the Android SDK terms.
+    known_license='24333f8a63b6825ea9c5514f83c2829b004d1fee'
+    candidate="$SDK/licenses/.appforge-sdk-license.$$"
+    [ ! -e "$candidate" ] && [ ! -L "$candidate" ] || exit 44
+    printf '%s\n' "$known_license" > "$candidate"
+    printf '%s\n' "$known_license" | cmp -s - "$candidate" || {
+      rm -f -- "$candidate";exit 44
+    }
+    mv -T -- "$candidate" "$SDK/licenses/android-sdk-license"
+    [ "$(cat "$SDK/licenses/android-sdk-license")" = "$known_license" ] || exit 44
+    echo "APPFORGE_ANDROID_SDK_OFFLINE_LICENSE_PINNED=PASS"
+  fi
   test -s \
     "$SDK/licenses/android-sdk-license" || {
       echo "APPFORGE_ANDROID_SDK_LICENSE_FILE_MISSING" >&2
