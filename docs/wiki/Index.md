@@ -40,7 +40,7 @@ source_files: []
 | Windows publisher signing | [[Windows_Publisher_Authorization]] | [[Security_And_Entitlements]], [[Deployment_And_CI]] | Publisher authorization client/provider, control plane and contracts |
 | Control plane or deployment | [[Deployment_And_CI]] | [[Backend_API_Domains]], [[Current_Status]] | Cloudflare control plane and workflow files |
 | Terminal or developer tools | [[Terminal_And_Developer_Tools]] | [[Android_App_Map]], [[Account_And_Security_Map]] | terminal Kotlin modules and contracts |
-| Bug or test failure | [[Bug_Index]] | [[Current_Status]], [[Open_Questions]] | named test and its source files |
+| Bug or test failure | [[Bug_Index]], [[Recurring_Incident_Runbook_2026-11-19]] | [[Current_Status]], [[Open_Questions]] | named test and its source files |
 | Architecture change | [[System_Architecture]] | [[Decision_Index]], affected maps | related source, config, migrations, and tests |
 | Wiki maintenance | [[Wiki_Maintenance_Prompt]] | [[Log]], [[Agent_Rules]] | wiki files and audit scripts |
 
