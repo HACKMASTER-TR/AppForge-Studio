@@ -781,6 +781,10 @@ internal object OfflineBuildPackManager {
     ) = kotlinx.coroutines.coroutineScope {
         val sessionId =
             "offline-pack-$suffix-${UUID.randomUUID()}"
+        // Only Android Core's large, isolated toolchain stages may exceed 30 min.
+        // A timeout remains a failure: no receipt, generation commit, or READY.
+        val timeoutBudgetMs = IsolatedInstallTimeoutPolicy.forStep(module, command)
+        val lastAptPhase = java.util.concurrent.atomic.AtomicReference<ModulePhase?>(null)
 
         // SDK preferences and the warmup debug key belong to this operation.
         // Keep them out of the protected build runtime's /root directory.
@@ -829,7 +833,10 @@ internal object OfflineBuildPackManager {
                     if(control.request!=DownloadControl.Request.NONE)AptDownloadConsent.reject(operation)
                     progress(consent)
                 }
-                else if(aptPhase!=null)progress(aptPhase)
+                else if(aptPhase!=null) {
+                    lastAptPhase.set(aptPhase.phase)
+                    progress(aptPhase)
+                }
                 else if(broker?.transferring!=true)channels?.poll(android.os.SystemClock.elapsedRealtime())?.forEach(progress)
                 kotlinx.coroutines.delay(500)
             }
@@ -842,7 +849,7 @@ internal object OfflineBuildPackManager {
                 command = "export ANDROID_USER_HOME=/workspace/.appforge-sdk-user/.android ANDROID_SDK_HOME=/workspace/.appforge-sdk-user; " +
                     "export APPFORGE_R2_RELEASE_AUTHORIZED=${if(r2Authorized)1 else 0}; export APPFORGE_APT_MANAGED_INSTALL=${if(module!=null)1 else 0}; export APPFORGE_APT_REQUIRE_CONSENT=${if(module!=null)1 else 0}; export APPFORGE_NATIVE_DOWNLOAD_BROKER=${if(broker!=null)"/workspace/native-downloads" else ""}; export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; "+command,
                 confirmed = true,
-                timeoutMs = 1_800_000L
+                timeoutMs = timeoutBudgetMs
             )
         } finally {poller.cancel();brokerJob?.cancel();AptDownloadConsent.clear(operation)}
         control.checkpoint()
@@ -851,7 +858,8 @@ internal object OfflineBuildPackManager {
         check(
             !result.timedOut
         ) {
-            "Çevrimdışı paket kurulumu zaman aşımına uğradı: $suffix"
+            IsolatedInstallTimeoutPolicy.timeoutMessage(
+                module, command, lastAptPhase.get(), timeoutBudgetMs)
         }
 
         check(

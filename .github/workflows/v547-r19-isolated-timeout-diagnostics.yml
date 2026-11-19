@@ -1,0 +1,95 @@
+name: AppForge V547 R19 Isolated Timeout Diagnostics CI (No APK)
+on:
+  push:
+    branches:
+      - codex/v547-r19-isolated-timeout-diagnostics-20261119
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify-r19-timeout-policy:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Enforce R18 base, exact file scope, verified gates and Second Brain
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = codex/v547-r19-isolated-timeout-diagnostics-20261119
+          BASE=1b7dad90cbe2e3b06e330f3e41795679f52b85a2
+          test "$(git rev-parse HEAD^)" = "$BASE"
+          git diff --check HEAD^
+          python3 - <<'PYCI'
+          import subprocess
+          base='1b7dad90cbe2e3b06e330f3e41795679f52b85a2'
+          actual=set(subprocess.check_output(['git','diff','--name-only',base,'HEAD'],text=True).splitlines())
+          expected={
+            '.github/workflows/v547-r19-isolated-timeout-diagnostics.yml',
+            'android-app/app/src/main/java/com/appforge/studio/terminal/LinuxShellEngine.kt',
+            'android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt',
+            'android-app/app/src/main/java/com/appforge/studio/build/IsolatedInstallTimeoutPolicy.kt',
+            'android-app/app/src/test/java/com/appforge/studio/build/IsolatedInstallTimeoutPolicyTest.kt',
+            'quality/tests/v547-r19-install-timeout-contract.test.js',
+            'android-app/app/src/main/assets/second_brain_snapshot.json'
+          }
+          assert actual==expected,(actual,expected)
+          PYCI
+          for RUN in 44580945753 44580956606; do
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN" --jq .conclusion)" = success
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN" --jq .head_sha)" = "$BASE"
+          done
+          python3 scripts/generate-second-brain-snapshot.py --check
+          echo APPFORGE_V547_R19_TRUST_BOUNDARY=PASS
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run R19 focused offline contracts and isolation checks
+        run: |
+          set -euo pipefail
+          node --test \\
+            quality/tests/v547-r19-install-timeout-contract.test.js \\
+            quality/tests/module_isolation_v3_unified_contract.test.js
+          echo APPFORGE_V547_R19_STATIC_POLICY=PASS
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install pinned Android native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          test -d "$ANDROID_HOME/ndk/28.2.13676358"
+          test -d "$ANDROID_HOME/cmake/3.22.1"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Compile and run Android unit tests including R19 policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:testDebugUnitTest \\
+            -PappforgeCIMavenGcs=true \\
+            --no-daemon --no-configuration-cache --console=plain --stacktrace
+          echo APPFORGE_V547_R19_ANDROID_REGRESSION=PASS
+      - name: Preserve no-device and no-artifact boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! find android-app -type f -name '*.apk' -print -quit | grep -q .
+          echo APPFORGE_V547_R19_APK=NOT_BUILT
+          echo APPFORGE_V547_R19_DEVICE_INSTALL=NOT_STARTED
+          echo APPFORGE_V547_R19_R2_CLOUDFLARE=UNCHANGED
