@@ -61,17 +61,53 @@ restore_signed_posix_driver() {
   fi
   [ "$(dpkg --print-architecture)" = arm64 ] || return 43
   [ "${APPFORGE_R2_RELEASE_AUTHORIZED:-0}" = 1 ] || return 43
-  archive="/opt/appforge-device/apt-snapshot-v1/arm64-20261018T000000Z/archives/$hash.deb"
-  [ -f "$archive" ] && [ ! -L "$archive" ] || {
-    echo "APPFORGE_WINDOWS_${kind}_SIGNED_ARCHIVE_MISSING" >&2;return 44;
+  # Only the SHA-pinned R2 cache within this isolated candidate is trusted.
+  archive_dir=/opt/appforge-device/apt-snapshot-v1/arm64-20261018T000000Z/archives
+  archive="$archive_dir/$hash.deb"
+  [ -d "$archive_dir" ] && [ ! -L "$archive_dir" ] || {
+    echo "APPFORGE_WINDOWS_${kind}_R2_ARCHIVE_DIRECTORY_MISSING" >&2; return 44;
   }
-  printf '%s  %s\n' "$hash" "$archive" | sha256sum -c - >/dev/null || return 44
-  [ "$(dpkg-deb -f "$archive" Package)" = "$pkg" ] || return 44
-  [ "$(dpkg-deb -f "$archive" Version)" = '13.2.0-6ubuntu1+26.1' ] || return 44
-  [ "$(dpkg-deb -f "$archive" Architecture)" = arm64 ] || return 44
-  stage=$(mktemp -d /tmp/appforge-signed-posix.XXXXXXXX) || return 44
-  dpkg-deb -x "$archive" "$stage" || { rm -rf -- "$stage";return 44; }
+  [ -f "$archive" ] && [ ! -L "$archive" ] || {
+    echo "APPFORGE_WINDOWS_${kind}_SIGNED_ARCHIVE_MISSING:$hash" >&2;return 44;
+  }
+  printf '%s  %s\n' "$hash" "$archive" | sha256sum -c - >/dev/null 2>&1 || {
+    echo "APPFORGE_WINDOWS_${kind}_ARCHIVE_SHA256_MISMATCH" >&2;return 44;
+  }
+  [ "$(dpkg-deb -f "$archive" Package)" = "$pkg" ] || {
+    echo "APPFORGE_WINDOWS_${kind}_ARCHIVE_PACKAGE_MISMATCH" >&2;return 44;
+  }
+  [ "$(dpkg-deb -f "$archive" Version)" = '13.2.0-6ubuntu1+26.1' ] || {
+    echo "APPFORGE_WINDOWS_${kind}_ARCHIVE_VERSION_MISMATCH" >&2;return 44;
+  }
+  [ "$(dpkg-deb -f "$archive" Architecture)" = arm64 ] || {
+    echo "APPFORGE_WINDOWS_${kind}_ARCHIVE_ARCH_MISMATCH" >&2;return 44;
+  }
+  echo "APPFORGE_WINDOWS_${kind}_SIGNED_ARCHIVE_VERIFIED=PASS"
+  stage=$(mktemp -d /tmp/appforge-signed-posix.XXXXXXXX) || {
+    echo "APPFORGE_WINDOWS_${kind}_TEMP_DIR_FAILED" >&2;return 44;
+  }
+  dpkg-deb -x "$archive" "$stage" || {
+    echo "APPFORGE_WINDOWS_${kind}_ARCHIVE_EXTRACT_FAILED" >&2;
+    rm -rf -- "$stage";return 44;
+  }
   source_driver="$stage$target"
+  # Ubuntu can package the versioned executable without the unversioned
+  # alternatives name. Synthesize only this exact GCC13 link when the signed
+  # executable is present and byte-for-byte identical to installed bytes.
+  if [ "$kind" = gcc ] && [ ! -e "$source_driver" ] && [ ! -L "$source_driver" ];then
+    signed_versioned="$stage/usr/bin/x86_64-w64-mingw32-gcc-13-posix"
+    installed_versioned=/usr/bin/x86_64-w64-mingw32-gcc-13-posix
+    if [ -f "$signed_versioned" ] && [ -x "$signed_versioned" ] &&
+       [ -f "$installed_versioned" ] && [ ! -L "$installed_versioned" ] &&
+       [ -x "$installed_versioned" ] &&
+       cmp -s "$signed_versioned" "$installed_versioned";then
+      ln -s x86_64-w64-mingw32-gcc-13-posix "$source_driver" || {
+        echo "APPFORGE_WINDOWS_gcc_SIGNED_ALIAS_STAGE_FAILED" >&2;
+        rm -rf -- "$stage";return 44;
+      }
+      echo 'APPFORGE_WINDOWS_gcc_SIGNED_VERSIONED_DRIVER_VERIFIED'
+    fi
+  fi
   tmp="/usr/bin/.appforge-${kind}-posix.$$"
   [ ! -e "$tmp" ] && [ ! -L "$tmp" ] || { rm -rf -- "$stage";return 43; }
   if [ -L "$source_driver" ]; then
@@ -96,11 +132,12 @@ restore_signed_posix_driver() {
     cp -p "$source_driver" "$tmp" || { rm -rf -- "$stage";return 44; }
     cmp -s "$source_driver" "$tmp" || { rm -f -- "$tmp";rm -rf -- "$stage";return 44; }
   else
-    echo "APPFORGE_WINDOWS_${kind}_AUTHENTIC_DRIVER_MISSING" >&2
+    echo "APPFORGE_WINDOWS_${kind}_AUTHENTIC_DRIVER_MISSING_IN_SIGNED_DEB" >&2
     rm -rf -- "$stage";return 44
   fi
   # Atomic replacement only after the fixed package and executable checks.
   if ! mv -T "$tmp" "$target"; then
+    echo "APPFORGE_WINDOWS_${kind}_ATOMIC_REPLACE_FAILED" >&2
     rm -f -- "$tmp";rm -rf -- "$stage";return 44
   fi
   rm -rf -- "$stage"
