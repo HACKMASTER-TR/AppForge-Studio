@@ -176,9 +176,17 @@ internal object ModuleInstallOperations {
                 publish(ModuleProgress(selected,operation,ModulePhase.CANCELED,
                     detail="İzole işlem iptal edildi; eski modüller ve kullanıcı dosyaları korunur."))
             } catch(e:Exception) {
-                publish(ModuleProgress(selected,operation,ModulePhase.ERROR,
+                val interrupted=generateSequence(e as Throwable?) { it.cause }.any {
+                    it is java.net.SocketException || it is java.net.SocketTimeoutException ||
+                        it is java.io.EOFException
+                }
+                publish(ModuleProgress(selected,operation,
+                    if(interrupted)ModulePhase.WAITING_CONNECTION else ModulePhase.ERROR,
                     errorCode=e.javaClass.simpleName,
-                    detail=(e.message?:"İzole kurulum başarısız")+
+                    detail=if(interrupted)
+                        "Bağlantı koptu; R2 kısmi baytları korunur, READY verilmedi. " +
+                            "Ağ bağlantısını doğrulayın; yalnız güvenli kalan indirme devam ettirilebilir."
+                    else (e.message?:"İzole kurulum başarısız")+
                         " • Eski doğrulanmış modüller değiştirilmedi."))
             } finally {
                 activeProgress.value=null;busy.value=false;stopPending.value=false
@@ -284,6 +292,7 @@ internal object ModuleInstallOperations {
     var recordedVersion by remember(selected) { mutableStateOf<String?>(null) }
     var updateRequired by remember(selected) { mutableStateOf(false) }
     var isolatedReady by remember(selected) { mutableStateOf(false) }
+    var protectedCandidate by remember(selected) { mutableStateOf(false) }
     var lifecycle by remember(selected) { mutableStateOf<ModuleLifecycleStatus?>(null) }
     var aptState by remember(selected) { mutableStateOf("") }
     var migrationReason by remember(selected) { mutableStateOf<String?>(null) }
@@ -308,7 +317,14 @@ internal object ModuleInstallOperations {
         // invalidates the display; ordinary ON_RESUME/navigation does not.
         ready=emptyMap()
         val inspected=withContext(Dispatchers.IO) {
-            val statuses=OfflineBuildPackManager.installedReadiness(context)
+            // UI combines signed legacy READY and independently accepted signed roots.
+            // Build authorization still checks its own trust gate before use.
+            val statuses=OfflineBuildPackManager.installedReadiness(context).toMutableMap()
+            OfflineModules.all.forEach { module ->
+                if (statuses[module.id] != true &&
+                    IsolatedModuleInstallerV3.ready(context,module.id))
+                    statuses[module.id]=true
+            }
             val files=OfflineModules.all.filter {
                 OfflineBuildPackManager.hasExistingFiles(context,it.id)
             }.map { it.id }.toSet()
@@ -330,9 +346,12 @@ internal object ModuleInstallOperations {
         }
         recordedVersion=recorded.first
         updateRequired=recorded.second
-        isolatedReady=withContext(Dispatchers.IO) {
-            IsolatedModuleInstallerV3.ready(context,selected)
+        val isolatedState=withContext(Dispatchers.IO) {
+            IsolatedModuleInstallerV3.ready(context,selected) to
+                IsolatedModuleInstallerV3.hasProtectedCandidate(context,selected)
         }
+        isolatedReady=isolatedState.first
+        protectedCandidate=isolatedState.second
     }
     LaunchedEffect(section,selected,moduleDetails,recovered,busy,usageRevision,refreshRevision) {
         lifecycle=null
@@ -605,10 +624,14 @@ internal object ModuleInstallOperations {
                 Row{Checkbox(sdkConsent,{sdkConsent=it});Text("SDK lisansını kabul ediyorum")}
             }
         }},confirmButton={Row {
-            if (id in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE)) {
-                // Bundled-only / portable installers never use shared Ubuntu APT/dpkg.
+            if (id in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE,
+                    OfflineModuleId.LINUX_RUNTIME)) {
+                // LINUX_RUNTIME installs only the versioned, verified Ubuntu base.
+                // Other native modules remain isolated: never use shared APT/dpkg here.
                 TextButton(enabled=!busy && !preparing && modules!=null && (!needsSdk||sdkConsent),
-                    onClick={chosen=null;begin(id)}) { Text("Kur ve doğrula") }
+                    onClick={chosen=null;begin(id)}) {
+                    Text(if(id==OfflineModuleId.LINUX_RUNTIME) "Linux temel ortamını kur" else "Kur ve doğrula")
+                }
             } else if (com.appforge.studio.BuildConfig.DEBUG) {
                 TextButton(enabled=!busy && !preparing && modules!=null && (!needsSdk||sdkConsent),
                     onClick={chosen=null;beginIsolated(id)}) {
@@ -635,6 +658,8 @@ internal object ModuleInstallOperations {
                                         !ready.containsKey(module.id) -> "Kontrol ediliyor…"
                                         isolatedReady && module.id==selected -> "BAĞIMSIZ HAZIR ✓"
                                         ready[module.id]==true -> "HAZIR ✓"
+                                        module.id==OfflineModuleId.LINUX_RUNTIME ->
+                                            "Ortak Linux kurulu değil • bağımsız Ubuntu ortamları ayrı"
                                         module.id in existingFiles -> "Dosyalar mevcut · doğrulama gerekli"
                                         module.id in downloadedModules -> "İndirildi · kurulum gerekli"
                                         else -> "Kurulu değil"
@@ -647,7 +672,7 @@ internal object ModuleInstallOperations {
             }
 
             if(section=="modules")item {
-                val installed=ready[selected]==true
+                val installed=ready[selected]==true || isolatedReady
                 val spec=OfflineModules.spec(selected)
                 val unsupported=if(selected !in setOf(
                     OfflineModuleId.FAST_HTML,
@@ -658,7 +683,7 @@ internal object ModuleInstallOperations {
                 }
                 val installingSelected=busy && installTarget==selected
                 val event=if(installingSelected)active else active ?: events[selected]?.takeUnless { installed }
-                val canInstall=recovered && chosen==null && (!installed || updateRequired) &&
+                val canInstall=recovered && chosen==null && !installed && !protectedCandidate &&
                     !busy && !preparing && !prefetchBusy && !recoveryBusy && unsupported==null
 
                 Card(Modifier.fillMaxWidth()) {
@@ -769,6 +794,8 @@ internal object ModuleInstallOperations {
                                 !ready.containsKey(selected) -> "Bütünlük kontrolü sürüyor"
                                 installed && updateRequired -> "HAZIR ✓ • Güncelleme mevcut"
                                 installed -> "HAZIR ✓ • Doğrulanmış kurulum"
+                                protectedCandidate -> "Yarım kalan bağımsız Ubuntu kurulumu korundu • tekrar indirme engellendi"
+                                selected==OfflineModuleId.LINUX_RUNTIME -> "Ortak Linux henüz doğrulanmadı • bağımsız Ubuntu ortamları ayrıdır"
                                 migrationReason!=null -> "Güvenli runtime geçişi gerekli"
                                 selected in existingFiles -> "Dosyalar mevcut · doğrulama gerekli"
                                 selected in downloadedModules -> "İndirildi · kurulum gerekli"
@@ -862,13 +889,21 @@ internal object ModuleInstallOperations {
                             }
                         }
 
-                        V9R2CandidatePrefetchCard(
-                            selected=selected,
-                            installEnabled=canInstall,
-                            showCacheDetails=moduleDetails,
-                            onBusyChange={prefetchBusy=it},
-                            onInstall={chosen=it}
-                        )
+                        if(installed) {
+                            Text("HAZIR ✓ • Dosya ve fonksiyon testleri doğrulandı. Tekrar indirme kapalı.")
+                        } else if(protectedCandidate) {
+                            Text("Tamamlanmamış veya güvenilmeyen bağımsız Ubuntu kurulumu korundu. " +
+                                "Yeni indirme ve kopyalama engellendi. Güvenli kurtarma gerekir.",
+                                color=MaterialTheme.colorScheme.error)
+                        } else {
+                            V9R2CandidatePrefetchCard(
+                                selected=selected,
+                                installEnabled=canInstall,
+                                showCacheDetails=moduleDetails,
+                                onBusyChange={prefetchBusy=it},
+                                onInstall={chosen=it}
+                            )
+                        }
 
                         if(busy && active!=null && active.phase !in setOf(
                             ModulePhase.READY,ModulePhase.ERROR,ModulePhase.CANCELED

@@ -62,16 +62,18 @@ internal object V9R2ObjectTransfer {
             return target
         }
         require(!partial.exists() || partial.isFile && partial.length() <= bytes)
+        var transientFailures=0
         while (partial.length() < bytes) {
             if (canceled()) throw java.util.concurrent.CancellationException("R2 paused at transfer checkpoint")
             DownloadNetwork.check()
             val start = partial.length()
             val end = minOf(bytes - 1, start + V9SignedR2CandidateDownload.CHUNK_BYTES - 1)
             require(available(parent) > end - start + 1 + 64L * 1024 * 1024) { "Insufficient R2 storage" }
-            val connection = MeasuredDownloadConnection(open(url),onResponse={gets++;onNetwork(gets,networkBytes)}) {
-                networkBytes+=it;onNetwork(gets,networkBytes)
-            }
             try {
+                val connection = MeasuredDownloadConnection(open(url),onResponse={gets++;onNetwork(gets,networkBytes)}) {
+                    networkBytes+=it;onNetwork(gets,networkBytes)
+                }
+                try {
                 connection.instanceFollowRedirects = false
                 connection.connectTimeout = 20_000
                 connection.readTimeout = 20_000
@@ -103,7 +105,21 @@ internal object V9R2ObjectTransfer {
                         }
                     } finally { output.fd.sync() }
                 }
-            } finally { connection.disconnect(); DownloadNetwork.release(connection) }
+                } finally { connection.disconnect(); DownloadNetwork.release(connection) }
+                transientFailures=0
+            } catch(e: IOException) {
+                // Never retry TLS, authorization, unexpected HTTP or integrity errors.
+                // Socket/EOF errors preserve the exact partial prefix and use a
+                // NEW signed-content Range request with final SHA-256 validation.
+                if(e is javax.net.ssl.SSLException ||
+                    (e !is java.net.SocketException &&
+                     e !is java.net.SocketTimeoutException &&
+                     e !is java.io.EOFException) || transientFailures >= 3) throw e
+                transientFailures++
+                if(canceled())throw java.util.concurrent.CancellationException("R2 paused")
+                DownloadNetwork.check()
+                Thread.sleep(500L * transientFailures)
+            }
         }
         require(partial.length() == bytes)
         if (VerifiedModuleDownload.sha(partial) != sha256) {

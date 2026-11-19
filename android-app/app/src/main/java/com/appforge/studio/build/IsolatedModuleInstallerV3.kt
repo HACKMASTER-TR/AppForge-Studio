@@ -101,6 +101,44 @@ internal object IsolatedModuleInstallerV3 {
         true
     }.getOrDefault(false)
 
+    /** Read-only fail-closed admission. A valid baseline MAY resume a failed
+     *  installation; an interrupted/untrusted candidate NEVER triggers another
+     *  network acquisition, stage clone, or implicit wipe.
+     */
+    fun hasProtectedCandidate(context: Context, target: OfflineModuleId): Boolean = runCatching {
+        if (target in setOf(OfflineModuleId.FAST_HTML, OfflineModuleId.WINDOWS_PORTABLE,
+                OfflineModuleId.LINUX_RUNTIME) || ready(context,target)) return@runCatching false
+        val architecture = arch() ?: return@runCatching true
+        val manifest = LinuxRuntimeManifestRegistry.find(LinuxDistribution.UBUNTU,architecture)
+            ?: return@runCatching true
+        val home = context.applicationContext.noBackupFilesDir
+        val base = File(home, "isolated-modules-v1/${target.name.lowercase()}")
+        if (Files.isSymbolicLink(base.toPath())) return@runCatching true
+        if (!base.exists()) return@runCatching false
+        require(base.isDirectory)
+        val layout = IsolatedModuleRuntimeV2.layout(home,target,architecture)
+        val runtime = layout.linux.runtimeDirectory
+        val root = layout.linux.rootfsDirectory
+        val protected = listOf(root,layout.linux.metadataFile,layout.seal,
+            File(runtime,".module-generation.json"))
+        val present = protected.any {
+            Files.exists(it.toPath(),java.nio.file.LinkOption.NOFOLLOW_LINKS)
+        }
+        val unsafeLinks = protected.any { Files.isSymbolicLink(it.toPath()) }
+        val journalExists = Files.exists(File(runtime,".module-generation.json").toPath(),
+            java.nio.file.LinkOption.NOFOLLOW_LINKS)
+        val interrupted = listOf(layout.linux.stagingDirectory,layout.linux.restoreDirectory)
+            .any { dir -> Files.isSymbolicLink(dir.toPath()) ||
+                dir.listFiles().orEmpty().isNotEmpty() }
+        val generation = runtime.listFiles().orEmpty().any {
+            it.name.startsWith(".v3-stage-") || it.name.startsWith(".v3-discard-") ||
+                it.name.startsWith(".v3-previous-")
+        }
+        unsafeLinks || journalExists || interrupted || generation ||
+            (present && !IsolatedModuleRuntimeV2.baselineVerified(layout,manifest)) ||
+            (File(root,RECEIPT).exists() && !ready(context,target))
+    }.getOrDefault(true)
+
     /** Exactly one single-target project may route to an isolated build runtime. */
     internal fun targetForProject(draft: ProjectDraft): OfflineModuleId? {
         val engine = draft.sourceBuildEngine.trim().lowercase()
@@ -155,6 +193,12 @@ internal object IsolatedModuleInstallerV3 {
         if (ready(app, target)) {
             phase(target, ModulePhase.READY, "Bağımsız modülün SHA-256 kanıtları tekrar doğrulandı.")
             return@withLock
+        }
+        // Before ANY R2 prefetch, network access or generation copy, refuse
+        // an unverified root or interrupted stage. A valid baseline may resume.
+        check(!hasProtectedCandidate(app,target)) {
+            "ISOLATED_CANDIDATE_REPAIR_REQUIRED:${target.name}: " +
+                "Korunan yarım kurulum var; indirme ve kopyalama engellendi."
         }
         require(DeviceBuildRuntimeV3.platformError() == null) {
             DeviceBuildRuntimeV3.platformError() ?: "Unsupported platform"
