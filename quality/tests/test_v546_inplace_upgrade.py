@@ -36,6 +36,9 @@ class V546InplaceUpgrade(unittest.TestCase):
         assert 'actions/download-artifact@v4' in s
         assert 'workflow_dispatch:' not in s
         assert 'appforgeV9R2Isolated3UpgradeV546' in gradle
+        assert 'install-toolchain.sh)" = acce888497cd072f25f353ea6b7119ff3656d690' in s
+        assert 'install-toolchain.sh)" = 01d07c8330f304957f10b43d2cd10fed24a8ca52' not in s
+        assert 'install-ndk-host-isolated-v7.sh)" = fab4dd5beb503d6e713f45035cb460c1a062bee3' in s
     def test_manifest_is_immutable_and_exact_version(self):
         module=load(ROOT/'quality/tools/storage_release_manifest_v546.py')
         import tempfile,hashlib
