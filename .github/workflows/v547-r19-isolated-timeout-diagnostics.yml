@@ -24,8 +24,8 @@ jobs:
           set -euo pipefail
           test "$GITHUB_REF_NAME" = codex/v547-r19-isolated-timeout-diagnostics-20261119
           BASE=1b7dad90cbe2e3b06e330f3e41795679f52b85a2
-          test "$(git rev-parse HEAD^)" = "$BASE"
-          git diff --check HEAD^
+          git merge-base --is-ancestor "$BASE" HEAD
+          git diff --check "$BASE" HEAD
           python3 - <<'PYCI'
           import subprocess
           base='1b7dad90cbe2e3b06e330f3e41795679f52b85a2'
@@ -53,9 +53,7 @@ jobs:
       - name: Run R19 focused offline contracts and isolation checks
         run: |
           set -euo pipefail
-          node --test \\
-            quality/tests/v547-r19-install-timeout-contract.test.js \\
-            quality/tests/module_isolation_v3_unified_contract.test.js
+          node --test quality/tests/v547-r19-install-timeout-contract.test.js quality/tests/module_isolation_v3_unified_contract.test.js
           echo APPFORGE_V547_R19_STATIC_POLICY=PASS
       - uses: actions/setup-java@v4
         with:
@@ -81,9 +79,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gradle -p android-app :app:testDebugUnitTest \\
-            -PappforgeCIMavenGcs=true \\
-            --no-daemon --no-configuration-cache --console=plain --stacktrace
+          gradle -p android-app :app:testDebugUnitTest -PappforgeCIMavenGcs=true --no-daemon --no-configuration-cache --console=plain --stacktrace
           echo APPFORGE_V547_R19_ANDROID_REGRESSION=PASS
       - name: Preserve no-device and no-artifact boundary
         shell: bash
