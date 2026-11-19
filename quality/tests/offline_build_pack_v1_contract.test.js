@@ -218,7 +218,12 @@ test(
 
     assert.match(
       screen,
-      /Onayla ve kur/
+      /Bağımsız kur ve test et/
+    );
+
+    assert.doesNotMatch(
+      screen,
+      /Onayla ve kur • mevcut sistem/
     );
 
     assert.match(
