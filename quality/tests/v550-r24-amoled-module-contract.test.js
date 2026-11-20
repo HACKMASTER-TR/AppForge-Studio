@@ -11,7 +11,7 @@ const recorder=read('android-app/app/src/main/java/com/appforge/studio/build/Dow
 const win=read('android-app/app/src/main/assets/device-build/install-windows-native-toolchain.sh');
 test('all AppForgeTheme screens use absolute black and fixed font scale',()=>{
   assert.match(theme,/Color\(0xFF000000\)/);
-  assert.match(theme,/CompositionLocalProvider\(LocalDensity provides Density\(physicalDensity.density, 1f\)\)/);
+  assert.match(theme,/LocalDensity provides pinnedDensity/);
   assert.match(read('android-app/app/src/main/res/values/themes.xml'),/windowBackground">#000000/);
 });
 test('APK special access is requested through Android settings, never forced',()=>{

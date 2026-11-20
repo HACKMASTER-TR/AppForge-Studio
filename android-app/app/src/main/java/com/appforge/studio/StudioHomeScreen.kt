@@ -69,10 +69,10 @@ private val HomeBackground =
     Color(0xFF000000)
 
 private val HomeCard =
-    Color(0xFF10181A)
+    Color(0xFF000000)
 
 private val HomeCardStrong =
-    Color(0xFF162126)
+    Color(0xFF000000)
 
 private val HomeBlue =
     Color(0xFF6EE7B7)

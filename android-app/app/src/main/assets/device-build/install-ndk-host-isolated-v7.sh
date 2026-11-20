@@ -156,6 +156,10 @@ libpath="$sysroot/usr/lib/llvm-18/lib:$sysroot/usr/lib/aarch64-linux-gnu:$sysroo
 [ -f "$sysroot/usr/lib/aarch64-linux-gnu/libedit.so.2" ] || {
  echo 'APPFORGE_NDK_HOST_LIBEDIT_MISSING_AT_RUNTIME' >&2;exit 66;
 }
+[ -f "$sysroot/usr/lib/aarch64-linux-gnu/libarchive.so.13" ] &&
+[ ! -L "$sysroot/usr/lib/aarch64-linux-gnu/libarchive.so.13" ] || {
+ echo 'APPFORGE_NDK_HOST_LIBARCHIVE_PRIVATE_RUNTIME_MISSING' >&2;exit 66;
+}
 export LD_LIBRARY_PATH="$libpath"
 export PATH="$prefix/bin:$PATH"
 export PROROOT_GUEST_EXE="$executable"
@@ -211,14 +215,31 @@ if(NOT EXISTS "${CMAKE_ROOT}/Modules/CMakeDetermineSystem.cmake")
 endif()
 CMAKE
 [ -s "$PREFIX/sysroot/usr/share/cmake-3.28/Modules/CMakeDetermineSystem.cmake" ] || exit 68
+# Check the pinned ELF loader's private-library resolution first.
+# This does not authorize installation; the actual CMAKE_ROOT probe below must pass.
+private_libpath="$PREFIX/sysroot/usr/lib/llvm-18/lib:$PREFIX/sysroot/usr/lib/aarch64-linux-gnu:$PREFIX/sysroot/lib/aarch64-linux-gnu"
+if ! /lib/ld-linux-aarch64.so.1 --library-path "$private_libpath" --list "$PREFIX/sysroot/usr/bin/cmake" >"$cmake_probe_dir/loader.log" 2>&1;then
+  sed -n '1,12p' "$cmake_probe_dir/loader.log" >&2
+  echo 'APPFORGE_NDK_HOST_CMAKE_PRIVATE_ELF_DEPENDENCY_FAILED' >&2
+  exit 68
+fi
+[ -f "$PREFIX/sysroot/usr/lib/aarch64-linux-gnu/libarchive.so.13" ] || {
+  echo 'APPFORGE_NDK_HOST_CMAKE_PRIVATE_LIBARCHIVE_MISSING' >&2;exit 68
+}
 for cmake_mode in loader-argv0 direct;do
-  if APPFORGE_CMAKE_PROBE_MODE="$cmake_mode" "$BIN/cmake" -P "$cmake_probe_dir/check.cmake" >"$cmake_probe_dir/log" 2>&1;then
+  if APPFORGE_CMAKE_PROBE_MODE="$cmake_mode" "$BIN/cmake" -P "$cmake_probe_dir/check.cmake" >"$cmake_probe_dir/log.$cmake_mode" 2>&1;then
     printf '%s\n' "$cmake_mode" > "$PREFIX/cmake-launch-mode-v9"
     break
   fi
+  echo "APPFORGE_NDK_HOST_CMAKE_MODE_REJECTED=$cmake_mode" >&2
 done
 if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
-  cat "$cmake_probe_dir/log" >&2
+  for cmake_mode in loader-argv0 direct;do
+    if [ -f "$cmake_probe_dir/log.$cmake_mode" ];then
+      echo "APPFORGE_NDK_HOST_CMAKE_PROBE_DIAGNOSTIC=$cmake_mode" >&2
+      sed -n '1,12p' "$cmake_probe_dir/log.$cmake_mode" >&2
+    fi
+  done
   echo 'APPFORGE_NDK_HOST_CMAKE_NO_VERIFIED_LAUNCHER' >&2
   exit 68
 fi
