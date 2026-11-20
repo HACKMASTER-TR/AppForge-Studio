@@ -469,6 +469,19 @@ require(!appforgeV9R2Isolated3UpgradeV550 ||
     "V550 in-place candidate requires original isolated3 identity and exclusive debug version flag."
 }
 
+// V551 R27: CI-only signed update over V550; original package/signature/data preserved.
+val appforgeV9R2Isolated3UpgradeV551 =
+    providers.gradleProperty("appforgeV9R2Isolated3UpgradeV551").orNull == "true"
+require(!appforgeV9R2Isolated3UpgradeV551 ||
+    (appforgeV9R2Isolated3Acceptance && !appforgeV9R2Isolated3Upgrade &&
+     !appforgeV9R2Isolated3UpgradeV542 && !appforgeV9R2Isolated3UpgradeV543 &&
+     !appforgeV9R2Isolated3UpgradeV544 && !appforgeV9R2Isolated3UpgradeV545 &&
+     !appforgeV9R2Isolated3UpgradeV546 && !appforgeV9R2Isolated3UpgradeV547 &&
+     !appforgeV9R2Isolated3UpgradeV548 && !appforgeV9R2Isolated3UpgradeV549 &&
+     !appforgeV9R2Isolated3UpgradeV550 && appforgeIntegrationDebugVersionCode == null)) {
+    "V551 in-place candidate requires original isolated3 identity and exclusive version flag."
+}
+
 android {
     namespace = "com.appforge.studio"
     compileSdk = 37
@@ -843,6 +856,12 @@ androidComponents {
     }
 
     onVariants(selector().withBuildType("debug")) { variant ->
+        if (appforgeV9R2Isolated3UpgradeV551) {
+            variant.outputs.forEach { output ->
+                output.versionCode.set(551)
+                output.versionName.set("5.0.51-isolated3-upgrade")
+            }
+        }
         if (appforgeV9R2Isolated3UpgradeV550) {
             variant.outputs.forEach { output ->
                 output.versionCode.set(550)
