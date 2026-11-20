@@ -497,6 +497,22 @@ require(!appforgeV9R2Isolated3UpgradeV551R29 ||
     "R29 update requires original isolated3 identity and exclusive debug version flag."
 }
 
+// V551 R30: signed, verifiable in-place upgrade from V551 R29 (versionCode 552).
+// Never change applicationId, the original signer, user data, module caches or R2.
+val appforgeV9R2Isolated3UpgradeV551R30 =
+    providers.gradleProperty("appforgeV9R2Isolated3UpgradeV551R30").orNull == "true"
+require(!appforgeV9R2Isolated3UpgradeV551R30 ||
+    (appforgeV9R2Isolated3Acceptance && !appforgeV9R2Isolated3Upgrade &&
+     !appforgeV9R2Isolated3UpgradeV542 && !appforgeV9R2Isolated3UpgradeV543 &&
+     !appforgeV9R2Isolated3UpgradeV544 && !appforgeV9R2Isolated3UpgradeV545 &&
+     !appforgeV9R2Isolated3UpgradeV546 && !appforgeV9R2Isolated3UpgradeV547 &&
+     !appforgeV9R2Isolated3UpgradeV548 && !appforgeV9R2Isolated3UpgradeV549 &&
+     !appforgeV9R2Isolated3UpgradeV550 && !appforgeV9R2Isolated3UpgradeV551 &&
+     !appforgeV9R2Isolated3UpgradeV551R29 &&
+     appforgeIntegrationDebugVersionCode == null)) {
+    "R30 requires original isolated3 identity and exclusive debug version flag."
+}
+
 android {
     namespace = "com.appforge.studio"
     compileSdk = 37
@@ -871,6 +887,12 @@ androidComponents {
     }
 
     onVariants(selector().withBuildType("debug")) { variant ->
+        if (appforgeV9R2Isolated3UpgradeV551R30) {
+            variant.outputs.forEach { output ->
+                output.versionCode.set(553)
+                output.versionName.set("5.0.51-r30-isolated3-upgrade")
+            }
+        }
         if (appforgeV9R2Isolated3UpgradeV551R29) {
             variant.outputs.forEach { output ->
                 output.versionCode.set(552)
