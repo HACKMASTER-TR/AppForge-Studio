@@ -513,6 +513,21 @@ require(!appforgeV9R2Isolated3UpgradeV551R30 ||
     "R30 requires original isolated3 identity and exclusive debug version flag."
 }
 
+// R31 original identity is opt-in and may NEVER use an isolated package suffix.
+// Do not publish unless the actual signing certificate matches the
+// pinned Google Cloud Android OAuth SHA-1. CI enforces the certificate.
+val appforgeR31OriginalIdentity =
+    providers.gradleProperty("appforgeR31OriginalIdentity").orNull == "true"
+require(!appforgeR31OriginalIdentity ||
+    (!appforgeV9R2Isolated3Acceptance && !appforgeV9R2Isolated2Acceptance &&
+     !appforgeV9R2Issue78Acceptance && !appforgeV9R2DeviceAcceptance &&
+     !appforgeProRecoveryTest && !appforgeProSecondDevice &&
+     !appforgeProProcessDeathTest && !appforgePlayIntegrityAcceptance &&
+     !appforgeV9R2Isolated3UpgradeV551R30 &&
+     appforgeIntegrationDebugVersionCode == null)) {
+    "R31 original package cannot combine with isolated/suffixed test identities."
+}
+
 android {
     namespace = "com.appforge.studio"
     compileSdk = 37
@@ -634,7 +649,15 @@ android {
 
     buildTypes {
         getByName("debug") {
-            ciDebugSigning?.let { signingConfig = it }
+            if (appforgeR31OriginalIdentity) {
+                // Original OAuth identity must use the existing original signer.
+                // Never fall back to a generated Android debug key.
+                signingConfig = requireNotNull(ciReleaseSigning) {
+                    "R31_ORIGINAL_SIGNER_REQUIRED: no matching release signing configuration"
+                }
+            } else {
+                ciDebugSigning?.let { signingConfig = it }
+            }
             if (appforgeV9R2Isolated3Acceptance) {
                 applicationIdSuffix = ".v9r2isolated3"
             } else if (appforgeV9R2Isolated2Acceptance) {
@@ -887,6 +910,12 @@ androidComponents {
     }
 
     onVariants(selector().withBuildType("debug")) { variant ->
+        if (appforgeR31OriginalIdentity) {
+            variant.outputs.forEach { output ->
+                output.versionCode.set(554)
+                output.versionName.set("5.0.52-r31-original-id-test")
+            }
+        }
         if (appforgeV9R2Isolated3UpgradeV551R30) {
             variant.outputs.forEach { output ->
                 output.versionCode.set(553)
