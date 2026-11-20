@@ -6,10 +6,10 @@ internal val TerminalBackground =
     Color(0xFF000000)
 
 internal val TerminalSurface =
-    Color(0xFF050505)
+    Color(0xFF000000)
 
 internal val TerminalSurfaceRaised =
-    Color(0xFF121720)
+    Color(0xFF000000)
 
 internal val TerminalPrimary =
     Color(0xFF43D7FF)

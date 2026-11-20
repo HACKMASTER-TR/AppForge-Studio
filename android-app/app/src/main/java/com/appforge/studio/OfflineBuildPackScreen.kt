@@ -48,6 +48,13 @@ internal object ModuleInstallOperations {
         val timed=elapsedTracker.observe(event,now)
         activeProgress.value=timed;updates.value=updates.value+(timed.moduleId to timed);persist()
     }
+    private fun saveTotalElapsed(context:android.content.Context, module:OfflineModuleId) {
+        val started=startedAt.value
+        if(started<=0L)return
+        val total=(android.os.SystemClock.elapsedRealtime()-started).coerceAtLeast(0L)
+        context.getSharedPreferences("appforge-module-duration-v551",android.content.Context.MODE_PRIVATE)
+            .edit().putLong(module.name,total).apply()
+    }
     @Volatile private var pauseRequested=false
     private var downloadControl=DownloadControl()
     @Synchronized fun start(context:android.content.Context, selected:OfflineModuleId, consent:Boolean) {
@@ -135,7 +142,7 @@ internal object ModuleInstallOperations {
                 // Preserve the manager's connection-wait/error state for this operation.
                 if(activeProgress.value?.takeIf { it.moduleId==selected }?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
                 publish(ModuleProgress(selected,activeProgress.value?.takeIf{it.moduleId==selected}?.operationId?:"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
-            } finally {stalledWatch.cancel();try{runCatching{persist()}}finally{activeProgress.value=null;busy.value=false;DownloadNetwork.restorePreference()}}
+            } finally {stalledWatch.cancel();saveTotalElapsed(context,selected);try{runCatching{persist()}}finally{activeProgress.value=null;busy.value=false;DownloadNetwork.restorePreference()}}
         }
     }
     /** Explicit test channel: do not change existing one-tap legacy installs. */
@@ -189,6 +196,7 @@ internal object ModuleInstallOperations {
                     else (e.message?:"İzole kurulum başarısız")+
                         " • Eski doğrulanmış modüller değiştirilmedi."))
             } finally {
+                saveTotalElapsed(context,selected)
                 activeProgress.value=null;busy.value=false;stopPending.value=false
                 DownloadNetwork.restorePreference()
             }
@@ -818,6 +826,12 @@ internal object ModuleInstallOperations {
                         } else if(!busy && completedInstall==selected) {
                             LinearProgressIndicator(progress={1f},modifier=Modifier.fillMaxWidth())
                             Text("Kurulum tamamlandı · %100")
+                        }
+                        val savedTotalMs=context.getSharedPreferences("appforge-module-duration-v551",android.content.Context.MODE_PRIVATE)
+                            .getLong(selected.name,-1L)
+                        if(!installingSelected && savedTotalMs>=0L) {
+                            Text("Son denemenin toplam süresi: ${savedTotalMs/60000L} dk ${(savedTotalMs/1000L)%60L} sn",
+                                style=MaterialTheme.typography.bodyMedium)
                         }
                         if(moduleDetails && !installingSelected && event!=null && event.elapsedMs>0L) {
                             val total=event.elapsedMs/1000L

@@ -57,6 +57,12 @@ internal fun SettingsHubScreen(
     onClearCache: () -> Unit,
     onOpenAdmin: () -> Unit
 ) {
+    var showStorage by remember { mutableStateOf(false) }
+    if(showStorage) {
+        androidx.activity.compose.BackHandler { showStorage=false }
+        AppForgeStorageDetailsScreen(onBack={showStorage=false})
+        return
+    }
     var versionTapCount by remember { mutableIntStateOf(0) }
     val configuration = LocalConfiguration.current
     val context = LocalContext.current
@@ -71,6 +77,7 @@ internal fun SettingsHubScreen(
     }
 
     val entries = listOf(
+        SettingsEntry("▣", "Depolama kullanımı", "Uygulama, veri, önbellek ve toplam alan", { showStorage=true }),
         SettingsEntry(
             "🌐",
             settingsT(languageCode, "language"),
@@ -215,7 +222,7 @@ private fun SettingsCardRow(entry: SettingsEntry) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF23344E)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF000000)),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Box(

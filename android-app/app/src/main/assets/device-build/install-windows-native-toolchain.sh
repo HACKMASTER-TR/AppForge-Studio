@@ -92,10 +92,17 @@ restore_signed_posix_driver() {
   }
   echo "APPFORGE_WINDOWS_${kind}_SIGNED_ARCHIVE_EXTRACTED=PASS"
   source_driver="$stage$target"
+  echo "APPFORGE_WINDOWS_${kind}_SIGNED_SOURCE_KIND=$([ -L "$source_driver" ] && echo LINK || ([ -f "$source_driver" ] && echo FILE || echo MISSING))"
   # Ubuntu can package the versioned executable without the unversioned
   # alternatives name. Synthesize only this exact GCC13 link when the signed
   # executable is present and byte-for-byte identical to installed bytes.
-  if [ "$kind" = gcc ] && [ ! -e "$source_driver" ] && [ ! -L "$source_driver" ];then
+  if [ "$kind" = gcc ];then
+    if [ -L "$source_driver" ];then
+      [ "$(readlink "$source_driver")" = x86_64-w64-mingw32-gcc-13-posix ] || {
+        echo 'APPFORGE_WINDOWS_gcc_SIGNED_SOURCE_LINK_UNTRUSTED' >&2
+        rm -rf -- "$stage";return 44
+      }
+    fi
     signed_versioned="$stage/usr/bin/x86_64-w64-mingw32-gcc-13-posix"
     installed_versioned=/usr/bin/x86_64-w64-mingw32-gcc-13-posix
     # A half-configured dpkg candidate can lack GCC13's real executable.
@@ -130,10 +137,12 @@ restore_signed_posix_driver() {
        [ -f "$installed_versioned" ] && [ ! -L "$installed_versioned" ] &&
        [ -x "$installed_versioned" ] &&
        cmp -s "$signed_versioned" "$installed_versioned";then
-      ln -s x86_64-w64-mingw32-gcc-13-posix "$source_driver" || {
-        echo "APPFORGE_WINDOWS_gcc_SIGNED_ALIAS_STAGE_FAILED" >&2;
-        rm -rf -- "$stage";return 44;
-      }
+      if [ ! -e "$source_driver" ] && [ ! -L "$source_driver" ];then
+        ln -s x86_64-w64-mingw32-gcc-13-posix "$source_driver" || {
+          echo "APPFORGE_WINDOWS_gcc_SIGNED_ALIAS_STAGE_FAILED" >&2
+          rm -rf -- "$stage";return 44
+        }
+      fi
       echo 'APPFORGE_WINDOWS_gcc_SIGNED_VERSIONED_DRIVER_VERIFIED'
     fi
   fi

@@ -375,6 +375,7 @@ private fun ModernHomeActionCard(
     modifier: Modifier
 ) {
     ElevatedCard(
+        colors=CardDefaults.elevatedCardColors(containerColor=Color.Black),
         modifier =
             modifier.clickable {
                 onClick()
@@ -425,6 +426,7 @@ internal fun OwnerAdminCard(
     onAdminClick: () -> Unit
 ) {
     ElevatedCard(
+        colors=CardDefaults.elevatedCardColors(containerColor=Color.Black),
         modifier =
             Modifier.fillMaxWidth(),
         shape =
@@ -512,6 +514,7 @@ internal fun EmptyProjectCard(
     text: String
 ) {
     ElevatedCard(
+        colors=CardDefaults.elevatedCardColors(containerColor=Color.Black),
         modifier =
             Modifier.fillMaxWidth(),
         shape =
@@ -546,6 +549,7 @@ internal fun ModernProjectCard(
     onClick: () -> Unit
 ) {
     ElevatedCard(
+        colors=CardDefaults.elevatedCardColors(containerColor=Color.Black),
         modifier =
             Modifier
                 .fillMaxWidth()
@@ -723,14 +727,7 @@ internal fun ModernProCard(
             RoundedCornerShape(
                 24.dp
             ),
-        colors =
-            CardDefaults
-                .elevatedCardColors(
-                    containerColor =
-                        Color(
-                            0xFF080808
-                        )
-                ),
+
         elevation =
             CardDefaults
                 .elevatedCardElevation(
@@ -755,7 +752,7 @@ internal fun ModernProCard(
                     ),
                 color =
                     Color(
-                        0xFF2A2500
+                        0xFF000000
                     )
             ) {
                 Text(
