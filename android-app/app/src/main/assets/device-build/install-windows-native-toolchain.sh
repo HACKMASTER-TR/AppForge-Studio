@@ -147,7 +147,9 @@ restore_signed_posix_driver() {
     fi
   fi
   tmp="/usr/bin/.appforge-${kind}-posix.$$"
-  [ ! -e "$tmp" ] && [ ! -L "$tmp" ] || { rm -rf -- "$stage";return 43; }
+  [ ! -e "$tmp" ] && [ ! -L "$tmp" ] || {
+    echo "APPFORGE_WINDOWS_${kind}_TMP_TARGET_ALREADY_EXISTS" >&2;rm -rf -- "$stage";return 43;
+  }
   if [ -L "$source_driver" ]; then
     link=$(readlink "$source_driver") || { rm -rf -- "$stage";return 44; }
     case "$kind:$link" in
@@ -159,16 +161,33 @@ restore_signed_posix_driver() {
       rm -rf -- "$stage";return 44;
     }
     ln -s "$link" "$tmp" || { rm -rf -- "$stage";return 44; }
-  elif [ -f "$source_driver" ] && [ -x "$source_driver" ]; then
-    command -v od >/dev/null 2>&1 || { rm -rf -- "$stage";return 44; }
-    header=$(od -An -tx1 -N6 "$source_driver" | tr -d ' \n') || { rm -rf -- "$stage";return 44; }
-    machine=$(od -An -tx1 -j18 -N2 "$source_driver" | tr -d ' \n') || { rm -rf -- "$stage";return 44; }
-    [ "$header" = 7f454c460201 ] && [ "$machine" = b700 ] || {
-      echo "APPFORGE_WINDOWS_${kind}_SIGNED_ELF_ARCH_MISMATCH" >&2
-      rm -rf -- "$stage";return 44;
+  elif [ -f "$source_driver" ] && [ -x "$source_driver" ] && [ ! -L "$source_driver" ]; then
+    command -v od >/dev/null 2>&1 || { echo "APPFORGE_WINDOWS_${kind}_OD_UNAVAILABLE" >&2;rm -rf -- "$stage";return 44; }
+    magic=$(od -An -tx1 -N2 "$source_driver" | tr -d ' \n') || { rm -rf -- "$stage";return 44; }
+    if [ "$magic" = 2321 ];then
+      # Script is authenticated by the exact pinned Ubuntu .deb above.
+      # Only a simple POSIX shell shebang is permitted as a driver.
+      first_line=$(sed -n '1p' "$source_driver")
+      case "$first_line" in
+        '#!/bin/sh'|'#!/bin/sh -e')
+          echo "APPFORGE_WINDOWS_${kind}_SIGNED_POSIX_SCRIPT=VERIFIED";;
+        *) echo "APPFORGE_WINDOWS_${kind}_SIGNED_SCRIPT_INTERPRETER_DENIED" >&2;rm -rf -- "$stage";return 44;;
+      esac
+    else
+      header=$(od -An -tx1 -N6 "$source_driver" | tr -d ' \n') || { rm -rf -- "$stage";return 44; }
+      machine=$(od -An -tx1 -j18 -N2 "$source_driver" | tr -d ' \n') || { rm -rf -- "$stage";return 44; }
+      [ "$header" = 7f454c460201 ] && [ "$machine" = b700 ] || {
+        echo "APPFORGE_WINDOWS_${kind}_SIGNED_ELF_ARCH_MISMATCH" >&2
+        rm -rf -- "$stage";return 44;
+      }
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_ARM64_ELF=VERIFIED"
+    fi
+    cp -p "$source_driver" "$tmp" || {
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_COPY_FAILED" >&2;rm -rf -- "$stage";return 44;
     }
-    cp -p "$source_driver" "$tmp" || { rm -rf -- "$stage";return 44; }
-    cmp -s "$source_driver" "$tmp" || { rm -f -- "$tmp";rm -rf -- "$stage";return 44; }
+    cmp -s "$source_driver" "$tmp" || {
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_COPY_MISMATCH" >&2;rm -f -- "$tmp";rm -rf -- "$stage";return 44;
+    }
   else
     echo "APPFORGE_WINDOWS_${kind}_AUTHENTIC_DRIVER_MISSING_IN_SIGNED_DEB" >&2
     rm -rf -- "$stage";return 44
@@ -179,7 +198,9 @@ restore_signed_posix_driver() {
     rm -f -- "$tmp";rm -rf -- "$stage";return 44
   fi
   rm -rf -- "$stage"
-  [ -x "$target" ] || return 44
+  [ -x "$target" ] || {
+    echo "APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_NOT_EXECUTABLE" >&2;return 44;
+  }
   echo "APPFORGE_WINDOWS_${kind}_SIGNED_DRIVER_RESTORED=PASS"
 }
 repair_mingw_links() {
