@@ -26,6 +26,15 @@ test('Samsung reference width and all black palette are applied globally',()=>{
   assert.match(theme,/Density\(physicalDensity.density \* displayScale, 1f\)/);
   assert.match(theme,/Color\(0xFF000000\)/);
 });
+test('Material 3 typography pins all 15 font families without unsupported constructor parameter',()=>{
+  assert.doesNotMatch(theme,/Typography\(defaultFontFamily/);
+  assert.match(theme,/Typography\(\)\.let \{ base ->/);
+  for(const style of ['displayLarge','displayMedium','displaySmall',
+    'headlineLarge','headlineMedium','headlineSmall','titleLarge','titleMedium','titleSmall',
+    'bodyLarge','bodyMedium','bodySmall','labelLarge','labelMedium','labelSmall']) {
+    assert.ok(theme.includes(style+' = base.'+style+'.copy(fontFamily = FontFamily.SansSerif)'),style);
+  }
+});
 test('Android own-package storage stats and module total elapsed are read-only',()=>{
   assert.match(settings,/AppForgeStorageDetailsScreen/);
   assert.match(storage,/queryStatsForPackage\(StorageManager.UUID_DEFAULT/);
