@@ -1,0 +1,56 @@
+name: R31 Original Android Identity and OAuth Signer Gate (No APK)
+on:
+  push:
+    branches:
+      - codex/r31-original-identity-20261120-99e3
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  original-identity-gate:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify immutable R31 application identity source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 quality/tools/verify-r31-original-identity.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Require original OAuth SHA-1 certificate from existing release signer
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.APPFORGE_RELEASE_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.APPFORGE_RELEASE_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$STORE_PASSWORD" ]; then
+            echo APPFORGE_R31_SIGNING_SECRET_MISSING
+            exit 41
+          fi
+          keyfile="$RUNNER_TEMP/appforge-r31-original.jks"
+          certfile="$RUNNER_TEMP/appforge-r31-original.der"
+          trap 'rm -f "$keyfile" "$certfile"' EXIT
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$keyfile"
+          keytool -exportcert -alias appforge-release -keystore "$keyfile" \
+            -storepass "$STORE_PASSWORD" -file "$certfile" >/dev/null 2>&1 || {
+            echo APPFORGE_R31_ORIGINAL_SIGNER_UNAVAILABLE
+            exit 42
+          }
+          actual="$(sha1sum "$certfile" | cut -d' ' -f1 | tr '[:lower:]' '[:upper:]')"
+          expected='990EF33B990FD578E9DCE724348196F99B8807BF'
+          if [ "$actual" != "$expected" ]; then
+            echo APPFORGE_R31_ORIGINAL_SIGNER_SHA1_MISMATCH
+            echo APPFORGE_R31_APK_BUILD=BLOCKED
+            exit 43
+          fi
+          echo APPFORGE_R31_ORIGINAL_SIGNER_SHA1=PASS
+          echo APPFORGE_R31_APK_BUILD=NOT_STARTED_BY_PREFLIGHT
