@@ -90,6 +90,7 @@ restore_signed_posix_driver() {
     echo "APPFORGE_WINDOWS_${kind}_ARCHIVE_EXTRACT_FAILED" >&2;
     rm -rf -- "$stage";return 44;
   }
+  echo "APPFORGE_WINDOWS_${kind}_SIGNED_ARCHIVE_EXTRACTED=PASS"
   source_driver="$stage$target"
   # Ubuntu can package the versioned executable without the unversioned
   # alternatives name. Synthesize only this exact GCC13 link when the signed
@@ -97,6 +98,34 @@ restore_signed_posix_driver() {
   if [ "$kind" = gcc ] && [ ! -e "$source_driver" ] && [ ! -L "$source_driver" ];then
     signed_versioned="$stage/usr/bin/x86_64-w64-mingw32-gcc-13-posix"
     installed_versioned=/usr/bin/x86_64-w64-mingw32-gcc-13-posix
+    # A half-configured dpkg candidate can lack GCC13's real executable.
+    # Recover only its exact signed, dpkg-owned, version-pinned ARM64 ELF.
+    if [ -f "$signed_versioned" ] && [ -x "$signed_versioned" ] &&
+       [ ! -x "$installed_versioned" ]; then
+      [ ! -L "$installed_versioned" ] || {
+        echo "APPFORGE_WINDOWS_gcc_VERSIONED_SYMLINK_UNTRUSTED" >&2;rm -rf -- "$stage";return 44;
+      }
+      original_owner=$(dpkg-query -S "$installed_versioned" 2>/dev/null || :)
+      [ "$original_owner" = "$pkg: $installed_versioned" ] || {
+        echo "APPFORGE_WINDOWS_gcc_VERSIONED_OWNER_UNTRUSTED" >&2;rm -rf -- "$stage";return 44;
+      }
+      signed_header=$(od -An -tx1 -N6 "$signed_versioned" | tr -d ' \n')
+      signed_machine=$(od -An -tx1 -j18 -N2 "$signed_versioned" | tr -d ' \n')
+      [ "$signed_header" = 7f454c460201 ] && [ "$signed_machine" = b700 ] || {
+        echo "APPFORGE_WINDOWS_gcc_VERSIONED_ELF_UNTRUSTED" >&2;rm -rf -- "$stage";return 44;
+      }
+      signed_tmp="/usr/bin/.appforge-gcc13-posix.$$"
+      [ ! -e "$signed_tmp" ] && [ ! -L "$signed_tmp" ] || {
+        rm -rf -- "$stage";return 44;
+      }
+      cp -p "$signed_versioned" "$signed_tmp" && cmp -s "$signed_versioned" "$signed_tmp" || {
+        rm -f -- "$signed_tmp";rm -rf -- "$stage";return 44;
+      }
+      mv -T "$signed_tmp" "$installed_versioned" || {
+        rm -f -- "$signed_tmp";rm -rf -- "$stage";return 44;
+      }
+      echo "APPFORGE_WINDOWS_gcc_SIGNED_VERSIONED_DRIVER_RESTORED=PASS"
+    fi
     if [ -f "$signed_versioned" ] && [ -x "$signed_versioned" ] &&
        [ -f "$installed_versioned" ] && [ ! -L "$installed_versioned" ] &&
        [ -x "$installed_versioned" ] &&

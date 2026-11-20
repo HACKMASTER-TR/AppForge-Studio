@@ -230,8 +230,11 @@ internal object DownloadCoordinator {
         }
         if(old?.downloadState==state && now-persistedAt<1000)return
         val bound=targets[p.operationId+":"+value.artifactId]
-        // External observers have no pinned source identity; journal them as observation-only records.
-        val completedBytes=if(value.verificationStatus=="SHA256_VERIFIED" && bound!=null)p.bytesTotal?:old?.expectedBytes?:p.bytesDownloaded else p.bytesDownloaded
+        // Unbound progress has no resumable archive and stays only in memory.
+        // An unbound failure retains a redacted, zero-byte diagnostic entry;
+        // it is safely evictable and never grants install or resume authority.
+        if (bound == null && state != DownloadState.FAILED) return
+        val completedBytes=if(bound==null)0L else if(value.verificationStatus=="SHA256_VERIFIED")p.bytesTotal?:old?.expectedBytes?:p.bytesDownloaded else p.bytesDownloaded
         val row=ArtifactDownloadRecord(p.operationId,p.moduleId,artifact,value.artifactVersion.takeIf{it.matches(Regex("[A-Za-z0-9._+-]{1,100}"))}?:"observed",source,if(bound!=null)artifact else null,p.bytesTotal?:old?.expectedBytes,if(value.verificationStatus=="SHA256_VERIFIED")completedBytes else minOf(old?.verifiedPartialBytes?:0,p.bytesDownloaded),state,value.resumeCapability,DownloadNetwork.policy,retryCounts[p.operationId+":"+artifact]?:old?.retryCount?:0,old?.createdAt?:now,now,if(value.verificationStatus=="SHA256_VERIFIED")"SHA256_VERIFIED" else "UNVERIFIED",bound,OperationDiagnostics.persistentError(p.errorCode),PersistentOperationGraph.moduleId(operationParents[p.operationId+":"+p.moduleId.name]?:p.operationId,p.moduleId),completedBytes)
         // An operation id identifies an attempt, not a different archive.
         // On hand-off between attempts, accept old progress only after rehashing

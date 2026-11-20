@@ -5269,6 +5269,33 @@ private fun AppForgeApp() {
 
 
     AppForgeTheme {
+        // V550: request unknown-source APK permission at each fresh launch until approved.
+        // REQUEST_INSTALL_PACKAGES is already declared; this special access has no grant dialog API.
+        var unknownApkPromptDismissed by rememberSaveable { mutableStateOf(false) }
+        val canInstallApks = Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+            context.packageManager.canRequestPackageInstalls()
+        if (!canInstallApks && !unknownApkPromptDismissed) {
+            AlertDialog(
+                onDismissRequest = { unknownApkPromptDismissed = true },
+                title = { Text("APK yükleme izni gerekli") },
+                text = { Text("AppForge tarafından oluşturulan APK'ları bu telefona kurabilmek için Android ayarlarından 'Bu kaynaktan izin ver' seçeneğini açın. Android bu izni sizin onayınız olmadan vermez.") },
+                confirmButton = { TextButton(onClick = {
+                    val settingsIntent = Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:${context.packageName}")
+                    )
+                    runCatching { context.startActivity(settingsIntent) }
+                        .onFailure {
+                            runCatching { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.parse("package:${context.packageName}"))) }
+                        }
+                    unknownApkPromptDismissed = true
+                }) { Text("İZİN AYARLARINI AÇ") } },
+                dismissButton = { TextButton(onClick = { unknownApkPromptDismissed = true }) {
+                    Text("APK KURMADAN DEVAM ET")
+                } }
+            )
+        }
 
         /*
          * HOME_EXIT_CONFIRMATION_V1

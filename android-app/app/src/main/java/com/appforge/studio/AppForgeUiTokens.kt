@@ -5,17 +5,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 internal val Bg =
-    Color(0xFF050B18)
+    Color(0xFF000000)
 
 internal val Card2 =
-    Color(0xFF0C1628)
+    Color(0xFF000000)
 
 internal val CardRaised =
-    Color(0xFF111E34)
+    Color(0xFF121720)
 
 internal val Accent =
     Color(0xFF43D7FF)
@@ -97,6 +100,9 @@ private val AppForgeShapes =
 internal fun AppForgeTheme(
     content: @Composable () -> Unit
 ) {
+    val physicalDensity = LocalDensity.current
+    // V550: Samsung reference density-independent native layout; ignore OEM font scale.
+    CompositionLocalProvider(LocalDensity provides Density(physicalDensity.density, 1f)) {
     MaterialTheme(
         colorScheme =
             AppForgeDarkColors,
@@ -105,4 +111,5 @@ internal fun AppForgeTheme(
         content =
             content
     )
+    }
 }

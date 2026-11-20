@@ -50,15 +50,26 @@ class DownloadHistoryV84Test {
     @Test fun fullHistoryDropsOnlyZeroByteTerminalRows() {
         val old=(0 until 127).map{row(it,state=DownloadState.RECOVERY_REQUIRED)}
         val critical=row(127,verified=5)
-        val rows=DownloadHistoryV84.upsert(old+critical,row(200))
+        val rows=DownloadHistoryV84.upsert(old+critical,row(200),limit=128)
         assertEquals(128,rows.size)
         assertTrue(rows.contains(critical))
         assertTrue(rows.any{it.artifactId==row(200).artifactId})
     }
     @Test fun cannotEvictVerifiedPartialsAtCapacity() {
         val old=(0 until 128).map{row(it,verified=8)}
-        val fail=assertThrows(IllegalStateException::class.java){DownloadHistoryV84.upsert(old,row(200))}
+        val fail=assertThrows(IllegalStateException::class.java){DownloadHistoryV84.upsert(old,row(200),limit=128)}
         assertTrue(fail.message!!.contains("korunması gereken"))
+    }
+    @Test fun telemetryWithoutPinnedArtifactIsNotRecoveredIntoResumableJournal() {
+        val valid=row(1,verified=8)
+        val telemetry=row(2,verified=0).copy(stagingIdentity=null,expectedSha256=null,downloadedBytes=14)
+        assertEquals(listOf(valid),DownloadHistoryV84.compactRecovered(listOf(telemetry,valid)))
+    }
+    @Test fun fiveHundredProtectedPartialsCanCoexistWithoutEviction() {
+        val rows=(0 until 500).map { row(it,verified=8) }
+        val result=DownloadHistoryV84.upsert(rows,row(501))
+        assertEquals(501,result.size)
+        assertTrue(result.contains(rows.first()))
     }
     @Test fun prefixRehashDoesNotTrustAJournalCounterAlone() {
         val dir=Files.createTempDirectory("v84-prefix").toFile()

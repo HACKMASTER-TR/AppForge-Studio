@@ -19,8 +19,8 @@ internal object DownloadHistoryV84 {
     /** Deduplicates attempts of the *same* pinned archive/target. Never evicts a
      * verified partial or an in-flight transfer simply to meet a capacity limit.
      * Files and SHA sidecars are not modified by this metadata transform. */
-    fun upsert(old:List<ArtifactDownloadRecord>,candidate:ArtifactDownloadRecord,limit:Int=128):List<ArtifactDownloadRecord> {
-        require(limit in 1..128)
+    fun upsert(old:List<ArtifactDownloadRecord>,candidate:ArtifactDownloadRecord,limit:Int=512):List<ArtifactDownloadRecord> {
+        require(limit in 1..512)
         val result=old.filterNot { sameArtifact(it,candidate) || completed(it) }.toMutableList()
         if(!completed(candidate))result.add(candidate)
         while(result.size>limit) {
@@ -38,6 +38,9 @@ internal object DownloadHistoryV84 {
     fun compactRecovered(rows:List<ArtifactDownloadRecord>):List<ArtifactDownloadRecord> {
         val kept=mutableListOf<ArtifactDownloadRecord>()
         for(row in rows) {
+            // Legacy telemetry-only records cannot resume: no pinned file and no source SHA.
+            // Never prune any record with a concrete staging identity or expected digest.
+            if (row.stagingIdentity == null && row.expectedSha256 == null) continue
             val i=kept.indexOfFirst{sameArtifact(it,row)}
             if(i<0){kept.add(row);continue}
             val prior=kept[i]
