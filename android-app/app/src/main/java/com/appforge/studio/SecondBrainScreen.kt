@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -108,7 +108,7 @@ fun SecondBrainScreen(
             snapshot ==
                 null
         ) {
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -194,7 +194,7 @@ private fun BrainCard(
     title: String,
     lines: List<String>
 ) {
-    Card(
+    OutlinedCard(
         modifier =
             Modifier
                 .fillMaxWidth()

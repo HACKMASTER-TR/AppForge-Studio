@@ -1,6 +1,8 @@
 package com.appforge.studio.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,9 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -101,6 +103,7 @@ internal fun ModernHomeHero(
                             )
                     )
                 )
+                .border(1.dp, Color(0xFF43D7FF), RoundedCornerShape(28.dp))
                 .padding(22.dp)
     ) {
         Column(
@@ -108,6 +111,7 @@ internal fun ModernHomeHero(
                 Arrangement.spacedBy(16.dp)
         ) {
             Surface(
+                border = BorderStroke(1.dp, Color(0xFF43D7FF)),
                 shape =
                     RoundedCornerShape(999.dp),
                 color =
@@ -223,6 +227,7 @@ private fun HomeStat(
     modifier: Modifier
 ) {
     Surface(
+        border = BorderStroke(1.dp, Color(0xFF43D7FF)),
         modifier = modifier,
         shape =
             RoundedCornerShape(18.dp),
@@ -274,6 +279,7 @@ private fun OfflinePackHomeStat(
      * Replaces the old PRO/Plan statistic with the requested direct entry.
      */
     Surface(
+        border = BorderStroke(1.dp, Color(0xFF43D7FF)),
         modifier =
             modifier.clickable {
                 onClick()
@@ -374,8 +380,8 @@ private fun ModernHomeActionCard(
     onClick: () -> Unit,
     modifier: Modifier
 ) {
-    ElevatedCard(
-        colors=CardDefaults.elevatedCardColors(containerColor=Color.Black),
+    OutlinedCard(
+        colors=CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         modifier =
             modifier.clickable {
                 onClick()
@@ -425,8 +431,8 @@ internal fun OwnerAdminCard(
     onClick: () -> Unit,
     onAdminClick: () -> Unit
 ) {
-    ElevatedCard(
-        colors=CardDefaults.elevatedCardColors(containerColor=Color.Black),
+    OutlinedCard(
+        colors=CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         modifier =
             Modifier.fillMaxWidth(),
         shape =
@@ -513,8 +519,8 @@ internal fun HomeSectionTitle(
 internal fun EmptyProjectCard(
     text: String
 ) {
-    ElevatedCard(
-        colors=CardDefaults.elevatedCardColors(containerColor=Color.Black),
+    OutlinedCard(
+        colors=CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         modifier =
             Modifier.fillMaxWidth(),
         shape =
@@ -548,8 +554,8 @@ internal fun ModernProjectCard(
     project: SavedProject,
     onClick: () -> Unit
 ) {
-    ElevatedCard(
-        colors=CardDefaults.elevatedCardColors(containerColor=Color.Black),
+    OutlinedCard(
+        colors=CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         modifier =
             Modifier
                 .fillMaxWidth()
@@ -568,6 +574,7 @@ internal fun ModernProjectCard(
                 Arrangement.spacedBy(12.dp)
         ) {
             Surface(
+                border = BorderStroke(1.dp, Color(0xFF43D7FF)),
                 shape =
                     RoundedCornerShape(16.dp),
                 color =
@@ -716,7 +723,7 @@ internal fun ModernProCard(
     proUnlocked: Boolean,
     onClick: () -> Unit
 ) {
-    ElevatedCard(
+    OutlinedCard(
         modifier =
             Modifier
                 .fillMaxWidth()
@@ -746,6 +753,7 @@ internal fun ModernProCard(
                 Alignment.CenterVertically
         ) {
             Surface(
+                border = BorderStroke(1.dp, Color(0xFF43D7FF)),
                 shape =
                     RoundedCornerShape(
                         16.dp

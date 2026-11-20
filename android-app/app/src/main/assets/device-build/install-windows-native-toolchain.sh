@@ -197,9 +197,35 @@ restore_signed_posix_driver() {
     echo "APPFORGE_WINDOWS_${kind}_ATOMIC_REPLACE_FAILED" >&2
     rm -f -- "$tmp";rm -rf -- "$stage";return 44
   fi
+  # An interrupted PRoot/dpkg state can preserve the signed bytes while
+  # losing executable permission on the versioned alternatives path.
+  # Restore x-bit only after independently comparing the installed file to
+  # the exact authenticated archive bytes and checking package ownership.
+  if [ ! -x "$target" ];then
+    installed_owner=$(dpkg-query -S "$target" 2>/dev/null || :)
+    if [ "$installed_owner" = "$pkg: $target" ] &&
+       [ -f "$target" ] && [ ! -L "$target" ] &&
+       [ -f "$source_driver" ] && [ ! -L "$source_driver" ] &&
+       cmp -s "$source_driver" "$target";then
+      echo "APPFORGE_WINDOWS_${kind}_RESTORED_SIGNED_BYTES=VERIFIED"
+      chmod 0755 "$target" || {
+        echo "APPFORGE_WINDOWS_${kind}_RESTORED_CHMOD_FAILED" >&2
+        rm -rf -- "$stage";return 44
+      }
+    else
+      echo "APPFORGE_WINDOWS_${kind}_RESTORED_BYTES_OR_OWNERSHIP_MISMATCH" >&2
+      rm -rf -- "$stage";return 44
+    fi
+  fi
   rm -rf -- "$stage"
   [ -x "$target" ] || {
-    echo "APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_NOT_EXECUTABLE" >&2;return 44;
+    echo "APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_NOT_EXECUTABLE" >&2
+    file -L "$target" >&2 || :
+    return 44
+  }
+  "$target" --version >/dev/null || {
+    echo "APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_EXEC_PROBE_FAILED" >&2
+    return 44
   }
   echo "APPFORGE_WINDOWS_${kind}_SIGNED_DRIVER_RESTORED=PASS"
 }

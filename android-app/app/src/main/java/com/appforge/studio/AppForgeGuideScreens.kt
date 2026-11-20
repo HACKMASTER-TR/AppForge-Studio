@@ -55,9 +55,9 @@ internal fun ExpandableGuideCard(
     body: String
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Card(
+    OutlinedCard(
         onClick = { expanded = !expanded },
-        colors = CardDefaults.cardColors(containerColor = Card2),
+        colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape = RoundedCornerShape(22.dp)
     ) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
@@ -162,8 +162,8 @@ private fun GuideStepCard(
     val guideCardCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Card2),
+    OutlinedCard(
+        colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape = RoundedCornerShape(if (guideCardCompact) 18.dp else 22.dp)
     ) {
         Column(

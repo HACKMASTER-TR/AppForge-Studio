@@ -653,7 +653,7 @@ internal object ModuleInstallOperations {
     Scaffold(topBar={TopAppBar(title={Text("Birleşik Modül Merkezi V9")},navigationIcon={TextButton(onClick=onBack){Text("Geri")}})}){padding->
         LazyColumn(modifier=Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             if(section=="modules")item {
-                Card(modifier=Modifier.fillMaxWidth()) {
+                OutlinedCard(modifier=Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Text("Mevcut modüller",style=MaterialTheme.typography.titleMedium)
                         Text("Önceden kurulanlar dosya ve bütünlük kayıtlarından algılanır; bu kontrol indirme yapmaz.",style=MaterialTheme.typography.bodySmall)
@@ -694,7 +694,7 @@ internal object ModuleInstallOperations {
                 val canInstall=recovered && chosen==null && !installed && !protectedCandidate &&
                     !busy && !preparing && !prefetchBusy && !recoveryBusy && unsupported==null
 
-                Card(Modifier.fillMaxWidth()) {
+                OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(
                         Modifier.padding(16.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)

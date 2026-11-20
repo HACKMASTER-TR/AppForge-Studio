@@ -38,7 +38,7 @@ internal fun RuntimeStorageDashboard(onChanged:()->Unit) {
             finally {work=null}
         }
     }
-    Card(Modifier.fillMaxWidth()) {Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+    OutlinedCard(Modifier.fillMaxWidth()) {Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text("Disk alanı • güvenli depolama",style=MaterialTheme.typography.titleMedium)
         Text("Kurulum engellense de mevcut HAZIR modüller, dosyalar ve çevrimdışı derleme kullanılabilir.")
         report?.let { r ->

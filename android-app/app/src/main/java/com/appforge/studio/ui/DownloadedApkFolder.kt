@@ -1176,7 +1176,7 @@ internal fun DownloadedApkFolderScreen(
                             record.id in
                                 saving
 
-                        Card(
+                        OutlinedCard(
                             modifier =
                                 Modifier.fillMaxWidth(),
                             shape =
@@ -1445,7 +1445,7 @@ internal fun DownloadedApkFolderScreen(
                 ) {
                     artifact ->
 
-                    Card(
+                    OutlinedCard(
                         modifier =
                             Modifier.fillMaxWidth(),
                         shape =

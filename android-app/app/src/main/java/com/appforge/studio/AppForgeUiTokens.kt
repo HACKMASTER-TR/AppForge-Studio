@@ -9,9 +9,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalConfiguration
-import android.content.res.Configuration
-import kotlin.math.roundToInt
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -84,8 +81,16 @@ private val AppForgeDarkColors =
         onSurfaceVariant =
             TextSecondary,
 
-        outline =
-            Color(0xFF294263),
+        outline = Accent,
+        outlineVariant = Accent,
+        surfaceTint = Bg,
+        surfaceContainerLowest = Bg,
+        surfaceContainerLow = Bg,
+        surfaceContainer = Bg,
+        surfaceContainerHigh = Bg,
+        surfaceContainerHighest = Bg,
+        surfaceBright = Bg,
+        surfaceDim = Bg,
 
         error =
             Color(0xFFFF6B82)
@@ -125,24 +130,12 @@ private val AppForgeShapes =
 internal fun AppForgeTheme(
     content: @Composable () -> Unit
 ) {
+    // Use real device width for responsive layout. Override only user font scale,
+    // not screen dp, display density or system Configuration; artificial 412dp
+    // scaling enlarged text and caused overflow on narrower Redmi devices.
     val physicalDensity = LocalDensity.current
-    val sourceConfiguration = LocalConfiguration.current
-    val compactPortrait = sourceConfiguration.orientation == Configuration.ORIENTATION_PORTRAIT &&
-        sourceConfiguration.screenWidthDp in 250..599
-    val targetWidthDp = if(compactPortrait) 412 else sourceConfiguration.screenWidthDp.coerceAtLeast(1)
-    val displayScale = sourceConfiguration.screenWidthDp.coerceAtLeast(1).toFloat() / targetWidthDp
-    val pinnedDensity = Density(physicalDensity.density * displayScale, 1f)
-    val pinnedConfiguration = Configuration(sourceConfiguration).apply {
-        if(compactPortrait) {
-            screenWidthDp = targetWidthDp
-            screenHeightDp = (sourceConfiguration.screenHeightDp / displayScale).roundToInt()
-        }
-    }
-    // All Compose typography and compact-breakpoints use the SAME S24 layout baseline.
-    CompositionLocalProvider(
-        LocalDensity provides pinnedDensity,
-        LocalConfiguration provides pinnedConfiguration
-    ) {
+    val pinnedDensity = Density(physicalDensity.density, 1f)
+    CompositionLocalProvider(LocalDensity provides pinnedDensity) {
     MaterialTheme(
         colorScheme =
             AppForgeDarkColors,

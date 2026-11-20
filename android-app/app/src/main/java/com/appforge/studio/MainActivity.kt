@@ -7905,7 +7905,7 @@ private fun CreateModeSelectionScreen(
             Alignment.CenterHorizontally
     ) {
         item {
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -7915,9 +7915,7 @@ private fun CreateModeSelectionScreen(
                         if (compact) 24.dp else 30.dp
                     ),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor = Color(0xFF0E1519)
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 Column(
                     modifier =
@@ -8182,7 +8180,7 @@ private fun CreateModeCard(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape =
@@ -8190,9 +8188,7 @@ private fun CreateModeCard(
                 if (compact) 18.dp else 24.dp
             ),
         colors =
-            CardDefaults.cardColors(
-                containerColor = Color(0xFF171E22)
-            )
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Row(
             modifier =
@@ -8480,7 +8476,7 @@ private fun QuickCreateScreenContent(
                 )
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -8569,7 +8565,7 @@ private fun QuickCreateScreenContent(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -8717,7 +8713,7 @@ private fun QuickCreateScreenContent(
             }
 
                 item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -8781,7 +8777,7 @@ private fun QuickCreateScreenContent(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -8884,7 +8880,7 @@ private fun QuickCreateScreenContent(
                     verticalArrangement =
                         Arrangement.spacedBy(if (quickCompact) 8.dp else 12.dp)
                 ) {
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier.fillMaxWidth()
                 ) {
@@ -8942,7 +8938,7 @@ private fun QuickCreateScreenContent(
                     }
                 }
 
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier.fillMaxWidth()
                 ) {
@@ -9000,7 +8996,7 @@ private fun QuickCreateScreenContent(
                     }
                 }
 
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier.fillMaxWidth()
                 ) {
@@ -9094,7 +9090,7 @@ private fun QuickCreateScreenContent(
                     }
                 }
 
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier.fillMaxWidth()
                 ) {
@@ -10310,7 +10306,7 @@ private fun AppPreviewScreen(
                 )
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -10492,7 +10488,7 @@ private fun AppPreviewScreen(
                                     .toFloat()
                             }
 
-                        Card(
+                        OutlinedCard(
                             colors =
                                 CardDefaults
                                     .cardColors(
@@ -10832,7 +10828,7 @@ private fun InspectorHeader(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         colors =
             CardDefaults
                 .cardColors(
@@ -10891,7 +10887,7 @@ private fun InspectorLine(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         colors =
             CardDefaults
                 .cardColors(
@@ -11289,7 +11285,7 @@ private fun ProductionCenterScreen(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -11380,7 +11376,7 @@ private fun ProductionCenterScreen(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -11504,7 +11500,7 @@ private fun ProductionCenterScreen(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -11628,7 +11624,7 @@ private fun ProductionCenterScreen(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -11728,7 +11724,7 @@ private fun ProductionStat(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         modifier =
             modifier,
         colors =
@@ -11815,7 +11811,7 @@ private fun ProductionCheckCard(
                 "×"
         }
 
-    Card(
+    OutlinedCard(
         colors =
             CardDefaults
                 .cardColors(
@@ -11838,7 +11834,7 @@ private fun ProductionCheckCard(
                 Alignment
                     .CenterVertically
         ) {
-            Card(
+            OutlinedCard(
                 colors =
                     CardDefaults
                         .cardColors(
@@ -12253,7 +12249,7 @@ private fun TestLabScreen(
                 }
             ) {
                 item ->
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -12512,7 +12508,7 @@ private fun TestLabScreen(
                     currentReport.security
                 ) {
                     insight ->
-                    Card(
+                    OutlinedCard(
                         colors =
                             CardDefaults
                                 .cardColors(
@@ -12629,7 +12625,7 @@ private fun ArtifactReportCard(
         LocalConfiguration.current.screenWidthDp < 380
 
 
-    Card(
+    OutlinedCard(
         colors =
             CardDefaults
                 .cardColors(
@@ -13560,7 +13556,7 @@ private fun LocalAiAssistantScreen(
             verticalArrangement = Arrangement.spacedBy(if (aiCompact) 8.dp else 12.dp)
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -13844,12 +13840,9 @@ private fun LocalAiAssistantScreen(
                                     7.dp
                                 )
                     ) {
-                        Card(
+                        OutlinedCard(
                             colors =
-                                CardDefaults.cardColors(
-                                    containerColor =
-                                        Color(0xFF102037)
-                                ),
+                                CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                             shape =
                                 RoundedCornerShape(if (aiCompact) 17.dp else 20.dp),
                             modifier =
@@ -14150,12 +14143,9 @@ private fun LocalAiAssistantScreen(
                 suggestedActions.isNotEmpty()
             ) {
                 item {
-                    Card(
+                    OutlinedCard(
                         colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    Color(0xFF102037)
-                            ),
+                            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                         shape =
                             RoundedCornerShape(
                                 if (aiCompact) 17.dp else 20.dp
@@ -14220,7 +14210,7 @@ private fun LocalAiAssistantScreen(
             }
         }
 
-        Card(
+        OutlinedCard(
             colors =
                 CardDefaults
                     .cardColors(
@@ -14374,7 +14364,7 @@ private fun LocalAiMessageBubble(
                 Arrangement.Start
             }
     ) {
-        Card(
+        OutlinedCard(
             colors =
                 CardDefaults
                     .cardColors(
@@ -14878,11 +14868,9 @@ private fun SourceStep(
 
         // APPFORGE_STEP1_VERSION_SDK
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor = Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -15235,7 +15223,7 @@ private fun SourceStep(
                 d.sourceLabel.isNotBlank()
             ) {
                 item {
-                    Card(
+                    OutlinedCard(
                         colors =
                             CardDefaults
                                 .cardColors(
@@ -15356,7 +15344,7 @@ private fun SourceStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
                     CardDefaults
                         .cardColors(
@@ -15515,11 +15503,9 @@ private fun PermissionsStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor = Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(18.dp),
                 modifier =
@@ -15564,12 +15550,9 @@ private fun PermissionsStep(
                 .isNotEmpty()
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -15895,12 +15878,9 @@ private fun FeaturesStep(
             analysis != null
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -15986,12 +15966,9 @@ private fun FeaturesStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -16379,7 +16356,7 @@ private fun FeatureToggleCard(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         colors =
             CardDefaults
                 .cardColors(
@@ -16536,7 +16513,7 @@ private fun AppearanceStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
                     CardDefaults
                         .cardColors(
@@ -16956,7 +16933,7 @@ private fun AppearanceStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
                     CardDefaults
                         .cardColors(
@@ -17024,7 +17001,7 @@ private fun AppearanceStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
                     CardDefaults
                         .cardColors(
@@ -17181,12 +17158,9 @@ private fun NativeBridgeStep(
             analysis != null
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -17260,7 +17234,7 @@ private fun NativeBridgeStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
                     CardDefaults
                         .cardColors(
@@ -17391,7 +17365,7 @@ private fun NativeBridgeStep(
                     d.remoteBridgeAllowed
                 ) {
                     item {
-                        Card(
+                        OutlinedCard(
                             colors =
                                 CardDefaults
                                     .cardColors(
@@ -17605,12 +17579,9 @@ private fun NativeBridgeStep(
                 d.mediaPlayerBridge
             ) {
                 item {
-                    Card(
+                    OutlinedCard(
                         colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    Card2
-                            ),
+                            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                         shape =
                             RoundedCornerShape(
                                 18.dp
@@ -17669,7 +17640,7 @@ private fun NativeBridgeStep(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -17849,12 +17820,9 @@ private fun MonetizationStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -18197,12 +18165,9 @@ private fun MonetizationStep(
             draft.billingEnabled
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -18579,12 +18544,9 @@ private fun MonetizationStep(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -18816,12 +18778,9 @@ private fun DeepLinkStep(
             d.deepLinkEnabled
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -19030,12 +18989,9 @@ private fun DeepLinkStep(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -19172,12 +19128,9 @@ private fun SigningStep(
                         ) {
                             item ->
 
-                            Card(
+                            OutlinedCard(
                                 colors =
-                                    CardDefaults.cardColors(
-                                        containerColor =
-                                            Card2
-                                    ),
+                                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                                 modifier =
                                     Modifier.fillMaxWidth()
                             ) {
@@ -19426,12 +19379,9 @@ private fun SigningStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -19641,12 +19591,9 @@ private fun SigningStep(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -20198,12 +20145,9 @@ private fun WindowsPublisherSigningAdminCard(
         )
     }
 
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    Card2
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(
                 18.dp
@@ -20592,12 +20536,9 @@ private fun BuildSettingsStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -20891,12 +20832,9 @@ private fun BuildSettingsStep(
                 "native-exe"
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -20964,12 +20902,9 @@ private fun BuildSettingsStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -21208,12 +21143,9 @@ private fun BuildSettingsStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -22531,12 +22463,9 @@ private fun BuildStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -22879,12 +22808,9 @@ private fun BuildStep(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -22923,12 +22849,9 @@ private fun BuildStep(
             buildSucceeded
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -23034,12 +22957,9 @@ private fun BuildStep(
                 val diagnosis =
                     buildDiagnosis
 
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Color(0xFF28171B)
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             20.dp
@@ -23246,7 +23166,7 @@ private fun BuildStep(
                             if (
                                 showBuildTechnicalDetails
                             ) {
-                                Card(
+                                OutlinedCard(
                                     colors =
                                         CardDefaults
                                             .cardColors(
@@ -25743,7 +25663,7 @@ private fun ProjectLibraryScreen(
                 }
             ) {
                 p ->
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -25904,7 +25824,7 @@ private fun BuildHistoryScreen(onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(if (historyCompact) 7.dp else 10.dp)
             ) {
                 items(builds, key = { it.id }) { b ->
-                    Card(colors = CardDefaults.cardColors(containerColor = Card2)) {
+                    OutlinedCard(colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)) {
                         Column(Modifier.padding(if (historyCompact) 12.dp else 16.dp)) {
                             Text(b.projectName, fontWeight = FontWeight.Bold)
                             Text(b.packageName, color = TextSecondary, fontSize = 12.sp)
@@ -26380,11 +26300,9 @@ private fun TemplatesScreen(
             verticalArrangement = Arrangement.spacedBy(if (templatesCompact) 8.dp else 12.dp)
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor = Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape = RoundedCornerShape(if (templatesCompact) 18.dp else 22.dp)
                 ) {
                     Column(
@@ -26525,8 +26443,8 @@ private fun TemplatesScreen(
                     }
 
                     item {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Card2),
+                        OutlinedCard(
+                            colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                             shape = RoundedCornerShape(if (templatesCompact) 15.dp else 18.dp)
                         ) {
                             Column(
@@ -26572,11 +26490,9 @@ private fun TemplateStatPill(
         LocalConfiguration.current.screenWidthDp < 380
 
 
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor = Color(0xFF102037)
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(14.dp)
     ) {
@@ -26611,12 +26527,10 @@ private fun AdvancedTemplateCategoryCard(
         LocalConfiguration.current.screenWidthDp < 380
 
 
-    Card(
+    OutlinedCard(
         onClick = onOpen,
         colors =
-            CardDefaults.cardColors(
-                containerColor = spec.container
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(if (templateCategoryCompact) 19.dp else 24.dp)
     ) {
@@ -26631,14 +26545,9 @@ private fun AdvancedTemplateCategoryCard(
             verticalAlignment =
                 Alignment.CenterVertically
         ) {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            spec.accent.copy(
-                                alpha = 0.18f
-                            )
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(18.dp)
             ) {
@@ -26705,11 +26614,9 @@ private fun CategorySheetHeader(
         LocalConfiguration.current.screenWidthDp < 380
 
 
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor = spec.container
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(if (categorySheetCompact) 18.dp else 22.dp)
     ) {
@@ -26749,11 +26656,9 @@ private fun RemoteTemplateCard(
         LocalConfiguration.current.screenWidthDp < 380
 
 
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor = Card2
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(if (remoteTemplateCompact) 15.dp else 18.dp)
     ) {
@@ -27008,7 +26913,7 @@ private fun ProPlanCard(
     val proCardCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         colors =
             CardDefaults
                 .cardColors(
@@ -27046,7 +26951,7 @@ private fun ProPlanCard(
                     Alignment
                         .CenterVertically
             ) {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -27931,11 +27836,9 @@ private fun ManagedKeystoreCard(
     val managedKeyCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor = Card2
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(
                 if (managedKeyCompact) {
@@ -27965,14 +27868,9 @@ private fun ManagedKeystoreCard(
                 verticalAlignment =
                     Alignment.CenterVertically
             ) {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Color(
-                                    0xFF23344E
-                                )
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             if (managedKeyCompact) {
@@ -28178,8 +28076,8 @@ private fun FingerprintBox(
     val fingerprintCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF253246)),
+    OutlinedCard(
+        colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape = RoundedCornerShape(if (fingerprintCompact) 12.dp else 14.dp)
     ) {
         Column(Modifier.fillMaxWidth().padding(if (fingerprintCompact) 10.dp else 14.dp)) {
@@ -28328,11 +28226,9 @@ private fun Toggle(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor = Card2
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(
                 if (compact) {
@@ -28409,8 +28305,8 @@ internal fun NoteCard(text: String) {
     val noteCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Card2),
+    OutlinedCard(
+        colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape = RoundedCornerShape(if (noteCompact) 14.dp else 18.dp)
     ) {
         Text(
@@ -28433,8 +28329,8 @@ private fun InfoLine(label: String, value: String) {
     val infoCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Card2),
+    OutlinedCard(
+        colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape = RoundedCornerShape(if (infoCompact) 14.dp else 18.dp)
     ) {
         if (infoCompact) {

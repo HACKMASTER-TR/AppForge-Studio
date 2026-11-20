@@ -17,9 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -1193,12 +1193,9 @@ fun TerminalWorkspaceScreen(
                             "Bu komut dosyaları değiştirebilir veya silebilir. Devam etmek istiyor musun?"
                         )
 
-                        Card(
+                        OutlinedCard(
                             colors =
-                                CardDefaults.cardColors(
-                                    containerColor =
-                                        TerminalBackground
-                                )
+                                CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                         ) {
                             Text(
                                 pending.second,
@@ -1801,7 +1798,7 @@ private fun ProjectWorkspaceSelector(
             mutableStateOf(false)
         }
 
-    Card(
+    OutlinedCard(
         modifier =
             Modifier
                 .fillMaxWidth()
@@ -1810,10 +1807,7 @@ private fun ProjectWorkspaceSelector(
                     vertical = 9.dp
                 ),
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    TerminalSurfaceRaised
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(16.dp)
     ) {

@@ -16,8 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -243,14 +243,11 @@ internal fun LinuxMultiSessionTerminalPanel(
             )
         }
 
-    Card(
+    OutlinedCard(
         modifier =
             Modifier.fillMaxWidth(),
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    TerminalSurfaceRaised
-            )
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Column(
             modifier =
@@ -380,14 +377,11 @@ internal fun LinuxMultiSessionTerminalPanel(
             }
 
             if (showSessionManager) {
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier.fillMaxWidth(),
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                TerminalSurface
-                        )
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                 ) {
                     Column(
                         modifier =
@@ -877,14 +871,11 @@ private fun ManagedLinuxTerminalPane(
         }
     }
 
-    Card(
+    OutlinedCard(
         modifier =
             Modifier.fillMaxWidth(),
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    TerminalSurface
-            )
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Column(
             modifier =

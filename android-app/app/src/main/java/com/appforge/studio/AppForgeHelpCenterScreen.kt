@@ -173,12 +173,9 @@ internal fun AppForgeHelpCenterScreen(
             verticalArrangement = Arrangement.spacedBy(if (helpCompact) 9.dp else 14.dp)
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(if (helpCompact) 18.dp else 22.dp)
                 ) {
@@ -302,12 +299,9 @@ internal fun AppForgeHelpCenterScreen(
                 matchedArticles.isEmpty()
             ) {
                 item {
-                    Card(
+                    OutlinedCard(
                         colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    Card2
-                            ),
+                            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                         shape =
                             RoundedCornerShape(if (helpCompact) 15.dp else 18.dp)
                     ) {
@@ -343,12 +337,9 @@ internal fun AppForgeHelpCenterScreen(
                     }
                 ) {
                     article ->
-                    Card(
+                    OutlinedCard(
                         colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    Card2
-                            ),
+                            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                         shape =
                             RoundedCornerShape(if (helpCompact) 17.dp else 20.dp),
                         modifier =
@@ -397,12 +388,9 @@ internal fun AppForgeHelpCenterScreen(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Color(0xFF102037)
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(if (helpCompact) 17.dp else 20.dp)
                 ) {

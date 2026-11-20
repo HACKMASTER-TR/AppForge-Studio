@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
@@ -154,14 +154,11 @@ internal fun TerminalToolsPanel(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier.fillMaxWidth(),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            ColorForRuntimeCard
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 Column(
                     modifier =
@@ -209,7 +206,7 @@ internal fun TerminalToolsPanel(
                 it.command
             }
         ) { action ->
-            Card(
+            OutlinedCard(
                 onClick = {
                     onRunCommand(
                         action.command
@@ -218,10 +215,7 @@ internal fun TerminalToolsPanel(
                 modifier =
                     Modifier.fillMaxWidth(),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            TerminalSurface
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 Row(
                     modifier =
@@ -366,14 +360,11 @@ internal fun TerminalToolsPanel(
 private fun RuntimeCapabilityCard(
     capability: RuntimeCapability
 ) {
-    Card(
+    OutlinedCard(
         modifier =
             Modifier.fillMaxWidth(),
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    TerminalSurface
-            )
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Row(
             modifier =

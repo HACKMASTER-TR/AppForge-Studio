@@ -28,7 +28,7 @@ import kotlinx.coroutines.*
         Text("Kaynak projenin build/lifecycle kodu çalışacak. Hazırlık internet kullanabilir. Doğrulama için ağların kapalı olması gerekir. Yalnız güvendiğiniz kaynakla devam edin; Proot bir güvenlik sandbox'ı değildir.")
         Row{Checkbox(trusted,{trusted=it});Text("Bu kaynak koduna güveniyorum ve bu çalıştırmayı onaylıyorum")}
     }},confirmButton={TextButton(enabled=trusted && !busy,onClick={val offline=confirmation!!;confirmation=null;runCatching{ProjectDependencyPreparation.start(context,draft,true,offline)}.onFailure{info=it.message?:"Hazırlık engellendi"};trusted=false}){Text("Onayla ve çalıştır")}},dismissButton={TextButton(onClick={confirmation=null}){Text("Vazgeç")}})
-    Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+    OutlinedCard(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text("Proje bağımlılıklarını hazırla",style=MaterialTheme.typography.titleMedium)
         Text("Araç paketi hazır olması proje cache'i hazır demek değildir.")
         plan?.let{p->Text("Motor: ${p.engine} • ${p.manifests.size} manifest • ${p.dependencies.size} kilitli kayıt")
@@ -84,7 +84,7 @@ OutlinedButton(enabled=!ProjectDependencyPreparation.stopPending.value,onClick={
         Text(if(confirm==true)"Cargo build.rs/proc macro kodu çalışabilir. Proot güvenlik sandbox'ı değildir. Yalnız güvendiğiniz kaynağı onaylayın. Bütün ağları kapatın; eksik Cargo cache'inde güvenle durur. Özgün proje yerine ayrı özel kopya hazırlanır." else "Cargo.lock içindeki crates.io arşivleri ve gerekiyorsa pinli Rust Android hedefi sabit SHA-256 ile yönetilen indiriciden alınacak. Ağ tercihiniz korunur. Proje kodu bu aşamada çalıştırılmaz. Toplam boyut bilinmiyor; her aktarım gerçek baytlarla izlenir.")
         Row{Checkbox(trusted,{trusted=it});Text("Bu kaynak için bu çalıştırmayı açıkça onaylıyorum")}
     }},confirmButton={TextButton(enabled=trusted && !busy,onClick={val offline=confirm!!;confirm=null;if(!offline && DownloadNetwork.policy==DownloadNetworkPolicy.WIFI_PREFERRED && !DownloadNetwork.allowed())mobileConsent=true else begin(offline);trusted=false}){Text("Bu işlemi onayla")}},dismissButton={TextButton(onClick={confirm=null;trusted=false}){Text("Vazgeç")}})
-    Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+    OutlinedCard(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text("Rust projesini hazırla",style=MaterialTheme.typography.titleMedium)
         Text("Hedef: "+runCatching{RustProjectPolicy.preparationProjects(draft).joinToString { RustProjectPolicy.preparationTarget(it.second) }}.getOrDefault("Desteklenmeyen motor")+" • Cargo.lock ve doğrulanmış Rust modülü gerekir. Android Gradle için açık JNI bildirimiyle ARM64/API26 hedefi kullanılır; Windows Native için ayrıca MinGW linker gerekir. Python3.12 PyO3 ve Expo54/RN0.81 legacy JSI, açık bağlama bildirimi gerektirir; fiziksel kabul ayrıdır.")
         if(!moduleReady)Text("Önce Rust + Cargo modülünü kurun. WASM için SDK/JDK/Gradle gerekmez; Android JNI için doğrulanmış NDK/Android araçları ayrıca gerekir.")
