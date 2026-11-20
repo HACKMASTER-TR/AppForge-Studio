@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -125,7 +125,7 @@ fun AdminAiRouterScreen(
             }
         }
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Aktif proje: ${draft.appName.ifBlank { "Proje seçin" }}")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -264,7 +264,7 @@ fun AdminAiRouterScreen(
         }
         error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
         if (result == null && activities.isNotEmpty()) item {
-            Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
+            OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
                 Text("Son işlem: ${activities.last().operation.tool} • ${activities.last().state}")
                 OutlinedButton(onClick = { expanded = !expanded }) { Text("TEKNİK KANIT") }
                 if (expanded) activities.forEach { Text(it.output) }

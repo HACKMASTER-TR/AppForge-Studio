@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -312,14 +312,11 @@ internal fun UltimateCodeEditorPanel(
             )
         }
 
-    Card(
+    OutlinedCard(
         modifier =
             Modifier.fillMaxWidth(),
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    TerminalSurface
-            )
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Column(
             modifier =
@@ -703,14 +700,11 @@ internal fun UltimateCodeEditorPanel(
                                 activeText
                             )
 
-                        Card(
+                        OutlinedCard(
                             modifier =
                                 Modifier.fillMaxWidth(),
                             colors =
-                                CardDefaults.cardColors(
-                                    containerColor =
-                                        TerminalBackground
-                                )
+                                CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                         ) {
                             Column(
                                 modifier =
@@ -761,14 +755,11 @@ internal fun UltimateCodeEditorPanel(
 
                     UltimateLspCatalog.forPath(path)
                         ?.let { profile ->
-                            Card(
+                            OutlinedCard(
                                 modifier =
                                     Modifier.fillMaxWidth(),
                                 colors =
-                                    CardDefaults.cardColors(
-                                        containerColor =
-                                            TerminalSurfaceRaised
-                                    )
+                                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                             ) {
                                 Column(
                                     modifier =

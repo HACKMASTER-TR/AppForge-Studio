@@ -20,10 +20,9 @@ test('MinGW signed symlink is accepted only with exact target and dpkg ownership
   assert.ok(!win.includes('dpkg --force'));
 });
 test('Samsung reference width and all black palette are applied globally',()=>{
-  assert.match(theme,/targetWidthDp = if\(compactPortrait\) 412/);
   assert.match(theme,/LocalDensity provides pinnedDensity/);
-  assert.match(theme,/LocalConfiguration provides pinnedConfiguration/);
-  assert.match(theme,/Density\(physicalDensity.density \* displayScale, 1f\)/);
+  assert.match(theme,/Density\(physicalDensity\.density, 1f\)/);
+  assert.doesNotMatch(theme,/screenWidthDp = targetWidthDp|displayScale/);
   assert.match(theme,/Color\(0xFF000000\)/);
 });
 test('Material 3 typography pins all 15 font families without unsupported constructor parameter',()=>{

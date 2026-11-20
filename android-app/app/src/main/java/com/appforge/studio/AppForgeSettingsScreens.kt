@@ -11,7 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.RadioButton
@@ -207,9 +207,9 @@ internal fun SettingsHubScreen(
 private fun SettingsCardRow(entry: SettingsEntry) {
     val compact = LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         onClick = entry.onClick,
-        colors = CardDefaults.cardColors(containerColor = Card2),
+        colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape = RoundedCornerShape(if (compact) 18.dp else 22.dp)
     ) {
         Row(
@@ -221,8 +221,8 @@ private fun SettingsCardRow(entry: SettingsEntry) {
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF000000)),
+            OutlinedCard(
+                colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Box(
@@ -306,15 +306,9 @@ internal fun LanguageSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(StudioI18n.languages) { lang ->
-                Card(
+                OutlinedCard(
                     onClick = { onSelect(lang.code) },
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (lang.code == languageCode) {
-                            Color(0xFF1B3158)
-                        } else {
-                            Card2
-                        }
-                    ),
+                    colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape = RoundedCornerShape(if (compact) 17.dp else 20.dp)
                 ) {
                     Row(
@@ -435,8 +429,8 @@ internal fun LegalInfoCard(
 ) {
     val compact = LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Card2),
+    OutlinedCard(
+        colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape = RoundedCornerShape(if (compact) 19.dp else 24.dp)
     ) {
         Column(

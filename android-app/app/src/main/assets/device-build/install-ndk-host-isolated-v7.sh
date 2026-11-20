@@ -186,6 +186,8 @@ if [ "$name" = cmake ];then
   case "$cmake_mode" in
     direct) exec "$executable" "$@";;
     loader-argv0) exec "$interpreter" --argv0 "$executable" --library-path "$libpath" "$executable" "$@";;
+    # Only approved if a real CMAKE_ROOT + -P probe succeeded below.
+    private-prefix-argv0) exec "$interpreter" --argv0 "$prefix/bin/cmake" --library-path "$libpath" "$executable" "$@";;
     *) echo 'APPFORGE_NDK_HOST_CMAKE_LAUNCH_DENIED' >&2;exit 66;;
   esac
 fi
@@ -207,7 +209,12 @@ mv -T "$STAGE" "$PREFIX"
 trap - 0 HUP INT TERM
 # Select a safe launcher on THIS device. PRoot can expose a different
 # /proc/self/exe to CMake's relocation logic. Do not guess from --version.
-cmake_probe_dir=$(mktemp -d /tmp/appforge-cmake-select.XXXXXXXX) || exit 68
+# Keep the CMake probe inside the very same isolated candidate prefix;
+# PRoot may not resolve /tmp from the explicitly loaded ELF namespace.
+cmake_probe_dir=$(mktemp -d "$PREFIX/.cmake-select.XXXXXXXX") || exit 68
+[ -d "$cmake_probe_dir" ] && [ ! -L "$cmake_probe_dir" ] || exit 68
+echo 'APPFORGE_NDK_CMAKE_PROBE_PRIVATE_PREFIX=PASS'
+
 trap 'rm -rf -- "$cmake_probe_dir"' 0 HUP INT TERM
 cat > "$cmake_probe_dir/check.cmake" <<'CMAKE'
 if(NOT EXISTS "${CMAKE_ROOT}/Modules/CMakeDetermineSystem.cmake")
@@ -257,6 +264,25 @@ if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
       sed -n '1,12p' "$cmake_probe_dir/log.private-root" >&2
     fi
   fi
+  # A third, private-only executable identity and matching signed CMake
+  # resource layout. No shared /usr or libc is written.
+  if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
+    private_cmake_share="$PREFIX/share/cmake-3.28"
+    if [ ! -e "$private_cmake_share" ] && [ ! -L "$private_cmake_share" ] &&
+       [ -s "$PREFIX/sysroot/usr/share/cmake-3.28/Modules/CMakeDetermineSystem.cmake" ];then
+      mkdir -p "$PREFIX/share"
+      ln -s "$PREFIX/sysroot/usr/share/cmake-3.28" "$private_cmake_share" || exit 68
+      echo 'APPFORGE_NDK_CMAKE_PRIVATE_PREFIX_LAYOUT=VERIFIED'
+    fi
+    if [ -s "$private_cmake_share/Modules/CMakeDetermineSystem.cmake" ] &&
+       APPFORGE_CMAKE_PROBE_MODE=private-prefix-argv0 "$BIN/cmake" -P "$cmake_probe_dir/check.cmake" >"$cmake_probe_dir/log.private-prefix" 2>&1;then
+      printf '%s\n' private-prefix-argv0 > "$PREFIX/cmake-launch-mode-v9"
+      echo 'APPFORGE_NDK_HOST_PRIVATE_PREFIX_CMAKE_PROBE=PASS'
+    else
+      echo 'APPFORGE_NDK_HOST_PRIVATE_PREFIX_CMAKE_PROBE=FAIL' >&2
+      [ ! -f "$cmake_probe_dir/log.private-prefix" ] || sed -n '1,16p' "$cmake_probe_dir/log.private-prefix" >&2
+    fi
+  fi
   [ -s "$PREFIX/cmake-launch-mode-v9" ] || {
     echo 'APPFORGE_NDK_HOST_CMAKE_NO_VERIFIED_LAUNCHER' >&2
     exit 68
@@ -286,7 +312,8 @@ fi
 [ -s "$ROOT/usr/share/cmake-3.28/Modules/CMakeDetermineSystem.cmake" ] || {
   echo 'APPFORGE_NDK_HOST_CMAKE_MODULES_MISSING' >&2;exit 68;
 }
-probe_dir=$(mktemp -d /tmp/appforge-ndk-v9.XXXXXXXX) || exit 68
+probe_dir=$(mktemp -d "$PREFIX/.cmake-functional.XXXXXXXX") || exit 68
+[ -d "$probe_dir" ] && [ ! -L "$probe_dir" ] || exit 68
 trap 'rm -rf -- "$probe_dir"' 0 HUP INT TERM
 cat > "$probe_dir/check.cmake" <<'CMAKE'
 if(NOT EXISTS "${CMAKE_ROOT}/Modules/CMakeDetermineSystem.cmake")

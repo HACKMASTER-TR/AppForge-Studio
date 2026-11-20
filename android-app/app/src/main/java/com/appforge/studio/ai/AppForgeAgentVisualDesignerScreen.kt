@@ -16,8 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -80,17 +80,11 @@ internal fun AppForgeAgentVisualDesignerScreen(
         Text("Ekranlar", style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             blueprint.screens.forEach { screen ->
-                Card(
+                OutlinedCard(
                     modifier = Modifier.clickable {
                         history = AppForgeAgentVisualDesigner.selectScreen(history, screen.id)
                     },
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (screen.id == selected.id) {
-                            safeColor(blueprint.tokens.primary)
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        }
-                    )
+                    colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                 ) {
                     Text(
                         screen.title.take(22),
@@ -232,7 +226,7 @@ private fun DesignerPreviewCard(
             Text(preview.title, style = MaterialTheme.typography.titleLarge)
             Text(preview.route, style = MaterialTheme.typography.labelSmall)
             preview.nodes.drop(1).forEach { node ->
-                Card(modifier = Modifier.fillMaxWidth()) {
+                OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.padding(tokens.spacingUnitDp.dp),
                         verticalAlignment = Alignment.CenterVertically

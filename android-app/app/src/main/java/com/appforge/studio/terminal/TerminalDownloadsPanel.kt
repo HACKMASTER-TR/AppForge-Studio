@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
@@ -212,14 +212,11 @@ internal fun TerminalDownloadsPanel(
                 10.dp
             )
     ) {
-        Card(
+        OutlinedCard(
             modifier =
                 Modifier.fillMaxWidth(),
             colors =
-                CardDefaults.cardColors(
-                    containerColor =
-                        TerminalSurface
-                )
+                CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
         ) {
             Column(
                 modifier =
@@ -312,14 +309,11 @@ internal fun TerminalDownloadsPanel(
         if (
             message.isNotBlank()
         ) {
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier.fillMaxWidth(),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            TerminalSurfaceRaised
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 Text(
                     message,
@@ -431,7 +425,7 @@ private fun TerminalDownloadFileList(
                 it.absolutePath
             }
         ) { entry ->
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -441,10 +435,7 @@ private fun TerminalDownloadFileList(
                             )
                         },
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            TerminalSurface
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 Column(
                     modifier =

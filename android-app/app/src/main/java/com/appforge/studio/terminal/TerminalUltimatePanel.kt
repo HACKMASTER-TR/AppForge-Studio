@@ -10,9 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -158,12 +158,9 @@ internal fun TerminalUltimatePanel(
                                 12.sp
                         )
 
-                        Card(
+                        OutlinedCard(
                             colors =
-                                CardDefaults.cardColors(
-                                    containerColor =
-                                        TerminalBackground
-                                )
+                                CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                         ) {
                             Text(
                                 TerminalSecretMasker.redact(
@@ -298,14 +295,11 @@ internal fun TerminalUltimatePanel(
             Arrangement.spacedBy(10.dp)
     ) {
         item {
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier.fillMaxWidth(),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            TerminalSurfaceRaised
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 Column(
                     modifier =
@@ -381,14 +375,11 @@ internal fun TerminalUltimatePanel(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier.fillMaxWidth(),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            TerminalSurface
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 Column(
                     modifier =
@@ -645,14 +636,11 @@ internal fun TerminalUltimatePanel(
                 }
 
                 item {
-                    Card(
+                    OutlinedCard(
                         modifier =
                             Modifier.fillMaxWidth(),
                         colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    TerminalSurface
-                            )
+                            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                     ) {
                         Column(
                             modifier =
@@ -743,14 +731,11 @@ internal fun TerminalUltimatePanel(
 
                 if (pipelineHandoff != null) {
                     item {
-                        Card(
+                        OutlinedCard(
                             modifier =
                                 Modifier.fillMaxWidth(),
                             colors =
-                                CardDefaults.cardColors(
-                                    containerColor =
-                                        TerminalSurface
-                                )
+                                CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                         ) {
                             Column(
                                 modifier =
@@ -809,14 +794,11 @@ internal fun TerminalUltimatePanel(
                 }
 
                 item {
-                    Card(
+                    OutlinedCard(
                         modifier =
                             Modifier.fillMaxWidth(),
                         colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    TerminalSurface
-                            )
+                            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                     ) {
                         Column(
                             modifier =
@@ -876,14 +858,11 @@ internal fun TerminalUltimatePanel(
                 "${it.level}-${it.title}"
             }
         ) { item ->
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier.fillMaxWidth(),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            TerminalSurface
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 Column(
                     modifier =
@@ -951,15 +930,12 @@ private fun UltimateActionCard(
     action: UltimateAction,
     onClick: () -> Unit
 ) {
-    Card(
+    OutlinedCard(
         onClick = onClick,
         modifier =
             Modifier.fillMaxWidth(),
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    TerminalSurface
-            )
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Column(
             modifier =
@@ -1025,14 +1001,11 @@ private fun UltimateNavigationCard(
     button: String,
     onClick: () -> Unit
 ) {
-    Card(
+    OutlinedCard(
         modifier =
             Modifier.fillMaxWidth(),
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    TerminalSurface
-            )
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Column(
             modifier =

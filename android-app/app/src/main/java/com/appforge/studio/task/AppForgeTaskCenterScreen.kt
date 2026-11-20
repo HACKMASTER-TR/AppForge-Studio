@@ -20,9 +20,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
@@ -416,7 +416,7 @@ fun AppForgeTaskCenterScreen(
                 Alignment.CenterHorizontally
         ) {
             item {
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier
                             .fillMaxWidth()
@@ -511,7 +511,7 @@ fun AppForgeTaskCenterScreen(
                     .isEmpty()
             ) {
                 item {
-                    Card(
+                    OutlinedCard(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
@@ -662,7 +662,7 @@ private fun TaskCenterCard(
                 100
             )
 
-    Card(
+    OutlinedCard(
         modifier =
             Modifier
                 .fillMaxWidth()

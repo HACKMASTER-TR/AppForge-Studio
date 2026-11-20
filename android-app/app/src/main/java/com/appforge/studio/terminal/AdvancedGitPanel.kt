@@ -9,9 +9,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -503,7 +503,7 @@ internal fun AdvancedGitPanel(
 
         snapshot
             ?.let { current ->
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier.fillMaxWidth(),
                     colors =
@@ -582,7 +582,7 @@ internal fun AdvancedGitPanel(
                     current.conflicts
                         .take(20)
                         .forEach { path ->
-                            Card(
+                            OutlinedCard(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth(),
@@ -828,14 +828,11 @@ internal fun AdvancedGitPanel(
             }
         }
 
-        Card(
+        OutlinedCard(
             modifier =
                 Modifier.fillMaxWidth(),
             colors =
-                CardDefaults.cardColors(
-                    containerColor =
-                        TerminalBackground
-                )
+                CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
         ) {
             SelectionContainer {
                 Text(
@@ -901,14 +898,11 @@ internal fun AdvancedGitPanel(
 
         githubDashboard
             ?.let { dashboard ->
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier.fillMaxWidth(),
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                TerminalSurface
-                        )
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                 ) {
                     Column(
                         modifier =

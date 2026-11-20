@@ -12,9 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -335,12 +335,9 @@ internal fun ConnectionsPanel(
                         "Tarayıcıda aşağıdaki tek kullanımlık kodu onayla. Şifren AppForge'a gelmez."
                     )
 
-                    Card(
+                    OutlinedCard(
                         colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    TerminalBackground
-                            )
+                            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                     ) {
                         Column(
                             modifier =
@@ -587,12 +584,9 @@ internal fun ConnectionsPanel(
 
         if (message.isNotBlank()) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                TerminalSurfaceRaised
-                        )
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                 ) {
                     Text(
                         message,
@@ -662,13 +656,10 @@ internal fun ConnectionsPanel(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            TerminalSurface
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(
@@ -705,12 +696,10 @@ private fun ProviderConnectionCard(
     onOpenService: () -> Unit,
     extraAction: @Composable () -> Unit = {}
 ) {
-    Card(
+    OutlinedCard(
         modifier = Modifier.fillMaxWidth(),
         colors =
-            CardDefaults.cardColors(
-                containerColor = TerminalSurface
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape = RoundedCornerShape(18.dp)
     ) {
         Column(

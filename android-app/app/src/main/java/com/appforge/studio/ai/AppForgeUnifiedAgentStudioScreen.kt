@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -205,7 +205,7 @@ private fun PromptStep(
         )
 
         recoveryAssessment?.let { recovery ->
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier.fillMaxWidth()
             ) {
@@ -271,7 +271,7 @@ private fun PromptStep(
         }
 
         resumeInfo?.let { resume ->
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier.fillMaxWidth()
             ) {
@@ -367,7 +367,7 @@ private fun PromptStep(
                         )
                     }
 
-                    Card(
+                    OutlinedCard(
                         modifier =
                             Modifier.fillMaxWidth()
                     ) {
@@ -536,7 +536,7 @@ private fun PromptStep(
             archivedSessions
                 .take(8)
                 .forEach { archived ->
-                    Card(
+                    OutlinedCard(
                         modifier =
                             Modifier.fillMaxWidth()
                     ) {
@@ -676,7 +676,7 @@ private fun BlueprintReviewStep(
             return@Column
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -795,7 +795,7 @@ private fun ResultStep(
         }
 
         state.remoteBuild?.let { remote ->
-            Card(modifier = Modifier.fillMaxWidth()) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -932,7 +932,7 @@ private fun ResultStep(
         }
 
         if (artifactState.security.isNotEmpty()) {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -962,7 +962,7 @@ private fun ResultStep(
         }
 
         if (artifactState.logs.isNotEmpty()) {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -1012,7 +1012,7 @@ private fun ResultStep(
 private fun ReleaseReviewCard(
     review: AppForgeAgentReleaseReviewState
 ) {
-    Card(
+    OutlinedCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -1124,7 +1124,7 @@ private fun ReleaseReviewCard(
 private fun ArtifactReportCard(
     report: AppForgeAgentArtifactReport
 ) {
-    Card(
+    OutlinedCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
