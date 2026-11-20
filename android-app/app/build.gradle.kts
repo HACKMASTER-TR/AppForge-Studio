@@ -455,6 +455,20 @@ require(!appforgeV9R2Isolated3UpgradeV549 ||
     "V549 in-place candidate requires original isolated3 identity and an exclusive version flag."
 }
 
+// V550 R25: signed, isolated3-only CI update from the V549 device installation.
+// Original package, Android signer and all existing user data must remain unchanged.
+val appforgeV9R2Isolated3UpgradeV550 =
+    providers.gradleProperty("appforgeV9R2Isolated3UpgradeV550").orNull == "true"
+require(!appforgeV9R2Isolated3UpgradeV550 ||
+    (appforgeV9R2Isolated3Acceptance && !appforgeV9R2Isolated3Upgrade &&
+     !appforgeV9R2Isolated3UpgradeV542 && !appforgeV9R2Isolated3UpgradeV543 &&
+     !appforgeV9R2Isolated3UpgradeV544 && !appforgeV9R2Isolated3UpgradeV545 &&
+     !appforgeV9R2Isolated3UpgradeV546 && !appforgeV9R2Isolated3UpgradeV547 &&
+     !appforgeV9R2Isolated3UpgradeV548 && !appforgeV9R2Isolated3UpgradeV549 &&
+     appforgeIntegrationDebugVersionCode == null)) {
+    "V550 in-place candidate requires original isolated3 identity and exclusive debug version flag."
+}
+
 android {
     namespace = "com.appforge.studio"
     compileSdk = 37
@@ -829,6 +843,12 @@ androidComponents {
     }
 
     onVariants(selector().withBuildType("debug")) { variant ->
+        if (appforgeV9R2Isolated3UpgradeV550) {
+            variant.outputs.forEach { output ->
+                output.versionCode.set(550)
+                output.versionName.set("5.0.50-isolated3-upgrade")
+            }
+        }
         if (appforgeV9R2Isolated3UpgradeV549) {
             variant.outputs.forEach { output ->
                 output.versionCode.set(549)
