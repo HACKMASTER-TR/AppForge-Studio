@@ -612,6 +612,25 @@ android {
             null
         }
 
+    // R31-only signer. The existing release JKS remains untouched.
+    // R31 accepts only the dedicated PKCS12 key whose SHA-1 is checked by CI.
+    val r31StorePath = System.getenv("APPFORGE_R31_KEYSTORE_PATH")
+    val r31StorePassword = System.getenv("APPFORGE_R31_STORE_PASSWORD")
+    val r31KeyPassword = System.getenv("APPFORGE_R31_KEY_PASSWORD")
+        ?: r31StorePassword.orEmpty()
+    val r31OriginalSigning =
+        if (!r31StorePath.isNullOrBlank() && !r31StorePassword.isNullOrBlank()) {
+            signingConfigs.create("r31Original") {
+                storeFile = file(requireNotNull(r31StorePath))
+                storePassword = r31StorePassword.orEmpty()
+                keyAlias = "appforge-debug"
+                keyPassword = r31KeyPassword
+                storeType = "PKCS12"
+            }
+        } else {
+            null
+        }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -650,10 +669,10 @@ android {
     buildTypes {
         getByName("debug") {
             if (appforgeR31OriginalIdentity) {
-                // Original OAuth identity must use the existing original signer.
-                // Never fall back to a generated Android debug key.
-                signingConfig = requireNotNull(ciReleaseSigning) {
-                    "R31_ORIGINAL_SIGNER_REQUIRED: no matching release signing configuration"
+                // Only the R31 PKCS12 signer is permitted for the original OAuth ID.
+                // Never fall back to the unrelated release key or generated debug key.
+                signingConfig = requireNotNull(r31OriginalSigning) {
+                    "R31_ORIGINAL_PKCS12_SIGNER_REQUIRED"
                 }
             } else {
                 ciDebugSigning?.let { signingConfig = it }
