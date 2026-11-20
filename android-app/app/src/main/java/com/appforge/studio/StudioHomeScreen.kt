@@ -66,7 +66,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private val HomeBackground =
-    Color(0xFF070B0D)
+    Color(0xFF000000)
 
 private val HomeCard =
     Color(0xFF10181A)

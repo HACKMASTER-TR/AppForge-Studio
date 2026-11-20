@@ -230,7 +230,9 @@ internal object DownloadCoordinator {
         }
         if(old?.downloadState==state && now-persistedAt<1000)return
         val bound=targets[p.operationId+":"+value.artifactId]
-        // External observers have no pinned source identity; journal them as observation-only records.
+        // A volatile observation without a pinned private target is not resumable.
+        // Keep it in the live transfer flow, not in the bounded persistent journal.
+        if (bound == null) return
         val completedBytes=if(value.verificationStatus=="SHA256_VERIFIED" && bound!=null)p.bytesTotal?:old?.expectedBytes?:p.bytesDownloaded else p.bytesDownloaded
         val row=ArtifactDownloadRecord(p.operationId,p.moduleId,artifact,value.artifactVersion.takeIf{it.matches(Regex("[A-Za-z0-9._+-]{1,100}"))}?:"observed",source,if(bound!=null)artifact else null,p.bytesTotal?:old?.expectedBytes,if(value.verificationStatus=="SHA256_VERIFIED")completedBytes else minOf(old?.verifiedPartialBytes?:0,p.bytesDownloaded),state,value.resumeCapability,DownloadNetwork.policy,retryCounts[p.operationId+":"+artifact]?:old?.retryCount?:0,old?.createdAt?:now,now,if(value.verificationStatus=="SHA256_VERIFIED")"SHA256_VERIFIED" else "UNVERIFIED",bound,OperationDiagnostics.persistentError(p.errorCode),PersistentOperationGraph.moduleId(operationParents[p.operationId+":"+p.moduleId.name]?:p.operationId,p.moduleId),completedBytes)
         // An operation id identifies an attempt, not a different archive.

@@ -20,7 +20,7 @@ class PersistentOperationGraphTest {
     }
     @Test fun corruptedUnknownSchemaAndOversizedFileRejected()=fixture{dir,store->
         val file=File(dir,"operations.json")
-        for(text in listOf("not-json","{\"schema\":99,\"nodes\":[]}","x".repeat(1048577))){file.writeText(text);assertThrows(Exception::class.java){store.read()}}
+        for(text in listOf("not-json","{\"schema\":99,\"nodes\":[]}","x".repeat(8388609))){file.writeText(text);assertThrows(Exception::class.java){store.read()}}
     }
     @Test fun diskFullAndSymlinkPreserveOldGraphAndForeignData()=fixture{dir,store->
         store.save(listOf(root()));val before=File(dir,"operations.json").readBytes()

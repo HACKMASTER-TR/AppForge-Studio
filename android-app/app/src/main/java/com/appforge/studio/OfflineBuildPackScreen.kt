@@ -930,11 +930,25 @@ internal object ModuleInstallOperations {
                                 spec.dependencies.joinToString{
                                     OfflineModules.spec(it).title
                                 }.ifBlank{"Yok"})
-                            Text("Disk: "+(
-                                spec.diskBytes?.let{
-                                    "${it/1024/1024} MiB"
-                                }?:"toplam bilinmiyor"
+                            // StatFs measures the actual backing volume, without storage permissions.
+                            // It does not infer the eventual installed module footprint.
+                            val storageStats = runCatching {
+                                android.os.StatFs(context.filesDir.absolutePath)
+                            }.getOrNull()
+                            val usableBytes = storageStats?.availableBytes
+                            val totalBytes = storageStats?.totalBytes
+                            fun gib(bytes:Long):String = String.format(
+                                java.util.Locale.ROOT,"%.2f GiB",bytes / (1024.0 * 1024.0 * 1024.0)
+                            )
+                            Text("Toplam depolama: "+(totalBytes?.let(::gib)?:"Ölçülemedi"))
+                            Text("Kullanılabilir alan: "+(usableBytes?.let(::gib)?:"Ölçülemedi"))
+                            Text("Modülün tahmini kurulum alanı: "+(
+                                spec.diskBytes?.let(::gib)?:"Henüz hesaplanmadı"
                             ))
+                            if (usableBytes!=null && spec.diskBytes!=null) {
+                                Text("Kurulum için yeterli alan (yalnız tahmini): "+
+                                    if(usableBytes >= spec.diskBytes)"Evet" else "Hayır")
+                            }
                             aptState.takeIf{it.isNotBlank()}?.let{
                                 Text(it,style=MaterialTheme.typography.bodySmall)
                             }
