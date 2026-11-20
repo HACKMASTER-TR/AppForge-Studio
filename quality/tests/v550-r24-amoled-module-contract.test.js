@@ -27,7 +27,8 @@ test('storage figures come from measured StatFs, not fabricated estimates',()=>{
   assert.match(screen,/Henüz hesaplanmadı/);
 });
 test('telemetry-only entries do not fill persisted pinned transfer history',()=>{
-  assert.match(recorder,/if \(bound == null\) return/);
+  assert.match(recorder,/if \(bound == null && state != DownloadState\.FAILED\) return/);
+  assert.match(recorder,/val completedBytes=if\(bound==null\)0L/);
   assert.match(history,/row.stagingIdentity == null && row.expectedSha256 == null/);
   assert.match(history,/limit:Int=512/);
 });

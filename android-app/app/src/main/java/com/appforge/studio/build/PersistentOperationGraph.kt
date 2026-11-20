@@ -94,8 +94,8 @@ internal class PersistentOperationGraph(private val file:File,private val availa
                         nodes.none{it.operationId==node.parentOperationId && it.historyClosed})
             }
         }
-        fun pruneRetained(rows:List<DownloadOperationNode>,maxNodes:Int=2048):List<DownloadOperationNode> {
-            require(maxNodes in 1..2048)
+        fun pruneRetained(rows:List<DownloadOperationNode>,maxNodes:Int=512):List<DownloadOperationNode> {
+            require(maxNodes in 1..512)
             if(rows.size<=maxNodes)return rows
             val working=rows.toMutableList()
             while(working.size>maxNodes) {
@@ -122,7 +122,7 @@ internal class PersistentOperationGraph(private val file:File,private val availa
     }
     private fun safe(path:File){var p:File?=path.absoluteFile;while(p!=null){require(!Files.isSymbolicLink(p.toPath())){"İşlem günlüğü symlink olamaz"};p=p.parentFile}}
     private fun validate(rows:List<DownloadOperationNode>){
-        require(rows.size<=2048 && rows.map{it.operationId}.distinct().size==rows.size)
+        require(rows.size<=512 && rows.map{it.operationId}.distinct().size==rows.size)
         val byId=rows.associateBy{it.operationId}
         for(n in rows){
             require(n.operationId.matches(Regex("[a-f0-9]{64}")))
@@ -147,9 +147,9 @@ internal class PersistentOperationGraph(private val file:File,private val availa
     }
     @Synchronized fun read():List<DownloadOperationNode>{
         safe(file);if(!file.exists())return emptyList()
-        require(file.isFile && file.length() in 1..8388608)
+        require(file.isFile && file.length() in 1..1048576)
         val root=JSONObject(file.readText());val schema=root.getInt("schema");require(schema in 1..2){"Tanınmayan işlem ağacı şeması"}
-        val arr=root.getJSONArray("nodes");require(arr.length()<=2048)
+        val arr=root.getJSONArray("nodes");require(arr.length()<=512)
         return (0 until arr.length()).map{index->val o=arr.getJSONObject(index)
             fun optional(key:String)=o.optString(key).takeIf{it.isNotEmpty()}
             DownloadOperationNode(o.getString("operationId"),optional("parentOperationId"),OfflineModuleId.valueOf(o.getString("moduleId")),OperationStage.valueOf(o.getString("stage")),DownloadState.valueOf(o.getString("operationState")),DownloadNetworkPolicy.valueOf(o.getString("networkPolicy")),o.getLong("createdAt"),o.getLong("updatedAt"),optional("artifactId"),optional("artifactVersion"),optional("sourceIdentityHash"),optional("expectedSha256"),if(o.isNull("expectedBytes"))null else o.getLong("expectedBytes"),o.getLong("downloadedBytes"),o.getLong("verifiedBytes"),o.getInt("retryCount"),DownloadCapability.valueOf(o.getString("downloadCapability")),OperationDiagnostics.persistentError(optional("failureReason")?.also{require(it.matches(Regex("[A-Z0-9_]{1,100}")))}),schema==2 && o.getBoolean("historyClosed"))
@@ -158,7 +158,7 @@ internal class PersistentOperationGraph(private val file:File,private val availa
     @Synchronized fun save(rows:List<DownloadOperationNode>){
         validate(rows);safe(file);val parent=requireNotNull(file.absoluteFile.parentFile);parent.mkdirs()
         val arr=JSONArray();rows.forEach{n->arr.put(JSONObject().put("operationId",n.operationId).put("parentOperationId",n.parentOperationId?:"").put("moduleId",n.moduleId.name).put("stage",n.stage.name).put("operationState",n.operationState.name).put("networkPolicy",n.networkPolicy.name).put("createdAt",n.createdAt).put("updatedAt",n.updatedAt).put("artifactId",n.artifactId?:"").put("artifactVersion",n.artifactVersion?:"").put("sourceIdentityHash",n.sourceIdentityHash?:"").put("expectedSha256",n.expectedSha256?:"").put("expectedBytes",n.expectedBytes?:JSONObject.NULL).put("downloadedBytes",n.downloadedBytes).put("verifiedBytes",n.verifiedBytes).put("retryCount",n.retryCount).put("downloadCapability",n.downloadCapability.name).put("failureReason",OperationDiagnostics.persistentError(n.failureReason)?:"").put("historyClosed",n.historyClosed))}
-        val bytes=JSONObject().put("schema",2).put("nodes",arr).toString().toByteArray(Charsets.UTF_8);require(bytes.size<=8388608)
+        val bytes=JSONObject().put("schema",2).put("nodes",arr).toString().toByteArray(Charsets.UTF_8);require(bytes.size<=1048576)
         require(availableBytes(parent)>bytes.size+65536L){"İşlem günlüğü için disk alanı yetersiz"}
         val tmp=File(file.path+".tmp");safe(tmp)
         try {
