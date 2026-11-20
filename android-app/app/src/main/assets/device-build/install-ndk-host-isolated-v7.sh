@@ -240,8 +240,27 @@ if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
       sed -n '1,12p' "$cmake_probe_dir/log.$cmake_mode" >&2
     fi
   done
-  echo 'APPFORGE_NDK_HOST_CMAKE_NO_VERIFIED_LAUNCHER' >&2
-  exit 68
+  # CMake invoked through ld-linux may resolve its installation prefix as
+  # / rather than the private sysroot. Provide the verified CMake data in this
+  # isolated module generation only; never shadow an existing /share entry.
+  signed_cmake_data="$PREFIX/sysroot/usr/share/cmake-3.28"
+  if [ -s "$signed_cmake_data/Modules/CMakeDetermineSystem.cmake" ] &&
+     [ ! -L /share ] && [ ! -e /share/cmake-3.28 ] && [ ! -L /share/cmake-3.28 ];then
+    mkdir -p /share
+    ln -s "$signed_cmake_data" /share/cmake-3.28 || exit 68
+    echo 'APPFORGE_NDK_HOST_PRIVATE_CMAKE_MODULE_LINK=CREATED'
+    if APPFORGE_CMAKE_PROBE_MODE=loader-argv0 "$BIN/cmake" -P "$cmake_probe_dir/check.cmake" >"$cmake_probe_dir/log.private-root" 2>&1;then
+      printf '%s\n' loader-argv0 > "$PREFIX/cmake-launch-mode-v9"
+      echo 'APPFORGE_NDK_HOST_PRIVATE_CMAKE_MODULE_PROBE=PASS'
+    else
+      echo 'APPFORGE_NDK_HOST_PRIVATE_CMAKE_MODULE_PROBE=FAIL' >&2
+      sed -n '1,12p' "$cmake_probe_dir/log.private-root" >&2
+    fi
+  fi
+  [ -s "$PREFIX/cmake-launch-mode-v9" ] || {
+    echo 'APPFORGE_NDK_HOST_CMAKE_NO_VERIFIED_LAUNCHER' >&2
+    exit 68
+  }
 fi
 printf 'APPFORGE_NDK_HOST_CMAKE_LAUNCH=%s\n' "$(cat "$PREFIX/cmake-launch-mode-v9")"
 rm -rf -- "$cmake_probe_dir"

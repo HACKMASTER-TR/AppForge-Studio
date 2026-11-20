@@ -143,6 +143,7 @@ gradle_warmup() {
   gw_attempt=1
   gw_max=3
   gw_refresh=0
+  gw_tls12=0
 
   case "$gw_kind" in
     ANDROID)
@@ -213,6 +214,20 @@ gradle_warmup() {
         printf '\n%s\n' "$gw_jvm_probe" >> "$gw_log"
       fi
       echo 'APPFORGE_AGP_RESOLUTION=UNRESOLVED'
+    fi
+
+    # This is a protocol-negotiation workaround, NOT a TLS trust bypass.
+    # Only retry this exact handshake symptom once, with TLS 1.2 and default
+    # Java trust anchors and host verification still enforced.
+    if [ "$gw_tls12" -eq 0 ] && [ "$gw_attempt" -lt "$gw_max" ] &&
+       [ "${APPFORGE_DEVICE_OFFLINE:-0}" != 1 ] &&
+       grep -Eiq 'Remote host terminated the handshake|requested TLS protocol versions' "$gw_log" &&
+       ! grep -Eiq 'PKIX|certificate verify failed|certification path|hostname verification|signature invalid|checksum mismatch' "$gw_log";then
+      gw_tls12=1
+      export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Djdk.tls.client.protocols=TLSv1.2 -Dhttps.protocols=TLSv1.2"
+      gw_attempt=$((gw_attempt+1))
+      echo "APPFORGE_GRADLE_VERIFIED_TLS12_RETRY:$gw_kind:$gw_attempt/$gw_max"
+      continue
     fi
 
     if [ "$gw_attempt" -lt "$gw_max" ] &&
