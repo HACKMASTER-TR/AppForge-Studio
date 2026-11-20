@@ -1,0 +1,81 @@
+name: R31 Original Android Identity and Dedicated PKCS12 Signer (No APK)
+on:
+  push:
+    branches:
+      - codex/r31-original-identity-20261120-99e3
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  original-identity-gate:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify R31 source identity and dedicated signing contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 quality/tools/verify-r31-original-identity.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check R31-only PKCS12 signer and prove private signing
+        shell: bash
+        env:
+          R31_KEYSTORE_B64: ${{ secrets.APPFORGE_R31_KEYSTORE_B64 }}
+          R31_STORE_PASSWORD: ${{ secrets.APPFORGE_R31_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [ -z "$R31_KEYSTORE_B64" ] || [ -z "$R31_STORE_PASSWORD" ]; then
+            echo APPFORGE_R31_DEDICATED_SIGNING_SECRET_MISSING
+            echo APPFORGE_R31_APK_BUILD=BLOCKED
+            exit 41
+          fi
+          temp_dir="$(mktemp -d "$RUNNER_TEMP/r31-signer.XXXXXXXX")"
+          trap 'rm -rf "$temp_dir"' EXIT
+          keyfile="$temp_dir/r31-original.p12"
+          certfile="$temp_dir/r31-cert.der"
+          printf '%s' "$R31_KEYSTORE_B64" | base64 --decode > "$keyfile"
+          keytool -exportcert -storetype PKCS12 -alias appforge-debug \
+            -keystore "$keyfile" -storepass:env R31_STORE_PASSWORD \
+            -file "$certfile" >/dev/null 2>&1 || {
+            echo APPFORGE_R31_DEDICATED_SIGNER_UNAVAILABLE
+            exit 42
+          }
+          actual="$(sha1sum "$certfile" | cut -d' ' -f1 | tr '[:lower:]' '[:upper:]')"
+          expected='990EF33B990FD578E9DCE724348196F99B8807BF'
+          if [ "$actual" != "$expected" ]; then
+            echo APPFORGE_R31_DEDICATED_SIGNER_SHA1_MISMATCH
+            echo APPFORGE_R31_APK_BUILD=BLOCKED
+            exit 43
+          fi
+          python3 - "$temp_dir/unsigned.jar" <<'PY'
+          import pathlib,sys,zipfile
+          p=pathlib.Path(sys.argv[1]);p.parent.mkdir(parents=True,exist_ok=True)
+          with zipfile.ZipFile(p,'w') as z:
+              z.writestr('R31-SIGNING-TEST.txt',b'AppForge R31 signer proof, no APK.')
+          PY
+          jarsigner -keystore "$keyfile" -storetype PKCS12 \
+            -storepass:env R31_STORE_PASSWORD -keypass:env R31_STORE_PASSWORD \
+            -signedjar "$temp_dir/signed.jar" "$temp_dir/unsigned.jar" \
+            appforge-debug >/dev/null 2>&1 || {
+            echo APPFORGE_R31_DEDICATED_PRIVATE_SIGN_FAILED
+            exit 44
+          }
+          jarsigner -verify "$temp_dir/signed.jar" >"$temp_dir/verify.txt" 2>&1 || {
+            echo APPFORGE_R31_DEDICATED_SIGNATURE_VERIFY_FAILED
+            exit 45
+          }
+          grep -Eq '^jar verified\.' "$temp_dir/verify.txt" || {
+            echo APPFORGE_R31_DEDICATED_SIGNATURE_VERIFY_UNCONFIRMED
+            exit 46
+          }
+          echo APPFORGE_R31_DEDICATED_SIGNER_SHA1=PASS
+          echo APPFORGE_R31_DEDICATED_PRIVATE_SIGNING=PASS
+          echo APPFORGE_R31_APK_BUILD=NOT_STARTED_BY_PREFLIGHT
