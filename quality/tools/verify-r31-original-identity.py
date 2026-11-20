@@ -13,6 +13,9 @@ assert 'if (appforgeR31OriginalIdentity) {' in gradle
 assert 'signingConfigs.create("r31Original")' in gradle
 assert 'signingConfig = requireNotNull(r31OriginalSigning)' in gradle
 assert 'R31_ORIGINAL_PKCS12_SIGNER_REQUIRED' in gradle
+assert 'providers.gradleProperty("appforgeR31UnsignedCI")' in gradle
+assert 'R31_UNSIGNED_CI_REQUIRES_TRUSTED_GITHUB_ORIGINAL_IDENTITY' in gradle
+assert 'signingConfig = null' in gradle
 assert 'keyAlias = "appforge-debug"' in gradle
 assert 'storeType = "PKCS12"' in gradle
 assert conf['signer_alias']=='appforge-debug'

@@ -518,6 +518,16 @@ require(!appforgeV9R2Isolated3UpgradeV551R30 ||
 // pinned Google Cloud Android OAuth SHA-1. CI enforces the certificate.
 val appforgeR31OriginalIdentity =
     providers.gradleProperty("appforgeR31OriginalIdentity").orNull == "true"
+// R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
+// remains on the device and must be used before any installation.
+val appforgeR31UnsignedCI =
+    providers.gradleProperty("appforgeR31UnsignedCI").orNull == "true"
+require(!appforgeR31UnsignedCI ||
+    (appforgeR31OriginalIdentity &&
+     System.getenv("GITHUB_ACTIONS") == "true" &&
+     System.getenv("GITHUB_REPOSITORY") == "HACKMASTER-TR/AppForge-Studio")) {
+    "R31_UNSIGNED_CI_REQUIRES_TRUSTED_GITHUB_ORIGINAL_IDENTITY"
+}
 require(!appforgeR31OriginalIdentity ||
     (!appforgeV9R2Isolated3Acceptance && !appforgeV9R2Isolated2Acceptance &&
      !appforgeV9R2Issue78Acceptance && !appforgeV9R2DeviceAcceptance &&
@@ -671,8 +681,13 @@ android {
             if (appforgeR31OriginalIdentity) {
                 // Only the R31 PKCS12 signer is permitted for the original OAuth ID.
                 // Never fall back to the unrelated release key or generated debug key.
-                signingConfig = requireNotNull(r31OriginalSigning) {
-                    "R31_ORIGINAL_PKCS12_SIGNER_REQUIRED"
+                if (appforgeR31UnsignedCI) {
+                    // Verified unsigned artifact only; not installable until local signing.
+                    signingConfig = null
+                } else {
+                    signingConfig = requireNotNull(r31OriginalSigning) {
+                        "R31_ORIGINAL_PKCS12_SIGNER_REQUIRED"
+                    }
                 }
             } else {
                 ciDebugSigning?.let { signingConfig = it }
