@@ -93,10 +93,48 @@ restore_signed_posix_driver() {
   stage=$(mktemp -d /tmp/appforge-signed-posix.XXXXXXXX) || {
     echo "APPFORGE_WINDOWS_${kind}_TEMP_DIR_FAILED" >&2;return 44;
   }
-  dpkg-deb -x "$archive" "$stage" || {
-    echo "APPFORGE_WINDOWS_${kind}_ARCHIVE_EXTRACT_FAILED" >&2;
-    rm -rf -- "$stage";return 44;
-  }
+  # R31 V7 physical Samsung probe: this pinned Ubuntu GCC POSIX .deb
+  # contains a hard-link alias that PRoot --link2symlink can reject with EINVAL.
+  # Stream the signed GCC-13 regular ELF without instantiating a hard link.
+  # The exact .deb SHA, package/version and ARM64 architecture were checked above.
+  if [ "$kind" = gcc ];then
+    mkdir -p "$stage/usr/bin" || {
+      echo 'APPFORGE_WINDOWS_gcc_SIGNED_STREAM_STAGE_FAILED' >&2
+      rm -rf -- "$stage";return 44
+    }
+    signed_versioned="$stage/usr/bin/x86_64-w64-mingw32-gcc-13-posix"
+    if ! (dpkg-deb --fsys-tarfile "$archive" |
+      tar -xOf - ./usr/bin/x86_64-w64-mingw32-gcc-13-posix > "$signed_versioned");then
+      echo 'APPFORGE_WINDOWS_gcc_SIGNED_ELF_STREAM_FAILED' >&2
+      rm -rf -- "$stage";return 44
+    fi
+    # Additional proof from the exact official ARM64 package tested on-device.
+    printf '%s  %s\n' '609a2744c7275d7768e2f7f34cb74413a20b4a57f0e7e60f76692ab2fef3772f' "$signed_versioned" |
+      sha256sum -c - >/dev/null 2>&1 || {
+      echo 'APPFORGE_WINDOWS_gcc_SIGNED_ELF_STREAM_SHA_MISMATCH' >&2
+      rm -rf -- "$stage";return 44
+    }
+    [ -f "$signed_versioned" ] && [ ! -L "$signed_versioned" ] || {
+      echo 'APPFORGE_WINDOWS_gcc_SIGNED_ELF_STREAM_KIND_MISMATCH' >&2
+      rm -rf -- "$stage";return 44
+    }
+    # The authenticated hard-link alias is materialized as byte-identical
+    # regular ELF bytes inside this fresh private stage, never as a hard link.
+    source_driver="$stage$target"
+    cp -p "$signed_versioned" "$source_driver" &&
+      chmod 0755 "$signed_versioned" "$source_driver" &&
+      cmp -s "$signed_versioned" "$source_driver" || {
+      echo 'APPFORGE_WINDOWS_gcc_SIGNED_ELF_STREAM_COPY_FAILED' >&2
+      rm -rf -- "$stage";return 44
+    }
+    echo 'APPFORGE_WINDOWS_gcc_SIGNED_ELF_STREAM_EXTRACT=PASS'
+  else
+    # Other drivers retain their original recovery path until device-proven.
+    dpkg-deb -x "$archive" "$stage" || {
+      echo "APPFORGE_WINDOWS_${kind}_ARCHIVE_EXTRACT_FAILED" >&2;
+      rm -rf -- "$stage";return 44;
+    }
+  fi
   echo "APPFORGE_WINDOWS_${kind}_SIGNED_ARCHIVE_EXTRACTED=PASS"
   source_driver="$stage$target"
   echo "APPFORGE_WINDOWS_${kind}_SIGNED_SOURCE_KIND=$([ -L "$source_driver" ] && echo LINK || ([ -f "$source_driver" ] && echo FILE || echo MISSING))"
@@ -296,6 +334,16 @@ restore_signed_posix_driver() {
   fi
   # This actually runs the verified ARM64 driver. No READY on failure.
   if ! "$target" --version >/dev/null;then
+    # Diagnostic only: NEVER replace the required real direct-exec test.
+    if [ "$kind" = gcc ] && [ -x /lib/ld-linux-aarch64.so.1 ];then
+      if /lib/ld-linux-aarch64.so.1 \
+          --library-path /lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu \
+          "$target" --version >/dev/null 2>&1;then
+        echo 'APPFORGE_WINDOWS_gcc_DIRECT_EXEC_FAILED_EXPLICIT_LOADER_PASS' >&2
+      else
+        echo 'APPFORGE_WINDOWS_gcc_DIRECT_AND_EXPLICIT_LOADER_FAILED' >&2
+      fi
+    fi
     echo "APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_EXEC_PROBE_FAILED" >&2
     rm -rf -- "$stage";return 44
   fi

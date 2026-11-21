@@ -22,3 +22,21 @@ test('MinGW signed temporary file and guarded restoration retain strict ownershi
     '[ "$target_absent_before_copy" = 1 ]']) assert.ok(win.includes(v),v);
   for(const bad of ['dpkg --force','rm -rf /var/lib/dpkg','apt-get -f install']) assert.ok(!win.includes(bad),bad);
 });
+
+test('R31 MinGW GCC physical PRoot hard-link repair uses only SHA-verified streamed ELF',()=>{
+  for(const marker of [
+    'APPFORGE_WINDOWS_gcc_SIGNED_ELF_STREAM_EXTRACT=PASS',
+    'dpkg-deb --fsys-tarfile "$archive"',
+    'tar -xOf - ./usr/bin/x86_64-w64-mingw32-gcc-13-posix',
+    '609a2744c7275d7768e2f7f34cb74413a20b4a57f0e7e60f76692ab2fef3772f',
+    'cmp -s "$signed_versioned" "$source_driver"',
+    'APPFORGE_WINDOWS_gcc_SIGNED_ELF_STREAM_SHA_MISMATCH',
+    'APPFORGE_WINDOWS_gcc_DIRECT_EXEC_FAILED_EXPLICIT_LOADER_PASS',
+    'APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_EXEC_PROBE_FAILED',
+    'dpkg-deb -x "$archive" "$stage"',
+    'verify_smoke'
+  ]) assert.ok(win.includes(marker),marker);
+  assert.ok(win.includes('if ! "$target" --version >/dev/null;then'));
+  for(const forbidden of ['dpkg --force','rm -rf /var/lib/dpkg','apt-get -f install','chmod -R 777'])
+    assert.ok(!win.includes(forbidden),forbidden);
+});
