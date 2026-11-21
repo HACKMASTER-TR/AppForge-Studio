@@ -254,32 +254,52 @@ restore_signed_posix_driver() {
     else
       echo "APPFORGE_WINDOWS_${kind}_DPKG_TARGET_OWNER=NOT_MATCHED"
     fi
-    if { [ "$installed_owner" = "$pkg: $target" ] ||
+    # R31 SAFE STAT FALLBACK: /bin/sh -f/-x may return false after an
+    # atomic move inside PRoot even when GNU stat reports the authentic ELF.
+    # Independent lstat type must be REGULAR (never a link), mode exactly 755,
+    # package owner exact, and bytes identical to the signed Ubuntu payload.
+    target_stat_kind=$(stat -c %F -- "$target" 2>/dev/null || printf 'UNAVAILABLE')
+    target_stat_mode=$(stat -c %a -- "$target" 2>/dev/null || printf 'UNAVAILABLE')
+    echo "APPFORGE_WINDOWS_${kind}_STAT_KIND=$target_stat_kind"
+    echo "APPFORGE_WINDOWS_${kind}_STAT_MODE=$target_stat_mode"
+    if [ "$target_stat_kind" = 'regular file' ] &&
+       [ "$target_stat_mode" = 755 ] &&
+       { [ "$installed_owner" = "$pkg: $target" ] ||
          [ "$target_absent_before_copy" = 1 ]; } &&
-       [ -f "$target" ] && [ ! -L "$target" ] &&
        [ -f "$source_driver" ] && [ ! -L "$source_driver" ] &&
        cmp -s "$source_driver" "$target";then
       echo "APPFORGE_WINDOWS_${kind}_RESTORED_SIGNED_BYTES=VERIFIED"
       echo "APPFORGE_WINDOWS_${kind}_SIGNED_NEW_TARGET=$target_absent_before_copy"
-      chmod 0755 "$target" || {
-        echo "APPFORGE_WINDOWS_${kind}_RESTORED_CHMOD_FAILED" >&2
-        rm -rf -- "$stage";return 44
-      }
+      echo "APPFORGE_WINDOWS_${kind}_PROROOT_STAT_REGULAR_SIGNED=PASS"
+      # Already mode 755: never chmod a target whose shell type conflicts.
+      # A real --version exec below is required even after these proofs.
     else
       echo "APPFORGE_WINDOWS_${kind}_RESTORED_BYTES_OR_OWNERSHIP_MISMATCH" >&2
       rm -rf -- "$stage";return 44
     fi
   fi
-  rm -rf -- "$stage"
-  [ -x "$target" ] || {
-    echo "APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_NOT_EXECUTABLE" >&2
-    file -L "$target" >&2 || :
-    return 44
-  }
-  "$target" --version >/dev/null || {
+  if [ ! -x "$target" ];then
+    # Fail closed unless the same target STILL has all independent signed
+    # regular-file proofs. Don't rely on PRoot's inconsistent -x predicate.
+    independent_kind=$(stat -c %F -- "$target" 2>/dev/null || :)
+    independent_mode=$(stat -c %a -- "$target" 2>/dev/null || :)
+    independent_owner=$(dpkg-query -S "$target" 2>/dev/null || :)
+    if [ "$independent_kind" != 'regular file' ] ||
+       [ "$independent_mode" != 755 ] ||
+       [ "$independent_owner" != "$pkg: $target" ] ||
+       [ ! -f "$source_driver" ] || [ -L "$source_driver" ] ||
+       ! cmp -s "$source_driver" "$target";then
+      echo "APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_NOT_EXECUTABLE" >&2
+      rm -rf -- "$stage";return 44
+    fi
+    echo "APPFORGE_WINDOWS_${kind}_EXEC_REQUIRES_PHYSICAL_PROBE=PASS"
+  fi
+  # This actually runs the verified ARM64 driver. No READY on failure.
+  if ! "$target" --version >/dev/null;then
     echo "APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_EXEC_PROBE_FAILED" >&2
-    return 44
-  }
+    rm -rf -- "$stage";return 44
+  fi
+  rm -rf -- "$stage"
   echo "APPFORGE_WINDOWS_${kind}_SIGNED_DRIVER_RESTORED=PASS"
 }
 repair_mingw_links() {
