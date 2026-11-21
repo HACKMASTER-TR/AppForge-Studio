@@ -42,6 +42,13 @@ restore_signed_posix_driver() {
     *) return 43;;
   esac
   [ -x "$target" ] && return 0
+  # A missing alternatives name is not owned by dpkg, even though the
+  # signed POSIX driver was authenticated before installation.
+  # Only a genuinely absent name may use the signed-byte restoration path.
+  target_absent_before_copy=0
+  if [ ! -e "$target" ] && [ ! -L "$target" ];then
+    target_absent_before_copy=1
+  fi
   # A failed Ubuntu postinst can leave an existing non-executable file or
   # dangling alternatives link. The previous name-only check incorrectly
   # rejected such dpkg-owned paths. Never replace an unowned/foreign path.
@@ -203,11 +210,13 @@ restore_signed_posix_driver() {
   # the exact authenticated archive bytes and checking package ownership.
   if [ ! -x "$target" ];then
     installed_owner=$(dpkg-query -S "$target" 2>/dev/null || :)
-    if [ "$installed_owner" = "$pkg: $target" ] &&
+    if { [ "$installed_owner" = "$pkg: $target" ] ||
+         [ "$target_absent_before_copy" = 1 ]; } &&
        [ -f "$target" ] && [ ! -L "$target" ] &&
        [ -f "$source_driver" ] && [ ! -L "$source_driver" ] &&
        cmp -s "$source_driver" "$target";then
       echo "APPFORGE_WINDOWS_${kind}_RESTORED_SIGNED_BYTES=VERIFIED"
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_NEW_TARGET=$target_absent_before_copy"
       chmod 0755 "$target" || {
         echo "APPFORGE_WINDOWS_${kind}_RESTORED_CHMOD_FAILED" >&2
         rm -rf -- "$stage";return 44

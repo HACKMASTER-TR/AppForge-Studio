@@ -170,6 +170,11 @@ export PROROOT_GUEST_EXE="$executable"
 # verified private-tool launch paths and the guest-exe override.
 if [ "$name" = cmake ];then
   cmake_modules="$sysroot/usr/share/cmake-3.28/Modules/CMake.cmake"
+  # Candidate: some CMake builds consult CMAKE_ROOT before locating data
+  # relative to argv[0]. The physical -P CMAKE_ROOT probe still gates READY.
+  # Resource data remains inside this exact verified private sysroot.
+  CMAKE_ROOT="$sysroot/usr/share/cmake-3.28"
+  export CMAKE_ROOT
   [ -s "$cmake_modules" ] || {
     echo 'APPFORGE_NDK_HOST_CMAKE_DATA_MISSING' >&2;exit 66;
   }
