@@ -199,6 +199,20 @@ restore_signed_posix_driver() {
     echo "APPFORGE_WINDOWS_${kind}_AUTHENTIC_DRIVER_MISSING_IN_SIGNED_DEB" >&2
     rm -rf -- "$stage";return 44
   fi
+  # R31 DIAG V2: executable mode is enforced ONLY on authenticated copied
+  # regular bytes, before the atomic move. Never chmod an untrusted path.
+  if [ -f "$source_driver" ] && [ ! -L "$source_driver" ];then
+    [ -f "$tmp" ] && [ ! -L "$tmp" ] &&
+    cmp -s "$source_driver" "$tmp" || {
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_TMP_BYTES_MISMATCH" >&2
+      rm -f -- "$tmp";rm -rf -- "$stage";return 44
+    }
+    chmod 0755 "$tmp" || {
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_TMP_CHMOD_FAILED" >&2
+      rm -f -- "$tmp";rm -rf -- "$stage";return 44
+    }
+    echo "APPFORGE_WINDOWS_${kind}_SIGNED_TMP_MODE=VERIFIED"
+  fi
   # Atomic replacement only after the fixed package and executable checks.
   if ! mv -T "$tmp" "$target"; then
     echo "APPFORGE_WINDOWS_${kind}_ATOMIC_REPLACE_FAILED" >&2
@@ -209,7 +223,37 @@ restore_signed_posix_driver() {
   # Restore x-bit only after independently comparing the installed file to
   # the exact authenticated archive bytes and checking package ownership.
   if [ ! -x "$target" ];then
+    # Read-only PRoot/dpkg diagnostics distinguish missing, non-executable,
+    # unowned and changed paths. No guard is bypassed on disagreement.
+    if [ -L "$target" ];then target_kind=SYMLINK
+    elif [ -f "$target" ];then target_kind=REGULAR
+    elif [ -e "$target" ];then target_kind=OTHER
+    else target_kind=MISSING;fi
+    echo "APPFORGE_WINDOWS_${kind}_AFTER_MOVE_TYPE=$target_kind"
+    echo "APPFORGE_WINDOWS_${kind}_BEFORE_COPY_ABSENT=$target_absent_before_copy"
+    target_mode=$(stat -c %a "$target" 2>/dev/null || printf 'UNAVAILABLE')
+    echo "APPFORGE_WINDOWS_${kind}_AFTER_MOVE_MODE=$target_mode"
+    if [ -f "$source_driver" ] && [ ! -L "$source_driver" ];then
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_STAGE_REGULAR=YES"
+    else
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_STAGE_REGULAR=NO"
+    fi
+    if [ -f "$target" ] && [ ! -L "$target" ];then
+      echo "APPFORGE_WINDOWS_${kind}_AFTER_MOVE_REGULAR=YES"
+    else
+      echo "APPFORGE_WINDOWS_${kind}_AFTER_MOVE_REGULAR=NO"
+    fi
+    if cmp -s "$source_driver" "$target" 2>/dev/null;then
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_BYTES_COMPARE=PASS"
+    else
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_BYTES_COMPARE=FAIL"
+    fi
     installed_owner=$(dpkg-query -S "$target" 2>/dev/null || :)
+    if [ "$installed_owner" = "$pkg: $target" ];then
+      echo "APPFORGE_WINDOWS_${kind}_DPKG_TARGET_OWNER=MATCH"
+    else
+      echo "APPFORGE_WINDOWS_${kind}_DPKG_TARGET_OWNER=NOT_MATCHED"
+    fi
     if { [ "$installed_owner" = "$pkg: $target" ] ||
          [ "$target_absent_before_copy" = 1 ]; } &&
        [ -f "$target" ] && [ ! -L "$target" ] &&
