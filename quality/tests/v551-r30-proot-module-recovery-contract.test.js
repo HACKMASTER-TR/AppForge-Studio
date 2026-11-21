@@ -18,9 +18,12 @@ test('MinGW only repairs authenticated dpkg-owned identical bytes',()=>{
   for(const v of ['APPFORGE_WINDOWS_${kind}_RESTORED_SIGNED_BYTES=VERIFIED',
     '[ "$installed_owner" = "$pkg: $target" ]',
     'cmp -s "$source_driver" "$target"',
-    'chmod 0755 "$target"',
+    'stat -c %F -- "$target"',
+    'stat -c %a -- "$target"',
+    'APPFORGE_WINDOWS_${kind}_PROROOT_STAT_REGULAR_SIGNED=PASS',
+    'APPFORGE_WINDOWS_${kind}_EXEC_REQUIRES_PHYSICAL_PROBE=PASS',
     'APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_EXEC_PROBE_FAILED',
     'APPFORGE_WINDOWS_${kind}_RESTORED_BYTES_OR_OWNERSHIP_MISMATCH',
     'SIGNED_ARCHIVE_VERIFIED=PASS'])assert.ok(w.includes(v),v);
-  for(const forbidden of ['dpkg --force','rm -rf /var/lib/dpkg','apt-get -f install'])assert.ok(!w.includes(forbidden),forbidden);
+  for(const forbidden of ['chmod 0755 "$target"','dpkg --force','rm -rf /var/lib/dpkg','apt-get -f install'])assert.ok(!w.includes(forbidden),forbidden);
 });

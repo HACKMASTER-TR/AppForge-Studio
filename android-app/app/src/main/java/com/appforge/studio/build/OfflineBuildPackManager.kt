@@ -777,8 +777,9 @@ internal object OfflineBuildPackManager {
         operation:String="",
         progress:(ModuleProgress)->Unit={},
         control:DownloadControl=DownloadControl(),
-        r2Authorized:Boolean=false
-    ) = kotlinx.coroutines.coroutineScope {
+        r2Authorized:Boolean=false,
+        windowsProrootReentry:Int=0
+    ): Unit = kotlinx.coroutines.coroutineScope {
         val sessionId =
             "offline-pack-$suffix-${UUID.randomUUID()}"
         // Only Android Core's large, isolated toolchain stages may exceed 30 min.
@@ -862,6 +863,22 @@ internal object OfflineBuildPackManager {
                 module, command, lastAptPhase.get(), timeoutBudgetMs)
         }
 
+        // Only the trusted Windows Native installer may request a fresh
+        // PRoot process, and only after its authenticated ELF passed the
+        // explicit loader. Never turn this condition into a READY signal.
+        if (module == OfflineModuleId.WINDOWS_NATIVE && r2Authorized &&
+            command.contains("/workspace/runtime/install-windows-native-toolchain.sh") &&
+            result.exitCode == 75 &&
+            result.output.contains("APPFORGE_WINDOWS_NATIVE_PROROOT_REENTRY_REQUIRED") &&
+            windowsProrootReentry < 2) {
+            control.checkpoint()
+            progress(ModuleProgress(OfflineModuleId.WINDOWS_NATIVE,operation,
+                ModulePhase.PREPARING,
+                detail="Doğrulanmış MinGW sürücüsü için PRoot oturumu yenileniyor (${windowsProrootReentry + 1}/2)."))
+            execute(shell,rootfs,workspace,"$suffix-reentry-${windowsProrootReentry + 1}",
+                command,module,operation,progress,control,r2Authorized,windowsProrootReentry+1)
+            return@coroutineScope
+        }
         check(
             result.exitCode ==
                 0

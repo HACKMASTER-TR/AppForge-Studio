@@ -42,6 +42,13 @@ restore_signed_posix_driver() {
     *) return 43;;
   esac
   [ -x "$target" ] && return 0
+  # A missing alternatives name is not owned by dpkg, even though the
+  # signed POSIX driver was authenticated before installation.
+  # Only a genuinely absent name may use the signed-byte restoration path.
+  target_absent_before_copy=0
+  if [ ! -e "$target" ] && [ ! -L "$target" ];then
+    target_absent_before_copy=1
+  fi
   # A failed Ubuntu postinst can leave an existing non-executable file or
   # dangling alternatives link. The previous name-only check incorrectly
   # rejected such dpkg-owned paths. Never replace an unowned/foreign path.
@@ -86,10 +93,48 @@ restore_signed_posix_driver() {
   stage=$(mktemp -d /tmp/appforge-signed-posix.XXXXXXXX) || {
     echo "APPFORGE_WINDOWS_${kind}_TEMP_DIR_FAILED" >&2;return 44;
   }
-  dpkg-deb -x "$archive" "$stage" || {
-    echo "APPFORGE_WINDOWS_${kind}_ARCHIVE_EXTRACT_FAILED" >&2;
-    rm -rf -- "$stage";return 44;
-  }
+  # R31 V7 physical Samsung probe: this pinned Ubuntu GCC POSIX .deb
+  # contains a hard-link alias that PRoot --link2symlink can reject with EINVAL.
+  # Stream the signed GCC-13 regular ELF without instantiating a hard link.
+  # The exact .deb SHA, package/version and ARM64 architecture were checked above.
+  if [ "$kind" = gcc ];then
+    mkdir -p "$stage/usr/bin" || {
+      echo 'APPFORGE_WINDOWS_gcc_SIGNED_STREAM_STAGE_FAILED' >&2
+      rm -rf -- "$stage";return 44
+    }
+    signed_versioned="$stage/usr/bin/x86_64-w64-mingw32-gcc-13-posix"
+    if ! (dpkg-deb --fsys-tarfile "$archive" |
+      tar -xOf - ./usr/bin/x86_64-w64-mingw32-gcc-13-posix > "$signed_versioned");then
+      echo 'APPFORGE_WINDOWS_gcc_SIGNED_ELF_STREAM_FAILED' >&2
+      rm -rf -- "$stage";return 44
+    fi
+    # Additional proof from the exact official ARM64 package tested on-device.
+    printf '%s  %s\n' '609a2744c7275d7768e2f7f34cb74413a20b4a57f0e7e60f76692ab2fef3772f' "$signed_versioned" |
+      sha256sum -c - >/dev/null 2>&1 || {
+      echo 'APPFORGE_WINDOWS_gcc_SIGNED_ELF_STREAM_SHA_MISMATCH' >&2
+      rm -rf -- "$stage";return 44
+    }
+    [ -f "$signed_versioned" ] && [ ! -L "$signed_versioned" ] || {
+      echo 'APPFORGE_WINDOWS_gcc_SIGNED_ELF_STREAM_KIND_MISMATCH' >&2
+      rm -rf -- "$stage";return 44
+    }
+    # The authenticated hard-link alias is materialized as byte-identical
+    # regular ELF bytes inside this fresh private stage, never as a hard link.
+    source_driver="$stage$target"
+    cp -p "$signed_versioned" "$source_driver" &&
+      chmod 0755 "$signed_versioned" "$source_driver" &&
+      cmp -s "$signed_versioned" "$source_driver" || {
+      echo 'APPFORGE_WINDOWS_gcc_SIGNED_ELF_STREAM_COPY_FAILED' >&2
+      rm -rf -- "$stage";return 44
+    }
+    echo 'APPFORGE_WINDOWS_gcc_SIGNED_ELF_STREAM_EXTRACT=PASS'
+  else
+    # Other drivers retain their original recovery path until device-proven.
+    dpkg-deb -x "$archive" "$stage" || {
+      echo "APPFORGE_WINDOWS_${kind}_ARCHIVE_EXTRACT_FAILED" >&2;
+      rm -rf -- "$stage";return 44;
+    }
+  fi
   echo "APPFORGE_WINDOWS_${kind}_SIGNED_ARCHIVE_EXTRACTED=PASS"
   source_driver="$stage$target"
   echo "APPFORGE_WINDOWS_${kind}_SIGNED_SOURCE_KIND=$([ -L "$source_driver" ] && echo LINK || ([ -f "$source_driver" ] && echo FILE || echo MISSING))"
@@ -192,6 +237,20 @@ restore_signed_posix_driver() {
     echo "APPFORGE_WINDOWS_${kind}_AUTHENTIC_DRIVER_MISSING_IN_SIGNED_DEB" >&2
     rm -rf -- "$stage";return 44
   fi
+  # R31 DIAG V2: executable mode is enforced ONLY on authenticated copied
+  # regular bytes, before the atomic move. Never chmod an untrusted path.
+  if [ -f "$source_driver" ] && [ ! -L "$source_driver" ];then
+    [ -f "$tmp" ] && [ ! -L "$tmp" ] &&
+    cmp -s "$source_driver" "$tmp" || {
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_TMP_BYTES_MISMATCH" >&2
+      rm -f -- "$tmp";rm -rf -- "$stage";return 44
+    }
+    chmod 0755 "$tmp" || {
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_TMP_CHMOD_FAILED" >&2
+      rm -f -- "$tmp";rm -rf -- "$stage";return 44
+    }
+    echo "APPFORGE_WINDOWS_${kind}_SIGNED_TMP_MODE=VERIFIED"
+  fi
   # Atomic replacement only after the fixed package and executable checks.
   if ! mv -T "$tmp" "$target"; then
     echo "APPFORGE_WINDOWS_${kind}_ATOMIC_REPLACE_FAILED" >&2
@@ -202,31 +261,105 @@ restore_signed_posix_driver() {
   # Restore x-bit only after independently comparing the installed file to
   # the exact authenticated archive bytes and checking package ownership.
   if [ ! -x "$target" ];then
+    # Read-only PRoot/dpkg diagnostics distinguish missing, non-executable,
+    # unowned and changed paths. No guard is bypassed on disagreement.
+    if [ -L "$target" ];then target_kind=SYMLINK
+    elif [ -f "$target" ];then target_kind=REGULAR
+    elif [ -e "$target" ];then target_kind=OTHER
+    else target_kind=MISSING;fi
+    echo "APPFORGE_WINDOWS_${kind}_AFTER_MOVE_TYPE=$target_kind"
+    echo "APPFORGE_WINDOWS_${kind}_BEFORE_COPY_ABSENT=$target_absent_before_copy"
+    target_mode=$(stat -c %a "$target" 2>/dev/null || printf 'UNAVAILABLE')
+    echo "APPFORGE_WINDOWS_${kind}_AFTER_MOVE_MODE=$target_mode"
+    if [ -f "$source_driver" ] && [ ! -L "$source_driver" ];then
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_STAGE_REGULAR=YES"
+    else
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_STAGE_REGULAR=NO"
+    fi
+    if [ -f "$target" ] && [ ! -L "$target" ];then
+      echo "APPFORGE_WINDOWS_${kind}_AFTER_MOVE_REGULAR=YES"
+    else
+      echo "APPFORGE_WINDOWS_${kind}_AFTER_MOVE_REGULAR=NO"
+    fi
+    if cmp -s "$source_driver" "$target" 2>/dev/null;then
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_BYTES_COMPARE=PASS"
+    else
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_BYTES_COMPARE=FAIL"
+    fi
     installed_owner=$(dpkg-query -S "$target" 2>/dev/null || :)
-    if [ "$installed_owner" = "$pkg: $target" ] &&
-       [ -f "$target" ] && [ ! -L "$target" ] &&
+    if [ "$installed_owner" = "$pkg: $target" ];then
+      echo "APPFORGE_WINDOWS_${kind}_DPKG_TARGET_OWNER=MATCH"
+    else
+      echo "APPFORGE_WINDOWS_${kind}_DPKG_TARGET_OWNER=NOT_MATCHED"
+    fi
+    # R31 SAFE STAT FALLBACK: /bin/sh -f/-x may return false after an
+    # atomic move inside PRoot even when GNU stat reports the authentic ELF.
+    # Independent lstat type must be REGULAR (never a link), mode exactly 755,
+    # package owner exact, and bytes identical to the signed Ubuntu payload.
+    target_stat_kind=$(stat -c %F -- "$target" 2>/dev/null || printf 'UNAVAILABLE')
+    target_stat_mode=$(stat -c %a -- "$target" 2>/dev/null || printf 'UNAVAILABLE')
+    echo "APPFORGE_WINDOWS_${kind}_STAT_KIND=$target_stat_kind"
+    echo "APPFORGE_WINDOWS_${kind}_STAT_MODE=$target_stat_mode"
+    if [ "$target_stat_kind" = 'regular file' ] &&
+       [ "$target_stat_mode" = 755 ] &&
+       { [ "$installed_owner" = "$pkg: $target" ] ||
+         [ "$target_absent_before_copy" = 1 ]; } &&
        [ -f "$source_driver" ] && [ ! -L "$source_driver" ] &&
        cmp -s "$source_driver" "$target";then
       echo "APPFORGE_WINDOWS_${kind}_RESTORED_SIGNED_BYTES=VERIFIED"
-      chmod 0755 "$target" || {
-        echo "APPFORGE_WINDOWS_${kind}_RESTORED_CHMOD_FAILED" >&2
-        rm -rf -- "$stage";return 44
-      }
+      echo "APPFORGE_WINDOWS_${kind}_SIGNED_NEW_TARGET=$target_absent_before_copy"
+      echo "APPFORGE_WINDOWS_${kind}_PROROOT_STAT_REGULAR_SIGNED=PASS"
+      # Already mode 755: never chmod a target whose shell type conflicts.
+      # A real --version exec below is required even after these proofs.
     else
       echo "APPFORGE_WINDOWS_${kind}_RESTORED_BYTES_OR_OWNERSHIP_MISMATCH" >&2
       rm -rf -- "$stage";return 44
     fi
   fi
-  rm -rf -- "$stage"
-  [ -x "$target" ] || {
-    echo "APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_NOT_EXECUTABLE" >&2
-    file -L "$target" >&2 || :
-    return 44
-  }
-  "$target" --version >/dev/null || {
+  if [ ! -x "$target" ];then
+    # Fail closed unless the same target STILL has all independent signed
+    # regular-file proofs. Don't rely on PRoot's inconsistent -x predicate.
+    independent_kind=$(stat -c %F -- "$target" 2>/dev/null || :)
+    independent_mode=$(stat -c %a -- "$target" 2>/dev/null || :)
+    independent_owner=$(dpkg-query -S "$target" 2>/dev/null || :)
+    if [ "$independent_kind" != 'regular file' ] ||
+       [ "$independent_mode" != 755 ] ||
+       [ "$independent_owner" != "$pkg: $target" ] ||
+       [ ! -f "$source_driver" ] || [ -L "$source_driver" ] ||
+       ! cmp -s "$source_driver" "$target";then
+      echo "APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_NOT_EXECUTABLE" >&2
+      rm -rf -- "$stage";return 44
+    fi
+    echo "APPFORGE_WINDOWS_${kind}_EXEC_REQUIRES_PHYSICAL_PROBE=PASS"
+  fi
+  # This actually runs the verified ARM64 driver. No READY on failure.
+  if ! "$target" --version >/dev/null;then
+    # A PRoot interpreter/path lookup can remain stale after authenticated
+    # dpkg rename even when stat, the signed bytes, and explicit loader pass.
+    # W15/W16 physical Samsung tests proved this exact ELF works in a FRESH
+    # PRoot session; NEVER treat loader-only success as module READY.
+    if [ -x /lib/ld-linux-aarch64.so.1 ];then
+      if /lib/ld-linux-aarch64.so.1 \
+          --library-path /lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu \
+          "$target" --version >/dev/null 2>&1;then
+        if [ "$kind" = gcc ];then
+          echo 'APPFORGE_WINDOWS_gcc_DIRECT_EXEC_FAILED_EXPLICIT_LOADER_PASS' >&2
+        else
+          echo 'APPFORGE_WINDOWS_gxx_DIRECT_EXEC_FAILED_EXPLICIT_LOADER_PASS' >&2
+        fi
+        # Distinct bounded guest exit; Android restarts the SAME isolated
+        # staged root in a new PRoot process without re-running a passed test.
+        echo 'APPFORGE_WINDOWS_NATIVE_PROROOT_REENTRY_REQUIRED' >&2
+        rm -rf -- "$stage"
+        return 75
+      else
+        echo "APPFORGE_WINDOWS_${kind}_DIRECT_AND_EXPLICIT_LOADER_FAILED" >&2
+      fi
+    fi
     echo "APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_EXEC_PROBE_FAILED" >&2
-    return 44
-  }
+    rm -rf -- "$stage";return 44
+  fi
+  rm -rf -- "$stage"
   echo "APPFORGE_WINDOWS_${kind}_SIGNED_DRIVER_RESTORED=PASS"
 }
 repair_mingw_links() {

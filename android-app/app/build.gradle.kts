@@ -513,6 +513,31 @@ require(!appforgeV9R2Isolated3UpgradeV551R30 ||
     "R30 requires original isolated3 identity and exclusive debug version flag."
 }
 
+// R31 original identity is opt-in and may NEVER use an isolated package suffix.
+// Do not publish unless the actual signing certificate matches the
+// pinned Google Cloud Android OAuth SHA-1. CI enforces the certificate.
+val appforgeR31OriginalIdentity =
+    providers.gradleProperty("appforgeR31OriginalIdentity").orNull == "true"
+// R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
+// remains on the device and must be used before any installation.
+val appforgeR31UnsignedCI =
+    providers.gradleProperty("appforgeR31UnsignedCI").orNull == "true"
+require(!appforgeR31UnsignedCI ||
+    (appforgeR31OriginalIdentity &&
+     System.getenv("GITHUB_ACTIONS") == "true" &&
+     System.getenv("GITHUB_REPOSITORY") == "HACKMASTER-TR/AppForge-Studio")) {
+    "R31_UNSIGNED_CI_REQUIRES_TRUSTED_GITHUB_ORIGINAL_IDENTITY"
+}
+require(!appforgeR31OriginalIdentity ||
+    (!appforgeV9R2Isolated3Acceptance && !appforgeV9R2Isolated2Acceptance &&
+     !appforgeV9R2Issue78Acceptance && !appforgeV9R2DeviceAcceptance &&
+     !appforgeProRecoveryTest && !appforgeProSecondDevice &&
+     !appforgeProProcessDeathTest && !appforgePlayIntegrityAcceptance &&
+     !appforgeV9R2Isolated3UpgradeV551R30 &&
+     appforgeIntegrationDebugVersionCode == null)) {
+    "R31 original package cannot combine with isolated/suffixed test identities."
+}
+
 android {
     namespace = "com.appforge.studio"
     compileSdk = 37
@@ -597,6 +622,25 @@ android {
             null
         }
 
+    // R31-only signer. The existing release JKS remains untouched.
+    // R31 accepts only the dedicated PKCS12 key whose SHA-1 is checked by CI.
+    val r31StorePath = System.getenv("APPFORGE_R31_KEYSTORE_PATH")
+    val r31StorePassword = System.getenv("APPFORGE_R31_STORE_PASSWORD")
+    val r31KeyPassword = System.getenv("APPFORGE_R31_KEY_PASSWORD")
+        ?: r31StorePassword.orEmpty()
+    val r31OriginalSigning =
+        if (!r31StorePath.isNullOrBlank() && !r31StorePassword.isNullOrBlank()) {
+            signingConfigs.create("r31Original") {
+                storeFile = file(requireNotNull(r31StorePath))
+                storePassword = r31StorePassword.orEmpty()
+                keyAlias = "appforge-debug"
+                keyPassword = r31KeyPassword
+                storeType = "PKCS12"
+            }
+        } else {
+            null
+        }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -634,7 +678,20 @@ android {
 
     buildTypes {
         getByName("debug") {
-            ciDebugSigning?.let { signingConfig = it }
+            if (appforgeR31OriginalIdentity) {
+                // Only the R31 PKCS12 signer is permitted for the original OAuth ID.
+                // Never fall back to the unrelated release key or generated debug key.
+                if (appforgeR31UnsignedCI) {
+                    // Verified unsigned artifact only; not installable until local signing.
+                    signingConfig = null
+                } else {
+                    signingConfig = requireNotNull(r31OriginalSigning) {
+                        "R31_ORIGINAL_PKCS12_SIGNER_REQUIRED"
+                    }
+                }
+            } else {
+                ciDebugSigning?.let { signingConfig = it }
+            }
             if (appforgeV9R2Isolated3Acceptance) {
                 applicationIdSuffix = ".v9r2isolated3"
             } else if (appforgeV9R2Isolated2Acceptance) {
@@ -887,6 +944,12 @@ androidComponents {
     }
 
     onVariants(selector().withBuildType("debug")) { variant ->
+        if (appforgeR31OriginalIdentity) {
+            variant.outputs.forEach { output ->
+                output.versionCode.set(554)
+                output.versionName.set("5.0.52-r31-original-id-test")
+            }
+        }
         if (appforgeV9R2Isolated3UpgradeV551R30) {
             variant.outputs.forEach { output ->
                 output.versionCode.set(553)

@@ -11,7 +11,7 @@ const moduleUi=read('android-app/app/src/main/java/com/appforge/studio/OfflineBu
 test('NDK uses private signed libraries and a real loader probe before READY',()=>{
   for(const x of ['sha256sum -c -','as_verify_indices','APPFORGE_NDK_HOST_CMAKE_PRIVATE_ELF_DEPENDENCY_FAILED',
     'APPFORGE_NDK_HOST_CMAKE_PRIVATE_LIBARCHIVE_MISSING','APPFORGE_NDK_HOST_CMAKE_NO_VERIFIED_LAUNCHER',
-    'for cmake_mode in loader-argv0 direct;do','APPFORGE_NDK_HOST_SIGNED_PACKAGES=69'])assert.ok(ndk.includes(x),x);
+    'for cmake_mode in loader-argv0 direct loader-argv0-no-guest loader-plain-no-guest direct-no-guest;do','APPFORGE_NDK_HOST_SIGNED_PACKAGES=69'])assert.ok(ndk.includes(x),x);
   for(const bad of ['LD_PRELOAD=','dpkg --force','apt-get install'])assert.ok(!ndk.includes(bad),bad);
 });
 test('MinGW signed symlink is accepted only with exact target and dpkg ownership',()=>{

@@ -170,6 +170,11 @@ export PROROOT_GUEST_EXE="$executable"
 # verified private-tool launch paths and the guest-exe override.
 if [ "$name" = cmake ];then
   cmake_modules="$sysroot/usr/share/cmake-3.28/Modules/CMake.cmake"
+  # Candidate: some CMake builds consult CMAKE_ROOT before locating data
+  # relative to argv[0]. The physical -P CMAKE_ROOT probe still gates READY.
+  # Resource data remains inside this exact verified private sysroot.
+  CMAKE_ROOT="$sysroot/usr/share/cmake-3.28"
+  export CMAKE_ROOT
   [ -s "$cmake_modules" ] || {
     echo 'APPFORGE_NDK_HOST_CMAKE_DATA_MISSING' >&2;exit 66;
   }
@@ -186,6 +191,11 @@ if [ "$name" = cmake ];then
   case "$cmake_mode" in
     direct) exec "$executable" "$@";;
     loader-argv0) exec "$interpreter" --argv0 "$executable" --library-path "$libpath" "$executable" "$@";;
+    # R31 DIAG V2: candidate-only launch variants. Every variant must pass
+    # the same actual -P CMAKE_ROOT probe before it can be persisted.
+    loader-argv0-no-guest) unset PROROOT_GUEST_EXE; exec "$interpreter" --argv0 "$executable" --library-path "$libpath" "$executable" "$@";;
+    loader-plain-no-guest) unset PROROOT_GUEST_EXE; exec "$interpreter" --library-path "$libpath" "$executable" "$@";;
+    direct-no-guest) unset PROROOT_GUEST_EXE; exec "$executable" "$@";;
     # Only approved if a real CMAKE_ROOT + -P probe succeeded below.
     private-prefix-argv0) exec "$interpreter" --argv0 "$prefix/bin/cmake" --library-path "$libpath" "$executable" "$@";;
     *) echo 'APPFORGE_NDK_HOST_CMAKE_LAUNCH_DENIED' >&2;exit 66;;
@@ -233,7 +243,12 @@ fi
 [ -f "$PREFIX/sysroot/usr/lib/aarch64-linux-gnu/libarchive.so.13" ] || {
   echo 'APPFORGE_NDK_HOST_CMAKE_PRIVATE_LIBARCHIVE_MISSING' >&2;exit 68
 }
-for cmake_mode in loader-argv0 direct;do
+[ -s "$cmake_probe_dir/check.cmake" ] &&
+ [ -s "$PREFIX/sysroot/usr/share/cmake-3.28/Modules/CMakeDetermineSystem.cmake" ] || {
+  echo 'APPFORGE_NDK_CMAKE_SCRIPT_SHELL_INVISIBLE' >&2;exit 68;
+}
+echo 'APPFORGE_NDK_CMAKE_SCRIPT_SHELL_VISIBLE=PASS'
+for cmake_mode in loader-argv0 direct loader-argv0-no-guest loader-plain-no-guest direct-no-guest;do
   if APPFORGE_CMAKE_PROBE_MODE="$cmake_mode" "$BIN/cmake" -P "$cmake_probe_dir/check.cmake" >"$cmake_probe_dir/log.$cmake_mode" 2>&1;then
     printf '%s\n' "$cmake_mode" > "$PREFIX/cmake-launch-mode-v9"
     break
@@ -241,7 +256,7 @@ for cmake_mode in loader-argv0 direct;do
   echo "APPFORGE_NDK_HOST_CMAKE_MODE_REJECTED=$cmake_mode" >&2
 done
 if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
-  for cmake_mode in loader-argv0 direct;do
+  for cmake_mode in loader-argv0 direct loader-argv0-no-guest loader-plain-no-guest direct-no-guest;do
     if [ -f "$cmake_probe_dir/log.$cmake_mode" ];then
       echo "APPFORGE_NDK_HOST_CMAKE_PROBE_DIAGNOSTIC=$cmake_mode" >&2
       sed -n '1,12p' "$cmake_probe_dir/log.$cmake_mode" >&2
