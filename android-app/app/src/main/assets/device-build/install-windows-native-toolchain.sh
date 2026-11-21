@@ -334,14 +334,26 @@ restore_signed_posix_driver() {
   fi
   # This actually runs the verified ARM64 driver. No READY on failure.
   if ! "$target" --version >/dev/null;then
-    # Diagnostic only: NEVER replace the required real direct-exec test.
-    if [ "$kind" = gcc ] && [ -x /lib/ld-linux-aarch64.so.1 ];then
+    # A PRoot interpreter/path lookup can remain stale after authenticated
+    # dpkg rename even when stat, the signed bytes, and explicit loader pass.
+    # W15/W16 physical Samsung tests proved this exact ELF works in a FRESH
+    # PRoot session; NEVER treat loader-only success as module READY.
+    if [ -x /lib/ld-linux-aarch64.so.1 ];then
       if /lib/ld-linux-aarch64.so.1 \
           --library-path /lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu \
           "$target" --version >/dev/null 2>&1;then
-        echo 'APPFORGE_WINDOWS_gcc_DIRECT_EXEC_FAILED_EXPLICIT_LOADER_PASS' >&2
+        if [ "$kind" = gcc ];then
+          echo 'APPFORGE_WINDOWS_gcc_DIRECT_EXEC_FAILED_EXPLICIT_LOADER_PASS' >&2
+        else
+          echo 'APPFORGE_WINDOWS_gxx_DIRECT_EXEC_FAILED_EXPLICIT_LOADER_PASS' >&2
+        fi
+        # Distinct bounded guest exit; Android restarts the SAME isolated
+        # staged root in a new PRoot process without re-running a passed test.
+        echo 'APPFORGE_WINDOWS_NATIVE_PROROOT_REENTRY_REQUIRED' >&2
+        rm -rf -- "$stage"
+        return 75
       else
-        echo 'APPFORGE_WINDOWS_gcc_DIRECT_AND_EXPLICIT_LOADER_FAILED' >&2
+        echo "APPFORGE_WINDOWS_${kind}_DIRECT_AND_EXPLICIT_LOADER_FAILED" >&2
       fi
     fi
     echo "APPFORGE_WINDOWS_${kind}_RESTORED_DRIVER_EXEC_PROBE_FAILED" >&2
