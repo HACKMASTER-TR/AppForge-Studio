@@ -172,6 +172,18 @@ if [ "$name" = clang ] && [ -f "$prefix/clang-launch-mode-r41" ];then
   export LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu:$libpath"
   exec /usr/lib/llvm-18/bin/clang "$@"
 fi
+# R44: run ONLY the byte-verified guest-native LLD after its own real
+# dependency closure and version test. Never redirect other LLVM tools.
+if [ "$name" = ld.lld ] && [ -f "$prefix/lld-launch-mode-r44" ];then
+  [ ! -L "$prefix/lld-launch-mode-r44" ] &&
+  [ "$(cat "$prefix/lld-launch-mode-r44")" = guest-lld-direct ] || exit 66
+  [ -f /usr/lib/llvm-18/bin/lld ] && [ ! -L /usr/lib/llvm-18/bin/lld ] &&
+  [ -L /usr/lib/llvm-18/bin/ld.lld ] &&
+  [ "$(readlink /usr/lib/llvm-18/bin/ld.lld)" = lld ] || exit 66
+  unset PROROOT_GUEST_EXE CMAKE_ROOT
+  export LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu:$libpath"
+  exec /usr/lib/llvm-18/bin/ld.lld "$@"
+fi
 # CMake 3.28 locates CMAKE_ROOT relative to argv[0] (its executable path).
 # When invoked through the explicit glibc loader, argv[0] can become the
 # loader path under PRoot even though the signed cmake-data payload exists.
@@ -707,6 +719,104 @@ if ! "$BIN/clang" --target=aarch64-unknown-linux-gnu -x c -fsyntax-only "$probe_
   echo 'APPFORGE_NDK_HOST_SOURCE_READ_PROBE_FAILED' >&2;exit 69
 fi
 printf 'APPFORGE_NDK_HOST_CLANG_SOURCE_READ=PASS\n'
+# R44: `lld-18` provides a signed regular `lld` ELF and `ld.lld -> lld`.
+# A glibc-loader invocation bypasses PRoot's guest filesystem mapping; the
+# approved LLD must work as a guest ELF. Do not write to shared /usr or libc.
+# All paths below exist only inside the rollback-protected candidate rootfs.
+r44_signed=/opt/appforge-device/ndk-host-v7/sysroot/usr/lib/llvm-18/bin/lld
+r44_signed_link=/opt/appforge-device/ndk-host-v7/sysroot/usr/lib/llvm-18/bin/ld.lld
+r44_guest=/usr/lib/llvm-18/bin/lld
+r44_guest_link=/usr/lib/llvm-18/bin/ld.lld
+r44_deps="$probe_dir/r44-lld-dependencies.txt"
+r44_loader_log="$probe_dir/r44-lld-loader.log"
+r44_test_log="$probe_dir/r44-lld-direct.log"
+echo 'APPFORGE_R44_GUEST_LLD_PROBE=START'
+[ -f "$r44_signed" ] && [ ! -L "$r44_signed" ] && [ -x "$r44_signed" ] &&
+[ -L "$r44_signed_link" ] && [ "$(readlink "$r44_signed_link")" = lld ] &&
+file -L "$r44_signed" | grep -Eqi 'aarch64|ARM aarch64' || {
+  echo 'APPFORGE_R44_SIGNED_LLD_LAYOUT_REJECTED' >&2;exit 69;
+}
+[ ! -e "$r44_guest" ] && [ ! -L "$r44_guest" ] &&
+[ ! -e "$r44_guest_link" ] && [ ! -L "$r44_guest_link" ] || {
+  echo 'APPFORGE_R44_GUEST_LLD_PATH_OCCUPIED' >&2;exit 69;
+}
+if ! /lib/ld-linux-aarch64.so.1 --library-path "$private_libpath" --list "$r44_signed" > "$r44_loader_log" 2>&1;then
+  echo 'APPFORGE_R44_LLD_SIGNED_LOADER_LIST_FAILED' >&2
+  sed -n '1,20p' "$r44_loader_log" >&2;exit 69
+fi
+LC_ALL=C awk '$2 == "=>" && $1 ~ /^lib[0-9A-Za-z_.+-]+[.]so([.][0-9]+)*$/ {print $1}' \
+  "$r44_loader_log" | LC_ALL=C sort -u > "$r44_deps"
+[ -s "$r44_deps" ] || { echo 'APPFORGE_R44_LLD_DEPENDENCY_LIST_EMPTY' >&2;exit 69; }
+r44_copied=0
+r44_retained=0
+while IFS= read -r r44_soname;do
+  case "$r44_soname" in
+    libc.so.*|libm.so.*|libdl.so.*|libpthread.so.*|librt.so.*|libresolv.so.*|libanl.so.*|libnss_*.so.*) continue;;
+    ''|*[!A-Za-z0-9_.+-]*) echo 'APPFORGE_R44_LLD_LIBNAME_REJECTED' >&2;exit 69;;
+  esac
+  r44_dst="/usr/lib/aarch64-linux-gnu/$r44_soname"
+  if [ -e "$r44_dst" ] || [ -L "$r44_dst" ];then
+    [ -f "$r44_dst" ] && file -L "$r44_dst" | grep -Eqi 'aarch64|ARM aarch64' || {
+      echo "APPFORGE_R44_LLD_GUEST_LIB_INVALID=$r44_soname" >&2;exit 69;
+    }
+    r44_retained=$((r44_retained+1))
+    continue
+  fi
+  r44_src=''
+  for r44_dir in "$PREFIX/sysroot/usr/lib/aarch64-linux-gnu" \
+                 "$PREFIX/sysroot/lib/aarch64-linux-gnu" \
+                 "$PREFIX/sysroot/usr/lib/llvm-18/lib";do
+    if [ -f "$r44_dir/$r44_soname" ];then
+      r44_src=$(readlink -f "$r44_dir/$r44_soname") || exit 69
+      break
+    fi
+  done
+  [ -n "$r44_src" ] || {
+    echo "APPFORGE_R44_LLD_SIGNED_LIB_MISSING=$r44_soname" >&2;exit 69;
+  }
+  case "$r44_src" in
+    "$PREFIX/sysroot/usr/lib/aarch64-linux-gnu/"*|\
+    "$PREFIX/sysroot/lib/aarch64-linux-gnu/"*|\
+    "$PREFIX/sysroot/usr/lib/llvm-18/lib/"*) ;;
+    *) echo "APPFORGE_R44_LLD_LIB_ESCAPED_SYSROOT=$r44_soname" >&2;exit 69;;
+  esac
+  [ -f "$r44_src" ] && [ ! -L "$r44_src" ] &&
+  file -L "$r44_src" | grep -Eqi 'aarch64|ARM aarch64' || {
+    echo "APPFORGE_R44_LLD_SIGNED_LIB_INVALID=$r44_soname" >&2;exit 69;
+  }
+  cp -p "$r44_src" "$r44_dst" && [ -f "$r44_dst" ] &&
+  [ ! -L "$r44_dst" ] && cmp -s "$r44_src" "$r44_dst" || {
+    echo "APPFORGE_R44_LLD_LIB_COPY_FAILED=$r44_soname" >&2;exit 69;
+  }
+  r44_copied=$((r44_copied+1))
+  echo "APPFORGE_R44_LLD_LIB_VERIFIED=$r44_soname"
+done < "$r44_deps"
+cp -p "$r44_signed" "$r44_guest" &&
+[ -f "$r44_guest" ] && [ ! -L "$r44_guest" ] &&
+cmp -s "$r44_signed" "$r44_guest" &&
+ln -s lld "$r44_guest_link" &&
+[ -L "$r44_guest_link" ] &&
+[ "$(readlink "$r44_guest_link")" = lld ] || {
+  echo 'APPFORGE_R44_GUEST_LLD_BYTES_OR_LINK_FAILED' >&2;exit 69;
+}
+echo "APPFORGE_R44_LLD_GUEST_CLOSURE=VERIFIED:copied=$r44_copied:retained=$r44_retained"
+if ! LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu" \
+  "$r44_guest_link" --version > "$r44_test_log" 2>&1;then
+  echo 'APPFORGE_R44_LLD_GUEST_EXECUTION=FAILED' >&2
+  sed -n '1,30p' "$r44_test_log" >&2;exit 69;
+fi
+[ -s "$r44_test_log" ] || { echo 'APPFORGE_R44_LLD_EMPTY_VERSION' >&2;exit 69; }
+sed -n '1,3p' "$r44_test_log"
+echo 'APPFORGE_R44_LLD_GUEST_EXECUTION=PASS'
+printf '%s\n' guest-lld-direct > "$PREFIX/lld-launch-mode-r44"
+[ -s "$PREFIX/lld-launch-mode-r44" ] &&
+[ ! -L "$PREFIX/lld-launch-mode-r44" ] || exit 69
+# Test the normal NDK entry that will be called by the app's `-fuse-ld=lld`.
+if ! "$BIN/ld.lld" --version > "$r44_test_log" 2>&1;then
+  echo 'APPFORGE_R44_LLD_WRAPPER_EXECUTION=FAILED' >&2
+  sed -n '1,30p' "$r44_test_log" >&2;exit 69;
+fi
+echo 'APPFORGE_R44_LLD_WRAPPER_EXECUTION=PASS'
 rm -rf -- "$probe_dir"
 trap - 0 HUP INT TERM
 [ "$(dpkg-query -W -f='${Version}' libc6)" = '2.39-0ubuntu8.7' ] || exit 67

@@ -912,6 +912,7 @@ internal object OfflineBuildPackManager {
             module == OfflineModuleId.RUST_ANDROID_NDK &&
             (result.output.contains("APPFORGE_R41_") ||
              result.output.contains("APPFORGE_R43_") ||
+              result.output.contains("APPFORGE_R44_") ||
              result.output.contains("APPFORGE_R42_") ||
              result.output.contains("APPFORGE_NDK_HOST_SOURCE_READ_PROBE_FAILED"))) {
             runCatching {
@@ -923,6 +924,7 @@ internal object OfflineBuildPackManager {
                 val lines = result.output.lineSequence().filter { line ->
                     line.startsWith("APPFORGE_R41_") ||
                     line.startsWith("APPFORGE_R43_") ||
+                     line.startsWith("APPFORGE_R44_") ||
                     line.startsWith("APPFORGE_R42_") ||
                     line.startsWith("APPFORGE_NDK_HOST_") ||
                     line.startsWith("APPFORGE_R33_CMAKE_GUEST_REAL_P_TEST=") ||

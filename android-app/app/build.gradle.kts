@@ -632,6 +632,19 @@ require(!appforgeR43OriginalIdentityUpgrade ||
      appforgeR41OriginalIdentityUpgrade && appforgeR42OriginalIdentityUpgrade)) {
     "R43 requires full R42 original signing certificate identity chain."
 }
+// R44: signed Ubuntu guest LLD runtime; no installed data migration.
+val appforgeR44OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR44OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR44OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade &&
+     appforgeR37OriginalIdentityUpgrade && appforgeR38OriginalIdentityUpgrade &&
+     appforgeR39OriginalIdentityUpgrade && appforgeR40OriginalIdentityUpgrade &&
+     appforgeR41OriginalIdentityUpgrade && appforgeR42OriginalIdentityUpgrade &&
+     appforgeR43OriginalIdentityUpgrade)) {
+    "R44 requires the complete R43 original-identity upgrade chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -1060,7 +1073,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR43OriginalIdentityUpgrade) {
+                if (appforgeR44OriginalIdentityUpgrade) {
+                    output.versionCode.set(567)
+                    output.versionName.set("5.0.65-r44-guest-lld")
+                } else if (appforgeR43OriginalIdentityUpgrade) {
                     output.versionCode.set(566)
                     output.versionName.set("5.0.64-r43-ndk-lld-search")
                 } else if (appforgeR42OriginalIdentityUpgrade) {
