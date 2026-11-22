@@ -18,6 +18,34 @@ pluginManagement {
                 }
             }
         }
+        // R32 CI only: plugin classpath dependencies missing on
+        // the runner's default Maven routes. Fixed coordinates only.
+        if (providers.gradleProperty("appforgeCIMavenGcs").orNull == "true") {
+            require(
+                System.getenv("GITHUB_ACTIONS") == "true" &&
+                System.getenv("GITHUB_REPOSITORY") ==
+                    "HACKMASTER-TR/AppForge-Studio"
+            ) {
+                "R32 Kotlin plugin mirror requires trusted GitHub CI"
+            }
+            maven {
+                name = "appforgeR32CiKotlinPluginMirror"
+                url = uri(
+                    "https://maven-central.storage-download.googleapis.com/maven2/"
+                )
+                content {
+                    includeVersion("org.jetbrains.kotlin", "kotlin-gradle-plugin-api", "2.4.10")
+                    includeVersion("org.jetbrains.kotlin", "fus-statistics-gradle-plugin", "2.4.10")
+                    includeVersion("org.jetbrains.kotlin", "kotlin-gradle-plugin-idea", "2.4.10")
+                    includeVersion("org.jetbrains.kotlin", "kotlin-gradle-plugin-idea-proto", "2.4.10")
+                    includeVersion("org.jetbrains.kotlin", "kotlin-klib-commonizer-api", "2.4.10")
+                    includeVersion("org.jetbrains.kotlin", "kotlin-build-statistics", "2.4.10")
+                    includeVersion("org.jetbrains.kotlin", "kotlin-util-klib-metadata", "2.4.10")
+                    includeVersion("org.jetbrains.kotlin", "kotlin-compiler-runner", "2.4.10")
+                    includeVersion("org.jetbrains.kotlin", "kotlin-gradle-plugins-bom", "2.4.10")
+                }
+            }
+        }
         google()
         mavenCentral()
         gradlePluginPortal()
