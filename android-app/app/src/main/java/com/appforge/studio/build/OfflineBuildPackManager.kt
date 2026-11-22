@@ -897,6 +897,7 @@ internal object OfflineBuildPackManager {
                 val approved = result.output.lineSequence().filter { line ->
                     line.startsWith("APPFORGE_R35_") ||
                         line.startsWith("APPFORGE_R37_") ||
+                    line.startsWith("APPFORGE_R38_") ||
                         line.startsWith("APPFORGE_NDK_HOST_CMAKE_") ||
                         line.startsWith("APPFORGE_R34_CMAKE_") ||
                         line.startsWith("APPFORGE_R33_CMAKE_") ||

@@ -566,6 +566,16 @@ require(!appforgeR37OriginalIdentityUpgrade ||
      appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade)) {
     "R37 requires the complete R36 original signing identity chain."
 }
+// R38: guest-only signed librhash CMake candidate; original identity chain intact.
+val appforgeR38OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR38OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR38OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade &&
+     appforgeR37OriginalIdentityUpgrade)) {
+    "R38 requires the complete R37 original signing identity chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -994,7 +1004,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR37OriginalIdentityUpgrade) {
+                if (appforgeR38OriginalIdentityUpgrade) {
+                    output.versionCode.set(561)
+                    output.versionName.set("5.0.59-r38-guest-rhash")
+                } else if (appforgeR37OriginalIdentityUpgrade) {
                     output.versionCode.set(560)
                     output.versionName.set("5.0.58-r37-cmake-early-patch")
                 } else if (appforgeR36OriginalIdentityUpgrade) {

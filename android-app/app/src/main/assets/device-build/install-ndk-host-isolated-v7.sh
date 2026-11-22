@@ -380,9 +380,25 @@ if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
     guest_cmake=/usr/bin/cmake
     guest_modules=/usr/share/cmake-3.28
     guest_libarchive=/usr/lib/aarch64-linux-gnu/libarchive.so.13
+    guest_librhash=/usr/lib/aarch64-linux-gnu/librhash.so.0
     signed_elf="$PREFIX/sysroot/usr/bin/cmake"
     signed_modules="$PREFIX/sysroot/usr/share/cmake-3.28"
     signed_libarchive="$PREFIX/sysroot/usr/lib/aarch64-linux-gnu/libarchive.so.13"
+    signed_librhash="$PREFIX/sysroot/usr/lib/aarch64-linux-gnu/librhash.so.0"
+    # librhash0 is already in the SHA256-pinned EXPO_REACT_NATIVE/arm64 catalog.
+    # Resolve only a single local SONAME link if the Ubuntu payload uses one.
+    [ -f "$signed_librhash" ] || { echo "APPFORGE_R38_SIGNED_RHASH_MISSING" >&2; exit 68; }
+    if [ -L "$signed_librhash" ];then
+      rhash_link=$(readlink "$signed_librhash") || exit 68
+      case "$rhash_link" in ''|/*|*/*|.*) echo "APPFORGE_R38_RHASH_LINK_UNSAFE" >&2; exit 68;; esac
+      rhash_payload="${signed_librhash%/*}/$rhash_link"
+    else
+      rhash_payload="$signed_librhash"
+    fi
+    [ -f "$rhash_payload" ] && [ ! -L "$rhash_payload" ] &&
+    file -L "$rhash_payload" | grep -Eqi 'aarch64|ARM aarch64' || {
+      echo "APPFORGE_R38_SIGNED_RHASH_ELF_INVALID" >&2; exit 68;
+    }
     [ -f "$signed_elf" ] && [ ! -L "$signed_elf" ] && [ -x "$signed_elf" ] &&
     [ -s "$signed_modules/Modules/CMake.cmake" ] &&
     [ -f "$signed_libarchive" ] && [ ! -L "$signed_libarchive" ] || {
@@ -390,7 +406,7 @@ if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
     }
     # /usr is a guest-private directory only in these individually isolated
     # rootfs generations. If a path exists, stop rather than replace it.
-    for guest_path in "$guest_cmake" "$guest_modules" "$guest_libarchive";do
+    for guest_path in "$guest_cmake" "$guest_modules" "$guest_libarchive" "$guest_librhash";do
       if [ -e "$guest_path" ] || [ -L "$guest_path" ];then
         echo "APPFORGE_R33_CMAKE_GUEST_PATH_OCCUPIED=$guest_path" >&2
         exit 68
@@ -403,17 +419,20 @@ if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
     # All inputs were validated by signed catalog SHA256 before extraction.
     cp -p "$signed_elf" "$guest_cmake" &&
     cp -p "$signed_libarchive" "$guest_libarchive" &&
+    cp -p "$rhash_payload" "$guest_librhash" &&
     cp -a "$signed_modules" "$guest_modules" || {
       echo 'APPFORGE_R33_CMAKE_GUEST_COPY_FAILED' >&2;exit 68;
     }
     cmp -s "$signed_elf" "$guest_cmake" &&
     cmp -s "$signed_libarchive" "$guest_libarchive" &&
+    cmp -s "$rhash_payload" "$guest_librhash" &&
     [ -d "$guest_modules" ] && [ ! -L "$guest_modules" ] &&
     cmp -s "$signed_modules/Modules/CMake.cmake" "$guest_modules/Modules/CMake.cmake" &&
     cmp -s "$signed_modules/Modules/CMakeDetermineSystem.cmake" "$guest_modules/Modules/CMakeDetermineSystem.cmake" || {
       echo 'APPFORGE_R33_CMAKE_GUEST_BYTES_UNVERIFIED' >&2;exit 68;
     }
     echo 'APPFORGE_R33_CMAKE_GUEST_BYTES=VERIFIED'
+    echo 'APPFORGE_R38_GUEST_RHASH=VERIFIED'
     if APPFORGE_CMAKE_PROBE_MODE=guest-cmake-direct "$BIN/cmake" \
          -P "$cmake_probe_dir/check.cmake" \
          >"$cmake_probe_dir/log.guest-direct" 2>&1;then
