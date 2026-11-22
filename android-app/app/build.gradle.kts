@@ -518,6 +518,13 @@ require(!appforgeV9R2Isolated3UpgradeV551R30 ||
 // pinned Google Cloud Android OAuth SHA-1. CI enforces the certificate.
 val appforgeR31OriginalIdentity =
     providers.gradleProperty("appforgeR31OriginalIdentity").orNull == "true"
+// R32 only: in-place original-identity upgrade from versionCode 554.
+// R31 remains 554 unless this explicitly selected flag is enabled.
+val appforgeR32OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR32OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR32OriginalIdentityUpgrade || appforgeR31OriginalIdentity) {
+    "R32 original identity upgrade requires the existing R31 signing contract."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -946,8 +953,13 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                output.versionCode.set(554)
-                output.versionName.set("5.0.52-r31-original-id-test")
+                if (appforgeR32OriginalIdentityUpgrade) {
+                    output.versionCode.set(555)
+                    output.versionName.set("5.0.53-r32-original-id-test")
+                } else {
+                    output.versionCode.set(554)
+                    output.versionName.set("5.0.52-r31-original-id-test")
+                }
             }
         }
         if (appforgeV9R2Isolated3UpgradeV551R30) {
