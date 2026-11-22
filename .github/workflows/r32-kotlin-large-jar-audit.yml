@@ -1,0 +1,224 @@
+name: R32 Kotlin Large JAR SHA256 Verification
+on:
+  push:
+    branches:
+      - codex/r32-dependency-audit-20261122
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  kotlin-large-jar-audit:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify source and metadata identity
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 scripts/generate-second-brain-snapshot.py --check
+          python3 quality/tools/verify-r31-original-identity.py
+          META="$(gh api repos/HACKMASTER-TR/AppForge-Studio/actions/artifacts/14734606549 --jq '[.name,(.expired|tostring),.digest,.workflow_run.head_sha] | join("|")')"
+          EXPECTED="R32-Dependency-SHA256-Candidate-4bc550d3e43d93ed1aeb48aae368b88c10c056b8|false|sha256:7bc25782ac5029ca5d14d1f521c57ef8e700dcd35d3cc9370ecfded80bd55398|4bc550d3e43d93ed1aeb48aae368b88c10c056b8"
+          test "$META" = "$EXPECTED"
+          echo R32_PINNED_AUDIT_ARTIFACT=PASS
+
+      - uses: actions/download-artifact@v4
+        with:
+          repository: HACKMASTER-TR/AppForge-Studio
+          run-id: 44972418091
+          name: R32-Dependency-SHA256-Candidate-4bc550d3e43d93ed1aeb48aae368b88c10c056b8
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/r32-pinned-metadata
+
+      - name: Verify four large Kotlin JAR files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          import sys
+          import urllib.parse
+          import urllib.request
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          xml = Path(os.environ["RUNNER_TEMP"]) / (
+              "r32-pinned-metadata/verification-metadata.xml"
+          )
+
+          XML_SHA = (
+              "63b2d46f8c811ec1042b01cc78dd5ca36cdf658d4966dfad8928fb6057c55937"
+          )
+
+          assert xml.is_file(), "METADATA_MISSING"
+          assert hashlib.sha256(xml.read_bytes()).hexdigest() == XML_SHA
+
+          names = (
+              "kotlin-build-tools-impl-2.4.10.jar",
+              "kotlin-compiler-embeddable-2.4.10.jar",
+              "kotlin-gradle-plugin-2.4.10-gradle813.jar",
+              "kotlin-gradle-plugin-idea-proto-2.4.10.jar",
+          )
+
+          sources = (
+              (
+                  "MAVEN_CENTRAL",
+                  "repo.maven.apache.org",
+                  "https://repo.maven.apache.org/maven2/",
+              ),
+              (
+                  "GOOGLE_MAVEN_CENTRAL_MIRROR",
+                  "maven-central.storage-download.googleapis.com",
+                  "https://maven-central.storage-download.googleapis.com/maven2/",
+              ),
+          )
+
+          def sha256_download(url, host):
+              request = urllib.request.Request(
+                  url,
+                  headers={"User-Agent": "AppForge-R32-Integrity-Audit/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  final = urllib.parse.urlsplit(response.geturl())
+                  assert (
+                      final.scheme == "https"
+                      and final.hostname == host
+                      and not final.query
+                      and not final.fragment
+                  ), "UNEXPECTED_DOWNLOAD_ORIGIN"
+
+                  digest = hashlib.sha256()
+                  size = 0
+                  while True:
+                      block = response.read(1024 * 1024)
+                      if not block:
+                          break
+                      size += len(block)
+                      assert size <= 256 * 1024 * 1024, "FILE_TOO_LARGE"
+                      digest.update(block)
+
+                  assert size > 0, "EMPTY_FILE"
+                  return digest.hexdigest(), size
+
+          components = ET.parse(xml).getroot().findall(".//{*}component")
+          results = []
+
+          for name in names:
+              found = []
+
+              for component in components:
+                  if component.get("group") != "org.jetbrains.kotlin":
+                      continue
+                  if component.get("version") != "2.4.10":
+                      continue
+
+                  for artifact in component.findall("{*}artifact"):
+                      if artifact.get("name") == name:
+                          value = artifact.find("{*}sha256")
+                          assert value is not None
+                          found.append((
+                              component.get("name"),
+                              value.get("value", "").lower(),
+                          ))
+
+              assert len(found) == 1, ("ARTIFACT_NOT_UNIQUE", name)
+              module, expected = found[0]
+              assert re.fullmatch("[0-9a-f]{64}", expected)
+
+              if name == "kotlin-compiler-embeddable-2.4.10.jar":
+                  assert expected == (
+                      "9309638a2ee03e6bde9ef4b7444055a94b84ab906563675d71ff9aecb64da913"
+                  ), "JETBRAINS_PIN_MISMATCH"
+
+              relative = (
+                  f"org/jetbrains/kotlin/{module}/2.4.10/{name}"
+              )
+
+              entry = {
+                  "file": name,
+                  "expected_sha256": expected,
+                  "sources": {},
+              }
+
+              for label, host, base in sources:
+                  try:
+                      digest, size = sha256_download(
+                          base + relative, host
+                      )
+                      entry["sources"][label] = {
+                          "result": (
+                              "PASS" if digest == expected else "MISMATCH"
+                          ),
+                          "sha256": digest,
+                          "bytes": size,
+                      }
+                  except Exception as exc:
+                      entry["sources"][label] = {
+                          "result": "PENDING",
+                          "reason": type(exc).__name__,
+                      }
+
+              statuses = [
+                  x["result"] for x in entry["sources"].values()
+              ]
+              if "MISMATCH" in statuses:
+                  entry["result"] = "MISMATCH"
+              elif statuses == ["PASS", "PASS"]:
+                  entry["result"] = "PASS"
+              else:
+                  entry["result"] = "PENDING"
+
+              results.append(entry)
+              print(
+                  "R32_JAR=" + name +
+                  " RESULT=" + entry["result"],
+                  flush=True
+              )
+
+          output = Path("r32-large-audit")
+          output.mkdir(exist_ok=True)
+          (output / "hash-results.json").write_text(
+              json.dumps(results, indent=2) + "\n"
+          )
+
+          passed = sum(x["result"] == "PASS" for x in results)
+          pending = sum(x["result"] == "PENDING" for x in results)
+          mismatches = sum(x["result"] == "MISMATCH" for x in results)
+
+          print("R32_LARGE_JARS_PASS=" + str(passed))
+          print("R32_LARGE_JARS_PENDING=" + str(pending))
+          print("R32_LARGE_JARS_MISMATCH=" + str(mismatches))
+
+          if mismatches:
+              print("R32_LARGE_JAR_AUDIT=BLOCKED")
+              sys.exit(2)
+
+          if pending:
+              print("R32_LARGE_JAR_AUDIT=PARTIAL")
+              sys.exit(3)
+
+          print("R32_LARGE_JAR_AUDIT=PASS")
+          print("R32_APK_INSTALL=NOT_STARTED")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: R32-Large-Kotlin-Hash-Report-${{ github.sha }}
+          path: r32-large-audit/hash-results.json
+          retention-days: 14
+          if-no-files-found: warn
