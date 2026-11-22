@@ -739,7 +739,17 @@ if [ "\$appforge_linking" -eq 1 ] &&
     --rtlib=compiler-rt \
     --unwindlib=libunwind \
     -L"$resource_dir/lib/linux/aarch64" \
-    "\$@"
+    "\$@" \
+    --ld-path=/usr/lib/llvm-18/bin/ld.lld
+fi
+
+# R46: if caller suppressed default runtime linking, still route a true
+# link to the already authenticated guest-native Ubuntu ARM64 LLD.
+if [ "\$appforge_linking" -eq 1 ]; then
+  exec $executable \
+    -resource-dir="$resource_dir" \
+    "\$@" \
+    --ld-path=/usr/lib/llvm-18/bin/ld.lld
 fi
 
 exec $executable \
@@ -829,8 +839,20 @@ R45_LLD_ENTRY
       [ -x "$bin/ld.lld" ] || {
         echo 'APPFORGE_R43_NDK_LLD_WRAPPER_MISSING' >&2; exit 69;
       }
+      # R46: the original NDK-bin shell entry is rejected by this PRoot
+      # launcher (R45 confirmed errno 22). Record it, but do not mistake
+      # this rejection for a failure of the already SHA-verified guest ELF.
+      # The following C and C++ probes must genuinely link before READY.
       r45_lld_log="$ROOT/r45-ndk-lld-version.log"
-      if ! "$bin/ld.lld" --version >"$r45_lld_log" 2>&1;then
+      r46_sdk_wrapper_ok=0
+      if "$bin/ld.lld" --version >"$r45_lld_log" 2>&1;then
+        [ -s "$r45_lld_log" ] || {
+          echo 'APPFORGE_R45_NDK_LLD_EMPTY_VERSION=FAILED' >&2; exit 69;
+        }
+        echo 'APPFORGE_R45_NDK_LLD_DIRECT_EXECUTION=PASS'
+        echo 'APPFORGE_R43_NDK_LLD_EXECUTION=PASS'
+        r46_sdk_wrapper_ok=1
+      else
         echo 'APPFORGE_R45_NDK_LLD_DIRECT_EXECUTION=FAILED' >&2
         if [ -s "$r45_lld_log" ];then
           sed -n '1,12p' "$r45_lld_log" | cut -c 1-240 | \
@@ -841,14 +863,30 @@ R45_LLD_ENTRY
           echo 'APPFORGE_R45_LLD_STDERR=EMPTY' >&2
         fi
         echo 'APPFORGE_R43_NDK_LLD_EXECUTION=FAILED' >&2
+        echo 'APPFORGE_R46_NDK_BIN_LLD=REJECTED_BY_PROOT' >&2
+      fi
+      # Historical R43 search mode was:
+      # APPFORGE_R43_NDK_LLD_SEARCH_PATH=EXPLICIT_PRIVATE_BIN
+      # The R46 compiler path bypasses that rejected SDK-bin shell entry.
+      r46_guest_version="$ROOT/r46-guest-lld-version.log"
+      if ! LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu" \
+        /usr/lib/llvm-18/bin/ld.lld --version >"$r46_guest_version" 2>&1;then
+        echo 'APPFORGE_R46_VERIFIED_GUEST_LLD=FAILED' >&2
+        sed -n '1,12p' "$r46_guest_version" | cut -c 1-220 | \
+          while IFS= read -r r46_error;do
+            echo "APPFORGE_R46_LLD_STDERR=$r46_error" >&2
+          done
         exit 69
       fi
-      [ -s "$r45_lld_log" ] || {
-        echo 'APPFORGE_R45_NDK_LLD_EMPTY_VERSION=FAILED' >&2; exit 69;
+      grep -F 'LLD' "$r46_guest_version" >/dev/null || {
+        echo 'APPFORGE_R46_GUEST_LLD_VERSION_INVALID' >&2; exit 69;
       }
-      echo 'APPFORGE_R45_NDK_LLD_DIRECT_EXECUTION=PASS'
-      echo 'APPFORGE_R43_NDK_LLD_EXECUTION=PASS'
-      echo 'APPFORGE_R43_NDK_LLD_SEARCH_PATH=EXPLICIT_PRIVATE_BIN'
+      grep -F -- '--ld-path=/usr/lib/llvm-18/bin/ld.lld' "$bin/clang" >/dev/null &&
+      grep -F -- '--ld-path=/usr/lib/llvm-18/bin/ld.lld' "$bin/clang++" >/dev/null || {
+        echo 'APPFORGE_R46_CLANG_LINKER_ROUTE_MISSING' >&2; exit 69;
+      }
+      echo 'APPFORGE_R46_VERIFIED_GUEST_LLD=PASS'
+      echo 'APPFORGE_R46_CLANG_LINKER_ROUTE=SIGNED_GUEST_ABSOLUTE_PATH'
 
       write_tool_wrapper \
         llvm-ar \
@@ -910,6 +948,7 @@ EOF
         echo 'APPFORGE_R43_NDK_C_LLD_LINK=FAILED' >&2; exit 69
       fi
       echo 'APPFORGE_R43_NDK_C_LLD_LINK=PASS'
+      echo 'APPFORGE_R46_REAL_C_GUEST_LLD_LINK=PASS'
 
       file "$probe/probe" |
         grep -Eqi 'aarch64|ARM aarch64' || {
@@ -960,6 +999,7 @@ EOF
         echo 'APPFORGE_R43_NDK_CPP_LLD_LINK=FAILED' >&2; exit 69
       fi
       echo 'APPFORGE_R43_NDK_CPP_LLD_LINK=PASS'
+      echo 'APPFORGE_R46_REAL_CPP_GUEST_LLD_LINK=PASS'
 
       file "$probe/probe-cpp" |
         grep -Eqi 'aarch64|ARM aarch64' || {
