@@ -781,10 +781,46 @@ EOF
         $ndk_host_bin/clang++ \
         APPFORGE_EXPO_ARM64_NDK_CLANGXX_WRAPPER_V3
 
-      write_tool_wrapper \
-        ld.lld \
-        $ndk_host_bin/ld.lld \
-        APPFORGE_EXPO_ARM64_NDK_LLD_WRAPPER_V2
+      # R45: R44 verified a byte-identical guest-native LLD executable and
+      # link, but the NDK wrapper still chained through the older host-tool.
+      # Use the already authenticated guest ELF directly from this NDK entry;
+      # never change the shared loader, guest /usr, other tools or user files.
+      r45_signed_lld="$ROOT/ndk-host-v7/sysroot/usr/lib/llvm-18/bin/lld"
+      r45_guest_lld=/usr/lib/llvm-18/bin/lld
+      r45_guest_link=/usr/lib/llvm-18/bin/ld.lld
+      r45_mode="$ROOT/ndk-host-v7/lld-launch-mode-r44"
+      [ -f "$r45_mode" ] && [ ! -L "$r45_mode" ] &&
+      [ "$(cat "$r45_mode")" = guest-lld-direct ] &&
+      [ -f "$r45_signed_lld" ] && [ ! -L "$r45_signed_lld" ] &&
+      [ -f "$r45_guest_lld" ] && [ ! -L "$r45_guest_lld" ] &&
+      [ -x "$r45_guest_lld" ] &&
+      [ -L "$r45_guest_link" ] &&
+      [ "$(readlink "$r45_guest_link")" = lld ] &&
+      cmp -s "$r45_signed_lld" "$r45_guest_lld" || {
+        echo 'APPFORGE_R45_NDK_LLD_GUEST_IDENTITY=FAILED' >&2; exit 69;
+      }
+      echo 'APPFORGE_R45_NDK_LLD_GUEST_IDENTITY=PASS'
+
+      preserve_ndk_entry ld.lld
+      cat > "$bin/ld.lld" <<'R45_LLD_ENTRY'
+#!/bin/sh
+# APPFORGE_EXPO_ARM64_NDK_LLD_WRAPPER_V2
+# APPFORGE_EXPO_ARM64_NDK_LLD_GUEST_DIRECT_R45
+set -eu
+prefix=/opt/appforge-device/ndk-host-v7
+[ -f "$prefix/lld-launch-mode-r44" ] &&
+[ ! -L "$prefix/lld-launch-mode-r44" ] &&
+[ "$(cat "$prefix/lld-launch-mode-r44")" = guest-lld-direct ] &&
+[ -f /usr/lib/llvm-18/bin/lld ] &&
+[ ! -L /usr/lib/llvm-18/bin/lld ] &&
+[ -L /usr/lib/llvm-18/bin/ld.lld ] &&
+[ "$(readlink /usr/lib/llvm-18/bin/ld.lld)" = lld ] || exit 69
+unset PROROOT_GUEST_EXE CMAKE_ROOT
+LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu:$prefix/sysroot/usr/lib/llvm-18/lib:$prefix/sysroot/usr/lib/aarch64-linux-gnu:$prefix/sysroot/lib/aarch64-linux-gnu"
+export LD_LIBRARY_PATH
+exec /usr/lib/llvm-18/bin/ld.lld "$@"
+R45_LLD_ENTRY
+      chmod 0755 "$bin/ld.lld"
 
       # R43: -fuse-ld=lld must resolve the signed ARM64 LLD wrapper. The
       # private NDK bin directory is passed with -B to the genuine Clang
@@ -793,9 +829,24 @@ EOF
       [ -x "$bin/ld.lld" ] || {
         echo 'APPFORGE_R43_NDK_LLD_WRAPPER_MISSING' >&2; exit 69;
       }
-      if ! "$bin/ld.lld" --version >/dev/null 2>&1;then
-        echo 'APPFORGE_R43_NDK_LLD_EXECUTION=FAILED' >&2; exit 69
+      r45_lld_log="$ROOT/r45-ndk-lld-version.log"
+      if ! "$bin/ld.lld" --version >"$r45_lld_log" 2>&1;then
+        echo 'APPFORGE_R45_NDK_LLD_DIRECT_EXECUTION=FAILED' >&2
+        if [ -s "$r45_lld_log" ];then
+          sed -n '1,12p' "$r45_lld_log" | cut -c 1-240 | \
+            while IFS= read -r r45_error;do
+              echo "APPFORGE_R45_LLD_STDERR=$r45_error" >&2
+            done
+        else
+          echo 'APPFORGE_R45_LLD_STDERR=EMPTY' >&2
+        fi
+        echo 'APPFORGE_R43_NDK_LLD_EXECUTION=FAILED' >&2
+        exit 69
       fi
+      [ -s "$r45_lld_log" ] || {
+        echo 'APPFORGE_R45_NDK_LLD_EMPTY_VERSION=FAILED' >&2; exit 69;
+      }
+      echo 'APPFORGE_R45_NDK_LLD_DIRECT_EXECUTION=PASS'
       echo 'APPFORGE_R43_NDK_LLD_EXECUTION=PASS'
       echo 'APPFORGE_R43_NDK_LLD_SEARCH_PATH=EXPLICIT_PRIVATE_BIN'
 

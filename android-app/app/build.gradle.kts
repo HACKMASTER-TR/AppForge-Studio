@@ -645,6 +645,19 @@ require(!appforgeR44OriginalIdentityUpgrade ||
      appforgeR43OriginalIdentityUpgrade)) {
     "R44 requires the complete R43 original-identity upgrade chain."
 }
+// R45: use R44's verified guest LLD from the actual Android NDK linker.
+val appforgeR45OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR45OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR45OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade &&
+     appforgeR37OriginalIdentityUpgrade && appforgeR38OriginalIdentityUpgrade &&
+     appforgeR39OriginalIdentityUpgrade && appforgeR40OriginalIdentityUpgrade &&
+     appforgeR41OriginalIdentityUpgrade && appforgeR42OriginalIdentityUpgrade &&
+     appforgeR43OriginalIdentityUpgrade && appforgeR44OriginalIdentityUpgrade)) {
+    "R45 requires the complete R44 original-identity upgrade chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -1073,7 +1086,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR44OriginalIdentityUpgrade) {
+                if (appforgeR45OriginalIdentityUpgrade) {
+                    output.versionCode.set(568)
+                    output.versionName.set("5.0.66-r45-ndk-lld-direct")
+                } else if (appforgeR44OriginalIdentityUpgrade) {
                     output.versionCode.set(567)
                     output.versionName.set("5.0.65-r44-guest-lld")
                 } else if (appforgeR43OriginalIdentityUpgrade) {
