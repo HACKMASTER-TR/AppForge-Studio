@@ -969,17 +969,30 @@ int main() {
 }
 EOF
 
-      [ -s "$probe/probe.cpp" ] || {
-        echo "APPFORGE_NDK_CPP_PROBE_SOURCE_MISSING" >&2;exit 68;
+      [ -s "$probe/probe.cpp" ] && [ ! -L "$probe/probe.cpp" ] || {
+        echo 'APPFORGE_R47_CPP_SOURCE_MISSING=FAILED' >&2; exit 69;
       }
-      "$bin/clang++" \
+      echo 'APPFORGE_R47_CPP_SOURCE_PRESENT=PASS'
+      r47_cpp_log="$ROOT/r47-guest-clangxx-compile.log"
+      if ! "$bin/clang++" \
         --target=aarch64-linux-android24 \
         --sysroot="$host/sysroot" \
         -stdlib=libc++ \
         -fPIC \
         -c \
         "$probe/probe.cpp" \
-        -o "$probe/probe.o"
+        -o "$probe/probe.o" >"$r47_cpp_log" 2>&1;then
+        echo 'APPFORGE_R47_GUEST_CPP_COMPILE=FAILED' >&2
+        sed -n '1,16p' "$r47_cpp_log" | cut -c 1-220 | \
+          while IFS= read -r r47_error;do
+            echo "APPFORGE_R47_CPP_STDERR=$r47_error" >&2
+          done
+        exit 69
+      fi
+      test -s "$probe/probe.o" || {
+        echo 'APPFORGE_R47_CPP_OBJECT_MISSING=FAILED' >&2;exit 69;
+      }
+      echo 'APPFORGE_R47_GUEST_CPP_COMPILE=PASS'
 
       file "$probe/probe.o" |
         grep -Eqi 'aarch64|ARM aarch64' || {
@@ -988,12 +1001,22 @@ EOF
           exit 68
         }
 
-      "$bin/llvm-ar" \
+      r47_ar_log="$ROOT/r47-llvm-ar.log"
+      if ! "$bin/llvm-ar" \
         rcs \
         "$probe/libappforge-probe.a" \
-        "$probe/probe.o"
-
-      test -s "$probe/libappforge-probe.a"
+        "$probe/probe.o" >"$r47_ar_log" 2>&1;then
+        echo 'APPFORGE_R47_LLVM_AR=FAILED' >&2
+        sed -n '1,16p' "$r47_ar_log" | cut -c 1-220 | \
+          while IFS= read -r r47_error;do
+            echo "APPFORGE_R47_AR_STDERR=$r47_error" >&2
+          done
+        exit 69
+      fi
+      test -s "$probe/libappforge-probe.a" || {
+        echo 'APPFORGE_R47_LLVM_AR_EMPTY=FAILED' >&2;exit 69;
+      }
+      echo 'APPFORGE_R47_LLVM_AR=PASS'
 
       if ! "$bin/clang++"         --target=aarch64-linux-android24         --sysroot="$host/sysroot"         -stdlib=libc++         -fuse-ld=lld         "$probe/probe.cpp"         -o "$probe/probe-cpp";then
         echo 'APPFORGE_R43_NDK_CPP_LLD_LINK=FAILED' >&2; exit 69

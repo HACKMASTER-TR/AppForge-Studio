@@ -672,6 +672,20 @@ require(!appforgeR46OriginalIdentityUpgrade ||
      appforgeR45OriginalIdentityUpgrade)) {
     "R46 requires the complete R45 original-identity upgrade chain."
 }
+// R47: enable byte-authenticated guest Clang C++ driver for real source paths.
+val appforgeR47OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR47OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR47OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade &&
+     appforgeR37OriginalIdentityUpgrade && appforgeR38OriginalIdentityUpgrade &&
+     appforgeR39OriginalIdentityUpgrade && appforgeR40OriginalIdentityUpgrade &&
+     appforgeR41OriginalIdentityUpgrade && appforgeR42OriginalIdentityUpgrade &&
+     appforgeR43OriginalIdentityUpgrade && appforgeR44OriginalIdentityUpgrade &&
+     appforgeR45OriginalIdentityUpgrade && appforgeR46OriginalIdentityUpgrade)) {
+    "R47 requires the complete R46 original-identity upgrade chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -1100,7 +1114,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR46OriginalIdentityUpgrade) {
+                if (appforgeR47OriginalIdentityUpgrade) {
+                    output.versionCode.set(570)
+                    output.versionName.set("5.0.68-r47-guest-clangxx")
+                } else if (appforgeR46OriginalIdentityUpgrade) {
                     output.versionCode.set(569)
                     output.versionName.set("5.0.67-r46-guest-ld-path")
                 } else if (appforgeR45OriginalIdentityUpgrade) {

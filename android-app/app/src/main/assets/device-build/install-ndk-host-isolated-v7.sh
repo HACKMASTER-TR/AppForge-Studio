@@ -172,6 +172,23 @@ if [ "$name" = clang ] && [ -f "$prefix/clang-launch-mode-r41" ];then
   export LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu:$libpath"
   exec /usr/lib/llvm-18/bin/clang "$@"
 fi
+# R47: the private glibc-loader clang++ cannot read guest source paths.
+# Use the R41/R42 byte-verified, source-reading guest Clang ELF in its real
+# C++ driver mode. No shared /usr/libc mutation and no replacement compiler.
+if [ "$name" = clang++ ] && [ -f "$prefix/clang-launch-mode-r41" ];then
+  [ ! -L "$prefix/clang-launch-mode-r41" ] &&
+  [ "$(cat "$prefix/clang-launch-mode-r41")" = guest-clang-direct ] || exit 66
+  r47_clang_guest=/usr/lib/llvm-18/bin/clang
+  r47_clang_signed="$sysroot/usr/lib/llvm-18/bin/clang"
+  [ -f "$r47_clang_guest" ] && [ ! -L "$r47_clang_guest" ] &&
+  [ -x "$r47_clang_guest" ] && [ -f "$r47_clang_signed" ] &&
+  cmp -s "$r47_clang_guest" "$r47_clang_signed" || {
+    echo 'APPFORGE_R47_GUEST_CXX_IDENTITY=FAILED' >&2;exit 69;
+  }
+  unset PROROOT_GUEST_EXE CMAKE_ROOT
+  export LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu:$libpath"
+  exec "$r47_clang_guest" --driver-mode=g++ "$@"
+fi
 # R44: run ONLY the byte-verified guest-native LLD after its own real
 # dependency closure and version test. Never redirect other LLVM tools.
 if [ "$name" = ld.lld ] && [ -f "$prefix/lld-launch-mode-r44" ];then
