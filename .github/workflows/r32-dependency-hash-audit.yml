@@ -1,0 +1,158 @@
+name: R32 Gradle Dependency SHA256 Audit Candidate
+on:
+  push:
+    branches:
+      - codex/r32-dependency-audit-20261122
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: appforge-r32-unsigned-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unsigned-candidate:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - name: Isolated verified Gradle home
+        shell: bash
+        run: echo "GRADLE_USER_HOME=$RUNNER_TEMP/r32-unsigned-gradle" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require R31 identity and snapshot contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = codex/r32-dependency-audit-20261122
+          python3 quality/tools/verify-r31-original-identity.py
+          python3 tests/test_r32_cmake_windows_regression.py
+          python3 scripts/generate-second-brain-snapshot.py --check
+          echo APPFORGE_R32_UNSIGNED_SOURCE_PREFLIGHT=PASS
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Require pinned AGP dependency seed
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo=HACKMASTER-TR/AppForge-Studio
+          test "$(gh api "repos/$repo/actions/runs/44570760969" --jq .conclusion)" = success
+          test "$(gh api "repos/$repo/actions/artifacts/14554148259" --jq .expired)" = false
+          test "$(gh api "repos/$repo/actions/artifacts/14554148259" --jq .digest)" = sha256:fa745ccdf122f86d77d5b971d2c2db0300db2b77d8d0984ec9628cec67fe85c0
+          echo APPFORGE_R31_AGP_SEED=PASS
+      - uses: actions/download-artifact@v4
+        with:
+          repository: HACKMASTER-TR/AppForge-Studio
+          run-id: 44570760969
+          name: v547-agp911-gradle931-ci-candidate-7d0994b6582a859c516967fd162fbd4e3d1b054a
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/r31-agp-candidate
+      - name: Recreate verified Gradle dependency cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GRADLE_USER_HOME"
+          python3 quality/tools/v547_agp_arm64_candidate_probe.py "$RUNNER_TEMP/r31-agp-candidate" "$GRADLE_USER_HOME/caches"
+          echo APPFORGE_R31_AGP_CACHE=PASS
+      - name: Install Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          test -x "$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          test -x "$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"; fi
+          echo APPFORGE_R31_ANDROID_TOOLCHAIN=PASS
+      - name: Prepare pinned Kotlin repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 quality/tools/v9_pinned_kotlin_compiler.py "$RUNNER_TEMP/r31-kotlin-maven"
+          python3 quality/tools/v549_r23_kotlin_bom.py "$RUNNER_TEMP/r31-kotlin-bom"
+          echo APPFORGE_R31_KOTLIN_PINS=PASS
+      - name: Test and assemble UNSIGNED R31 debug candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "${APPFORGE_R31_KEYSTORE_PATH:-}"
+          test -z "${APPFORGE_R31_STORE_PASSWORD:-}"
+          gradle -p android-app :app:testDebugUnitTest :app:assembleDebug \
+            -PappforgeR31OriginalIdentity=true \
+            -PappforgeR32OriginalIdentityUpgrade=true \
+            -PappforgeR31UnsignedCI=true \
+            -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/r31-kotlin-maven" \
+            -PappforgeCIKotlinBomRepo="$RUNNER_TEMP/r31-kotlin-bom" \
+            -PappforgeCIMavenGcs=true \
+            --write-verification-metadata sha256 --no-daemon --max-workers=2 --no-configuration-cache --console=plain --stacktrace
+          echo APPFORGE_R32_UNSIGNED_BUILD=PASS
+      - name: Verify unsigned package, version, unit tests and artifact checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find android-app/app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | sort)
+          test "${#apks[@]}" -eq 1
+          APK="${apks[0]}"
+          test -s "$APK"
+          unzip -tqq "$APK"
+          BADGING="$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK")"
+          printf '%s\n' "$BADGING" | grep -F "package: name='com.appforge.studio' versionCode='555' versionName='5.0.53-r32-original-id-test'" >/dev/null
+          if "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$APK" >/dev/null 2>&1; then
+            echo APPFORGE_R31_UNEXPECTED_SIGNED_APK=BLOCKED
+            exit 81
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          reports=list(Path('android-app/app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
+          assert reports,'R31_UNIT_REPORT_MISSING'
+          roots=[ET.parse(f).getroot() for f in reports]
+          totals={k:sum(int(r.get(k,0)) for r in roots) for k in ('tests','failures','errors','skipped')}
+          assert totals['tests']>0 and totals['failures']==totals['errors']==totals['skipped']==0,totals
+          print('APPFORGE_R31_UNIT_TESTS=PASS')
+          PY
+          mkdir -p r32-unsigned
+          cp "$APK" "r32-unsigned/AppForgeStudio-R32-UNSIGNED-${GITHUB_SHA:0:12}.apk"
+          (cd r32-unsigned && sha256sum *.apk > SHA256SUMS.txt)
+          printf 'SOURCE_SHA=%s\nPACKAGE=com.appforge.studio\nVERSION_CODE=555\nAPK_SIGNED=NO\nDO_NOT_INSTALL_UNTIL_LOCAL_SIGNING=YES\n' "$GITHUB_SHA" > r32-unsigned/UNSIGNED-READ-ME.txt
+          echo APPFORGE_R32_UNSIGNED_ARTIFACT=VERIFIED_NOT_INSTALLABLE
+      - name: Validate dependency hash candidate and strict replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE=android-app/gradle/verification-metadata.xml
+          test -s "$FILE"
+          python3 -c 'import xml.etree.ElementTree as E; r=E.parse("android-app/gradle/verification-metadata.xml").getroot(); c=r.findall(".//{*}component"); k=[x for x in c if x.get("group")=="org.jetbrains.kotlin" and x.get("version")=="2.4.10"]; assert len(k)>=9, len(k); assert all(any(y.tag.endswith("sha256") for y in x.iter()) for x in k); print("R32_KOTLIN_SHA256_COMPONENTS="+str(len(k)))'
+          gradle -p android-app :app:testDebugUnitTest :app:assembleDebug \
+            -PappforgeR31OriginalIdentity=true \
+            -PappforgeR32OriginalIdentityUpgrade=true \
+            -PappforgeR31UnsignedCI=true \
+            -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/r31-kotlin-maven" \
+            -PappforgeCIKotlinBomRepo="$RUNNER_TEMP/r31-kotlin-bom" \
+            -PappforgeCIMavenGcs=true \
+            -Dorg.gradle.dependency.verification=strict \
+            --no-daemon --max-workers=2 --no-configuration-cache --console=plain
+          mkdir -p r32-audit
+          cp "$FILE" r32-audit/verification-metadata.xml
+          sha256sum "$FILE" > r32-audit/verification-metadata.sha256
+          printf 'ORIGINAL_R32_SHA=42fcddd21aed54fb84c2f98f5c0ee1774f38bb90\\nAUDIT_MODE=GENERATED_HASH_CANDIDATE\\nGRADLE_STRICT_REPLAY=PASS\\nINDEPENDENT_HASH_REVIEW=PENDING\\nAPK_INSTALL=NOT_STARTED\\n' > r32-audit/REPORT.txt
+          echo R32_GRADLE_STRICT_REPLAY=PASS
+          echo R32_HASH_CANDIDATE=READY_FOR_REVIEW
+      - uses: actions/upload-artifact@v4
+        with:
+          name: R32-Dependency-SHA256-Candidate-${{ github.sha }}
+          path: r32-audit/
+          retention-days: 14
+          if-no-files-found: error
