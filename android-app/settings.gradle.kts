@@ -34,15 +34,7 @@ pluginManagement {
                     "https://maven-central.storage-download.googleapis.com/maven2/"
                 )
                 content {
-                    includeVersion("org.jetbrains.kotlin", "kotlin-gradle-plugin-api", "2.4.10")
-                    includeVersion("org.jetbrains.kotlin", "fus-statistics-gradle-plugin", "2.4.10")
-                    includeVersion("org.jetbrains.kotlin", "kotlin-gradle-plugin-idea", "2.4.10")
-                    includeVersion("org.jetbrains.kotlin", "kotlin-gradle-plugin-idea-proto", "2.4.10")
-                    includeVersion("org.jetbrains.kotlin", "kotlin-klib-commonizer-api", "2.4.10")
-                    includeVersion("org.jetbrains.kotlin", "kotlin-build-statistics", "2.4.10")
-                    includeVersion("org.jetbrains.kotlin", "kotlin-util-klib-metadata", "2.4.10")
-                    includeVersion("org.jetbrains.kotlin", "kotlin-compiler-runner", "2.4.10")
-                    includeVersion("org.jetbrains.kotlin", "kotlin-gradle-plugins-bom", "2.4.10")
+                    includeVersionByRegex("org[.]jetbrains[.]kotlin", ".*", "2[.]4[.]10")
                 }
             }
         }
