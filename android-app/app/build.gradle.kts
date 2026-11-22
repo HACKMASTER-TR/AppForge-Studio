@@ -620,6 +620,18 @@ require(!appforgeR42OriginalIdentityUpgrade ||
      appforgeR41OriginalIdentityUpgrade)) {
     "R42 requires the full R41 original certificate identity chain."
 }
+// R43: guest-native Clang must locate the verified private LLD at link time.
+val appforgeR43OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR43OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR43OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade &&
+     appforgeR37OriginalIdentityUpgrade && appforgeR38OriginalIdentityUpgrade &&
+     appforgeR39OriginalIdentityUpgrade && appforgeR40OriginalIdentityUpgrade &&
+     appforgeR41OriginalIdentityUpgrade && appforgeR42OriginalIdentityUpgrade)) {
+    "R43 requires full R42 original signing certificate identity chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -1048,7 +1060,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR42OriginalIdentityUpgrade) {
+                if (appforgeR43OriginalIdentityUpgrade) {
+                    output.versionCode.set(566)
+                    output.versionName.set("5.0.64-r43-ndk-lld-search")
+                } else if (appforgeR42OriginalIdentityUpgrade) {
                     output.versionCode.set(565)
                     output.versionName.set("5.0.63-r42-guest-clang-links")
                 } else if (appforgeR41OriginalIdentityUpgrade) {

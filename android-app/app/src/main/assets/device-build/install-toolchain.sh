@@ -735,6 +735,7 @@ if [ "\$appforge_linking" -eq 1 ] &&
    [ "\$appforge_runtime" -eq 1 ]; then
   exec $executable \
     -resource-dir="$resource_dir" \
+    -B"$bin" \
     --rtlib=compiler-rt \
     --unwindlib=libunwind \
     -L"$resource_dir/lib/linux/aarch64" \
@@ -784,6 +785,19 @@ EOF
         ld.lld \
         $ndk_host_bin/ld.lld \
         APPFORGE_EXPO_ARM64_NDK_LLD_WRAPPER_V2
+
+      # R43: -fuse-ld=lld must resolve the signed ARM64 LLD wrapper. The
+      # private NDK bin directory is passed with -B to the genuine Clang
+      # linker-driver; no linker replacement and no false READY.
+      [ -f "$bin/ld.lld" ] && [ ! -L "$bin/ld.lld" ] &&
+      [ -x "$bin/ld.lld" ] || {
+        echo 'APPFORGE_R43_NDK_LLD_WRAPPER_MISSING' >&2; exit 69;
+      }
+      if ! "$bin/ld.lld" --version >/dev/null 2>&1;then
+        echo 'APPFORGE_R43_NDK_LLD_EXECUTION=FAILED' >&2; exit 69
+      fi
+      echo 'APPFORGE_R43_NDK_LLD_EXECUTION=PASS'
+      echo 'APPFORGE_R43_NDK_LLD_SEARCH_PATH=EXPLICIT_PRIVATE_BIN'
 
       write_tool_wrapper \
         llvm-ar \
@@ -836,12 +850,15 @@ EOF
       [ -s "$probe/probe.c" ] || {
         echo "APPFORGE_NDK_C_PROBE_SOURCE_MISSING" >&2;exit 67;
       }
-      "$bin/clang" \
+      if ! "$bin/clang" \
         --target=aarch64-linux-android24 \
         --sysroot="$host/sysroot" \
         -fuse-ld=lld \
         "$probe/probe.c" \
-        -o "$probe/probe"
+        -o "$probe/probe";then
+        echo 'APPFORGE_R43_NDK_C_LLD_LINK=FAILED' >&2; exit 69
+      fi
+      echo 'APPFORGE_R43_NDK_C_LLD_LINK=PASS'
 
       file "$probe/probe" |
         grep -Eqi 'aarch64|ARM aarch64' || {
@@ -888,7 +905,10 @@ EOF
 
       test -s "$probe/libappforge-probe.a"
 
-      "$bin/clang++"         --target=aarch64-linux-android24         --sysroot="$host/sysroot"         -stdlib=libc++         -fuse-ld=lld         "$probe/probe.cpp"         -o "$probe/probe-cpp"
+      if ! "$bin/clang++"         --target=aarch64-linux-android24         --sysroot="$host/sysroot"         -stdlib=libc++         -fuse-ld=lld         "$probe/probe.cpp"         -o "$probe/probe-cpp";then
+        echo 'APPFORGE_R43_NDK_CPP_LLD_LINK=FAILED' >&2; exit 69
+      fi
+      echo 'APPFORGE_R43_NDK_CPP_LLD_LINK=PASS'
 
       file "$probe/probe-cpp" |
         grep -Eqi 'aarch64|ARM aarch64' || {
