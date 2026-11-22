@@ -597,6 +597,17 @@ require(!appforgeR40OriginalIdentityUpgrade ||
      appforgeR39OriginalIdentityUpgrade)) {
     "R40 requires full R39 original signing identity chain."
 }
+// R41: signed guest clang source-read probe, preserving R40's CMake closure.
+val appforgeR41OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR41OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR41OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade &&
+     appforgeR37OriginalIdentityUpgrade && appforgeR38OriginalIdentityUpgrade &&
+     appforgeR39OriginalIdentityUpgrade && appforgeR40OriginalIdentityUpgrade)) {
+    "R41 requires the complete R40 original signing identity chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -1025,7 +1036,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR40OriginalIdentityUpgrade) {
+                if (appforgeR41OriginalIdentityUpgrade) {
+                    output.versionCode.set(564)
+                    output.versionName.set("5.0.62-r41-guest-clang")
+                } else if (appforgeR40OriginalIdentityUpgrade) {
                     output.versionCode.set(563)
                     output.versionName.set("5.0.61-r40-guest-cmake-closure")
                 } else if (appforgeR39OriginalIdentityUpgrade) {

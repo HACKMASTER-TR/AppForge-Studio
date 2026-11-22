@@ -906,6 +906,30 @@ internal object OfflineBuildPackManager {
         }
         // R35: Persist only allowlisted CMake/PRoot error lines before the
         // candidate generation is automatically rolled back. Never copy user files.
+        // R41: persist bounded, allowlisted host-tool failures before rollback.
+        // Does not mutate module states or create a backup.
+        if (diagnosticBase != null && result.exitCode != 0 &&
+            module == OfflineModuleId.RUST_ANDROID_NDK &&
+            (result.output.contains("APPFORGE_R41_") ||
+             result.output.contains("APPFORGE_NDK_HOST_SOURCE_READ_PROBE_FAILED"))) {
+            runCatching {
+                val dir = File(diagnosticBase, "r41-clang-diagnostics")
+                check(!java.nio.file.Files.isSymbolicLink(dir.toPath()))
+                check(dir.isDirectory || dir.mkdirs())
+                val target = File(dir, "latest.txt")
+                check(!java.nio.file.Files.isSymbolicLink(target.toPath()))
+                val lines = result.output.lineSequence().filter { line ->
+                    line.startsWith("APPFORGE_R41_") ||
+                    line.startsWith("APPFORGE_NDK_HOST_") ||
+                    line.startsWith("APPFORGE_R33_CMAKE_GUEST_REAL_P_TEST=") ||
+                    line.startsWith("deps: cannot find ") ||
+                    line.startsWith("clang: error:") ||
+                    line.startsWith("error: ")
+                }.toList().takeLast(70).joinToString("\n")
+                target.writeText(("R41_DIAGNOSTIC=START\nR41_EXIT=${result.exitCode}\n" +
+                    lines.take(8000) + "\nR41_DIAGNOSTIC=END\n"))
+            }
+        }
         if (diagnosticBase != null && result.exitCode != 0 && module != null &&
             module in setOf(OfflineModuleId.RUST_ANDROID_NDK, OfflineModuleId.EXPO_REACT_NATIVE) &&
             // The outer installer is install-toolchain.sh rust-native/expo.

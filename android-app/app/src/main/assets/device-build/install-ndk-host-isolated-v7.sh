@@ -163,6 +163,15 @@ libpath="$sysroot/usr/lib/llvm-18/lib:$sysroot/usr/lib/aarch64-linux-gnu:$sysroo
 export LD_LIBRARY_PATH="$libpath"
 export PATH="$prefix/bin:$PATH"
 export PROROOT_GUEST_EXE="$executable"
+# R41: only the trusted, tested guest-native Clang is allowed to read guest paths.
+# Do not change CMake, other LLVM tools, global glibc or existing module files.
+if [ "$name" = clang ] && [ -f "$prefix/clang-launch-mode-r41" ];then
+  [ "$(cat "$prefix/clang-launch-mode-r41")" = guest-clang-direct ] || exit 66
+  [ -f /usr/lib/llvm-18/bin/clang ] && [ ! -L /usr/lib/llvm-18/bin/clang ] || exit 66
+  unset PROROOT_GUEST_EXE CMAKE_ROOT
+  export LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu:$libpath"
+  exec /usr/lib/llvm-18/bin/clang "$@"
+fi
 # CMake 3.28 locates CMAKE_ROOT relative to argv[0] (its executable path).
 # When invoked through the explicit glibc loader, argv[0] can become the
 # loader path under PRoot even though the signed cmake-data payload exists.
@@ -603,6 +612,90 @@ if ! "$BIN/cmake" -P "$probe_dir/check.cmake";then
   echo 'APPFORGE_NDK_HOST_CMAKE_ROOT_PROBE_FAILED' >&2;exit 68
 fi
 printf 'APPFORGE_NDK_HOST_CMAKE_MODULES=PASS\n'
+# R41: CMake is now guest-native. Clang's explicit glibc-loader path can bypass
+# PRoot's guest-path translation, so a real guest C file becomes unreadable.
+# Test signed ARM64 guest ELF and the loader-list dependency closure in this
+# candidate generation. Never install to shared libc, overwrite guest names,
+# infer readiness from --version, or accept stdin-only as a source-read test.
+r41_clang_signed="$PREFIX/sysroot/usr/lib/llvm-18/bin/clang"
+r41_clang_guest=/usr/lib/llvm-18/bin/clang
+r41_clang_data_src="$PREFIX/sysroot/usr/lib/llvm-18/lib/clang"
+r41_clang_data_guest=/usr/lib/llvm-18/lib/clang
+r41_list="$probe_dir/r41-clang-loader-list.txt"
+r41_needed="$probe_dir/r41-clang-needed.txt"
+echo 'APPFORGE_R41_GUEST_CLANG_PROBE=START'
+[ -f "$r41_clang_signed" ] && [ -x "$r41_clang_signed" ] &&   file -L "$r41_clang_signed" | grep -Eqi 'aarch64|ARM aarch64' || {
+  echo 'APPFORGE_R41_CLANG_SIGNED_ELF_MISSING' >&2;exit 69;
+}
+[ -d "$r41_clang_data_src" ] && [ ! -L "$r41_clang_data_src" ] || {
+  echo 'APPFORGE_R41_CLANG_RESOURCE_DIR_MISSING' >&2;exit 69;
+}
+for r41_path in /usr/lib/llvm-18 /usr/lib/llvm-18/bin /usr/lib/llvm-18/lib;do
+  [ ! -L "$r41_path" ] || { echo 'APPFORGE_R41_CLANG_PARENT_SYMLINK_REJECTED' >&2;exit 69; }
+done
+for r41_path in "$r41_clang_guest" "$r41_clang_data_guest";do
+  [ ! -e "$r41_path" ] && [ ! -L "$r41_path" ] || {
+    echo 'APPFORGE_R41_CLANG_GUEST_PATH_OCCUPIED' >&2;exit 69;
+  }
+done
+mkdir -p /usr/lib/llvm-18/bin /usr/lib/llvm-18/lib
+if ! /lib/ld-linux-aarch64.so.1 --library-path "$private_libpath" --list     "$r41_clang_signed" > "$r41_list" 2>&1;then
+  echo 'APPFORGE_R41_CLANG_SIGNED_DEPENDENCY_LIST_FAILED' >&2
+  sed -n '1,15p' "$r41_list" >&2;exit 69
+fi
+LC_ALL=C awk '$2 == "=>" && $1 ~ /^lib[0-9A-Za-z_.+-]+[.]so([.][0-9]+)*$/ {print $1}'   "$r41_list" | LC_ALL=C sort -u > "$r41_needed"
+[ -s "$r41_needed" ] || { echo 'APPFORGE_R41_CLANG_NEEDED_EMPTY' >&2;exit 69; }
+r41_copy=0
+r41_retained=0
+while IFS= read -r r41_soname;do
+  case "$r41_soname" in
+    libc.so.*|libm.so.*|libdl.so.*|libpthread.so.*|librt.so.*|libresolv.so.*|libanl.so.*|libnss_*.so.*) continue;;
+    ''|*[!A-Za-z0-9_.+-]*) echo 'APPFORGE_R41_CLANG_LIBNAME_REJECTED' >&2;exit 69;;
+  esac
+  r41_guest_lib="/usr/lib/aarch64-linux-gnu/$r41_soname"
+  if [ -e "$r41_guest_lib" ] || [ -L "$r41_guest_lib" ];then
+    r41_retained=$((r41_retained+1))
+    continue
+  fi
+  r41_signed_lib=''
+  for r41_libdir in "$PREFIX/sysroot/usr/lib/aarch64-linux-gnu"                     "$PREFIX/sysroot/lib/aarch64-linux-gnu"                     "$PREFIX/sysroot/usr/lib/llvm-18/lib";do
+    if [ -f "$r41_libdir/$r41_soname" ];then
+      r41_signed_lib="$r41_libdir/$r41_soname"
+      break
+    fi
+  done
+  [ -n "$r41_signed_lib" ] || {
+    echo "APPFORGE_R41_CLANG_SIGNED_DEPENDENCY_MISSING=$r41_soname" >&2;exit 69;
+  }
+  if [ -L "$r41_signed_lib" ];then
+    r41_target=$(readlink "$r41_signed_lib") || exit 69
+    case "$r41_target" in ''|/*|*/*|.*)
+      echo 'APPFORGE_R41_CLANG_DEPENDENCY_LINK_REJECTED' >&2;exit 69;;esac
+    r41_source="${r41_signed_lib%/*}/$r41_target"
+  else
+    r41_source="$r41_signed_lib"
+  fi
+  [ -f "$r41_source" ] && [ ! -L "$r41_source" ] &&   file -L "$r41_source" | grep -Eqi 'aarch64|ARM aarch64' || {
+    echo 'APPFORGE_R41_CLANG_DEPENDENCY_ELF_REJECTED' >&2;exit 69;
+  }
+  [ ! -e "$r41_guest_lib" ] && [ ! -L "$r41_guest_lib" ] || exit 69
+  cp -p "$r41_source" "$r41_guest_lib" &&   [ -f "$r41_guest_lib" ] && [ ! -L "$r41_guest_lib" ] &&   cmp -s "$r41_source" "$r41_guest_lib" || {
+    echo 'APPFORGE_R41_CLANG_DEPENDENCY_COPY_FAILED' >&2;exit 69;
+  }
+  r41_copy=$((r41_copy+1))
+  echo "APPFORGE_R41_CLANG_LIB_VERIFIED=$r41_soname"
+done < "$r41_needed"
+cp -pL "$r41_clang_signed" "$r41_clang_guest" && cp -a "$r41_clang_data_src" "$r41_clang_data_guest" && [ -f "$r41_clang_guest" ] && [ ! -L "$r41_clang_guest" ] && [ -d "$r41_clang_data_guest" ] && [ ! -L "$r41_clang_data_guest" ] && cmp -s "$r41_clang_signed" "$r41_clang_guest" || {
+  echo 'APPFORGE_R41_CLANG_SIGNED_BYTES_UNVERIFIED' >&2;exit 69;
+}
+echo "APPFORGE_R41_CLANG_GUEST_CLOSURE=VERIFIED:copied=$r41_copy:retained=$r41_retained"
+# Required real file read, no stdin workaround, no forged READY.
+if ! LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu"   "$r41_clang_guest" --target=aarch64-unknown-linux-gnu -x c -fsyntax-only   "$probe_dir/readable.c";then
+  echo 'APPFORGE_R41_CLANG_GUEST_SOURCE_READ=FAILED' >&2;exit 69;
+fi
+echo 'APPFORGE_R41_CLANG_GUEST_SOURCE_READ=PASS'
+printf '%s\n' guest-clang-direct > "$PREFIX/clang-launch-mode-r41"
+# The original $BIN/clang source-file probe must still pass below.
 if ! "$BIN/clang" --target=aarch64-unknown-linux-gnu -x c -fsyntax-only "$probe_dir/readable.c";then
   echo 'APPFORGE_NDK_HOST_SOURCE_READ_PROBE_FAILED' >&2;exit 69
 fi
