@@ -576,6 +576,16 @@ require(!appforgeR38OriginalIdentityUpgrade ||
      appforgeR37OriginalIdentityUpgrade)) {
     "R38 requires the complete R37 original signing identity chain."
 }
+// R39 diagnostic only: preserve R38 functionality and original certificate chain.
+val appforgeR39OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR39OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR39OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade &&
+     appforgeR37OriginalIdentityUpgrade && appforgeR38OriginalIdentityUpgrade)) {
+    "R39 requires full R38 original signing identity chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -1004,7 +1014,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR38OriginalIdentityUpgrade) {
+                if (appforgeR39OriginalIdentityUpgrade) {
+                    output.versionCode.set(562)
+                    output.versionName.set("5.0.60-r39-comparator-trace")
+                } else if (appforgeR38OriginalIdentityUpgrade) {
                     output.versionCode.set(561)
                     output.versionName.set("5.0.59-r38-guest-rhash")
                 } else if (appforgeR37OriginalIdentityUpgrade) {

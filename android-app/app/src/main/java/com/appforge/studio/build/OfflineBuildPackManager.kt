@@ -466,6 +466,27 @@ internal object OfflineBuildPackManager {
         } catch(e:kotlinx.coroutines.CancellationException) {
             phase(active,if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else ModulePhase.CANCELED,if(e is DownloadNetwork.PolicyBlocked)"Ağ politikası bekleniyor; doğrulanmış modüller korunur." else "İptal edildi; mevcut doğrulanmış modüller korunur.");throw e
         } catch(e:Exception) {
+            // R39 diagnostic only. Do not alter module readiness or rollback.
+            // No user files, credentials, commands or arbitrary exception text are copied.
+            val r39ComparatorTraceSaved = if (
+                e is IllegalArgumentException &&
+                e.message?.contains("Comparison method violates its general contract") == true
+            ) runCatching {
+                val dir = File(app.noBackupFilesDir,"r39-comparator-diagnostics")
+                check(!java.nio.file.Files.isSymbolicLink(dir.toPath()))
+                check(dir.isDirectory || dir.mkdirs())
+                val target = File(dir,"latest.txt")
+                check(!java.nio.file.Files.isSymbolicLink(target.toPath()))
+                val frames = e.stackTrace.take(50).joinToString("\n") { frame ->
+                    "R39_FRAME=${frame.className}#${frame.methodName}:${frame.lineNumber}"
+                }
+                val text = "R39_COMPARATOR=START\n" +
+                    "R39_MODULE=${active.name}\n" +
+                    "R39_CLASS=${e.javaClass.name}\n" + frames +
+                    "\nR39_COMPARATOR=END\n"
+                target.writeText(text.take(10000))
+                true
+            }.getOrDefault(false) else false
             val gradleDiagnostic=runCatching {
                 GradleFailureDiagnostics.capture(
                     app.noBackupFilesDir,workspace,active
@@ -481,7 +502,9 @@ internal object OfflineBuildPackManager {
             }
             progress(ModuleProgress(active,operation,if(networkFailure)ModulePhase.WAITING_CONNECTION else ModulePhase.ERROR,
                 errorCode=code,detail=(e.message?:"Kurulum başarısız; önceki generation korunur.")+
-                    (gradleDiagnostic?.let{" | GRADLE_DIAGNOSTIC=$it"}?:"")));throw e
+                    (gradleDiagnostic?.let{" | GRADLE_DIAGNOSTIC=$it"}?:"")+
+                    (if(r39ComparatorTraceSaved) " | R39_COMPARATOR_STACK_SAVED=PASS"
+                     else "")));throw e
         } finally { workspace.deleteRecursively() }
         }
     }
