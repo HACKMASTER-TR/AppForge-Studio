@@ -557,6 +557,15 @@ require(!appforgeR36OriginalIdentityUpgrade ||
      appforgeR35OriginalIdentityUpgrade)) {
     "R36 requires the full original R35 signing identity chain."
 }
+// R37: isolated CMake early-patch candidate; preserve original package/signing identity.
+val appforgeR37OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR37OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR37OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade)) {
+    "R37 requires the complete R36 original signing identity chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -985,7 +994,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR36OriginalIdentityUpgrade) {
+                if (appforgeR37OriginalIdentityUpgrade) {
+                    output.versionCode.set(560)
+                    output.versionName.set("5.0.58-r37-cmake-early-patch")
+                } else if (appforgeR36OriginalIdentityUpgrade) {
                     output.versionCode.set(559)
                     output.versionName.set("5.0.57-r36-diagnostic-gate")
                 } else if (appforgeR35OriginalIdentityUpgrade) {

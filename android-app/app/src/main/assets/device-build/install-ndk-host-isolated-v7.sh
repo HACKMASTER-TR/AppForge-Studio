@@ -213,6 +213,15 @@ if [ "$name" = cmake ];then
       exec "$interpreter" --argv0 /usr/bin/cmake \
         --library-path "/usr/lib/aarch64-linux-gnu:/lib/aarch64-linux-gnu:$libpath" \
         /usr/bin/cmake "$@";;
+    # R37: CMake-only recovery candidate. The explicitly loaded ELF can
+    # bypass PRoot path interception; ask PRoot to patch this guest early.
+    # Never change global PRoot arguments or Android app module settings.
+    guest-cmake-loader-early-patch)
+      unset PROROOT_GUEST_EXE LD_LIBRARY_PATH CMAKE_ROOT
+      export PROROOT_FORCE_EARLY_PATCH=1
+      exec "$interpreter" --argv0 /usr/bin/cmake \
+        --library-path "/usr/lib/aarch64-linux-gnu:/lib/aarch64-linux-gnu:$libpath" \
+        /usr/bin/cmake "$@";;
     private-elf-direct)
       unset PROROOT_GUEST_EXE
       exec "$prefix/bin/cmake-private-elf" "$@";;
@@ -422,6 +431,17 @@ if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
       else
         echo 'APPFORGE_R34_CMAKE_EXPLICIT_GUEST_LOADER_TEST=FAILED' >&2
         sed -n '1,24p' "$cmake_probe_dir/log.guest-loader" >&2
+        # R37: isolated early-patching candidate, never a fabricated READY.
+        echo 'APPFORGE_R37_CMAKE_EARLY_PATCH=START' >&2
+        if APPFORGE_CMAKE_PROBE_MODE=guest-cmake-loader-early-patch "$BIN/cmake" \
+             -P "$cmake_probe_dir/check.cmake" \
+             >"$cmake_probe_dir/log.guest-early-patch" 2>&1;then
+          printf '%s\n' guest-cmake-loader-early-patch > "$PREFIX/cmake-launch-mode-v9"
+          echo 'APPFORGE_R37_CMAKE_EARLY_PATCH=PASS' >&2
+        else
+          echo 'APPFORGE_R37_CMAKE_EARLY_PATCH=FAILED' >&2
+          sed -n '1,24p' "$cmake_probe_dir/log.guest-early-patch" >&2
+        fi
       fi
       # No READY without a real CMAKE_ROOT and -P test.
     fi
