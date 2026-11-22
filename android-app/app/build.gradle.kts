@@ -586,6 +586,17 @@ require(!appforgeR39OriginalIdentityUpgrade ||
      appforgeR37OriginalIdentityUpgrade && appforgeR38OriginalIdentityUpgrade)) {
     "R39 requires full R38 original signing identity chain."
 }
+// R40: signed CMake shared-library closure; keep complete original identity chain.
+val appforgeR40OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR40OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR40OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade &&
+     appforgeR37OriginalIdentityUpgrade && appforgeR38OriginalIdentityUpgrade &&
+     appforgeR39OriginalIdentityUpgrade)) {
+    "R40 requires full R39 original signing identity chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -1014,7 +1025,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR39OriginalIdentityUpgrade) {
+                if (appforgeR40OriginalIdentityUpgrade) {
+                    output.versionCode.set(563)
+                    output.versionName.set("5.0.61-r40-guest-cmake-closure")
+                } else if (appforgeR39OriginalIdentityUpgrade) {
                     output.versionCode.set(562)
                     output.versionName.set("5.0.60-r39-comparator-trace")
                 } else if (appforgeR38OriginalIdentityUpgrade) {

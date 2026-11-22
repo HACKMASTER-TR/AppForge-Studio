@@ -921,6 +921,7 @@ internal object OfflineBuildPackManager {
                     line.startsWith("APPFORGE_R35_") ||
                         line.startsWith("APPFORGE_R37_") ||
                     line.startsWith("APPFORGE_R38_") ||
+                    line.startsWith("APPFORGE_R40_") ||
                         line.startsWith("APPFORGE_NDK_HOST_CMAKE_") ||
                         line.startsWith("APPFORGE_R34_CMAKE_") ||
                         line.startsWith("APPFORGE_R33_CMAKE_") ||

@@ -433,6 +433,68 @@ if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
     }
     echo 'APPFORGE_R33_CMAKE_GUEST_BYTES=VERIFIED'
     echo 'APPFORGE_R38_GUEST_RHASH=VERIFIED'
+    # R40: the authenticated private loader list is the dependency closure,
+    # including transitive libraries. Copy only absent, signed Ubuntu ARM64
+    # library bytes to this individually isolated candidate guest generation.
+    # Do not modify libc, any pre-existing guest path, or the shared base.
+    r40_needed="$cmake_probe_dir/r40-cmake-needed.txt"
+    LC_ALL=C awk '$2 == "=>" && $1 ~ /^lib[0-9A-Za-z_.+-]+[.]so([.][0-9]+)*$/ {print $1}' \
+      "$cmake_probe_dir/loader.log" | LC_ALL=C sort -u > "$r40_needed"
+    [ -s "$r40_needed" ] && grep -qx 'libuv.so.1' "$r40_needed" || {
+      echo 'APPFORGE_R40_SIGNED_CMAKE_DEPENDENCY_LIST_INVALID' >&2;exit 68;
+    }
+    r40_copied=0
+    r40_existing=0
+    while IFS= read -r soname;do
+      case "$soname" in
+        libc.so.*|libm.so.*|libdl.so.*|libpthread.so.*|librt.so.*|libresolv.so.*|libanl.so.*|libnss_*.so.*) continue;;
+      esac
+      case "$soname" in ''|*[!a-zA-Z0-9_.+-]*)
+        echo 'APPFORGE_R40_CMAKE_DEPENDENCY_NAME_REJECTED' >&2;exit 68;;
+      esac
+      r40_guest="/usr/lib/aarch64-linux-gnu/$soname"
+      if [ -e "$r40_guest" ] || [ -L "$r40_guest" ];then
+        r40_existing=$((r40_existing+1))
+        continue
+      fi
+      r40_signed=''
+      for r40_dir in "$PREFIX/sysroot/usr/lib/aarch64-linux-gnu" \
+                     "$PREFIX/sysroot/lib/aarch64-linux-gnu" \
+                     "$PREFIX/sysroot/usr/lib/llvm-18/lib";do
+        if [ -f "$r40_dir/$soname" ];then
+          r40_signed="$r40_dir/$soname"
+          break
+        fi
+      done
+      [ -n "$r40_signed" ] || {
+        echo "APPFORGE_R40_SIGNED_CMAKE_DEPENDENCY_MISSING=$soname" >&2;exit 68;
+      }
+      if [ -L "$r40_signed" ];then
+        r40_link=$(readlink "$r40_signed") || exit 68
+        case "$r40_link" in ''|/*|*/*|.*)
+          echo "APPFORGE_R40_SIGNED_CMAKE_DEPENDENCY_LINK_REJECTED=$soname" >&2;exit 68;;
+        esac
+        r40_payload="${r40_signed%/*}/$r40_link"
+      else
+        r40_payload="$r40_signed"
+      fi
+      [ -f "$r40_payload" ] && [ ! -L "$r40_payload" ] && \
+      file -L "$r40_payload" | grep -Eqi 'aarch64|ARM aarch64' || {
+        echo "APPFORGE_R40_SIGNED_CMAKE_DEPENDENCY_ELF_INVALID=$soname" >&2;exit 68;
+      }
+      [ ! -e "$r40_guest" ] && [ ! -L "$r40_guest" ] || exit 68
+      cp -p "$r40_payload" "$r40_guest" && \
+      [ -f "$r40_guest" ] && [ ! -L "$r40_guest" ] && \
+      cmp -s "$r40_payload" "$r40_guest" || {
+        echo "APPFORGE_R40_GUEST_CMAKE_DEPENDENCY_COPY_FAILED=$soname" >&2;exit 68;
+      }
+      r40_copied=$((r40_copied+1))
+      echo "APPFORGE_R40_GUEST_CMAKE_DEPENDENCY_VERIFIED=$soname"
+    done < "$r40_needed"
+    [ -f /usr/lib/aarch64-linux-gnu/libuv.so.1 ] || {
+      echo 'APPFORGE_R40_GUEST_LIBUV_NOT_VISIBLE' >&2;exit 68;
+    }
+    echo "APPFORGE_R40_GUEST_CMAKE_DEPENDENCY_CLOSURE=VERIFIED:copied=$r40_copied:retained=$r40_existing"
     if APPFORGE_CMAKE_PROBE_MODE=guest-cmake-direct "$BIN/cmake" \
          -P "$cmake_probe_dir/check.cmake" \
          >"$cmake_probe_dir/log.guest-direct" 2>&1;then
