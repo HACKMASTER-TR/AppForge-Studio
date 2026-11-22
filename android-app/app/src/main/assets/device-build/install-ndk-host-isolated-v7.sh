@@ -428,6 +428,38 @@ if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
   fi
 
   [ -s "$PREFIX/cmake-launch-mode-v9" ] || {
+    # R35 persistent pre-rollback evidence: NO runtime modification or fake READY.
+    echo 'APPFORGE_R35_DIAGNOSTIC=BEGIN' >&2
+    for diagnostic_path in /usr/bin/cmake /usr/share/cmake-3.28/Modules/CMake.cmake \
+        /usr/lib/aarch64-linux-gnu/libarchive.so.13 \
+        /lib/ld-linux-aarch64.so.1 \
+        "$PREFIX/sysroot/usr/bin/cmake" \
+        "$PREFIX/sysroot/usr/share/cmake-3.28/Modules/CMake.cmake" \
+        "$PREFIX/sysroot/usr/lib/aarch64-linux-gnu/libarchive.so.13";do
+      if [ -L "$diagnostic_path" ];then
+        echo "APPFORGE_R35_LINK=$diagnostic_path -> $(readlink "$diagnostic_path")" >&2
+      elif [ -f "$diagnostic_path" ];then
+        echo "APPFORGE_R35_REGULAR=$diagnostic_path" >&2
+      elif [ -d "$diagnostic_path" ];then
+        echo "APPFORGE_R35_DIRECTORY=$diagnostic_path" >&2
+      else
+        echo "APPFORGE_R35_MISSING=$diagnostic_path" >&2
+      fi
+    done
+    echo "APPFORGE_R35_LIBPATH=$private_libpath" >&2
+    if [ -x /lib/ld-linux-aarch64.so.1 ] && [ -f /usr/bin/cmake ];then
+      echo 'APPFORGE_R35_DYNAMIC_LOADER_LIST=BEGIN' >&2
+      /lib/ld-linux-aarch64.so.1 --library-path \
+        "/usr/lib/aarch64-linux-gnu:/lib/aarch64-linux-gnu:$private_libpath" \
+        --list /usr/bin/cmake 2>&1 | sed -n '1,22p' >&2 || :
+      echo 'APPFORGE_R35_DYNAMIC_LOADER_LIST=END' >&2
+    fi
+    if command -v readelf >/dev/null 2>&1 && [ -f /usr/bin/cmake ];then
+      echo 'APPFORGE_R35_ELF_NEEDED=BEGIN' >&2
+      readelf -d /usr/bin/cmake 2>&1 | grep -E 'NEEDED|RPATH|RUNPATH' | sed -n '1,16p' >&2 || :
+      echo 'APPFORGE_R35_ELF_NEEDED=END' >&2
+    fi
+    echo 'APPFORGE_R35_DIAGNOSTIC=END' >&2
     echo 'APPFORGE_NDK_HOST_CMAKE_NO_VERIFIED_LAUNCHER' >&2
     exit 68
   }

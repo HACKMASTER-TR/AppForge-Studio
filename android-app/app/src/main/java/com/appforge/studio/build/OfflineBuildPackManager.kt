@@ -764,7 +764,8 @@ internal object OfflineBuildPackManager {
         require(rootfs.canonicalFile.toPath().startsWith(
             File(context.noBackupFilesDir,"isolated-modules-v1").canonicalFile.toPath()))
         execute(LinuxShellEngine(context),rootfs,workspace,"isolated-${module.name.lowercase()}",
-            command,module,operation,progress,control,r2Authorized=true)
+            command,module,operation,progress,control,r2Authorized=true,
+                diagnosticBase=context.noBackupFilesDir)
     }
 
     private suspend fun execute(
@@ -778,7 +779,8 @@ internal object OfflineBuildPackManager {
         progress:(ModuleProgress)->Unit={},
         control:DownloadControl=DownloadControl(),
         r2Authorized:Boolean=false,
-        windowsProrootReentry:Int=0
+        windowsProrootReentry:Int=0,
+        diagnosticBase:File?=null
     ): Unit = kotlinx.coroutines.coroutineScope {
         val sessionId =
             "offline-pack-$suffix-${UUID.randomUUID()}"
@@ -876,8 +878,50 @@ internal object OfflineBuildPackManager {
                 ModulePhase.PREPARING,
                 detail="Doğrulanmış MinGW sürücüsü için PRoot oturumu yenileniyor (${windowsProrootReentry + 1}/2)."))
             execute(shell,rootfs,workspace,"$suffix-reentry-${windowsProrootReentry + 1}",
-                command,module,operation,progress,control,r2Authorized,windowsProrootReentry+1)
+                command,module,operation,progress,control,r2Authorized,windowsProrootReentry+1,diagnosticBase)
             return@coroutineScope
+        }
+        // R35: Persist only allowlisted CMake/PRoot error lines before the
+        // candidate generation is automatically rolled back. Never copy user files.
+        if (diagnosticBase != null && result.exitCode != 0 && module != null &&
+            module in setOf(OfflineModuleId.RUST_ANDROID_NDK, OfflineModuleId.EXPO_REACT_NATIVE) &&
+            command.contains("install-ndk-host-isolated-v7.sh")) {
+            val stored = runCatching {
+                val dir = File(diagnosticBase, "r35-cmake-diagnostics")
+                check(!java.nio.file.Files.isSymbolicLink(dir.toPath()))
+                check(dir.isDirectory || dir.mkdirs())
+                val target = File(dir, "latest.txt")
+                check(!java.nio.file.Files.isSymbolicLink(target.toPath()))
+                val approved = result.output.lineSequence().filter { line ->
+                    line.startsWith("APPFORGE_R35_") ||
+                        line.startsWith("APPFORGE_NDK_HOST_CMAKE_") ||
+                        line.startsWith("APPFORGE_R34_CMAKE_") ||
+                        line.startsWith("APPFORGE_R33_CMAKE_") ||
+                        line.startsWith("CMake Error") ||
+                        line.startsWith("deps:") ||
+                        line.startsWith("proot-ldso:") ||
+                        line.contains("Could not find CMAKE_ROOT") ||
+                        line.contains("libarchive.so.13")
+                }.take(1000).toList().takeLast(130)
+                val relative = listOf(
+                    "usr/bin/cmake",
+                    "usr/share/cmake-3.28/Modules/CMake.cmake",
+                    "usr/lib/aarch64-linux-gnu/libarchive.so.13",
+                    "opt/appforge-device/ndk-host-v7/sysroot/usr/bin/cmake",
+                    "opt/appforge-device/ndk-host-v7/sysroot/usr/lib/aarch64-linux-gnu/libarchive.so.13"
+                )
+                val snapshot = relative.joinToString("\n") { path ->
+                    val f = File(rootfs, path)
+                    "R35_PATH:$path:file=${f.isFile}:link=${java.nio.file.Files.isSymbolicLink(f.toPath())}:bytes=${if(f.isFile) f.length() else 0L}"
+                }
+                val text = ("R35_DIAGNOSTIC=START\nR35_MODULE=${module.name}\n" +
+                    "R35_EXIT=${result.exitCode}\n" + snapshot + "\n" +
+                    approved.joinToString("\n") + "\nR35_DIAGNOSTIC=END\n")
+                target.writeText(text.takeLast(25000))
+                true
+            }.getOrDefault(false)
+            progress(ModuleProgress(module,operation,ModulePhase.VERIFYING,
+                detail="R35_CMAKE_DIAGNOSTIC_SAVED=$stored"))
         }
         check(
             result.exitCode ==
