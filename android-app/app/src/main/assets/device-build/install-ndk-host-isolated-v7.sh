@@ -200,6 +200,9 @@ if [ "$name" = cmake ];then
     private-prefix-argv0) exec "$interpreter" --argv0 "$prefix/bin/cmake" --library-path "$libpath" "$executable" "$@";;
     # Candidate: real authenticated ELF in the private bin directory.
     # A direct exec retains the executable identity for CMake relocation.
+    guest-cmake-direct)
+      unset PROROOT_GUEST_EXE LD_LIBRARY_PATH CMAKE_ROOT
+      exec /usr/bin/cmake "$@";;
     private-elf-direct)
       unset PROROOT_GUEST_EXE
       exec "$prefix/bin/cmake-private-elf" "$@";;
@@ -341,13 +344,66 @@ if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
       if APPFORGE_CMAKE_PROBE_MODE="$cmake_mode" "$BIN/cmake" \
           -P "$cmake_probe_dir/check.cmake" \
           >"$cmake_probe_dir/log.$cmake_mode" 2>&1;then
-        printf '%s\\n' "$cmake_mode" > "$PREFIX/cmake-launch-mode-v9"
+        printf '%s\n' "$cmake_mode" > "$PREFIX/cmake-launch-mode-v9"
         echo "APPFORGE_NDK_CMAKE_PRIVATE_ELF_PROBE=PASS:$cmake_mode"
         break
       fi
       echo "APPFORGE_NDK_CMAKE_PRIVATE_ELF_MODE_REJECTED=$cmake_mode" >&2
       sed -n '1,12p' "$cmake_probe_dir/log.$cmake_mode" >&2
     done
+  fi
+
+  # R33: The explicitly loaded ELF can bypass PRoot's guest /opt mappings.
+  # In this single isolated module generation only, install authenticated
+  # bytes at standard guest runtime paths. Never overwrite existing names.
+  if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
+    echo 'APPFORGE_R33_CMAKE_GUEST_LAYOUT_PROBE=START'
+    guest_cmake=/usr/bin/cmake
+    guest_modules=/usr/share/cmake-3.28
+    guest_libarchive=/usr/lib/aarch64-linux-gnu/libarchive.so.13
+    signed_elf="$PREFIX/sysroot/usr/bin/cmake"
+    signed_modules="$PREFIX/sysroot/usr/share/cmake-3.28"
+    signed_libarchive="$PREFIX/sysroot/usr/lib/aarch64-linux-gnu/libarchive.so.13"
+    [ -f "$signed_elf" ] && [ ! -L "$signed_elf" ] && [ -x "$signed_elf" ] &&
+    [ -s "$signed_modules/Modules/CMake.cmake" ] &&
+    [ -f "$signed_libarchive" ] && [ ! -L "$signed_libarchive" ] || {
+      echo 'APPFORGE_R33_CMAKE_SIGNED_PAYLOAD_INCOMPLETE' >&2;exit 68;
+    }
+    # /usr is a guest-private directory only in these individually isolated
+    # rootfs generations. If a path exists, stop rather than replace it.
+    for guest_path in "$guest_cmake" "$guest_modules" "$guest_libarchive";do
+      if [ -e "$guest_path" ] || [ -L "$guest_path" ];then
+        echo "APPFORGE_R33_CMAKE_GUEST_PATH_OCCUPIED=$guest_path" >&2
+        exit 68
+      fi
+    done
+    [ -d /usr/bin ] && [ -d /usr/share ] &&
+    [ -d /usr/lib/aarch64-linux-gnu ] || {
+      echo 'APPFORGE_R33_CMAKE_GUEST_ROOT_UNAVAILABLE' >&2;exit 68;
+    }
+    # All inputs were validated by signed catalog SHA256 before extraction.
+    cp -p "$signed_elf" "$guest_cmake" &&
+    cp -p "$signed_libarchive" "$guest_libarchive" &&
+    ln -s "$signed_modules" "$guest_modules" || {
+      echo 'APPFORGE_R33_CMAKE_GUEST_COPY_FAILED' >&2;exit 68;
+    }
+    cmp -s "$signed_elf" "$guest_cmake" &&
+    cmp -s "$signed_libarchive" "$guest_libarchive" &&
+    [ -s "$guest_modules/Modules/CMake.cmake" ] || {
+      echo 'APPFORGE_R33_CMAKE_GUEST_BYTES_UNVERIFIED' >&2;exit 68;
+    }
+    echo 'APPFORGE_R33_CMAKE_GUEST_BYTES=VERIFIED'
+    if APPFORGE_CMAKE_PROBE_MODE=guest-cmake-direct "$BIN/cmake" \
+         -P "$cmake_probe_dir/check.cmake" \
+         >"$cmake_probe_dir/log.guest-direct" 2>&1;then
+      printf '%s\n' guest-cmake-direct > "$PREFIX/cmake-launch-mode-v9"
+      echo 'APPFORGE_R33_CMAKE_GUEST_REAL_P_TEST=PASS'
+    else
+      echo 'APPFORGE_R33_CMAKE_GUEST_REAL_P_TEST=FAILED' >&2
+      sed -n '1,22p' "$cmake_probe_dir/log.guest-direct" >&2
+      # Do not claim READY on any failure; keep only in the failed isolated
+      # candidate generation to allow inspection, never change active modules.
+    fi
   fi
 
   [ -s "$PREFIX/cmake-launch-mode-v9" ] || {

@@ -494,7 +494,7 @@ managed_apt() {
 managed_apt update
 
 install_packages() {
-  managed_apt install \
+  if managed_apt install \
     -y \
     --no-install-recommends \
     --reinstall \
@@ -506,7 +506,22 @@ install_packages() {
     gcc-mingw-w64-x86-64-posix \
     g++-mingw-w64-x86-64-posix \
     mingw-w64-x86-64-dev \
-    mingw-w64-tools
+    mingw-w64-tools; then
+    return 0
+  fi
+  # The initial signed APT transaction can unpack verified GCC/G++ packages
+  # and then fail during update-alternatives. Do not re-run APT in this stage.
+  echo 'APPFORGE_R33_WINDOWS_APT_POSTINST_REPAIR=START' >&2
+  if ! repair_interrupted_dpkg; then
+    echo 'APPFORGE_R33_WINDOWS_DPKG_RECOVERY=FAILED' >&2
+    return 60
+  fi
+  if have_tools && have_windows_lock; then
+    echo 'APPFORGE_R33_WINDOWS_DPKG_RECOVERY=PASS'
+    return 0
+  fi
+  echo 'APPFORGE_R33_WINDOWS_LOCK_OR_TOOLCHAIN_UNVERIFIED' >&2
+  return 60
 }
 
 # A failed signed APT transaction retains its .part lock.
