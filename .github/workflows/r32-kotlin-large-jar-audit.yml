@@ -155,6 +155,61 @@ jobs:
               }
 
               for label, host, base in sources:
+                  if (
+                      label == "MAVEN_CENTRAL"
+                      and name == "kotlin-compiler-embeddable-2.4.10.jar"
+                  ):
+                      try:
+                          url = base + relative + ".sha256"
+                          request = urllib.request.Request(
+                              url,
+                              headers={
+                                  "User-Agent": "AppForge-R32-Central-Hash-Audit/1.0"
+                              },
+                          )
+                          with urllib.request.urlopen(
+                              request, timeout=30
+                          ) as response:
+                              final = urllib.parse.urlsplit(
+                                  response.geturl()
+                              )
+                              assert (
+                                  final.scheme == "https"
+                                  and final.hostname == host
+                                  and not final.query
+                                  and not final.fragment
+                              ), "UNTRUSTED_CHECKSUM_SOURCE"
+
+                              raw = response.read(513)
+                              assert len(raw) <= 512, "INVALID_CHECKSUM_SIZE"
+                              value = raw.decode("ascii").strip()
+
+                          match = re.fullmatch(
+                              r"([0-9a-fA-F]{64})(?:\\s+.*)?",
+                              value,
+                          )
+                          assert match is not None, "INVALID_CHECKSUM_FORMAT"
+                          published = match.group(1).lower()
+
+                          entry["sources"][label] = {
+                              "result": (
+                                  "PASS"
+                                  if published == expected
+                                  else "MISMATCH"
+                              ),
+                              "sha256": published,
+                              "verification": "PUBLISHED_SHA256_SIDECAR",
+                          }
+                      except Exception as exc:
+                          entry["sources"][label] = {
+                              "result": "PENDING",
+                              "reason": (
+                                  type(exc).__name__
+                                  + ":" + str(exc)[:160]
+                              ),
+                          }
+                      continue
+
                   try:
                       digest, size = sha256_download(
                           base + relative, host
