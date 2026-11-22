@@ -201,8 +201,18 @@ if [ "$name" = cmake ];then
     # Candidate: real authenticated ELF in the private bin directory.
     # A direct exec retains the executable identity for CMake relocation.
     guest-cmake-direct)
-      unset PROROOT_GUEST_EXE LD_LIBRARY_PATH CMAKE_ROOT
+      unset PROROOT_GUEST_EXE CMAKE_ROOT
+      [ -f /usr/lib/aarch64-linux-gnu/libarchive.so.13 ] &&
+      [ ! -L /usr/lib/aarch64-linux-gnu/libarchive.so.13 ] &&
+      [ -s /usr/share/cmake-3.28/Modules/CMake.cmake ] || exit 66
+      # R34: R33 dropped this search path; PRoot could not load libarchive.
+      export LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/lib/aarch64-linux-gnu:$libpath"
       exec /usr/bin/cmake "$@";;
+    guest-cmake-loader-argv0)
+      unset PROROOT_GUEST_EXE LD_LIBRARY_PATH CMAKE_ROOT
+      exec "$interpreter" --argv0 /usr/bin/cmake \
+        --library-path "/usr/lib/aarch64-linux-gnu:/lib/aarch64-linux-gnu:$libpath" \
+        /usr/bin/cmake "$@";;
     private-elf-direct)
       unset PROROOT_GUEST_EXE
       exec "$prefix/bin/cmake-private-elf" "$@";;
@@ -384,12 +394,14 @@ if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
     # All inputs were validated by signed catalog SHA256 before extraction.
     cp -p "$signed_elf" "$guest_cmake" &&
     cp -p "$signed_libarchive" "$guest_libarchive" &&
-    ln -s "$signed_modules" "$guest_modules" || {
+    cp -a "$signed_modules" "$guest_modules" || {
       echo 'APPFORGE_R33_CMAKE_GUEST_COPY_FAILED' >&2;exit 68;
     }
     cmp -s "$signed_elf" "$guest_cmake" &&
     cmp -s "$signed_libarchive" "$guest_libarchive" &&
-    [ -s "$guest_modules/Modules/CMake.cmake" ] || {
+    [ -d "$guest_modules" ] && [ ! -L "$guest_modules" ] &&
+    cmp -s "$signed_modules/Modules/CMake.cmake" "$guest_modules/Modules/CMake.cmake" &&
+    cmp -s "$signed_modules/Modules/CMakeDetermineSystem.cmake" "$guest_modules/Modules/CMakeDetermineSystem.cmake" || {
       echo 'APPFORGE_R33_CMAKE_GUEST_BYTES_UNVERIFIED' >&2;exit 68;
     }
     echo 'APPFORGE_R33_CMAKE_GUEST_BYTES=VERIFIED'
@@ -401,8 +413,17 @@ if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
     else
       echo 'APPFORGE_R33_CMAKE_GUEST_REAL_P_TEST=FAILED' >&2
       sed -n '1,22p' "$cmake_probe_dir/log.guest-direct" >&2
-      # Do not claim READY on any failure; keep only in the failed isolated
-      # candidate generation to allow inspection, never change active modules.
+      echo 'APPFORGE_R34_CMAKE_EXPLICIT_GUEST_LOADER_TEST=START'
+      if APPFORGE_CMAKE_PROBE_MODE=guest-cmake-loader-argv0 "$BIN/cmake" \
+          -P "$cmake_probe_dir/check.cmake" \
+          >"$cmake_probe_dir/log.guest-loader" 2>&1;then
+        printf '%s\n' guest-cmake-loader-argv0 > "$PREFIX/cmake-launch-mode-v9"
+        echo 'APPFORGE_R34_CMAKE_EXPLICIT_GUEST_LOADER_TEST=PASS'
+      else
+        echo 'APPFORGE_R34_CMAKE_EXPLICIT_GUEST_LOADER_TEST=FAILED' >&2
+        sed -n '1,24p' "$cmake_probe_dir/log.guest-loader" >&2
+      fi
+      # No READY without a real CMAKE_ROOT and -P test.
     fi
   fi
 
