@@ -1,0 +1,27 @@
+name: R32 CMake Windows APT Regression
+
+on:
+  push:
+    branches:
+      - codex/r32-cmake-windows-repair-20261122
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  r32-regression:
+    name: R32 source and mocked regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Shell syntax
+        run: |
+          sh -n android-app/app/src/main/assets/device-build/install-ndk-host-isolated-v7.sh
+          sh -n android-app/app/src/main/assets/device-build/install-windows-native-toolchain.sh
+
+      - name: R32 regression tests
+        run: python3 tests/test_r32_cmake_windows_regression.py

@@ -198,6 +198,15 @@ if [ "$name" = cmake ];then
     direct-no-guest) unset PROROOT_GUEST_EXE; exec "$executable" "$@";;
     # Only approved if a real CMAKE_ROOT + -P probe succeeded below.
     private-prefix-argv0) exec "$interpreter" --argv0 "$prefix/bin/cmake" --library-path "$libpath" "$executable" "$@";;
+    # Candidate: real authenticated ELF in the private bin directory.
+    # A direct exec retains the executable identity for CMake relocation.
+    private-elf-direct)
+      unset PROROOT_GUEST_EXE
+      exec "$prefix/bin/cmake-private-elf" "$@";;
+    private-elf-loader-argv0)
+      unset PROROOT_GUEST_EXE
+      exec "$interpreter" --argv0 "$prefix/bin/cmake-private-elf" \
+        --library-path "$libpath" "$prefix/bin/cmake-private-elf" "$@";;
     *) echo 'APPFORGE_NDK_HOST_CMAKE_LAUNCH_DENIED' >&2;exit 66;;
   esac
 fi
@@ -298,6 +307,49 @@ if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
       [ ! -f "$cmake_probe_dir/log.private-prefix" ] || sed -n '1,16p' "$cmake_probe_dir/log.private-prefix" >&2
     fi
   fi
+  # R32: CMake discovers resources relative to its actual ELF location.
+  # Copy only the SHA-256-authenticated package ELF into this private
+  # candidate prefix. Never alter the global guest /usr or libc.
+  if [ ! -s "$PREFIX/cmake-launch-mode-v9" ];then
+    signed_cmake_elf="$PREFIX/sysroot/usr/bin/cmake"
+    private_cmake_elf="$PREFIX/bin/cmake-private-elf"
+    private_cmake_modules="$PREFIX/share/cmake-3.28/Modules/CMake.cmake"
+
+    [ -f "$signed_cmake_elf" ] &&
+    [ ! -L "$signed_cmake_elf" ] &&
+    [ -x "$signed_cmake_elf" ] &&
+    [ -s "$private_cmake_modules" ] &&
+    [ ! -e "$private_cmake_elf" ] &&
+    [ ! -L "$private_cmake_elf" ] || {
+      echo 'APPFORGE_NDK_CMAKE_PRIVATE_ELF_PREFLIGHT_FAILED' >&2
+      exit 68
+    }
+
+    file "$signed_cmake_elf" |
+      grep -Eqi 'aarch64|ARM aarch64' || exit 68
+
+    cp -p "$signed_cmake_elf" "$private_cmake_elf" || exit 68
+
+    [ -f "$private_cmake_elf" ] &&
+    [ ! -L "$private_cmake_elf" ] &&
+    [ -x "$private_cmake_elf" ] &&
+    cmp -s "$signed_cmake_elf" "$private_cmake_elf" || exit 68
+
+    echo 'APPFORGE_NDK_CMAKE_PRIVATE_ELF_BYTES=VERIFIED'
+
+    for cmake_mode in private-elf-direct private-elf-loader-argv0;do
+      if APPFORGE_CMAKE_PROBE_MODE="$cmake_mode" "$BIN/cmake" \
+          -P "$cmake_probe_dir/check.cmake" \
+          >"$cmake_probe_dir/log.$cmake_mode" 2>&1;then
+        printf '%s\\n' "$cmake_mode" > "$PREFIX/cmake-launch-mode-v9"
+        echo "APPFORGE_NDK_CMAKE_PRIVATE_ELF_PROBE=PASS:$cmake_mode"
+        break
+      fi
+      echo "APPFORGE_NDK_CMAKE_PRIVATE_ELF_MODE_REJECTED=$cmake_mode" >&2
+      sed -n '1,12p' "$cmake_probe_dir/log.$cmake_mode" >&2
+    done
+  fi
+
   [ -s "$PREFIX/cmake-launch-mode-v9" ] || {
     echo 'APPFORGE_NDK_HOST_CMAKE_NO_VERIFIED_LAUNCHER' >&2
     exit 68

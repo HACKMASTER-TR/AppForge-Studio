@@ -509,17 +509,14 @@ install_packages() {
     mingw-w64-tools
 }
 
+# A failed signed APT transaction retains its .part lock.
+# Never replay that request inside the same isolated generation.
+# The caller must discard the failed candidate transaction safely
+# and prepare a fresh generation after verifying the active baseline.
 if ! install_packages; then
-  echo "APPFORGE_WINDOWS_NATIVE_APT_REPAIR=START"
-
-  repair_mingw_links
-
-  dpkg --configure -a
-
-  # Only the requested pinned packages may be retried.
-  install_packages
-
-  echo "APPFORGE_WINDOWS_NATIVE_APT_REPAIR=PASS"
+  echo "APPFORGE_WINDOWS_NATIVE_APT_PARTIAL_REQUIRES_FRESH_GENERATION" >&2
+  echo "APPFORGE_WINDOWS_NATIVE_SAME_GENERATION_RETRY=BLOCKED" >&2
+  exit 60
 fi
 
 repair_mingw_links
