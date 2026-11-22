@@ -548,6 +548,15 @@ require(!appforgeR35OriginalIdentityUpgrade ||
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade)) {
     "R35 requires R34 original signing identity contract."
 }
+// R36: original-identity upgrade 558 -> 559; only diagnostic-persistence fix.
+val appforgeR36OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR36OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR36OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade)) {
+    "R36 requires the full original R35 signing identity chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -976,7 +985,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR35OriginalIdentityUpgrade) {
+                if (appforgeR36OriginalIdentityUpgrade) {
+                    output.versionCode.set(559)
+                    output.versionName.set("5.0.57-r36-diagnostic-gate")
+                } else if (appforgeR35OriginalIdentityUpgrade) {
                     output.versionCode.set(558)
                     output.versionName.set("5.0.56-r35-diagnostic-original-id")
                 } else if (appforgeR34OriginalIdentityUpgrade) {

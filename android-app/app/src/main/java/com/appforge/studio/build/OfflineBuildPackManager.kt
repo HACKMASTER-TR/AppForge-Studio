@@ -885,8 +885,10 @@ internal object OfflineBuildPackManager {
         // candidate generation is automatically rolled back. Never copy user files.
         if (diagnosticBase != null && result.exitCode != 0 && module != null &&
             module in setOf(OfflineModuleId.RUST_ANDROID_NDK, OfflineModuleId.EXPO_REACT_NATIVE) &&
-            command.contains("install-ndk-host-isolated-v7.sh")) {
-            val stored = runCatching {
+            // The outer installer is install-toolchain.sh rust-native/expo.
+            // R35 guest diagnostics are emitted by its nested NDK installer.
+            result.output.contains("APPFORGE_R35_DIAGNOSTIC=BEGIN")) {
+            val storedAttempt = runCatching {
                 val dir = File(diagnosticBase, "r35-cmake-diagnostics")
                 check(!java.nio.file.Files.isSymbolicLink(dir.toPath()))
                 check(dir.isDirectory || dir.mkdirs())
@@ -919,9 +921,12 @@ internal object OfflineBuildPackManager {
                     approved.joinToString("\n") + "\nR35_DIAGNOSTIC=END\n")
                 target.writeText(text.takeLast(25000))
                 true
-            }.getOrDefault(false)
+            }
+            val stored = storedAttempt.isSuccess && storedAttempt.getOrDefault(false)
+            // Do not suppress a write failure behind a misleading missing report.
+            val failureKind = storedAttempt.exceptionOrNull()?.javaClass?.simpleName ?: "NONE"
             progress(ModuleProgress(module,operation,ModulePhase.VERIFYING,
-                detail="R35_CMAKE_DIAGNOSTIC_SAVED=$stored"))
+                detail="R35_CMAKE_DIAGNOSTIC_SAVED=$stored;R36_WRITE_FAILURE=$failureKind"))
         }
         check(
             result.exitCode ==
