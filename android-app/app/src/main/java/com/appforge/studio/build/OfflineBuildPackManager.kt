@@ -911,6 +911,7 @@ internal object OfflineBuildPackManager {
         if (diagnosticBase != null && result.exitCode != 0 &&
             module == OfflineModuleId.RUST_ANDROID_NDK &&
             (result.output.contains("APPFORGE_R41_") ||
+             result.output.contains("APPFORGE_R42_") ||
              result.output.contains("APPFORGE_NDK_HOST_SOURCE_READ_PROBE_FAILED"))) {
             runCatching {
                 val dir = File(diagnosticBase, "r41-clang-diagnostics")
@@ -920,6 +921,7 @@ internal object OfflineBuildPackManager {
                 check(!java.nio.file.Files.isSymbolicLink(target.toPath()))
                 val lines = result.output.lineSequence().filter { line ->
                     line.startsWith("APPFORGE_R41_") ||
+                    line.startsWith("APPFORGE_R42_") ||
                     line.startsWith("APPFORGE_NDK_HOST_") ||
                     line.startsWith("APPFORGE_R33_CMAKE_GUEST_REAL_P_TEST=") ||
                     line.startsWith("deps: cannot find ") ||

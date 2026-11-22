@@ -667,14 +667,21 @@ while IFS= read -r r41_soname;do
   [ -n "$r41_signed_lib" ] || {
     echo "APPFORGE_R41_CLANG_SIGNED_DEPENDENCY_MISSING=$r41_soname" >&2;exit 69;
   }
-  if [ -L "$r41_signed_lib" ];then
-    r41_target=$(readlink "$r41_signed_lib") || exit 69
-    case "$r41_target" in ''|/*|*/*|.*)
-      echo 'APPFORGE_R41_CLANG_DEPENDENCY_LINK_REJECTED' >&2;exit 69;;esac
-    r41_source="${r41_signed_lib%/*}/$r41_target"
-  else
-    r41_source="$r41_signed_lib"
-  fi
+  # R42: package-authenticated cross-directory SONAME links (e.g. libLLVM.so.18.1
+  # -> ../llvm-18/lib/libLLVM.so.1) are legitimate Ubuntu ARM64 layout.
+  # Resolve symlink chains fully; accept ONLY regular ELF within these trusted
+  # private package-extracted directories. Reject escape, dangling or loops.
+  r41_source=$(readlink -f "$r41_signed_lib") || {
+    echo "APPFORGE_R42_CLANG_LINK_CANNOT_RESOLVE=$r41_soname" >&2; exit 69;
+  }
+  case "$r41_source" in
+    "$PREFIX/sysroot/usr/lib/aarch64-linux-gnu/"*|    "$PREFIX/sysroot/usr/lib/llvm-18/lib/"*|    "$PREFIX/sysroot/lib/aarch64-linux-gnu/"*) ;;
+    *) echo "APPFORGE_R42_CLANG_LINK_TARGET_OUTSIDE_SIGNED_SYSROOT=$r41_soname" >&2; exit 69;;
+  esac
+  [ -f "$r41_source" ] && [ ! -L "$r41_source" ] || {
+    echo "APPFORGE_R42_CLANG_LINK_NOT_REGULAR_ELF=$r41_soname" >&2; exit 69;
+  }
+  echo "APPFORGE_R42_CLANG_LINK_RESOLVED=$r41_soname"
   [ -f "$r41_source" ] && [ ! -L "$r41_source" ] &&   file -L "$r41_source" | grep -Eqi 'aarch64|ARM aarch64' || {
     echo 'APPFORGE_R41_CLANG_DEPENDENCY_ELF_REJECTED' >&2;exit 69;
   }
