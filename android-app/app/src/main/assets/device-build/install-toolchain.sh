@@ -1111,6 +1111,42 @@ EOF
       }
       echo 'APPFORGE_R51_CRT_LIBS=PASS'
       echo 'APPFORGE_R51_API26_LINKER_ROUTE=VERIFIED'
+      # R52: only Rust JNI shared-library links receive absolute CRT files.
+      # Keep R50/R51, guest C++, LLD, LLVM-AR and existing verified packages intact.
+      r52_crt_begin="$r51_api26_dir/crtbegin_so.o"
+      r52_crt_end="$r51_api26_dir/crtend_so.o"
+      r52_linker="$bin/appforge-rust-api26-crt-absolute-r52"
+      for r52_path in "$r52_crt_begin" "$r52_crt_end" "$r51_api26_dir/libc.so" "$r51_api26_dir/libdl.so";do
+        [ -f "$r52_path" ] && [ ! -L "$r52_path" ] || {
+          echo "APPFORGE_R52_CRT_PATH_REJECTED=$r52_path" >&2; exit 69;
+        }
+      done
+      [ -f "$r51_rust_linker" ] && [ -x "$r51_rust_linker" ] && [ ! -L "$r51_rust_linker" ] || {
+        echo 'APPFORGE_R52_PARENT_LINKER_REJECTED' >&2;exit 69;
+      }
+      if [ -e "$r52_linker" ] || [ -L "$r52_linker" ];then
+        [ -f "$r52_linker" ] && [ ! -L "$r52_linker" ] &&
+        grep -Fx '# APPFORGE_R52_API26_CRT_ABSOLUTE_V1' "$r52_linker" >/dev/null 2>&1 || {
+          echo 'APPFORGE_R52_LINKER_COLLISION' >&2;exit 69;
+        }
+      fi
+      cat > "$r52_linker" <<EOF
+#!/bin/sh
+# APPFORGE_R52_API26_CRT_ABSOLUTE_V1
+set -eu
+case " \$* " in
+  *" -shared "*)
+    exec "$r51_rust_linker" -nostartfiles -Wl,-L,"$r51_api26_dir" -Wl,-L,"$r51_common_dir" -Xlinker "$r52_crt_begin" "\$@" -Xlinker "$r52_crt_end"
+    ;;
+  *) exec "$r51_rust_linker" "\$@" ;;
+esac
+EOF
+      chmod 0755 "$r52_linker"
+      "$r52_linker" --version >/dev/null 2>&1 || {
+        echo 'APPFORGE_R52_LINKER_VERSION=FAILED' >&2;exit 69;
+      }
+      echo 'APPFORGE_R52_CRT_ABSOLUTE_PATHS=VERIFIED'
+      echo 'APPFORGE_R52_LINKER_WRAPPER=PASS'
 
       touch "$EXPO_ARM64_NDK_MARKER"
 

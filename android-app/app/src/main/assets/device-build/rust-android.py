@@ -227,6 +227,31 @@ def verified_appforge_r51_crt_linker(sdk,host,trusted_sdk=pathlib.Path('/opt/app
     if candidate.read_text()!=expected:return None
     return candidate
 
+def verified_appforge_r52_crt_linker(sdk,host,trusted_sdk=pathlib.Path('/opt/appforge-device/android-sdk')):
+    """Strict authenticated R51 chain plus exact-byte R52 JNI-only wrapper."""
+    parent=verified_appforge_r51_crt_linker(sdk,host,trusted_sdk=trusted_sdk)
+    if parent is None:return None
+    api=sdk/'ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/26'
+    common=api.parent
+    wrapper=parent.parent/'appforge-rust-api26-crt-absolute-r52'
+    if api.is_symlink() or not api.is_dir() or common.is_symlink() or not common.is_dir():return None
+    for name in ('crtbegin_so.o','crtend_so.o','libc.so','libdl.so'):
+        obj=api/name
+        if obj.is_symlink() or not obj.is_file():return None
+    if wrapper.is_symlink() or not wrapper.is_file() or not os.access(wrapper,os.X_OK):return None
+    if wrapper.stat().st_size>4096:return None
+    expected=('#!/bin/sh\n'
+              '# APPFORGE_R52_API26_CRT_ABSOLUTE_V1\n'
+              'set -eu\n'
+              'case " $* " in\n'
+              '  *" -shared "*)\n'
+              f'    exec "{parent}" -nostartfiles -Wl,-L,"{api}" -Wl,-L,"{common}" -Xlinker "{api / "crtbegin_so.o"}" "$@" -Xlinker "{api / "crtend_so.o"}"\n'
+              '    ;;\n'
+              f'  *) exec "{parent}" "$@" ;;\n'
+              'esac\n')
+    if wrapper.read_text()!=expected:return None
+    return wrapper
+
 def discover_linker(sdk):
     # Existing signed/pinned module installer owns this SDK. Do not use project
     # linker paths, PATH fallback, or assume an x86 executable runs on ARM64.
@@ -251,11 +276,12 @@ def discover_linker(sdk):
     # trusted ARM64 host wrappers. There is no aarch64-linux-android26-clang
     # alias. Permit only this exact pinned AppForge SDK and only after its
     # real API26 / 16KiB ELF probe passes; never fall back to PATH.
-    candidate=verified_appforge_r51_crt_linker(sdk,host)
+    candidate=verified_appforge_r52_crt_linker(sdk,host)
     if candidate is not None:
         print('APPFORGE_R49_PINNED_NDK_WRAPPER=VERIFIED',file=sys.stderr)
         print('APPFORGE_R50_PINNED_API26_SYSROOT=VERIFIED',file=sys.stderr)
         print('APPFORGE_R51_API26_CRT_PATHS=VERIFIED',file=sys.stderr)
+        print('APPFORGE_R52_CRT_ABSOLUTE=VERIFIED',file=sys.stderr)
         try:
             subprocess.run([str(candidate),'--version'],check=True,
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=30)
@@ -265,16 +291,19 @@ def discover_linker(sdk):
             print('APPFORGE_R49_RUST_API26_16K_LINK=PASS',file=sys.stderr)
             print('APPFORGE_R50_RUST_API26_REAL_ELF=PASS',file=sys.stderr)
             print('APPFORGE_R51_RUST_API26_CRT_ELF=PASS',file=sys.stderr)
+            print('APPFORGE_R52_RUST_API26_REAL_ELF=PASS',file=sys.stderr)
             return str(candidate)
         except (OSError,ValueError,subprocess.SubprocessError) as error:
             print('APPFORGE_R49_RUST_API26_16K_LINK=FAILED',file=sys.stderr)
             print('APPFORGE_R50_RUST_API26_REAL_ELF=FAILED',file=sys.stderr)
             print('APPFORGE_R51_RUST_API26_CRT_ELF=FAILED',file=sys.stderr)
+            print('APPFORGE_R52_RUST_API26_REAL_ELF=FAILED',file=sys.stderr)
             print('APPFORGE_R49_LINKER_ERROR='+type(error).__name__+':'+str(error)[:240],file=sys.stderr)
     else:
         print('APPFORGE_R49_PINNED_NDK_WRAPPER=NOT_VERIFIED',file=sys.stderr)
         print('APPFORGE_R50_PINNED_API26_SYSROOT=NOT_VERIFIED',file=sys.stderr)
         print('APPFORGE_R51_API26_CRT_PATHS=NOT_VERIFIED',file=sys.stderr)
+        print('APPFORGE_R52_CRT_ABSOLUTE=NOT_VERIFIED',file=sys.stderr)
     raise ValueError('Verified Android ARM64 API26 NDK linker missing or incompatible with Linux host; no fallback')
 
 def prepare(root,prefix,linker,vendor,export):

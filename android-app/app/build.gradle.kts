@@ -748,6 +748,23 @@ require(!appforgeR51OriginalIdentityUpgrade ||
      appforgeR49OriginalIdentityUpgrade && appforgeR50OriginalIdentityUpgrade)) {
     "R51 requires the complete R50 original-identity upgrade chain."
 }
+// R52: original-identity upgrade gated on the complete R51 chain.
+val appforgeR52OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR52OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR52OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade &&
+     appforgeR37OriginalIdentityUpgrade && appforgeR38OriginalIdentityUpgrade &&
+     appforgeR39OriginalIdentityUpgrade && appforgeR40OriginalIdentityUpgrade &&
+     appforgeR41OriginalIdentityUpgrade && appforgeR42OriginalIdentityUpgrade &&
+     appforgeR43OriginalIdentityUpgrade && appforgeR44OriginalIdentityUpgrade &&
+     appforgeR45OriginalIdentityUpgrade && appforgeR46OriginalIdentityUpgrade &&
+     appforgeR47OriginalIdentityUpgrade && appforgeR48OriginalIdentityUpgrade &&
+     appforgeR49OriginalIdentityUpgrade && appforgeR50OriginalIdentityUpgrade &&
+     appforgeR51OriginalIdentityUpgrade)) {
+    "R52 requires the complete R51 original-identity upgrade chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -1176,7 +1193,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR51OriginalIdentityUpgrade) {
+                if (appforgeR52OriginalIdentityUpgrade) {
+                    output.versionCode.set(575)
+                    output.versionName.set("5.0.73-r52-crt-absolute")
+                } else if (appforgeR51OriginalIdentityUpgrade) {
                     output.versionCode.set(574)
                     output.versionName.set("5.0.72-r51-rust-crt")
                 } else if (appforgeR50OriginalIdentityUpgrade) {
