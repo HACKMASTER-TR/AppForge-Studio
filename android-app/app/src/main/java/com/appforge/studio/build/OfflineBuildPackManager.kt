@@ -904,6 +904,32 @@ internal object OfflineBuildPackManager {
                 command,module,operation,progress,control,r2Authorized,windowsProrootReentry+1,diagnosticBase)
             return@coroutineScope
         }
+        // R53: persist Rust linker errors on every failed install, even when
+        // the old marker-gated R41 diagnostics saw no marker in the output tail.
+        // Diagnostic-only, bounded, allowlisted; no source/project files copied.
+        if (diagnosticBase != null && result.exitCode != 0 &&
+            module == OfflineModuleId.RUST_ANDROID_NDK) {
+            runCatching {
+                val dir = File(diagnosticBase, "r53-rust-link-diagnostics")
+                check(!java.nio.file.Files.isSymbolicLink(dir.toPath()))
+                check(dir.isDirectory || dir.mkdirs())
+                val target = File(dir, "latest.txt")
+                check(!java.nio.file.Files.isSymbolicLink(target.toPath()))
+                val selected = result.output.lineSequence().filter { line ->
+                    line.startsWith("APPFORGE_R53_") ||
+                    line.startsWith("APPFORGE_R52_") ||
+                    line.startsWith("APPFORGE_R51_") ||
+                    line.startsWith("APPFORGE_R50_") ||
+                    line.startsWith("APPFORGE_R49_") ||
+                    line.startsWith("ld.lld: error:") ||
+                    line.startsWith("clang: error:") ||
+                    line.startsWith("error: ")
+                }.toList().takeLast(65).joinToString("\n") { it.take(700) }
+                target.writeText("R53_DIAGNOSTIC=START\nR53_EXIT=${result.exitCode}\n" +
+                    "R53_SELECTED_LINES=${selected.lines().size}\n" +
+                    selected.take(11000) + "\nR53_DIAGNOSTIC=END\n")
+            }
+        }
         // R35: Persist only allowlisted CMake/PRoot error lines before the
         // candidate generation is automatically rolled back. Never copy user files.
         // R41: persist bounded, allowlisted host-tool failures before rollback.

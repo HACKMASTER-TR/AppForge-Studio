@@ -133,8 +133,41 @@ def probe_linker(path):
     with tempfile.TemporaryDirectory(prefix='appforge-ndk-probe-') as name:
         work=pathlib.Path(name);source=work/'probe.c';result=work/'probe.so'
         source.write_text('#include <unistd.h>\nint appforge_ndk_probe(void) { return (int)getpid(); }\n')
-        p=subprocess.run([str(path),'--target=aarch64-linux-android26','-shared','-fPIC','-Wl,-z,max-page-size=16384','-Wl,-z,common-page-size=16384',str(source),'-o',str(result)],capture_output=True,timeout=120)
+        # R53: fixed, app-authored probe only. Capture bounded linker routing
+        # proof before the disposable generation is rolled back. The -###
+        # driver inspection does NOT execute another linker or user source.
+        argv=[str(path),'--target=aarch64-linux-android26','-shared','-fPIC',
+              '-Wl,-z,max-page-size=16384','-Wl,-z,common-page-size=16384',
+              str(source),'-o',str(result)]
+        p=subprocess.run(argv,capture_output=True,timeout=120)
         if p.returncode:
+            print('APPFORGE_R53_LINKER_EXIT='+str(p.returncode),file=sys.stderr)
+            safe_name=pathlib.Path(path).name
+            if safe_name not in ('appforge-rust-api26-crt-absolute-r52',
+                                 'appforge-rust-api26-crt-linker-r51',
+                                 'appforge-rust-aarch64-linux-android26-clang'):
+                safe_name='OTHER'
+            print('APPFORGE_R53_LINKER_ENTRY='+safe_name,file=sys.stderr)
+            api=pathlib.Path('/opt/appforge-device/android-sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/26')
+            for item in ('crtbegin_so.o','crtend_so.o','libc.so','libdl.so'):
+                obj=api/item
+                state='PRESENT' if obj.is_file() and not obj.is_symlink() else 'ABSENT'
+                print('APPFORGE_R53_API26_'+item+'='+state,file=sys.stderr)
+            for item in ('appforge-rust-api26-crt-absolute-r52','appforge-rust-api26-crt-linker-r51'):
+                entry=pathlib.Path(path).parent/item
+                state='PRESENT' if entry.is_file() and not entry.is_symlink() else 'ABSENT'
+                print('APPFORGE_R53_WRAPPER_'+item+'='+state,file=sys.stderr)
+            try:
+                driver=subprocess.run([argv[0],'-###',*argv[1:]],capture_output=True,timeout=30)
+                print('APPFORGE_R53_CLANG_DRIVER_EXIT='+str(driver.returncode),file=sys.stderr)
+                # No project/user-provided source: just the fixed C probe.
+                lines=driver.stderr.decode('utf-8',errors='replace').splitlines()
+                selected=[line for line in lines if any(marker in line for marker in
+                          ('ld.lld','crtbegin','crtend','-L','--sysroot','aarch64-linux-android'))]
+                for line in selected[-5:]:
+                    print('APPFORGE_R53_CLANG_DRIVER='+line[:700],file=sys.stderr)
+            except (OSError,subprocess.SubprocessError) as ex:
+                print('APPFORGE_R53_CLANG_DRIVER_ERROR='+type(ex).__name__,file=sys.stderr)
             # The input is a fixed app-authored C file, not an untrusted project.
             # Surface bounded compiler diagnostics instead of silently discarding them.
             for line in p.stderr.decode('utf-8',errors='replace').splitlines()[:10]:
