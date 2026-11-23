@@ -1074,6 +1074,43 @@ EOF
       echo 'APPFORGE_R50_SYSROOT_UNISTD=PASS'
       echo 'APPFORGE_R50_SYSROOT_API26_LIBS=PASS'
       echo 'APPFORGE_R50_RUST_LINKER_WRAPPER=PASS'
+      # R51: Ubuntu Clang respects --sysroot for headers but its generic
+      # Android driver does not infer the API26 CRT and Bionic library paths.
+      # Keep R50's verified launcher unchanged; chain through it from a
+      # private, byte-verified Rust-specific API26 linker only.
+      r51_api26_dir="$r50_sysroot/usr/lib/aarch64-linux-android/26"
+      r51_common_dir="$r50_sysroot/usr/lib/aarch64-linux-android"
+      for r51_obj in crtbegin_so.o crtend_so.o libc.so libdl.so;do
+        [ -f "$r51_api26_dir/$r51_obj" ] &&
+        [ ! -L "$r51_api26_dir/$r51_obj" ] || {
+          echo "APPFORGE_R51_CRT_MISSING=$r51_obj" >&2;exit 69;
+        }
+      done
+      [ -d "$r51_api26_dir" ] && [ ! -L "$r51_api26_dir" ] &&
+      [ -d "$r51_common_dir" ] && [ ! -L "$r51_common_dir" ] &&
+      [ -f "$r50_rust_linker" ] && [ ! -L "$r50_rust_linker" ] || {
+        echo 'APPFORGE_R51_API26_PATH_INVALID' >&2;exit 69;
+      }
+      r51_rust_linker="$bin/appforge-rust-api26-crt-linker-r51"
+      if [ -e "$r51_rust_linker" ] || [ -L "$r51_rust_linker" ];then
+        [ ! -L "$r51_rust_linker" ] &&
+        grep -Fx '# APPFORGE_R51_RUST_API26_CRT_WRAPPER_V1' \
+          "$r51_rust_linker" >/dev/null 2>&1 || {
+            echo 'APPFORGE_R51_LINKER_COLLISION' >&2;exit 69;
+          }
+      fi
+      cat > "$r51_rust_linker" <<EOF
+#!/bin/sh
+# APPFORGE_R51_RUST_API26_CRT_WRAPPER_V1
+set -eu
+exec "$r50_rust_linker" -B"$r51_api26_dir" -L"$r51_api26_dir" -L"$r51_common_dir" "\$@"
+EOF
+      chmod 0755 "$r51_rust_linker"
+      "$r51_rust_linker" --version >/dev/null 2>&1 || {
+        echo 'APPFORGE_R51_RUST_LINKER_VERSION=FAILED' >&2;exit 69;
+      }
+      echo 'APPFORGE_R51_CRT_LIBS=PASS'
+      echo 'APPFORGE_R51_API26_LINKER_ROUTE=VERIFIED'
 
       touch "$EXPO_ARM64_NDK_MARKER"
 
