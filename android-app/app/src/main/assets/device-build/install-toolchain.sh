@@ -1035,6 +1035,46 @@ EOF
       echo "APPFORGE_EXPO_ARM64_NDK_COMPILER_RT_LINK=PASS"
       echo "APPFORGE_EXPO_ARM64_NDK_CXX_LINK=PASS"
 
+      # R50: do not change the proven C/C++ toolchain or its wrappers.
+      # Rust/Cargo needs a dedicated, pinned API26 target and Android sysroot
+      # because the replaced Ubuntu host Clang does not automatically locate
+      # the NDK's bionic headers / API26 CRT and libraries.
+      r50_sysroot="$host/sysroot"
+      r50_rust_linker="$bin/appforge-rust-aarch64-linux-android26-clang"
+      if [ ! -f "$r50_sysroot/usr/include/unistd.h" ];then
+        echo 'APPFORGE_R50_SYSROOT_UNISTD=NOT_FOUND' >&2
+        exit 69
+      fi
+      if [ ! -d "$r50_sysroot/usr/lib/aarch64-linux-android/26" ];then
+        echo 'APPFORGE_R50_SYSROOT_API26_LIBS=NOT_FOUND' >&2
+        exit 69
+      fi
+      [ ! -L "$r50_sysroot" ] && [ -x "$bin/clang" ] || {
+        echo 'APPFORGE_R50_SYSROOT_OR_CLANG_UNSAFE' >&2;exit 69;
+      }
+      if [ -e "$r50_rust_linker" ] || [ -L "$r50_rust_linker" ];then
+        # This is a staged, privately installed toolchain; never overwrite
+        # an unexpected pre-existing linker file.
+        grep -Fx '# APPFORGE_R50_RUST_API26_SYSROOT_WRAPPER_V1' \
+          "$r50_rust_linker" >/dev/null 2>&1 &&
+        [ ! -L "$r50_rust_linker" ] || {
+          echo 'APPFORGE_R50_RUST_LINKER_COLLISION' >&2;exit 69;
+        }
+      fi
+      cat > "$r50_rust_linker" <<EOF
+#!/bin/sh
+# APPFORGE_R50_RUST_API26_SYSROOT_WRAPPER_V1
+set -eu
+exec "$bin/clang" --target=aarch64-linux-android26 --sysroot="$r50_sysroot" "\$@"
+EOF
+      chmod 0755 "$r50_rust_linker"
+      "$r50_rust_linker" --version >/dev/null 2>&1 || {
+        echo 'APPFORGE_R50_RUST_LINKER_VERSION=FAILED' >&2;exit 69;
+      }
+      echo 'APPFORGE_R50_SYSROOT_UNISTD=PASS'
+      echo 'APPFORGE_R50_SYSROOT_API26_LIBS=PASS'
+      echo 'APPFORGE_R50_RUST_LINKER_WRAPPER=PASS'
+
       touch "$EXPO_ARM64_NDK_MARKER"
 
       echo "APPFORGE_EXPO_ARM64_NDK_HOST=PASS"

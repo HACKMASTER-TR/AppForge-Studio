@@ -716,6 +716,22 @@ require(!appforgeR49OriginalIdentityUpgrade ||
      appforgeR47OriginalIdentityUpgrade && appforgeR48OriginalIdentityUpgrade)) {
     "R49 requires the complete R48 original-identity upgrade chain."
 }
+// R50: private Android API26 sysroot linker for real Rust JNI validation.
+val appforgeR50OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR50OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR50OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade &&
+     appforgeR37OriginalIdentityUpgrade && appforgeR38OriginalIdentityUpgrade &&
+     appforgeR39OriginalIdentityUpgrade && appforgeR40OriginalIdentityUpgrade &&
+     appforgeR41OriginalIdentityUpgrade && appforgeR42OriginalIdentityUpgrade &&
+     appforgeR43OriginalIdentityUpgrade && appforgeR44OriginalIdentityUpgrade &&
+     appforgeR45OriginalIdentityUpgrade && appforgeR46OriginalIdentityUpgrade &&
+     appforgeR47OriginalIdentityUpgrade && appforgeR48OriginalIdentityUpgrade &&
+     appforgeR49OriginalIdentityUpgrade)) {
+    "R50 requires the complete R49 original-identity upgrade chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -1144,7 +1160,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR49OriginalIdentityUpgrade) {
+                if (appforgeR50OriginalIdentityUpgrade) {
+                    output.versionCode.set(573)
+                    output.versionName.set("5.0.71-r50-rust-sysroot")
+                } else if (appforgeR49OriginalIdentityUpgrade) {
                     output.versionCode.set(572)
                     output.versionName.set("5.0.70-r49-rust-linker")
                 } else if (appforgeR48OriginalIdentityUpgrade) {
