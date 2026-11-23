@@ -30,6 +30,7 @@ jobs:
           python3 tests/test_r55_linker_trace.py
           python3 scripts/generate-second-brain-snapshot.py --check
           bash -n tests/r55_arm64_reference_link_smoke.sh
+          python3 tests/test_r55_arm64_resource_contract.py
           echo R55_ARM64_CI_PREFLIGHT=PASS
           echo R55_NO_APK_BUILD=YES
           echo R55_NO_DEVICE_INSTALL=YES

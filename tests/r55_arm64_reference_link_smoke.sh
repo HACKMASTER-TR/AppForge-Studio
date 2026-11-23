@@ -73,10 +73,27 @@ with tarfile.open(sys.argv[1], 'r:gz') as tar:
 PY
 (cd "$WORK/ours" && tar -xzf "$NDK_ARM")
 # Official archive is not executed. Extract only its target sysroot and revision metadata.
+# R55 resource correction: the independent ARM64 Clang archive deliberately
+# omits Google's architecture-neutral target headers and compiler runtimes.
+# The reference installer joins BOTH sysroot and lib/clang from pinned r27b.
 ZIP_ROOT='android-ndk-r27b/toolchains/llvm/prebuilt/linux-x86_64/sysroot/*'
-(cd "$WORK/google" && unzip -oq "$NDK_OFFICIAL" "$ZIP_ROOT")
-O="$WORK/google/android-ndk-r27b/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
+ZIP_RESOURCE='android-ndk-r27b/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/*'
+(cd "$WORK/google" && unzip -oq "$NDK_OFFICIAL" "$ZIP_ROOT" "$ZIP_RESOURCE")
+OFFICIAL_HOST="$WORK/google/android-ndk-r27b/toolchains/llvm/prebuilt/linux-x86_64"
+O="$OFFICIAL_HOST/sysroot"
 T="$WORK/ours/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-aarch64"
+[[ -d "$OFFICIAL_HOST/lib/clang" ]] || { log R55_OFFICIAL_CLANG_RESOURCES=FAIL_MISSING; exit 1; }
+[[ -d "$T" && ! -L "$T" ]] || { log R55_ARM64_HOST_PREFIX=FAIL; exit 1; }
+mkdir -p "$T/lib/clang"
+# Copy only in the throwaway runner; never alter the phone or AppForge SDK.
+cp -a "$OFFICIAL_HOST/lib/clang/." "$T/lib/clang/"
+[[ -x "$T/bin/clang" ]] || { log R55_NATIVE_ARM64_CLANG=FAIL_MISSING; exit 1; }
+RESOURCE="$("$T/bin/clang" -print-resource-dir)"
+case "$RESOURCE" in "$T/lib/clang/"*) ;; *) log R55_CLANG_RESOURCE=FAIL_OUTSIDE_PINNED_HOST; exit 1 ;; esac
+for p in include/stddef.h lib/linux/libclang_rt.builtins-aarch64-android.a lib/linux/aarch64/libunwind.a; do
+  [[ -f "$RESOURCE/$p" && ! -L "$RESOURCE/$p" ]] || { log "R55_CLANG_RESOURCE=FAIL_MISSING_$p"; exit 1; }
+done
+log R55_OFFICIAL_CLANG_RESOURCES=PASS_PINNED_R27B
 [[ -f "$O/usr/include/unistd.h" ]] || { log R55_TARGET_SYSROOT=FAIL_NO_UNISTD; exit 1; }
 for p in crtbegin_so.o crtend_so.o libc.so libdl.so; do
   [[ -f "$O/usr/lib/aarch64-linux-android/26/$p" ]] || { log "R55_TARGET_SYSROOT=FAIL_MISSING_$p"; exit 1; }
