@@ -782,6 +782,25 @@ require(!appforgeR53OriginalIdentityUpgrade ||
      appforgeR51OriginalIdentityUpgrade && appforgeR52OriginalIdentityUpgrade)) {
     "R53 requires the complete R52 original-identity upgrade chain."
 }
+// R54: retain the R53 original-identity chain while making bounded shell
+// diagnostics include the end of long native toolchain output.
+val appforgeR54OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR54OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR54OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade &&
+     appforgeR37OriginalIdentityUpgrade && appforgeR38OriginalIdentityUpgrade &&
+     appforgeR39OriginalIdentityUpgrade && appforgeR40OriginalIdentityUpgrade &&
+     appforgeR41OriginalIdentityUpgrade && appforgeR42OriginalIdentityUpgrade &&
+     appforgeR43OriginalIdentityUpgrade && appforgeR44OriginalIdentityUpgrade &&
+     appforgeR45OriginalIdentityUpgrade && appforgeR46OriginalIdentityUpgrade &&
+     appforgeR47OriginalIdentityUpgrade && appforgeR48OriginalIdentityUpgrade &&
+     appforgeR49OriginalIdentityUpgrade && appforgeR50OriginalIdentityUpgrade &&
+     appforgeR51OriginalIdentityUpgrade && appforgeR52OriginalIdentityUpgrade &&
+     appforgeR53OriginalIdentityUpgrade)) {
+    "R54 requires the complete R53 original-identity upgrade chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -1210,7 +1229,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR53OriginalIdentityUpgrade) {
+                if (appforgeR54OriginalIdentityUpgrade) {
+                    output.versionCode.set(577)
+                    output.versionName.set("5.0.75-r54-shell-tail")
+                } else if (appforgeR53OriginalIdentityUpgrade) {
                     output.versionCode.set(576)
                     output.versionName.set("5.0.74-r53-rust-link-trace")
                 } else if (appforgeR52OriginalIdentityUpgrade) {

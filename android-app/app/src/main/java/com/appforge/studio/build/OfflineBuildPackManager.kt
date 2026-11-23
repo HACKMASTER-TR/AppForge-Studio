@@ -916,6 +916,7 @@ internal object OfflineBuildPackManager {
                 val target = File(dir, "latest.txt")
                 check(!java.nio.file.Files.isSymbolicLink(target.toPath()))
                 val selected = result.output.lineSequence().filter { line ->
+                    line.startsWith("APPFORGE_R54_") ||
                     line.startsWith("APPFORGE_R53_") ||
                     line.startsWith("APPFORGE_R52_") ||
                     line.startsWith("APPFORGE_R51_") ||

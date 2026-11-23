@@ -1,0 +1,180 @@
+name: AppForge R54 Rust Linker Tail Diagnostic Unsigned APK Build
+on:
+  push:
+    branches:
+      - codex/r54-shell-tail-diagnostics-20261123
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: appforge-r54-unsigned-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unsigned-candidate:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - name: Isolated verified Gradle home
+        shell: bash
+        run: echo "GRADLE_USER_HOME=$RUNNER_TEMP/r54-unsigned-gradle" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require R31 identity and snapshot contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = codex/r54-shell-tail-diagnostics-20261123
+          python3 quality/tools/verify-r31-original-identity.py
+          python3 tests/test_r32_cmake_windows_regression.py
+          python3 tests/test_r33_repair_contract.py
+          python3 tests/test_r34_cmake_loader_repair.py
+          python3 tests/test_r35_cmake_diagnostics.py
+          python3 tests/test_r36_cmake_diagnostic_gate.py
+          python3 tests/test_r37_cmake_early_patch.py
+          python3 tests/test_r38_guest_rhash_fix.py
+          python3 tests/test_r39_comparator_stack_trace.py
+          python3 tests/test_r40_guest_cmake_closure.py
+          python3 tests/test_r41_guest_clang_native.py
+          python3 tests/test_r42_guest_clang_link_closure.py
+          python3 tests/test_r43_ndk_lld_search.py
+          python3 tests/test_r44_guest_lld_direct.py
+          python3 tests/test_r45_ndk_guest_lld_direct.py
+          python3 tests/test_r46_clang_guest_ld_path.py
+          python3 tests/test_r47_guest_clangxx_direct.py
+          python3 tests/test_r48_guest_llvm_ar.py
+          python3 tests/test_r49_verified_rust_ndk_linker.py
+          python3 tests/test_r50_rust_api26_sysroot.py
+          python3 tests/test_r51_rust_api26_crt_linker.py
+          python3 tests/test_r52_rust_crt_absolute.py
+          python3 tests/test_r53_rust_link_trace.py
+          python3 tests/test_r54_shell_capture_tail.py
+          python3 scripts/generate-second-brain-snapshot.py --check
+          echo APPFORGE_R54_UNSIGNED_SOURCE_PREFLIGHT=PASS
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Require pinned AGP dependency seed
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo=HACKMASTER-TR/AppForge-Studio
+          test "$(gh api "repos/$repo/actions/runs/44570760969" --jq .conclusion)" = success
+          test "$(gh api "repos/$repo/actions/artifacts/14554148259" --jq .expired)" = false
+          test "$(gh api "repos/$repo/actions/artifacts/14554148259" --jq .digest)" = sha256:fa745ccdf122f86d77d5b971d2c2db0300db2b77d8d0984ec9628cec67fe85c0
+          echo APPFORGE_R31_AGP_SEED=PASS
+      - uses: actions/download-artifact@v4
+        with:
+          repository: HACKMASTER-TR/AppForge-Studio
+          run-id: 44570760969
+          name: v547-agp911-gradle931-ci-candidate-7d0994b6582a859c516967fd162fbd4e3d1b054a
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/r31-agp-candidate
+      - name: Recreate verified Gradle dependency cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GRADLE_USER_HOME"
+          python3 quality/tools/v547_agp_arm64_candidate_probe.py "$RUNNER_TEMP/r31-agp-candidate" "$GRADLE_USER_HOME/caches"
+          echo APPFORGE_R31_AGP_CACHE=PASS
+      - name: Install Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          test -x "$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          test -x "$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"; fi
+          echo APPFORGE_R31_ANDROID_TOOLCHAIN=PASS
+      - name: Prepare pinned Kotlin repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 quality/tools/v9_pinned_kotlin_compiler.py "$RUNNER_TEMP/r31-kotlin-maven"
+          python3 quality/tools/v549_r23_kotlin_bom.py "$RUNNER_TEMP/r31-kotlin-bom"
+          echo APPFORGE_R31_KOTLIN_PINS=PASS
+      - name: Test and assemble UNSIGNED R31 debug candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "${APPFORGE_R31_KEYSTORE_PATH:-}"
+          test -z "${APPFORGE_R31_STORE_PASSWORD:-}"
+          gradle -p android-app :app:testDebugUnitTest :app:assembleDebug \
+            -PappforgeR31OriginalIdentity=true \
+            -PappforgeR32OriginalIdentityUpgrade=true \
+            -PappforgeR33OriginalIdentityUpgrade=true \
+            -PappforgeR34OriginalIdentityUpgrade=true \
+            -PappforgeR35OriginalIdentityUpgrade=true \
+            -PappforgeR36OriginalIdentityUpgrade=true \
+            -PappforgeR37OriginalIdentityUpgrade=true \
+            -PappforgeR38OriginalIdentityUpgrade=true \
+            -PappforgeR39OriginalIdentityUpgrade=true \
+            -PappforgeR40OriginalIdentityUpgrade=true \
+            -PappforgeR41OriginalIdentityUpgrade=true \
+            -PappforgeR42OriginalIdentityUpgrade=true \
+            -PappforgeR43OriginalIdentityUpgrade=true \
+            -PappforgeR44OriginalIdentityUpgrade=true \
+            -PappforgeR45OriginalIdentityUpgrade=true \
+            -PappforgeR46OriginalIdentityUpgrade=true \
+            -PappforgeR47OriginalIdentityUpgrade=true \
+            -PappforgeR48OriginalIdentityUpgrade=true \
+            -PappforgeR49OriginalIdentityUpgrade=true \
+            -PappforgeR50OriginalIdentityUpgrade=true \
+            -PappforgeR51OriginalIdentityUpgrade=true \
+            -PappforgeR52OriginalIdentityUpgrade=true \
+            -PappforgeR53OriginalIdentityUpgrade=true \
+            -PappforgeR54OriginalIdentityUpgrade=true \
+            -PappforgeR31UnsignedCI=true \
+            -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/r31-kotlin-maven" \
+            -PappforgeCIKotlinBomRepo="$RUNNER_TEMP/r31-kotlin-bom" \
+            -PappforgeCIMavenGcs=true \
+            --no-daemon --max-workers=2 --no-configuration-cache --console=plain --stacktrace
+          echo APPFORGE_R54_UNSIGNED_BUILD=PASS
+      - name: Verify unsigned package, version, unit tests and artifact checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find android-app/app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | sort)
+          test "${#apks[@]}" -eq 1
+          APK="${apks[0]}"
+          test -s "$APK"
+          unzip -tqq "$APK"
+          BADGING="$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK")"
+          printf '%s\n' "$BADGING" | grep -F "package: name='com.appforge.studio' versionCode='577' versionName='5.0.75-r54-shell-tail'" >/dev/null
+          if "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$APK" >/dev/null 2>&1; then
+            echo APPFORGE_R31_UNEXPECTED_SIGNED_APK=BLOCKED
+            exit 81
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          reports=list(Path('android-app/app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
+          assert reports,'R31_UNIT_REPORT_MISSING'
+          roots=[ET.parse(f).getroot() for f in reports]
+          totals={k:sum(int(r.get(k,0)) for r in roots) for k in ('tests','failures','errors','skipped')}
+          assert totals['tests']>0 and totals['failures']==totals['errors']==totals['skipped']==0,totals
+          print('APPFORGE_R31_UNIT_TESTS=PASS')
+          PY
+          mkdir -p r54-unsigned
+          cp "$APK" "r54-unsigned/AppForgeStudio-R54-UNSIGNED-${GITHUB_SHA:0:12}.apk"
+          (cd r54-unsigned && sha256sum *.apk > SHA256SUMS.txt)
+          printf 'SOURCE_SHA=%s\nPACKAGE=com.appforge.studio\nVERSION_CODE=577\nAPK_SIGNED=NO\nDO_NOT_INSTALL_UNTIL_LOCAL_SIGNING=YES\n' "$GITHUB_SHA" > r54-unsigned/UNSIGNED-READ-ME.txt
+          echo APPFORGE_R54_UNSIGNED_ARTIFACT=VERIFIED_NOT_INSTALLABLE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AppForge-r54-unsigned-${{ github.sha }}
+          path: r54-unsigned/
+          retention-days: 14
+          if-no-files-found: error

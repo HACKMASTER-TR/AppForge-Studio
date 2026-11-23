@@ -159,6 +159,11 @@ internal class LinuxShellEngine(
             try {
                 val output =
                     StringBuilder()
+                // R54: preserve the first 512 KiB behavior for short outputs,
+                // but also keep a bounded final segment for long native builds.
+                // In particular, link diagnostics are emitted at the END.
+                val outputTail = StringBuilder()
+                var outputCharsSeen = 0L
 
                 val readerFailure =
                     AtomicReference<IOException?>(
@@ -194,6 +199,7 @@ internal class LinuxShellEngine(
                                     synchronized(
                                         output
                                     ) {
+                                        outputCharsSeen += count.toLong()
                                         if (
                                             output.length <
                                             MAX_CAPTURE_CHARS
@@ -209,6 +215,13 @@ internal class LinuxShellEngine(
                                                     count,
                                                     remaining
                                                 )
+                                            )
+                                        }
+                                        outputTail.append(buffer, 0, count)
+                                        if (outputTail.length > MAX_CAPTURE_TAIL_CHARS) {
+                                            outputTail.delete(
+                                                0,
+                                                outputTail.length - MAX_CAPTURE_TAIL_CHARS
                                             )
                                         }
                                     }
@@ -286,7 +299,18 @@ internal class LinuxShellEngine(
                     synchronized(
                         output
                     ) {
-                        output.toString()
+                        if (outputCharsSeen <= MAX_CAPTURE_CHARS.toLong()) {
+                            // Keep exact existing behavior for non-overflow output.
+                            output.toString()
+                        } else {
+                            // Never exceed the original 512 KiB capture budget.
+                            // The tail is essential for late linker failures.
+                            output.substring(
+                                0,
+                                MAX_CAPTURE_CHARS - MAX_CAPTURE_TAIL_CHARS - 128
+                            ) + "\nAPPFORGE_R54_CAPTURE_TAIL=TRUNCATED_HEAD_AND_TAIL\n" +
+                                outputTail.toString()
+                        }
                     }
 
                 LinuxShellResult(
@@ -351,5 +375,6 @@ internal class LinuxShellEngine(
         private const val
             MAX_CAPTURE_CHARS =
                 512 * 1_024
+        private const val MAX_CAPTURE_TAIL_CHARS = 64 * 1_024
     }
 }
