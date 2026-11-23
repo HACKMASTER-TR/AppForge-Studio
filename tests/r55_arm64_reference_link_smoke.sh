@@ -127,6 +127,78 @@ if "$CXX" "${COMMON[@]}" "$WORK/probe/probe.cpp" -o "$WORK/probe/libcpp_probe.so
   smoke_elf R55_CPP_API26_LINK "$WORK/probe/libcpp_probe.so" "$REPORT" || failed=1
 else show_error R55_CPP_API26_LINK "$WORK/cpp.log"; failed=1; fi
 
+# R56: compare the AppForge R50/R51/R52 Ubuntu-Clang strategy with a
+# complete, pinned native AArch64 NDK. This runs only on the ephemeral runner.
+# FAIL here is diagnostic and is not permission to replace signed AppForge tools.
+R56_API26_LIB="$O/usr/lib/aarch64-linux-android/26"
+R56_COMMON_LIB="$O/usr/lib/aarch64-linux-android"
+if [[ -x /usr/bin/clang-18 ]]; then
+  R56_UBUNTU=/usr/bin/clang-18
+  log R56_UBUNTU_CLANG=AVAILABLE
+  r56_legacy() {
+    local label="$1"; shift
+    local result="$WORK/probe/$label.so"
+    local -a after=()
+    if [[ "$label" == R56_UBUNTU_R52_API26 ]]; then
+      # R52 injects crtend after the user's fixed-source link arguments.
+      after=(-Xlinker "$R56_API26_LIB/crtend_so.o")
+    fi
+    if "$R56_UBUNTU" --target=aarch64-linux-android26 --sysroot="$O" \
+      -resource-dir="$RESOURCE" -B"$T/bin" --ld-path="$T/bin/ld.lld" \
+      -shared -fPIC -Wl,-z,max-page-size=16384 \
+      -Wl,-z,common-page-size=16384 "$@" "$WORK/probe/probe.c" \
+      -o "$result" "${after[@]}" >"$WORK/$label.log" 2>&1; then
+      if smoke_elf "$label" "$result" "$REPORT"; then
+        log "${label}_ROUTE=LINKED"
+      else
+        log "${label}_ROUTE=INVALID_ELF"
+      fi
+    else
+      log "${label}_ROUTE=FAILED"
+      show_error "$label" "$WORK/$label.log"
+    fi
+  }
+  r56_legacy R56_UBUNTU_R50_API26
+  r56_legacy R56_UBUNTU_R51_API26 -B"$R56_API26_LIB" \
+    -L"$R56_API26_LIB" -L"$R56_COMMON_LIB"
+  r56_legacy R56_UBUNTU_R52_API26 -B"$R56_API26_LIB" \
+    -L"$R56_API26_LIB" -L"$R56_COMMON_LIB" -nostartfiles \
+    -Xlinker "$R56_API26_LIB/crtbegin_so.o"
+else
+  log R56_UBUNTU_CLANG=UNAVAILABLE
+fi
+
+# PRoot parity is NOT Android device proof: this runner uses the host Ubuntu /
+# as the guest root. It only tests whether the same compiled host executables
+# can run under ptrace-based path translation.
+R56_PROOT_READY=0
+if command -v proot >/dev/null 2>&1; then
+  if proot -0 -r / -w "$WORK" /bin/sh -c 'test -r /etc/os-release' \
+     >"$WORK/proot-ready.log" 2>&1; then
+    R56_PROOT_READY=1
+    log R56_PROOT_RUNNER=AVAILABLE
+    if proot -0 -r / -w "$WORK" "$CC" "${COMMON[@]}" \
+      "$WORK/probe/probe.c" -o "$WORK/probe/libc_proot_probe.so" \
+      >"$WORK/proot-c.log" 2>&1; then
+      smoke_elf R56_PROOT_C_API26_LINK "$WORK/probe/libc_proot_probe.so" "$REPORT" || failed=1
+    else
+      show_error R56_PROOT_C_API26_LINK "$WORK/proot-c.log"; failed=1
+    fi
+    if proot -0 -r / -w "$WORK" "$CXX" "${COMMON[@]}" \
+      "$WORK/probe/probe.cpp" -o "$WORK/probe/libcpp_proot_probe.so" \
+      >"$WORK/proot-cpp.log" 2>&1; then
+      smoke_elf R56_PROOT_CPP_API26_LINK "$WORK/probe/libcpp_proot_probe.so" "$REPORT" || failed=1
+    else
+      show_error R56_PROOT_CPP_API26_LINK "$WORK/proot-cpp.log"; failed=1
+    fi
+  else
+    log R56_PROOT_RUNNER=UNAVAILABLE_PTRACE_OR_LAUNCH
+  fi
+else
+  log R56_PROOT_RUNNER=UNAVAILABLE_NO_PROOT
+fi
+log R56_PROOT_ANDROID_DEVICE=NOT_TESTED
+
 # Read-only driver route, with bounded excerpts. It does NOT build an ELF.
 "$CC" -### "${COMMON[@]}" "$WORK/probe/probe.c" -o "$WORK/probe/print-only.so" >"$WORK/driver.log" 2>&1 || true
 if grep -q 'ld.lld' "$WORK/driver.log"; then
@@ -185,6 +257,23 @@ if command -v rustup >/dev/null && command -v rustc >/dev/null && rustup target 
     smoke_elf R55_RUST_API26_LINK "$WORK/probe/librust_probe.so" "$REPORT" || failed=1
   else show_error R55_RUST_API26_LINK "$WORK/rust.log"; failed=1; fi
 else log R55_RUST_API26_LINK=UNAVAILABLE_RUSTUP_OR_TARGET; fi
+
+# R56: identical fixed-source Rust cdylib through PRoot, if native baseline
+# and PRoot are both available. No project-provided build scripts are executed.
+if [[ "$R56_PROOT_READY" == 1 && -s "$WORK/probe/librust_probe.so" ]]; then
+  if proot -0 -r / -w "$WORK" "$(command -v rustc)" "$WORK/probe/rust_probe.rs" \
+     --edition=2021 --crate-type cdylib --target aarch64-linux-android \
+     -C linker="$WORK/rust-linker.sh" \
+     -C link-arg=-Wl,-z,max-page-size=16384 \
+     -C link-arg=-Wl,-z,common-page-size=16384 \
+     -o "$WORK/probe/librust_proot_probe.so" >"$WORK/proot-rust.log" 2>&1; then
+    smoke_elf R56_PROOT_RUST_API26_LINK "$WORK/probe/librust_proot_probe.so" "$REPORT" || failed=1
+  else
+    show_error R56_PROOT_RUST_API26_LINK "$WORK/proot-rust.log"; failed=1
+  fi
+else
+  log R56_PROOT_RUST_API26_LINK=UNAVAILABLE_BASELINE_OR_PROOT
+fi
 
 # Hermes is independently measured and does not prove a full Expo app build.
 if curl -fLsS --retry 3 --connect-timeout 30 --max-time 180 \

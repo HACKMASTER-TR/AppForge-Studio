@@ -1,0 +1,62 @@
+name: AppForge R56 ARM64 PRoot and Legacy Clang Comparison (NO APK)
+on:
+  push:
+    branches:
+      - codex/r56-arm64-proot-parity-20261123
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: appforge-r56-reference-proot-arm64-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-arm64-reference:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Prove R55 provenance and do not modify app code
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = aarch64
+          test "$GITHUB_REF_NAME" = codex/r56-arm64-proot-parity-20261123
+          git merge-base --is-ancestor 8bd006dd13d98192a0e153734d3b2461cf92488f HEAD
+          python3 quality/tools/verify-r31-original-identity.py
+          python3 tests/test_r55_linker_trace.py
+          python3 scripts/generate-second-brain-snapshot.py --check
+          bash -n tests/r55_arm64_reference_link_smoke.sh
+          python3 tests/test_r55_arm64_resource_contract.py
+          python3 tests/test_r56_arm64_proot_comparison.py
+          echo R56_ARM64_CI_PREFLIGHT=PASS
+          echo R56_NO_APK_BUILD=YES
+          echo R56_NO_DEVICE_INSTALL=YES
+          echo R56_NO_SIGNING=YES
+          echo R55_NO_APK_BUILD=YES
+          echo R55_NO_DEVICE_INSTALL=YES
+          echo R55_NO_SIGNING=YES
+          echo R55_NO_APP_DATA_CLEAR=YES
+      - name: Ensure necessary isolated ARM64 runner tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake ninja-build file binutils unzip curl proot clang-18
+          echo R55_ARM64_HOST_TOOLS=READY
+      - name: Verify pinned ARM64 NDK against official Android r27b sysroot
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tests/r55_arm64_reference_link_smoke.sh
+      - name: Upload text-only proof even after failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appforge-r56-arm64-proot-reference-report-${{ github.sha }}
+          path: ${{ runner.temp }}/r55-arm64-report.txt
+          retention-days: 7
+          if-no-files-found: warn
