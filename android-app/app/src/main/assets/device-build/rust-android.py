@@ -141,6 +141,9 @@ def probe_linker(path):
               str(source),'-o',str(result)]
         p=subprocess.run(argv,capture_output=True,timeout=120)
         if p.returncode:
+            # R55: distinguish the Rust API26 probe from earlier NDK C/C++ gates.
+            print('APPFORGE_R55_FAILED_STAGE=RUST_API26_SHARED',file=sys.stderr)
+            print('APPFORGE_R55_PROBE_TARGET=aarch64-linux-android26',file=sys.stderr)
             print('APPFORGE_R53_LINKER_EXIT='+str(p.returncode),file=sys.stderr)
             safe_name=pathlib.Path(path).name
             if safe_name not in ('appforge-rust-api26-crt-absolute-r52',

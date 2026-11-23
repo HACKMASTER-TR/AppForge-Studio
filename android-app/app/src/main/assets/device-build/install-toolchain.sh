@@ -925,6 +925,37 @@ R45_LLD_ENTRY
       "$bin/clang" --version
       "$bin/clang++" --version
 
+      # R55: run -### only after a fixed AppForge-owned probe has failed.
+      # This emits diagnostics, never reruns a link or a user project.
+      r55_link_failure() {
+        r55_phase="$1"
+        r55_driver="$2"
+        shift 2
+        echo "APPFORGE_R55_FAILED_STAGE=$r55_phase" >&2
+        r55_file_state() {
+          r55_label="$1"
+          r55_path="$2"
+          if [ -L "$r55_path" ]; then r55_state=SYMLINK_REJECTED
+          elif [ -f "$r55_path" ]; then r55_state=PRESENT
+          else r55_state=ABSENT
+          fi
+          printf 'APPFORGE_R55_%s=%s\n' "$r55_label" "$r55_state" >&2
+        }
+        r55_lib="$host/sysroot/usr/lib/aarch64-linux-android/26"
+        r55_file_state API26_HEADER "$host/sysroot/usr/include/unistd.h"
+        r55_file_state API26_CRTBEGIN "$r55_lib/crtbegin_so.o"
+        r55_file_state API26_CRTEND "$r55_lib/crtend_so.o"
+        r55_file_state API26_LIBC "$r55_lib/libc.so"
+        r55_file_state API26_LIBDL "$r55_lib/libdl.so"
+        # -### is Clang's print-only driver mode. Bound fixed-probe output.
+        "$r55_driver" -### "$@" 2>&1 |
+          grep -E 'ld[.]lld|--sysroot|crtbegin|crtend|-L' |
+          tail -n 5 | cut -c 1-500 |
+          while IFS= read -r r55_line; do
+            printf 'APPFORGE_R55_CLANG_DRIVER=%s\n' "$r55_line" >&2
+          done
+      }
+
       probe="$ROOT/expo-ndk-arm64-probe-v2"
 
       rm -rf "$probe"
@@ -945,6 +976,9 @@ EOF
         -fuse-ld=lld \
         "$probe/probe.c" \
         -o "$probe/probe";then
+        r55_link_failure C_API24 "$bin/clang" \
+          --target=aarch64-linux-android24 --sysroot="$host/sysroot" \
+          -fuse-ld=lld "$probe/probe.c" -o "$probe/probe"
         echo 'APPFORGE_R43_NDK_C_LLD_LINK=FAILED' >&2; exit 69
       fi
       echo 'APPFORGE_R43_NDK_C_LLD_LINK=PASS'
@@ -1020,6 +1054,9 @@ EOF
       echo 'APPFORGE_R48_GUEST_AR_REAL_OBJECT_ARCHIVE=PASS'
 
       if ! "$bin/clang++"         --target=aarch64-linux-android24         --sysroot="$host/sysroot"         -stdlib=libc++         -fuse-ld=lld         "$probe/probe.cpp"         -o "$probe/probe-cpp";then
+        r55_link_failure CPP_API24 "$bin/clang++" \
+          --target=aarch64-linux-android24 --sysroot="$host/sysroot" \
+          -stdlib=libc++ -fuse-ld=lld "$probe/probe.cpp" -o "$probe/probe-cpp"
         echo 'APPFORGE_R43_NDK_CPP_LLD_LINK=FAILED' >&2; exit 69
       fi
       echo 'APPFORGE_R43_NDK_CPP_LLD_LINK=PASS'

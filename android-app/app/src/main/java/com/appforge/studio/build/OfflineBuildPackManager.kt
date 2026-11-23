@@ -916,6 +916,7 @@ internal object OfflineBuildPackManager {
                 val target = File(dir, "latest.txt")
                 check(!java.nio.file.Files.isSymbolicLink(target.toPath()))
                 val selected = result.output.lineSequence().filter { line ->
+                    line.startsWith("APPFORGE_R55_") ||
                     line.startsWith("APPFORGE_R54_") ||
                     line.startsWith("APPFORGE_R53_") ||
                     line.startsWith("APPFORGE_R52_") ||
@@ -926,8 +927,23 @@ internal object OfflineBuildPackManager {
                     line.startsWith("clang: error:") ||
                     line.startsWith("error: ")
                 }.toList().takeLast(65).joinToString("\n") { it.take(700) }
+                val r55Stage = when {
+                    command.contains("/workspace/runtime/install-toolchain.sh") -> "TOOLCHAIN_INSTALL"
+                    command.contains("/workspace/runtime/module-functional-test.sh") -> "FUNCTIONAL_TEST"
+                    command.contains("/workspace/runtime/isolated-physical-acceptance.sh") -> "PHYSICAL_ACCEPTANCE"
+                    else -> "OTHER"
+                }
+                // Fixed labels only: never persist the caller's command or credentials.
+                val r55Metadata =
+                    "APPFORGE_R55_EXEC_STAGE=$r55Stage\n" +
+                    "APPFORGE_R55_CAPTURE_TAIL=" +
+                    (if (result.output.contains("APPFORGE_R54_CAPTURE_TAIL=TRUNCATED_HEAD_AND_TAIL"))
+                        "TRUNCATED" else "NO_TRUNCATION_MARKER") + "\n" +
+                    "APPFORGE_R55_R53_PROBE_TRACE=" +
+                    (if (result.output.contains("APPFORGE_R53_LINKER_ENTRY="))
+                        "PRESENT" else "ABSENT") + "\n"
                 target.writeText("R53_DIAGNOSTIC=START\nR53_EXIT=${result.exitCode}\n" +
-                    "R53_SELECTED_LINES=${selected.lines().size}\n" +
+                    r55Metadata + "R53_SELECTED_LINES=${selected.lines().size}\n" +
                     selected.take(11000) + "\nR53_DIAGNOSTIC=END\n")
             }
         }
