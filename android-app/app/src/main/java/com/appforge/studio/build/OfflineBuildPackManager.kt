@@ -917,6 +917,7 @@ internal object OfflineBuildPackManager {
               result.output.contains("APPFORGE_R46_") ||
               result.output.contains("APPFORGE_R47_") ||
               result.output.contains("APPFORGE_R48_") ||
+              result.output.contains("APPFORGE_R49_") ||
              result.output.contains("APPFORGE_R42_") ||
              result.output.contains("APPFORGE_NDK_HOST_SOURCE_READ_PROBE_FAILED"))) {
             runCatching {
@@ -933,6 +934,7 @@ internal object OfflineBuildPackManager {
                      line.startsWith("APPFORGE_R46_") ||
                      line.startsWith("APPFORGE_R47_") ||
                      line.startsWith("APPFORGE_R48_") ||
+                     line.startsWith("APPFORGE_R49_") ||
                     line.startsWith("APPFORGE_R42_") ||
                     line.startsWith("APPFORGE_NDK_HOST_") ||
                     line.startsWith("APPFORGE_R33_CMAKE_GUEST_REAL_P_TEST=") ||

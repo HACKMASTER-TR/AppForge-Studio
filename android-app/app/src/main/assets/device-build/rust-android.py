@@ -2,7 +2,7 @@
 """Pinned Android target + explicit source-consent JNI preparation, offline only.
 Caller owns disposable runtime/source stages and download/network approval.
 """
-import argparse,hashlib,json,os,pathlib,shutil,struct,subprocess,tarfile,tempfile
+import argparse,hashlib,json,os,pathlib,shutil,struct,subprocess,tarfile,tempfile,sys
 HERE=pathlib.Path(__file__).parent
 # App-shipped trusted bytes; never load project bytecode or Python modules.
 def trusted(name):
@@ -134,8 +134,46 @@ def probe_linker(path):
         work=pathlib.Path(name);source=work/'probe.c';result=work/'probe.so'
         source.write_text('#include <unistd.h>\nint appforge_ndk_probe(void) { return (int)getpid(); }\n')
         p=subprocess.run([str(path),'--target=aarch64-linux-android26','-shared','-fPIC','-Wl,-z,max-page-size=16384','-Wl,-z,common-page-size=16384',str(source),'-o',str(result)],capture_output=True,timeout=120)
-        if p.returncode or not result.is_file() or 'appforge_ndk_probe' not in defined_exports(result):raise ValueError('NDK host cannot link a real ARM64/API26/16KiB library')
+        if p.returncode:
+            # The input is a fixed app-authored C file, not an untrusted project.
+            # Surface bounded compiler diagnostics instead of silently discarding them.
+            for line in p.stderr.decode('utf-8',errors='replace').splitlines()[:10]:
+                print('APPFORGE_R49_LINKER_STDERR='+line[:220],file=sys.stderr)
+            raise ValueError('NDK host cannot link a real ARM64/API26/16KiB library')
+        if not result.is_file() or 'appforge_ndk_probe' not in defined_exports(result):
+            raise ValueError('NDK host did not emit a validated ARM64/API26/16KiB ELF')
         return dict(target='aarch64-linux-android',minApi=26,elfSha256=sha(result),hostExecution=True,targetExecution=False)
+
+def verified_appforge_arm64_linker(sdk,host,trusted_sdk=pathlib.Path('/opt/appforge-device/android-sdk')):
+    """Return the ONLY additional ARM64 candidate: pinned, pretested AppForge NDK.
+
+    Do not accept project-provided paths, PATH fallbacks, x86 host ELF executables,
+    alternate NDK versions, unsigned wrappers, or a marker alone as proof.
+    The caller MUST also perform a genuine API26/16KiB shared-library link.
+    The optional trusted_sdk argument exists solely for isolated unit tests.
+    """
+    if host not in ('aarch64','arm64') or sdk != trusted_sdk or sdk.is_symlink():
+        return None
+    version=sdk/'ndk/27.1.12297006'
+    prebuilt=version/'toolchains/llvm/prebuilt/linux-x86_64'
+    bin_dir=prebuilt/'bin'
+    compiler=bin_dir/'clang'
+    properties=version/'source.properties'
+    ready=sdk.parent/'.expo-arm64-ndk-host-v3'
+    for d in (sdk,version,prebuilt,bin_dir):
+        if d.is_symlink() or not d.is_dir():return None
+    for f in (properties,compiler,ready):
+        if f.is_symlink() or not f.is_file():return None
+    if not os.access(compiler,os.X_OK):return None
+    if properties.stat().st_size>8192 or compiler.stat().st_size>32768:return None
+    if ready.stat().st_size>4096:return None
+    if not __import__('re').search(r'(?m)^Pkg\.Revision\s*=\s*27\.1\.12297006\s*$',properties.read_text()):
+        return None
+    wrapper=compiler.read_text()
+    if '# APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V3' not in wrapper:return None
+    if '--ld-path=/usr/lib/llvm-18/bin/ld.lld' not in wrapper:return None
+    if '-resource-dir=' not in wrapper:return None
+    return compiler
 
 def discover_linker(sdk):
     # Existing signed/pinned module installer owns this SDK. Do not use project
@@ -156,6 +194,27 @@ def discover_linker(sdk):
                     probe_linker(path)
                     return str(path)
                 except (OSError,ValueError,subprocess.SubprocessError):continue
+    # R49: the real ARM64 AppForge host is installed under the official NDK
+    # linux-x86_64 *directory*, whose x86 LLVM programs were replaced by
+    # trusted ARM64 host wrappers. There is no aarch64-linux-android26-clang
+    # alias. Permit only this exact pinned AppForge SDK and only after its
+    # real API26 / 16KiB ELF probe passes; never fall back to PATH.
+    candidate=verified_appforge_arm64_linker(sdk,host)
+    if candidate is not None:
+        print('APPFORGE_R49_PINNED_NDK_WRAPPER=VERIFIED',file=sys.stderr)
+        try:
+            subprocess.run([str(candidate),'--version'],check=True,
+                           stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=30)
+            proof=probe_linker(candidate)
+            if proof.get('minApi')!=26 or not proof.get('hostExecution') or not proof.get('elfSha256'):
+                raise ValueError('R49 linker proof contract incomplete')
+            print('APPFORGE_R49_RUST_API26_16K_LINK=PASS',file=sys.stderr)
+            return str(candidate)
+        except (OSError,ValueError,subprocess.SubprocessError) as error:
+            print('APPFORGE_R49_RUST_API26_16K_LINK=FAILED',file=sys.stderr)
+            print('APPFORGE_R49_LINKER_ERROR='+type(error).__name__+':'+str(error)[:240],file=sys.stderr)
+    else:
+        print('APPFORGE_R49_PINNED_NDK_WRAPPER=NOT_VERIFIED',file=sys.stderr)
     raise ValueError('Verified Android ARM64 API26 NDK linker missing or incompatible with Linux host; no fallback')
 
 def prepare(root,prefix,linker,vendor,export):
