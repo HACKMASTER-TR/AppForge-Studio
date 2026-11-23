@@ -1017,6 +1017,7 @@ EOF
         echo 'APPFORGE_R47_LLVM_AR_EMPTY=FAILED' >&2;exit 69;
       }
       echo 'APPFORGE_R47_LLVM_AR=PASS'
+      echo 'APPFORGE_R48_GUEST_AR_REAL_OBJECT_ARCHIVE=PASS'
 
       if ! "$bin/clang++"         --target=aarch64-linux-android24         --sysroot="$host/sysroot"         -stdlib=libc++         -fuse-ld=lld         "$probe/probe.cpp"         -o "$probe/probe-cpp";then
         echo 'APPFORGE_R43_NDK_CPP_LLD_LINK=FAILED' >&2; exit 69

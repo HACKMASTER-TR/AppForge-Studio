@@ -189,6 +189,22 @@ if [ "$name" = clang++ ] && [ -f "$prefix/clang-launch-mode-r41" ];then
   export LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu:$libpath"
   exec "$r47_clang_guest" --driver-mode=g++ "$@"
 fi
+# R48: signed guest llvm-ar must see the same namespace as guest Clang.
+# The older private glibc-loader llvm-ar had --version PASS but could not read
+# the proven regular C++ probe.o (PRoot host/guest path mismatch).
+if [ "$name" = llvm-ar ] && [ -f "$prefix/llvm-ar-launch-mode-r48" ];then
+  [ ! -L "$prefix/llvm-ar-launch-mode-r48" ] &&
+  [ "$(cat "$prefix/llvm-ar-launch-mode-r48")" = guest-llvm-ar-direct ] || exit 69
+  r48_signed_ar="$sysroot/usr/lib/llvm-18/bin/llvm-ar"
+  r48_guest_ar=/usr/lib/llvm-18/bin/llvm-ar
+  [ -f "$r48_signed_ar" ] && [ ! -L "$r48_signed_ar" ] &&
+  [ -f "$r48_guest_ar" ] && [ ! -L "$r48_guest_ar" ] &&
+  [ -x "$r48_guest_ar" ] &&
+  cmp -s "$r48_signed_ar" "$r48_guest_ar" || exit 69
+  unset PROROOT_GUEST_EXE CMAKE_ROOT
+  export LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu:$libpath"
+  exec "$r48_guest_ar" "$@"
+fi
 # R44: run ONLY the byte-verified guest-native LLD after its own real
 # dependency closure and version test. Never redirect other LLVM tools.
 if [ "$name" = ld.lld ] && [ -f "$prefix/lld-launch-mode-r44" ];then
@@ -834,6 +850,64 @@ if ! "$BIN/ld.lld" --version > "$r44_test_log" 2>&1;then
   sed -n '1,30p' "$r44_test_log" >&2;exit 69;
 fi
 echo 'APPFORGE_R44_LLD_WRAPPER_EXECUTION=PASS'
+# R48: only this isolated candidate rootfs and signed private sysroot.
+r48_signed_ar="$PREFIX/sysroot/usr/lib/llvm-18/bin/llvm-ar"
+r48_guest_ar=/usr/lib/llvm-18/bin/llvm-ar
+r48_log="$probe_dir/r48-llvm-ar.log"
+echo 'APPFORGE_R48_GUEST_AR_PROBE=START'
+[ -f "$r48_signed_ar" ] && [ ! -L "$r48_signed_ar" ] &&
+[ -x "$r48_signed_ar" ] &&
+file -L "$r48_signed_ar" | grep -Eqi 'aarch64|ARM aarch64' || {
+  echo 'APPFORGE_R48_SIGNED_AR_INVALID' >&2;exit 69;
+}
+if [ -e "$r48_guest_ar" ] || [ -L "$r48_guest_ar" ];then
+  [ -f "$r48_guest_ar" ] && [ ! -L "$r48_guest_ar" ] &&
+  cmp -s "$r48_signed_ar" "$r48_guest_ar" || {
+    echo 'APPFORGE_R48_GUEST_AR_COLLISION_OR_IDENTITY_MISMATCH' >&2;exit 69;
+  }
+  echo 'APPFORGE_R48_GUEST_AR_EXISTING=VERIFIED'
+else
+  # The source is package-authenticated, staged private bytes only.
+  cp -p "$r48_signed_ar" "$r48_guest_ar" &&
+  [ -f "$r48_guest_ar" ] && [ ! -L "$r48_guest_ar" ] &&
+  cmp -s "$r48_signed_ar" "$r48_guest_ar" || {
+    echo 'APPFORGE_R48_GUEST_AR_COPY_FAILED' >&2;exit 69;
+  }
+  echo 'APPFORGE_R48_GUEST_AR_COPIED=VERIFIED'
+fi
+printf '%s\n' guest-llvm-ar-direct > "$PREFIX/llvm-ar-launch-mode-r48"
+[ -f "$PREFIX/llvm-ar-launch-mode-r48" ] &&
+[ ! -L "$PREFIX/llvm-ar-launch-mode-r48" ] || exit 69
+if ! LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu" \
+  "$r48_guest_ar" --version >"$r48_log" 2>&1;then
+  echo 'APPFORGE_R48_GUEST_AR_EXECUTION=FAILED' >&2
+  sed -n '1,18p' "$r48_log" | cut -c 1-220 >&2
+  exit 69
+fi
+[ -s "$r48_log" ] || { echo 'APPFORGE_R48_GUEST_AR_VERSION_EMPTY' >&2;exit 69; }
+echo 'APPFORGE_R48_GUEST_AR_EXECUTION=PASS'
+# Prove this wrapper really reads a file from the translated guest /opt path.
+[ -s "$probe_dir/readable.c" ] && [ ! -L "$probe_dir/readable.c" ] || {
+  echo 'APPFORGE_R48_REAL_AR_INPUT_MISSING' >&2;exit 69;
+}
+if ! "$BIN/llvm-ar" rcs "$probe_dir/r48-test.a" "$probe_dir/readable.c" \
+  >"$r48_log" 2>&1;then
+  echo 'APPFORGE_R48_REAL_AR_ARCHIVE=FAILED' >&2
+  sed -n '1,18p' "$r48_log" | cut -c 1-220 >&2;exit 69
+fi
+[ -s "$probe_dir/r48-test.a" ] && [ ! -L "$probe_dir/r48-test.a" ] || {
+  echo 'APPFORGE_R48_REAL_AR_ARCHIVE_EMPTY' >&2;exit 69;
+}
+if ! "$BIN/llvm-ar" t "$probe_dir/r48-test.a" \
+  >"$r48_log" 2>&1;then
+  echo 'APPFORGE_R48_REAL_AR_LIST=FAILED' >&2
+  sed -n '1,18p' "$r48_log" | cut -c 1-220 >&2;exit 69
+fi
+[ "$(cat "$r48_log")" = readable.c ] || {
+  echo 'APPFORGE_R48_REAL_AR_ARCHIVE_MEMBER_INVALID' >&2;exit 69;
+}
+echo 'APPFORGE_R48_REAL_AR_ARCHIVE=PASS'
+echo 'APPFORGE_R48_AR_WRAPPER_EXECUTION=PASS'
 rm -rf -- "$probe_dir"
 trap - 0 HUP INT TERM
 [ "$(dpkg-query -W -f='${Version}' libc6)" = '2.39-0ubuntu8.7' ] || exit 67

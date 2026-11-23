@@ -686,6 +686,21 @@ require(!appforgeR47OriginalIdentityUpgrade ||
      appforgeR45OriginalIdentityUpgrade && appforgeR46OriginalIdentityUpgrade)) {
     "R47 requires the complete R46 original-identity upgrade chain."
 }
+// R48: byte-verified native guest llvm-ar in the translated PRoot namespace.
+val appforgeR48OriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR48OriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR48OriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
+     appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
+     appforgeR35OriginalIdentityUpgrade && appforgeR36OriginalIdentityUpgrade &&
+     appforgeR37OriginalIdentityUpgrade && appforgeR38OriginalIdentityUpgrade &&
+     appforgeR39OriginalIdentityUpgrade && appforgeR40OriginalIdentityUpgrade &&
+     appforgeR41OriginalIdentityUpgrade && appforgeR42OriginalIdentityUpgrade &&
+     appforgeR43OriginalIdentityUpgrade && appforgeR44OriginalIdentityUpgrade &&
+     appforgeR45OriginalIdentityUpgrade && appforgeR46OriginalIdentityUpgrade &&
+     appforgeR47OriginalIdentityUpgrade)) {
+    "R48 requires the complete R47 original-identity upgrade chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -1114,7 +1129,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR47OriginalIdentityUpgrade) {
+                if (appforgeR48OriginalIdentityUpgrade) {
+                    output.versionCode.set(571)
+                    output.versionName.set("5.0.69-r48-guest-llvm-ar")
+                } else if (appforgeR47OriginalIdentityUpgrade) {
                     output.versionCode.set(570)
                     output.versionName.set("5.0.68-r47-guest-clangxx")
                 } else if (appforgeR46OriginalIdentityUpgrade) {
