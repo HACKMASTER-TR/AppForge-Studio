@@ -13,8 +13,8 @@ assert 'R31_ORIGINAL_PKCS12_SIGNER_REQUIRED' in g
 assert g.count('applicationId = "com.appforge.studio"')==1
 for name in ['r58-r62-integrated-v579-ci.yml','r58-r62-integrated-v579-unsigned-ci.yml']:
     w=(root/'.github/workflows'/name).read_text()
-    assert '-PappforgeR63PhysicalRepairCandidate=true' in w
-    assert "versionCode='580'" in w
+    assert '-PappforgeR64ExpoRepairCandidate=true' in w
+    assert "versionCode='581'" in w
     assert 'generate-second-brain-snapshot.py --check' in w
 refs=(root/'.github/workflows/r58-r62-module-reference-ci.yml').read_text()
 for job in ['rust-arm64-reference:', 'expo-arm64-prebuild:', 'windows-arm64-cross-reference:']:

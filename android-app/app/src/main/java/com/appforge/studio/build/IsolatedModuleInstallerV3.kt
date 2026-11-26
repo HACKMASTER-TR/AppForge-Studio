@@ -307,7 +307,9 @@ internal object IsolatedModuleInstallerV3 {
                         "${id.name}: gerçek çevrimdışı fonksiyon testi çalıştırılıyor.")
                     OfflineBuildPackManager.executeIsolatedForAcceptance(app, staged,
                         workspace, id, operation,
-                        "/bin/sh /workspace/runtime/module-functional-test.sh ${id.name} && " +
+                        (if (id == OfflineModuleId.EXPO_REACT_NATIVE)
+                            "/bin/sh /workspace/runtime/expo-functional-test-r64.sh && "
+                        else "/bin/sh /workspace/runtime/module-functional-test.sh ${id.name} && ") +
                             "/bin/sh /workspace/runtime/isolated-physical-acceptance.sh ${id.name}",
                         onProgress, control)
                     if (id in setOf(OfflineModuleId.ANDROID_CORE, OfflineModuleId.PYTHON_ANDROID,

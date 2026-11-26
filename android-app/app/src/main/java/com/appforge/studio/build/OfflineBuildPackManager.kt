@@ -442,7 +442,9 @@ internal object OfflineBuildPackManager {
                     }
                     execute(shell,staged,workspace,"verify-${id.name.lowercase()}",probe)
                     execute(shell,staged,workspace,"functional-${id.name.lowercase()}",
-                        "/bin/sh /workspace/runtime/module-functional-test.sh ${id.name}")
+                        if(id == OfflineModuleId.EXPO_REACT_NATIVE)
+                            "/bin/sh /workspace/runtime/expo-functional-test-r64.sh"
+                        else "/bin/sh /workspace/runtime/module-functional-test.sh ${id.name}")
                     phase(id,ModulePhase.VERIFYING,"Dosya SHA-256 envanteri atomik kaydediliyor.")
                     val apt=AptModuleLocks.inspect(staged,id)
                     check(apt.transactions>0 || id !in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST)){"Doğrulanmış APT snapshot kilidi eksik; eski kurulum hazır kabul edilmez."}
@@ -535,6 +537,7 @@ internal object OfflineBuildPackManager {
     }
     private fun recipeDigest(context:Context,id:OfflineModuleId,historicalNode:Boolean=false,historicalR63:Boolean=false):String {
         val names=when(id) {
+            OfflineModuleId.EXPO_REACT_NATIVE->listOf("install-toolchain.sh","prepare-offline-pack.sh","platform-37.0-package.xml","expo-functional-test-r64.sh")
             OfflineModuleId.RUST_ANDROID_NDK->listOf("install-toolchain.sh","install-ndk-host-isolated-v7.sh","rust-android.py","rust-layout.py","rust-project.py")
             OfflineModuleId.RUST->listOf("install-rust-module.py","install-rust-prerequisites.sh","rust-toolchain-v1.json")
             OfflineModuleId.NODE_WEB->listOf("install-node-module.sh")
