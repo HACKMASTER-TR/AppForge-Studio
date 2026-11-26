@@ -10,17 +10,19 @@ const cache=read('android-app/app/src/main/java/com/appforge/studio/build/V9Sele
 test('module center unifies strict independent receipts and legacy installed checks',()=>{
  assert.match(ui,/OfflineBuildPackManager\.installedReadiness\(context\)\.toMutableMap\(\)/);
  assert.match(ui,/IsolatedModuleInstallerV3\.ready\(context,module\.id\)/);
- assert.match(ui,/val installed=ready\[selected\]==true \|\| isolatedReady/);
- assert.match(ui,/val canInstall=recovered && chosen==null && !installed && !protectedCandidate/);
+ assert.match(ui,/val installed=!running && ready\[id\]==true/);
+ assert.match(ui,/val canInstall=recovered && inspectionComplete && chosen==null &&\s*!installed && !protected/);
 });
 test('READY hides installation action completely; blocked candidate shows no install action',()=>{
- assert.match(ui,/if\(installed\) \{[\s\S]{0,250}Tekrar indirme kapalı/);
- assert.match(ui,/else if\(protectedCandidate\) \{/);
- assert.match(ui,/else \{[\s\S]{0,140}V9R2CandidatePrefetchCard/);
+ const row=read('android-app/app/src/main/java/com/appforge/studio/R66ModuleRow.kt');
+ assert.match(row,/if\(installed\)return State\(1f,"HAZIR ✓"/);
+ assert.match(row,/if\(blocked\)return State\(0f,"Kurulum engellendi"/);
+ assert.match(ui,/!installed && !protected && !busy/);
+ assert.match(ui,/require\(!IsolatedModuleInstallerV3\.hasProtectedCandidate\(context,id\)\)/);
 });
 test('shared Linux runtime is explicitly distinguishable from module-owned Ubuntu',()=>{
- assert.match(ui,/Ortak Linux kurulu değil.*bağımsız Ubuntu ortamları ayrı/);
  assert.match(ui,/OfflineModuleId\.LINUX_RUNTIME\)\)/);
+ assert.match(ui,/if\(id==OfflineModuleId\.LINUX_RUNTIME\) "Linux temel ortamını kur"/);
  assert.match(ui,/Linux temel ortamını kur/);
  assert.doesNotMatch(ui,/Onayla ve kur • mevcut sistem/);
 });

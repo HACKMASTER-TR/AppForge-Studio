@@ -15,9 +15,10 @@ test('Rust native module reuses verified downloader and existing generation owne
 });
 test('Compact module screen hides removed tabs while preserving guarded lifecycle and recovery',()=>{
  const ui=read('android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt');
- assert.match(ui,/DropdownMenu/);
- assert.match(ui,/if\(moduleDetails\)\s*\{[\s\S]*lifecycle\?\.let/);
- assert.doesNotMatch(ui,/pendingLifecycle=selected to "rollback"/);assert.match(ui,/lc\.remove\.allowed/);
+ assert.doesNotMatch(ui,/DropdownMenu/);
+ assert.match(ui,/R66ModuleRow\(module=module/);
+ assert.doesNotMatch(ui,/pendingLifecycle=selected to "rollback"/);
+ assert.match(ui,/require\(permission\.allowed\)/);
  assert.match(ui,/val section="modules"/);
  for(const removed of [
    /ModuleManagerNavigation\(/,
@@ -27,7 +28,7 @@ test('Compact module screen hides removed tabs while preserving guarded lifecycl
    /if\(section=="diagnostics"\)item/,
  ]) assert.doesNotMatch(ui,removed);
  assert.doesNotMatch(ui,/Başarısız kurulumu güvenli kurtar/);
- assert.match(ui,/geçici kurulum alanı sıfırdan hazırlanır/);
+ assert.match(ui,/geçici ortam temizlenerek/);
  assert.match(ui,/DownloadNetwork\.allowMobileOnce\(/);
  assert.match(ui,/rememberSaveable/);
 });

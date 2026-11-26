@@ -40,5 +40,7 @@ test('Android own-package storage stats and module total elapsed are read-only',
   assert.match(storage,/context.packageName,Process.myUserHandle\(\)/);
   assert.ok(!storage.includes('deleteRecursively'));
   assert.match(moduleUi,/saveTotalElapsed\(context,selected\)/);
-  assert.match(moduleUi,/Son denemenin toplam süresi/);
+  assert.match(moduleUi,/appforge-module-duration-v551/);
+  assert.match(moduleUi,/putLong\(module.name,total\)/);
+  assert.doesNotMatch(moduleUi,/Son denemenin toplam süresi/);
 });

@@ -356,7 +356,7 @@ test(
 
     assert.match(
       screen,
-      /Teknik ayrıntıları göster/
+      /R66ModuleRow\(module=module/
     );
   }
 );
@@ -446,7 +446,7 @@ test(
 
     assert.match(
       screen,
-      /selected==OfflineModuleId\.WINDOWS_PORTABLE && portableReady/
+      /installed && id==OfflineModuleId\.WINDOWS_PORTABLE -> windowsTestDialog=true/
     );
   }
 );

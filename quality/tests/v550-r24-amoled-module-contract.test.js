@@ -21,10 +21,13 @@ test('APK special access is requested through Android settings, never forced',()
   assert.doesNotMatch(main,/pm grant.*REQUEST_INSTALL_PACKAGES/);
 });
 test('storage figures come from measured StatFs, not fabricated estimates',()=>{
-  assert.match(screen,/android.os.StatFs\(context.filesDir.absolutePath\)/);
-  assert.match(screen,/availableBytes/);
-  assert.match(screen,/totalBytes/);
-  assert.match(screen,/Henüz hesaplanmadı/);
+  const storage=read('android-app/app/src/main/java/com/appforge/studio/AppForgeStorageDetailsScreen.kt');
+  const rows=read('android-app/app/src/main/java/com/appforge/studio/R66ModuleRow.kt');
+  assert.match(storage,/StatFs\(context.filesDir.absolutePath\)/);
+  assert.match(storage,/availableBytes/);
+  assert.match(storage,/totalBytes/);
+  assert.match(rows,/observed sequential net app-data deltas/);
+  assert.doesNotMatch(screen,/Modülün tahmini kurulum alanı/);
 });
 test('telemetry-only entries do not fill persisted pinned transfer history',()=>{
   assert.match(recorder,/if \(bound == null && state != DownloadState\.FAILED\) return/);

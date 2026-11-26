@@ -68,19 +68,19 @@ test("first-run gate cannot be bypassed with Android back", () => {
 });
 
 test("first-run screen explains consequences and requires explicit skip", () => {
-  assert.match(pack, /İlk açılışta araç indirme zorunluluğu yok/);
+  assert.doesNotMatch(pack, /İlk açılışta araç indirme zorunluluğu yok/);
   assert.match(pack, /Araç indirmeden devam et/);
   assert.match(pack, /onFirstRunComplete\?\.invoke\(true\)/);
   assert.match(pack, /if\(firstRun\)item/);
-  assert.match(pack, /Fast HTML gömülüdür/);
+  assert.match(read("android-app/app/src/main/java/com/appforge/studio/R66ModuleRow.kt"), /OfflineModuleId\.FAST_HTML -> "Gömülü"/);
 });
 
 test("first-run pack defers installation and cleanup verification to their actions", () => {
   assert.doesNotMatch(pack, /OfflineModules\.all\.associate/);
   const confirmationPlan = pack.split("LaunchedEffect(chosen)")[1].split("LaunchedEffect(confirmPrune)")[0];
   assert.doesNotMatch(confirmationPlan, /moduleReady|verifyNamespace|sha256/);
-  assert.match(pack, /active.phase==ModulePhase.READY -> "Kurulum devam ediyor"/);
-  assert.match(pack, /!busy && completedInstall==selected/);
+  assert.match(pack, /val installed=!running && ready\[id\]==true/);
+  assert.match(read("android-app/app/src/main/java/com/appforge/studio/R66ModuleRow.kt"), /ModulePhase\.OFFLINE_TEST,ModulePhase\.VERIFYING,ModulePhase\.READY ->/);
   assert.match(pack, /diagnosticOperation\.value=null[\s\S]*?busy\.value=true/);
   // Operations remain persisted even though the old diagnostics tab is hidden.
   assert.match(pack, /diagnosticOperation\.value=event\.operationId/);
