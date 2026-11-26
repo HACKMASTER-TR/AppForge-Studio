@@ -1,0 +1,176 @@
+name: AppForge R57T Expo ARM64 Gradle 8.14.3 + Android 37 Reference (NO APK)
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/r57t-expo-arm64-gradle37-ci.yml
+      - 'examples/rust-expo-jsi/**'
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/r57t-expo-arm64-gradle37-ci.yml
+      - 'examples/rust-expo-jsi/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appforge-r57t-expo-arm64-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  expo-arm64-reference:
+    name: ARM64 Gradle 8.14.3 + Android 37 + AAPT2 (no APK)
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 40
+    steps:
+      - name: Checkout isolated source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify original R56 baseline and ARM64 host
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = aarch64
+          git merge-base --is-ancestor 63e496913332cf2e2ae96b2e67ae7414226f09fe HEAD
+          echo 'R57T_BASELINE=PASS_MAIN_63E4969'
+          echo 'R57T_HOST=PASS_LINUX_AARCH64'
+          echo 'R57T_APK_BUILD=NOT_ATTEMPTED'
+          echo 'R57T_APP_MODULE_INSTALL=NOT_ATTEMPTED'
+          echo 'R57T_DEVICE_INSTALL=NOT_ATTEMPTED'
+
+      - name: Set up Java 17 (Expo runtime reference)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download and verify pinned source archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/r57t/downloads" "$RUNNER_TEMP/r57t/tools" "$RUNNER_TEMP/r57t/probe"
+          download_pinned() {
+            local filename="$1" url="$2" expected="$3" dest="$RUNNER_TEMP/r57t/downloads/$1"
+            curl --fail --location --retry 3 --connect-timeout 30 --max-time 900 \
+              --proto '=https' --tlsv1.2 --silent --show-error "$url" --output "$dest"
+            printf '%s  %s\n' "$expected" "$dest" | sha256sum --check --status
+            printf 'R57T_PINNED_%s=PASS_SHA256\n' "$filename"
+          }
+          download_pinned \
+            gradle-8.14.3-bin.zip \
+            https://services.gradle.org/distributions/gradle-8.14.3-bin.zip \
+            bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531
+          download_pinned \
+            platform-37.0_r02.zip \
+            https://dl.google.com/android/repository/platform-37.0_r02.zip \
+            840b23e827f96e64aea4c89a1194aac3dc5f6bad37edb231c5c795d890330e8d
+          download_pinned \
+            aapt2-arm64 \
+            https://github.com/Commit451/android-arm-build-tools/releases/download/platform-tools-36.0.0/aapt2 \
+            7512ff7e381bea6fd310b6f6e347422c8fda21e07c6e3f0162742e95eb9d7f98
+
+      - name: Safely extract verified archives and verify pinned layouts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path, PurePosixPath
+          from zipfile import ZipFile
+          import os, stat
+
+          root = Path(os.environ['RUNNER_TEMP']) / 'r57t'
+          cases = (
+              ('gradle-8.14.3-bin.zip', 'gradle-8.14.3/', 317, 'gradle-8.14.3/bin/gradle'),
+              ('platform-37.0_r02.zip', 'android-37.0/', 11384, 'android-37.0/android.jar'),
+          )
+          for archive, prefix, expected_files, required in cases:
+              with ZipFile(root / 'downloads' / archive) as z:
+                  paths = set()
+                  files = 0
+                  for info in z.infolist():
+                      name = info.filename.rstrip('/')
+                      parts = PurePosixPath(name).parts
+                      if (not name or '\\' in name or name.startswith('/') or
+                          not (name == prefix[:-1] or name.startswith(prefix)) or
+                          any(part in ('.', '..') for part in parts) or
+                          name in paths):
+                          raise RuntimeError('R57T_ZIP_UNSAFE_OR_DUPLICATED_ENTRY')
+                      paths.add(name)
+                      mode = (info.external_attr >> 16) & 0o170000
+                      if mode not in (0, stat.S_IFREG, stat.S_IFDIR):
+                          raise RuntimeError('R57T_ZIP_SPECIAL_ENTRY')
+                      if not info.is_dir():
+                          files += 1
+                  if files != expected_files or required not in paths:
+                      raise RuntimeError('R57T_ZIP_LAYOUT_UNEXPECTED')
+                  z.extractall(root / 'tools')
+                  print('R57T_ZIP_LAYOUT_' + archive + '=PASS_FILES_' + str(files))
+          PY
+          test -s "$RUNNER_TEMP/r57t/tools/android-37.0/android.jar"
+          test -s "$RUNNER_TEMP/r57t/tools/gradle-8.14.3/lib/gradle-launcher-8.14.3.jar"
+          chmod 755 "$RUNNER_TEMP/r57t/tools/gradle-8.14.3/bin/gradle"
+          install -m 755 "$RUNNER_TEMP/r57t/downloads/aapt2-arm64" "$RUNNER_TEMP/r57t/tools/aapt2"
+          file "$RUNNER_TEMP/r57t/tools/aapt2"
+          readelf -h "$RUNNER_TEMP/r57t/tools/aapt2" | grep -F 'AArch64'
+          echo 'R57T_ARM64_AAPT2_BINARY=PASS_AARCH64'
+
+      - name: Verify AAPT2 can read real Android 37 resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/r57t/tools/aapt2" version
+          "$RUNNER_TEMP/r57t/tools/aapt2" dump resources \
+            "$RUNNER_TEMP/r57t/tools/android-37.0/android.jar" >/dev/null
+          echo 'R57T_AAPT2_ANDROID37_RESOURCES=PASS_REAL_READ'
+
+      - name: Run Gradle 8.14.3 offline under Java 17
+        shell: bash
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/r57t/gradle-user-home
+          R57T_ANDROID_JAR: ${{ runner.temp }}/r57t/tools/android-37.0/android.jar
+        run: |
+          set -euo pipefail
+          test "$(java -version 2>&1 | head -n 1 | grep -c '17\.')" -eq 1
+          "$RUNNER_TEMP/r57t/tools/gradle-8.14.3/bin/gradle" --version \
+            | tee "$RUNNER_TEMP/r57t/probe/gradle-version.txt"
+          grep -Fx 'Gradle 8.14.3' "$RUNNER_TEMP/r57t/probe/gradle-version.txt"
+          printf "%s\n" "rootProject.name = 'appforge-r57t-reference'" \
+            > "$RUNNER_TEMP/r57t/probe/settings.gradle"
+          cat > "$RUNNER_TEMP/r57t/probe/build.gradle" <<'EOF'
+          tasks.register('r57tProbe') {
+              doLast {
+                  if (JavaVersion.current().majorVersion != '17') {
+                      throw new GradleException('Unexpected Java runtime')
+                  }
+                  def sdk = file(System.getenv('R57T_ANDROID_JAR'))
+                  if (!sdk.isFile() || sdk.length() < 10000000L) {
+                      throw new GradleException('Verified Android 37 platform missing')
+                  }
+                  println 'R57T_GRADLE_TASK=PASS_JAVA17_ANDROID37_OFFLINE'
+              }
+          }
+          EOF
+          "$RUNNER_TEMP/r57t/tools/gradle-8.14.3/bin/gradle" \
+            --project-dir "$RUNNER_TEMP/r57t/probe" \
+            --offline --no-daemon --no-watch-fs --no-configuration-cache \
+            --console=plain r57tProbe \
+            | tee "$RUNNER_TEMP/r57t/probe/gradle-task.txt"
+          grep -Fx 'R57T_GRADLE_TASK=PASS_JAVA17_ANDROID37_OFFLINE' \
+            "$RUNNER_TEMP/r57t/probe/gradle-task.txt"
+          echo 'R57T_RESULT=PASS_REFERENCE_ARM64_GRADLE8143_ANDROID37_AAPT2_NO_APK'
+
+      - name: Save text-only reference proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appforge-r57t-arm64-expo-reference-${{ github.sha }}
+          path: ${{ runner.temp }}/r57t/probe/*.txt
+          if-no-files-found: warn
+          retention-days: 7
