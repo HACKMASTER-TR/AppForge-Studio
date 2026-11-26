@@ -801,6 +801,14 @@ require(!appforgeR54OriginalIdentityUpgrade ||
      appforgeR53OriginalIdentityUpgrade)) {
     "R54 requires the complete R53 original-identity upgrade chain."
 }
+// R57W: incremental original-identity update, only after the complete R54 chain.
+// The package identity and original R31 signing certificate stay unchanged.
+val appforgeR57WOriginalIdentityUpgrade =
+    providers.gradleProperty("appforgeR57WOriginalIdentityUpgrade").orNull == "true"
+require(!appforgeR57WOriginalIdentityUpgrade ||
+    (appforgeR31OriginalIdentity && appforgeR54OriginalIdentityUpgrade)) {
+    "R57W requires the existing R54 original-identity upgrade and signer chain."
+}
 // R31 build server may package only an UNSIGNED candidate. The PKCS12 signer
 // remains on the device and must be used before any installation.
 val appforgeR31UnsignedCI =
@@ -1229,7 +1237,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR54OriginalIdentityUpgrade) {
+                if (appforgeR57WOriginalIdentityUpgrade) {
+                    output.versionCode.set(578)
+                    output.versionName.set("5.0.76-r57w-original-upgrade")
+                } else if (appforgeR54OriginalIdentityUpgrade) {
                     output.versionCode.set(577)
                     output.versionName.set("5.0.75-r54-shell-tail")
                 } else if (appforgeR53OriginalIdentityUpgrade) {
