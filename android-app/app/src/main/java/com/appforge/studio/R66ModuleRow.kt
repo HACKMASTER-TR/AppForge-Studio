@@ -57,6 +57,33 @@ internal object R66ModuleProgress {
             else -> State(0f,"İndir ve Kur",0xFF45CFEE)
         }
         val percent=event?.percent
+        // R67: a source checksum is acquisition, not final module validation.
+        if(event?.acquisitionPending==true) {
+            val label=when(event.phase) {
+                ModulePhase.DOWNLOADING -> percent?.let{"İndiriliyor · dosya %$it"} ?: "İndiriliyor"
+                ModulePhase.VERIFYING -> "İndirilen paket doğrulanıyor"
+                ModulePhase.WAITING_CONNECTION,ModulePhase.RECONNECTING -> "Bağlantı bekleniyor"
+                else -> "İndirme hazırlanıyor"
+            }
+            return State((percent?:0)/100f*.50f,label,0xFFEF3340)
+        }
+        val total=event?.installUnitsTotal
+        val done=event?.installUnitsCompleted
+        if(total!=null && done!=null && total>0 && done in 0..total) {
+            val fraction=.50f+.35f*done/total
+            val state=when(event.phase) {
+                // Some guest dependencies still download during installation.
+                // Report them explicitly without treating file % as whole-module %.
+                ModulePhase.DOWNLOADING -> State(fraction,percent?.let{"Ek paket indiriliyor · dosya %$it"} ?: "Ek paket indiriliyor",0xFFEF3340)
+                ModulePhase.ERROR -> State(fraction,"Hata oluştu",0xFFEF3340)
+                ModulePhase.AWAITING_CONSENT -> State(fraction,"Onay bekleniyor",0xFFFF8A24)
+                ModulePhase.WAITING_CONNECTION,ModulePhase.RECONNECTING -> State(fraction,"Bağlantı bekleniyor",0xFFEF3340)
+                ModulePhase.OFFLINE_TEST,ModulePhase.VERIFYING,ModulePhase.READY -> State(fraction,
+                    if(done==total)"Doğrulanıyor" else "Kuruluyor · ara kontrol",if(done==total)0xFFFFD42A else 0xFFFF8A24)
+                else -> State(fraction,"Kuruluyor · $done/$total",0xFFFF8A24)
+            }
+            return state
+        }
         return when(event?.phase) {
             ModulePhase.DOWNLOADING -> State((percent?:0)/100f*0.50f,
                 percent?.let{"İndiriliyor · dosya %$it"} ?: "İndiriliyor",0xFFEF3340)

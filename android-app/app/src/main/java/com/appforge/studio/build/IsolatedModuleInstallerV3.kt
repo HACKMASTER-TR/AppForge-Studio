@@ -223,8 +223,9 @@ internal object IsolatedModuleInstallerV3 {
         val release = if (selectedApt.isNotEmpty()) V9R2ReleaseStore.load(app) else null
         if (selectedApt.isNotEmpty()) {
             val bundle = requireNotNull(release)
-            phase(target, ModulePhase.VERIFYING,
-                "Yalnız seçilen modülün imzalı Ubuntu paketleri ve bağımlılıkları doğrulanıyor.")
+            onProgress(ModuleProgress(target,operation,ModulePhase.VERIFYING,
+                detail="Yalnız seçilen modülün imzalı Ubuntu paketleri ve bağımlılıkları doğrulanıyor.",
+                acquisitionPending=true))
             val job = currentCoroutineContext()
             V9SelectiveR2ModuleCache.fetchSelectedWithConsent(app, bundle.manifest,
                 bundle.signature, bundle.sequence, selectedApt,
@@ -233,21 +234,45 @@ internal object IsolatedModuleInstallerV3 {
                 onProgress = { i, total, done, bytes ->
                     onProgress(ModuleProgress(target, operation, ModulePhase.DOWNLOADING,
                         bytesDownloaded = done, bytesTotal = bytes,
-                        detail = "İmzalı R2 paketi $i/$total"))
+                        detail = "İmzalı R2 paketi $i/$total",acquisitionPending=true))
                 })
         }
         control.checkpoint()
         val layout = IsolatedModuleRuntimeV2.layout(app.noBackupFilesDir, target, architecture)
+        // R67: acquire all pinned Node/Rust archives before extracting the base
+        // or creating a mutable tool generation. Guest SDK/Gradle resolution is
+        // still online-capable; this is not a complete offline admission gate.
+        val installOrder = request.dependencyOrder.filter { it != OfflineModuleId.LINUX_RUNTIME }
+        val archives = installOrder.associateWith { id -> toolArchives(app,id) }
+        for (id in installOrder) {
+            for (archive in archives.getValue(id)) {
+                currentCoroutineContext().ensureActive()
+                control.checkpoint()
+                val job = currentCoroutineContext()
+                VerifiedModuleDownload.download(archive.url,archive.sha256,
+                    File(layout.namespace.downloads,archive.name),id,operation,
+                    canceled = { !job.isActive || control.request != DownloadControl.Request.NONE },
+                    progress = { onProgress(it.copy(acquisitionPending=true)) })
+            }
+        }
+        control.checkpoint()
         if (!IsolatedModuleRuntimeV2.baselineVerified(layout, manifest)) {
             // Existing/partial or modified roots are never reset or force-overwritten.
-            phase(target, ModulePhase.INSTALLING, "Bu modül için ayrı Ubuntu rootfs hazırlanıyor.")
+            onProgress(ModuleProgress(target,operation,ModulePhase.CONNECTING,
+                detail="İmzalı Ubuntu arşivi hazırlanıyor.",acquisitionPending=true))
             IsolatedModuleRuntimeV2.stageFreshBaseline(app, target, true) { progress ->
-                phase(target, when (progress.stage) {
-                    com.appforge.studio.terminal.LinuxInstallStage.DOWNLOADING -> ModulePhase.DOWNLOADING
-                    com.appforge.studio.terminal.LinuxInstallStage.EXTRACTING -> ModulePhase.EXTRACTING
-                    com.appforge.studio.terminal.LinuxInstallStage.VERIFYING -> ModulePhase.VERIFYING
-                    else -> ModulePhase.INSTALLING
-                }, progress.detail)
+                control.checkpoint()
+                val transfer=progress.transfer
+                if(transfer!=null) {
+                    onProgress(transfer.copy(moduleId=target,operationId=operation,acquisitionPending=true))
+                } else {
+                    val extracting=progress.stage==com.appforge.studio.terminal.LinuxInstallStage.EXTRACTING ||
+                        progress.stage==com.appforge.studio.terminal.LinuxInstallStage.FINALIZING ||
+                        progress.stage==com.appforge.studio.terminal.LinuxInstallStage.COMPLETE
+                    onProgress(ModuleProgress(target,operation,
+                        if(extracting)ModulePhase.INSTALLING else ModulePhase.VERIFYING,
+                        detail=progress.detail,acquisitionPending=!extracting))
+                }
             }
         }
         require(IsolatedModuleRuntimeV2.baselineVerified(layout, manifest)) {
@@ -267,9 +292,14 @@ internal object IsolatedModuleInstallerV3 {
                 canceled = { job.ensureActive(); control.checkpoint() }).use { generation ->
                 val staged = generation.root
                 DownloadInstrumentation.install(app, staged)
-                for (id in request.dependencyOrder.filter { it != OfflineModuleId.LINUX_RUNTIME }) {
+                var completedUnits=0
+                val totalUnits=installOrder.size.coerceAtLeast(1)
+                fun observed(event:ModuleProgress):ModuleProgress = event.copy(
+                    installUnitsCompleted=completedUnits,installUnitsTotal=totalUnits)
+                for (id in installOrder) {
                     job.ensureActive(); control.checkpoint()
-                    phase(id, ModulePhase.PREPARING, "${OfflineModules.spec(id).title} yalnız $target ortamında hazırlanıyor.")
+                    onProgress(observed(ModuleProgress(id,operation,ModulePhase.INSTALLING,
+                        detail="${OfflineModules.spec(id).title} yalnız $target ortamında hazırlanıyor.")))
                     if (id in setOf(OfflineModuleId.RUST, OfflineModuleId.RUST_ANDROID_NDK,
                             OfflineModuleId.ANDROID_CORE, OfflineModuleId.EXPO_REACT_NATIVE,
                             OfflineModuleId.PYTHON_ANDROID, OfflineModuleId.WINDOWS_NATIVE,
@@ -279,8 +309,7 @@ internal object IsolatedModuleInstallerV3 {
                             "ISOLATED_R2_MISSING:${id.name}:${result.missing}; signed cache preserved"
                         }
                     }
-                    seedToolArchive(app, layout.namespace, staged, workspace, id,
-                        operation, control, onProgress)
+                    seedToolArchive(layout.namespace, staged, workspace, id, archives.getValue(id))
                     for (command in commands(id, File(staged,
                             "opt/appforge-device/rust-1.85.1/bin/rustc").isFile)) {
                         job.ensureActive(); control.checkpoint()
@@ -292,7 +321,8 @@ internal object IsolatedModuleInstallerV3 {
                         if (id == OfflineModuleId.ANDROID_CORE) {
                             IsolatedResolverBridge.prepare(app, staged)
                         }
-                        phase(id, ModulePhase.INSTALLING, "${id.name}: $command")
+                        onProgress(observed(ModuleProgress(id,operation,ModulePhase.INSTALLING,
+                            detail="${id.name}: $command")))
                         val prefix = "APPFORGE_MODULE_REFRESH=0 APPFORGE_MODULE_ID=${id.name} " +
                             "APPFORGE_ANDROID_CORE_PREPARED=${if (id in setOf(OfflineModuleId.PYTHON_ANDROID, OfflineModuleId.EXPO_REACT_NATIVE, OfflineModuleId.RUST_ANDROID_NDK)) 1 else 0} " +
                             "APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED=${if (sdkConsent) 1 else 0} " +
@@ -301,23 +331,26 @@ internal object IsolatedModuleInstallerV3 {
                             "/usr/bin/python3.12 -I -S" else "/bin/sh"
                         OfflineBuildPackManager.executeIsolatedForAcceptance(app, staged,
                             workspace, id, operation, prefix + exec + " /workspace/runtime/$command",
-                            onProgress, control)
+                            { onProgress(observed(it)) }, control)
                     }
-                    phase(id, ModulePhase.OFFLINE_TEST,
-                        "${id.name}: gerçek çevrimdışı fonksiyon testi çalıştırılıyor.")
+                    onProgress(observed(ModuleProgress(id,operation,ModulePhase.OFFLINE_TEST,
+                        detail="${id.name}: gerçek çevrimdışı fonksiyon testi çalıştırılıyor.")))
                     OfflineBuildPackManager.executeIsolatedForAcceptance(app, staged,
                         workspace, id, operation,
                         (if (id == OfflineModuleId.EXPO_REACT_NATIVE)
                             "/bin/sh /workspace/runtime/expo-functional-test-r64.sh && "
                         else "/bin/sh /workspace/runtime/module-functional-test.sh ${id.name} && ") +
                             "/bin/sh /workspace/runtime/isolated-physical-acceptance.sh ${id.name}",
-                        onProgress, control)
+                        { onProgress(observed(it)) }, control)
                     if (id in setOf(OfflineModuleId.ANDROID_CORE, OfflineModuleId.PYTHON_ANDROID,
                             OfflineModuleId.RUST, OfflineModuleId.WINDOWS_NATIVE)) {
                         check(AptModuleLocks.inspect(staged, id).transactions > 0) {
                             "ISOLATED_APT_ADMISSION_NOT_VERIFIED:${id.name}"
                         }
                     }
+                    completedUnits++
+                    onProgress(observed(ModuleProgress(target,operation,ModulePhase.INSTALLING,
+                        detail="Doğrulanmış bağımlılık: $completedUnits/$totalUnits")))
                 }
                 job.ensureActive(); control.checkpoint()
                 if (target == OfflineModuleId.LINUX_RUNTIME) {
@@ -358,8 +391,9 @@ internal object IsolatedModuleInstallerV3 {
                 val tmp = File(seal.parentFile, ".receipt-${UUID.randomUUID()}.part")
                 FileOutputStream(tmp).use { it.write(record.toString().toByteArray()); it.fd.sync() }
                 Files.move(tmp.toPath(), seal.toPath(), StandardCopyOption.ATOMIC_MOVE)
-                phase(target, ModulePhase.VERIFYING,
-                    "Yalnız özel rootfs ve doğrulanmış araçlar etkinleştiriliyor.")
+                onProgress(ModuleProgress(target,operation,ModulePhase.VERIFYING,
+                    detail="Yalnız özel rootfs ve doğrulanmış araçlar etkinleştiriliyor.",
+                    installUnitsCompleted=totalUnits,installUnitsTotal=totalUnits))
                 generation.commit(verify = { candidate ->
                     require(File(candidate, RECEIPT).isFile && AndroidRuntimeTrust.ready(candidate))
                     require(File(candidate, "var/lib/dpkg/status").isFile)
@@ -378,41 +412,44 @@ internal object IsolatedModuleInstallerV3 {
         }
     }
 
-    private suspend fun seedToolArchive(app: Context, namespace: ModuleIsolationV1.Layout,
-        staged: File, workspace: File, id: OfflineModuleId, operation: String,
-        control: DownloadControl, progress: (ModuleProgress) -> Unit) {
-        val destination = File(staged, "opt/appforge-device/cache").apply { mkdirs() }
-        if (id == OfflineModuleId.NODE_WEB) {
+    private data class ToolArchive(val name:String,val url:String,val sha256:String)
+
+    private fun toolArchives(app:Context,id:OfflineModuleId):List<ToolArchive> = when(id) {
+        OfflineModuleId.NODE_WEB -> {
             val architecture = if (Build.SUPPORTED_ABIS.contains("arm64-v8a")) "arm64" else "x64"
             val name = "node-v22.23.3-linux-$architecture.tar.xz"
             val hash = if (architecture == "arm64")
                 "a44aeb94849a299b22df10b9e622ec2f605c2183501bc40590705131de7c740f"
                 else "df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de"
-            val file = File(namespace.downloads, name)
-            val job = currentCoroutineContext()
-            VerifiedModuleDownload.download("https://nodejs.org/dist/v22.23.3/$name", hash,
-                file, id, operation, canceled = { !job.isActive ||
-                    control.request != DownloadControl.Request.NONE }, progress = progress)
-            copyToStage(file, File(destination, name), hash)
+            listOf(ToolArchive(name,"https://nodejs.org/dist/v22.23.3/$name",hash))
         }
-        if (id == OfflineModuleId.RUST) {
+        OfflineModuleId.RUST -> {
             val manifest = JSONObject(app.assets.open("device-build/rust-toolchain-v1.json")
                 .bufferedReader().use { it.readText() })
             val host = if (Build.SUPPORTED_ABIS.contains("arm64-v8a"))
                 "aarch64-unknown-linux-gnu" else "x86_64-unknown-linux-gnu"
-            val packages = manifest.getJSONArray("artifacts")
-            for (i in 0 until packages.length()) {
-                val item = packages.getJSONObject(i)
-                if (item.getString("host") != host) continue
-                val name = item.getString("file")
-                require(name.matches(Regex("[A-Za-z0-9_.-]+")))
-                val file = File(namespace.downloads, name)
-                val job = currentCoroutineContext()
-                VerifiedModuleDownload.download(item.getString("url"), item.getString("sha256"),
-                    file, id, operation, canceled = { !job.isActive ||
-                        control.request != DownloadControl.Request.NONE }, progress = progress)
-                copyToStage(file, File(destination, name), item.getString("sha256"))
-            }
+            val packages=manifest.getJSONArray("artifacts")
+            buildList {
+                for(i in 0 until packages.length()) {
+                    val item=packages.getJSONObject(i)
+                    if(item.getString("host")!=host)continue
+                    val name=item.getString("file")
+                    require(name.matches(Regex("[A-Za-z0-9_.-]+")))
+                    add(ToolArchive(name,item.getString("url"),item.getString("sha256")))
+                }
+            }.also { require(it.isNotEmpty()) }
+        }
+        else -> emptyList()
+    }
+
+    // This stage is strictly local: if a required archive is missing or changed,
+    // copyToStage rejects it. It never silently starts a new network download.
+    private fun seedToolArchive(namespace: ModuleIsolationV1.Layout,
+        staged: File, workspace: File, id: OfflineModuleId, archives:List<ToolArchive>) {
+        val destination = File(staged, "opt/appforge-device/cache").apply { mkdirs() }
+        for (archive in archives)
+            copyToStage(File(namespace.downloads,archive.name),File(destination,archive.name),archive.sha256)
+        if (id == OfflineModuleId.RUST) {
             val original = File(workspace, "runtime/apt-snapshot-lock.sh").readText()
             require(original.split("as_configure() {").size == 2)
             File(workspace, "runtime/rust-apt-base.sh")
