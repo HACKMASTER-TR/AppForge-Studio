@@ -1,3 +1,17 @@
+---
+type: status
+status: draft
+project: AppForge Studio
+created: 2026-11-26
+updated: 2026-11-26
+last_verified: 2026-11-26
+confidence: medium
+tags:
+  - device-acceptance
+  - r58-r62
+source_files: []
+---
+
 # R58–R62 / v579 cihaz kabulü
 
 Tek original-identity profil: `-PappforgeR58IntegratedDeviceCandidate=true`. Paket `com.appforge.studio`, versionCode 579, versionName 5.0.77-r58-r62-integrated. Eski izole/Play/release profilleri değiştirilmez. R31 sertifikası doğrulanmadan imzalı aday kabul edilmez.
