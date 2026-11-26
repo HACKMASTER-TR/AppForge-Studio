@@ -114,8 +114,8 @@ jobs:
       - name: Restore and verify the original R31 PKCS12 signer
         shell: bash
         env:
-          R31_KEYSTORE_B64: ${{ secrets.APPFORGE_R31_KEYSTORE_B64 }}
-          APPFORGE_R31_STORE_PASSWORD: ${{ secrets.APPFORGE_R31_STORE_PASSWORD }}
+          R31_KEYSTORE_B64: ${{ secrets.APPFORGE_R31_KEYSTORE_B64 || secrets.APPFORGE_DEBUG_KEYSTORE_B64 }}
+          APPFORGE_R31_STORE_PASSWORD: ${{ secrets.APPFORGE_R31_STORE_PASSWORD || secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
         run: |
           set -euo pipefail
           umask 077
@@ -138,13 +138,19 @@ jobs:
             echo R57W_STOP=ORIGINAL_SIGNER_SHA1_MISMATCH
             exit 43
           }
+          SHA256="$(sha256sum "$CERTFILE" | cut -d ' ' -f1)"
+          test "$SHA256" = "f04693e62080489f41554ff357bab0789bf87b864aa8c5a9927279667de9d91b" || {
+            echo R57W_STOP=ORIGINAL_SIGNER_SHA256_MISMATCH
+            exit 44
+          }
+          echo R57W_CERT_SHA256=PASS_ORIGINAL_CERTIFICATE_PIN
           echo "APPFORGE_R31_KEYSTORE_PATH=$KEYFILE" >> "$GITHUB_ENV"
           echo R57W_SIGNER_PREFLIGHT=PASS_ORIGINAL_PINNED_R31
 
       - name: Test and assemble signed R31-original v578 debug candidate
         shell: bash
         env:
-          APPFORGE_R31_STORE_PASSWORD: ${{ secrets.APPFORGE_R31_STORE_PASSWORD }}
+          APPFORGE_R31_STORE_PASSWORD: ${{ secrets.APPFORGE_R31_STORE_PASSWORD || secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
         run: |
           set -euo pipefail
           test -s "$APPFORGE_R31_KEYSTORE_PATH"
@@ -198,6 +204,11 @@ jobs:
           test "$CERT_SHA1" = "990EF33B990FD578E9DCE724348196F99B8807BF" || {
             echo R57W_STOP=APK_CERT_SHA1_MISMATCH
             exit 81
+          }
+          CERT_SHA256="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/r57w-apk-cert.txt" | tr '[:upper:]' '[:lower:]')"
+          test "$CERT_SHA256" = "f04693e62080489f41554ff357bab0789bf87b864aa8c5a9927279667de9d91b" || {
+            echo R57W_STOP=APK_CERT_SHA256_MISMATCH
+            exit 83
           }
           echo R57W_SIGNED_APK=PASS_ORIGINAL_CERTIFICATE
           python3 - <<'PY'
