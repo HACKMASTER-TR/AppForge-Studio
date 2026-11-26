@@ -261,7 +261,9 @@ internal object IsolatedModuleInstallerV3 {
             onProgress(ModuleProgress(target,operation,ModulePhase.CONNECTING,
                 detail="İmzalı Ubuntu arşivi hazırlanıyor.",acquisitionPending=true))
             IsolatedModuleRuntimeV2.stageFreshBaseline(app, target, true) { progress ->
-                control.checkpoint()
+                // Do not interrupt the baseline's atomic activation/seal window.
+                if(progress.stage==com.appforge.studio.terminal.LinuxInstallStage.DOWNLOADING)
+                    control.checkpoint()
                 val transfer=progress.transfer
                 if(transfer!=null) {
                     onProgress(transfer.copy(moduleId=target,operationId=operation,acquisitionPending=true))

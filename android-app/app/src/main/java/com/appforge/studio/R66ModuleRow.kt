@@ -69,7 +69,7 @@ internal object R66ModuleProgress {
         }
         val total=event?.installUnitsTotal
         val done=event?.installUnitsCompleted
-        if(total!=null && done!=null && total>0 && done in 0..total) {
+        if(event!=null && total!=null && done!=null && total>0 && done in 0..total) {
             val fraction=.50f+.35f*done/total
             val state=when(event.phase) {
                 // Some guest dependencies still download during installation.
