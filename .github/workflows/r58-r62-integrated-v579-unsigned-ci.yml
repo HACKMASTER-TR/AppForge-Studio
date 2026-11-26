@@ -1,4 +1,4 @@
-name: AppForge R58_R62 Original Identity v583 UNSIGNED Build Verification (NOT INSTALLABLE)
+name: AppForge R58_R62 Original Identity v584 UNSIGNED Build Verification (NOT INSTALLABLE)
 on:
   push:
     branches:
@@ -116,7 +116,7 @@ jobs:
           test -z "${APPFORGE_R31_KEYSTORE_PATH:-}"
           test -z "${APPFORGE_R31_STORE_PASSWORD:-}"
           gradle -p android-app :app:testDebugUnitTest :app:assembleDebug \
-            -PappforgeR67AcquisitionCandidate=true \
+            -PappforgeR68PinnedAndroidCandidate=true \
             -PappforgeR31UnsignedCI=true \
             -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/r31-kotlin-maven" \
             -PappforgeCIKotlinBomRepo="$RUNNER_TEMP/r31-kotlin-bom" \
@@ -133,7 +133,7 @@ jobs:
           test -s "$APK"
           unzip -tqq "$APK"
           BADGING="$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK")"
-          printf '%s\n' "$BADGING" | grep -F "package: name='com.appforge.studio' versionCode='583' versionName='5.0.81-r67-acquisition'" >/dev/null
+          printf '%s\n' "$BADGING" | grep -F "package: name='com.appforge.studio' versionCode='584' versionName='5.0.82-r68-pinned-android'" >/dev/null
           if "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$APK" >/dev/null 2>&1; then
             echo APPFORGE_R31_UNEXPECTED_SIGNED_APK=BLOCKED
             exit 81
@@ -151,7 +151,7 @@ jobs:
           mkdir -p r58-r62-unsigned
           cp "$APK" "r58-r62-unsigned/AppForgeStudio-R58_R62-V580-UNSIGNED-${GITHUB_SHA:0:12}.apk"
           (cd r58-r62-unsigned && sha256sum *.apk > SHA256SUMS.txt)
-          printf 'SOURCE_SHA=%s\nPACKAGE=com.appforge.studio\nVERSION_CODE=583\nVERSION_NAME=5.0.81-r67-acquisition\nAPK_SIGNED=NO\nDO_NOT_INSTALL_UNTIL_LOCAL_SIGNING=YES\n' "$GITHUB_SHA" > r58-r62-unsigned/UNSIGNED-READ-ME.txt
+          printf 'SOURCE_SHA=%s\nPACKAGE=com.appforge.studio\nVERSION_CODE=584\nVERSION_NAME=5.0.82-r68-pinned-android\nAPK_SIGNED=NO\nDO_NOT_INSTALL_UNTIL_LOCAL_SIGNING=YES\n' "$GITHUB_SHA" > r58-r62-unsigned/UNSIGNED-READ-ME.txt
           echo APPFORGE_R58_R62_UNSIGNED_ARTIFACT=VERIFIED_NOT_INSTALLABLE
       - uses: actions/upload-artifact@v4
         with:

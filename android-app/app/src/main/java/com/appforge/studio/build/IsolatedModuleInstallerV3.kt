@@ -239,11 +239,25 @@ internal object IsolatedModuleInstallerV3 {
         }
         control.checkpoint()
         val layout = IsolatedModuleRuntimeV2.layout(app.noBackupFilesDir, target, architecture)
-        // R67: acquire all pinned Node/Rust archives before extracting the base
-        // or creating a mutable tool generation. Guest SDK/Gradle resolution is
-        // still online-capable; this is not a complete offline admission gate.
+        // R68: also acquire pinned SDK, JDK, Gradle and NDK distribution files
+        // before extracting the base or creating a mutable tool generation.
+        // Dynamic Maven/npm/SDK metadata resolution remains online-capable.
         val installOrder = request.dependencyOrder.filter { it != OfflineModuleId.LINUX_RUNTIME }
         val archives = installOrder.associateWith { id -> toolArchives(app,id) }
+        val androidArchives=R68PinnedAndroidArchives.plan(
+            app.assets.open("device-build/verified-toolchain-sources-v4.json").bufferedReader().use { it.readText() },
+            installOrder,Build.SUPPORTED_ABIS.contains("arm64-v8a"))
+        for (archive in androidArchives) {
+            currentCoroutineContext().ensureActive()
+            control.checkpoint()
+            val job=currentCoroutineContext()
+            VerifiedModuleDownload.download(archive.url,archive.sha256,
+                File(layout.namespace.downloads,archive.name),target,operation,
+                canceled={ !job.isActive || control.request!=DownloadControl.Request.NONE },
+                open={ ModuleArtifactBroker.Companion.RedirectConnection(it) },
+                progress={ onProgress(it.copy(acquisitionPending=true)) },
+                maxBytes=2L*1024*1024*1024,expectedBytes=archive.bytes)
+        }
         for (id in installOrder) {
             for (archive in archives.getValue(id)) {
                 currentCoroutineContext().ensureActive()
@@ -294,6 +308,21 @@ internal object IsolatedModuleInstallerV3 {
                 canceled = { job.ensureActive(); control.checkpoint() }).use { generation ->
                 val staged = generation.root
                 DownloadInstrumentation.install(app, staged)
+                // Use the exact filenames consumed by the unchanged installer.
+                // Each file is SHA-256 checked again before the private stage copy.
+                if(androidArchives.isNotEmpty()) {
+                    val cache=File(staged,"opt/appforge-device/cache").apply { mkdirs() }
+                    for (archive in androidArchives) {
+                        job.ensureActive();control.checkpoint()
+                        val source=File(layout.namespace.downloads,archive.name)
+                        val destination=File(cache,archive.name)
+                        if(destination.exists()) {
+                            require(VerifiedArtifactCache.matches(destination,archive.sha256,archive.bytes)) {
+                                "R68_STAGE_ARCHIVE_MISMATCH:${archive.name}"
+                            }
+                        } else copyToStage(source,destination,archive.sha256)
+                    }
+                }
                 var completedUnits=0
                 val totalUnits=installOrder.size.coerceAtLeast(1)
                 fun observed(event:ModuleProgress):ModuleProgress = event.copy(
@@ -337,6 +366,17 @@ internal object IsolatedModuleInstallerV3 {
                     }
                     onProgress(observed(ModuleProgress(id,operation,ModulePhase.OFFLINE_TEST,
                         detail="${id.name}: gerçek çevrimdışı fonksiyon testi çalıştırılıyor.")))
+                    // Verify the actual prepared Android/Python Gradle cache with a
+                    // fresh warmup project and Gradle --offline before acceptance.
+                    // This is a Gradle offline resolution gate, not a network sandbox
+                    // or a promise that arbitrary future project dependencies exist.
+                    if(id in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID)) {
+                        val mode=if(id==OfflineModuleId.ANDROID_CORE)"android" else "python"
+                        OfflineBuildPackManager.executeIsolatedForAcceptance(app,staged,
+                            workspace,id,operation,
+                            "APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/prepare-offline-pack.sh $mode",
+                            { onProgress(observed(it)) },control)
+                    }
                     OfflineBuildPackManager.executeIsolatedForAcceptance(app, staged,
                         workspace, id, operation,
                         (if (id == OfflineModuleId.EXPO_REACT_NATIVE)

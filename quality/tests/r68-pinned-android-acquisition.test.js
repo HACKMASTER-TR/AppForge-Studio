@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const root=new URL('../../',import.meta.url);
+const read=p=>fs.readFileSync(new URL(p,root),'utf8');
+const java='android-app/app/src/main/java/com/appforge/studio/build/';
+const assets='android-app/app/src/main/assets/device-build/';
+const plan=read(java+'R68PinnedAndroidArchives.kt');
+const installer=read(java+'IsolatedModuleInstallerV3.kt');
+const toolchain=read(assets+'install-toolchain.sh');
+const catalog=JSON.parse(read(assets+'verified-toolchain-sources-v4.json'));
+test('R68 uses existing distribution pins and prefetches before mutation',()=>{
+ const start=installer.indexOf('suspend fun installSelected(');
+ const p=installer.indexOf('R68PinnedAndroidArchives.plan(',start);
+ const fetch=installer.indexOf('VerifiedModuleDownload.download(archive.url,archive.sha256',p);
+ const baseline=installer.indexOf('IsolatedModuleRuntimeV2.stageFreshBaseline',fetch);
+ const mutate=installer.indexOf('RuntimeGenerationStore(root).prepareOwner',baseline);
+ assert(start>=0 && p>start && fetch>p && baseline>fetch && mutate>baseline);
+ for(const x of catalog)assert.ok(plan.includes(x.file),x.file);
+ for(const hash of plan.matchAll(/"[a-f0-9]{64}"/g))assert.ok(toolchain.includes(hash[0].slice(1,-1)),hash[0]);
+ assert.match(installer,/VerifiedArtifactCache\.matches\(destination,archive\.sha256,archive\.bytes\)/);
+ assert.match(installer,/copyToStage\(source,destination,archive\.sha256\)/);
+ assert.match(installer,/ModuleArtifactBroker\.Companion\.RedirectConnection/);
+});
+test('R68 retains real Gradle offline replay and explicitly acknowledges online preparation',()=>{
+ assert.match(installer,/APPFORGE_DEVICE_OFFLINE=1 \/bin\/sh \/workspace\/runtime\/prepare-offline-pack.sh \$mode/);
+ assert.match(installer,/APPFORGE_DEVICE_OFFLINE=0/);
+ assert.match(read(assets+'prepare-offline-pack.sh'),/set -- --offline/);
+ assert.match(installer,/require\(ready\(app, target\)\)/);
+});
