@@ -1,0 +1,196 @@
+name: AppForge R57V Expo 54 Rust ARM64 JNI Gradle Compile (NO APK)
+
+on:
+  push:
+    branches:
+      - codex/r57v-expo-rust-jni-compile-20261126
+    paths:
+      - .github/workflows/r57v-expo-rust-jni-compile-ci.yml
+      - 'examples/rust-expo-jsi/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appforge-r57v-expo-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  expo-android-native-compile:
+    name: Expo 54 Android AGP + Rust/JSI JNI arm64 compile only (NO APK)
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      npm_config_audit: 'false'
+      npm_config_fund: 'false'
+      npm_config_update_notifier: 'false'
+      GRADLE_USER_HOME: ${{ runner.temp }}/r57v/gradle-home
+    steps:
+      - name: Checkout isolated R57V source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Guard baseline, example scope and no APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          test "$GITHUB_REF_NAME" = codex/r57v-expo-rust-jni-compile-20261126
+          git merge-base --is-ancestor ccd43aeed34eda5fa2148da9b17e9eb7ecca188e HEAD
+          test -s examples/rust-expo-jsi/package-lock.json
+          test -s examples/rust-expo-jsi/Cargo.lock
+          test -s examples/rust-expo-jsi/native/CMakeLists.txt
+          mkdir -p "$RUNNER_TEMP/r57v/report" "$RUNNER_TEMP/r57v/npm-cache"
+          echo R57V_BASE=PASS_MAIN_CCD43AE
+          echo R57V_HOST=PASS_LINUX_X86_64_CROSS_COMPILE_ANDROID_ARM64
+          echo R57V_APK_BUILD=NOT_ATTEMPTED
+          echo R57V_APK_SIGNING=NOT_ATTEMPTED
+          echo R57V_DEVICE_INSTALL=NOT_ATTEMPTED
+
+      - name: Set up Node 22.23.3
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.3'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install exact Android SDK 36 NDK r27b and CMake 3.22.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;27.1.12297006" \
+            "cmake;3.22.1"
+          test -s "$ANDROID_HOME/platforms/android-36/android.jar"
+          test -x "$ANDROID_HOME/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang"
+          test -x "$ANDROID_HOME/cmake/3.22.1/bin/cmake"
+          echo R57V_ANDROID_TOOLCHAIN=PASS_SDK36_NDK_R27B_CMAKE3221
+
+      - name: Prepare clean Expo example and npm lockfile dependencies
+        shell: bash
+        env:
+          npm_config_cache: ${{ runner.temp }}/r57v/npm-cache
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/r57v/project"
+          cp -a examples/rust-expo-jsi/. "$RUNNER_TEMP/r57v/project/"
+          cd "$RUNNER_TEMP/r57v/project"
+          test ! -e android
+          npm ci --ignore-scripts --no-audit --no-fund --no-progress
+          node - <<'NODE'
+          const assert = require('node:assert/strict');
+          for (const [key,version] of Object.entries({expo:'54.0.22','react-native':'0.81.5',react:'19.1.0'})) {
+            assert.equal(require(key+'/package.json').version,version);
+          }
+          console.log('R57V_NPM_CI=PASS_EXPO54_RN081_LOCK');
+          NODE
+
+      - name: Generate real Expo Android Gradle project
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/r57v/project"
+          ./node_modules/.bin/expo prebuild --platform android --no-install --clean
+          test -s android/settings.gradle
+          test -s android/app/build.gradle
+          test -s android/gradle/wrapper/gradle-wrapper.properties
+          grep -F 'gradle-8.14.3-bin.zip' android/gradle/wrapper/gradle-wrapper.properties
+          grep -F 'APPFORGE_AUTHORED_RUST_JSI' android/app/build.gradle
+          test -s android/app/src/main/cpp/CMakeLists.txt
+          echo R57V_EXPO_PREBUILD=PASS_GRADLE_8143_JSI
+
+      - name: Cross-compile pinned Rust 1.85.1 JSI cdylib for Android API 26 arm64
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/r57v/project"
+          rustup toolchain install 1.85.1 --profile minimal
+          rustup target add aarch64-linux-android --toolchain 1.85.1
+          TOOLCHAIN="$ANDROID_HOME/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64"
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TOOLCHAIN/bin/aarch64-linux-android26-clang"
+          export RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384 -C link-arg=-Wl,-z,common-page-size=16384"
+          cargo +1.85.1 build --locked --release --target aarch64-linux-android
+          LIB="target/aarch64-linux-android/release/libappforge_jsi.so"
+          test -s "$LIB"
+          file "$LIB"
+          readelf -h "$LIB" | grep -F 'AArch64'
+          readelf -h "$LIB" | grep -F 'DYN (Shared object file)'
+          nm -D "$LIB" | grep -F 'appforge_jsi_answer'
+          readelf -lW "$LIB" | awk '$1=="LOAD" {seen++; if($NF!="0x4000") bad++} END {if(!seen || bad) exit 1}'
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          install -m 644 "$LIB" android/app/src/main/jniLibs/arm64-v8a/libappforge_jsi.so
+          echo R57V_RUST_CDYLIB=PASS_ARM64_API26_ELF_16K_EXPORTED
+
+      - name: Resolve actual Android Gradle Plugin and compile classpath
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/r57v/project/android"
+          chmod +x gradlew
+          ./gradlew :app:dependencies \
+            --configuration debugCompileClasspath \
+            --no-daemon --no-watch-fs --max-workers=2 --stacktrace \
+            > "$RUNNER_TEMP/r57v/report/gradle-dependencies.log" 2>&1 \
+            || { tail -n 140 "$RUNNER_TEMP/r57v/report/gradle-dependencies.log"; exit 1; }
+          if grep -E '(^| )FAILED( |$)' "$RUNNER_TEMP/r57v/report/gradle-dependencies.log"; then
+            echo R57V_AGP=FAIL_UNRESOLVED_DEPENDENCY
+            exit 1
+          fi
+          echo R57V_AGP=PASS_REAL_DEBUG_CLASSPATH_RESOLUTION
+
+      - name: Compile Android Java Kotlin and native C++ JNI without packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/r57v/project/android"
+          ./gradlew :app:compileDebugKotlin :app:compileDebugJavaWithJavac :app:externalNativeBuildDebug \
+            --no-daemon --no-watch-fs --max-workers=2 --stacktrace \
+            > "$RUNNER_TEMP/r57v/report/android-native-compile.log" 2>&1 \
+            || { tail -n 180 "$RUNNER_TEMP/r57v/report/android-native-compile.log"; exit 1; }
+          grep -F 'BUILD SUCCESSFUL' "$RUNNER_TEMP/r57v/report/android-native-compile.log"
+          find app/build -type f -name 'libappforge_rust_jsi.so' -size +0c -print \
+            | grep -F 'libappforge_rust_jsi.so'
+          echo R57V_JAVA_KOTLIN=PASS_COMPILED
+          echo R57V_CMAKE_JNI=PASS_REAL_ARM64_LINK
+          echo R57V_RESULT=PASS_EXPO54_RN081_ANDROID_AGP_RUST_JNI_NO_APK
+
+      - name: Write fail-closed boundaries and evidence summary
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/r57v/report"
+          {
+            printf 'R57V_COMMIT=%s\n' "$GITHUB_SHA"
+            printf 'R57V_SOURCE=ISOLATED_RUNNER_TEMP\n'
+            printf 'R57V_APK_BUILD=NOT_ATTEMPTED\n'
+            printf 'R57V_APK_SIGNING=NOT_ATTEMPTED\n'
+            printf 'R57V_DEVICE_INSTALL=NOT_ATTEMPTED\n'
+            printf 'R57V_PHYSICAL_ACCEPTANCE=NOT_ATTEMPTED\n'
+          } > "$RUNNER_TEMP/r57v/report/boundary.txt"
+          cat "$RUNNER_TEMP/r57v/report/boundary.txt"
+
+      - name: Upload text-only diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appforge-r57v-reference-logs-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/r57v/report/boundary.txt
+            ${{ runner.temp }}/r57v/report/gradle-dependencies.log
+            ${{ runner.temp }}/r57v/report/android-native-compile.log
+          retention-days: 7
+          if-no-files-found: warn
