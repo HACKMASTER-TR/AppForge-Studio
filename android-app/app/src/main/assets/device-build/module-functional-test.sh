@@ -95,9 +95,10 @@ PY
   echo 'APPFORGE_RUST_HOST_ELF_EXECUTION=NOT_TESTED_LINKER_NOT_BUNDLED'
   ;;
  RUST_ANDROID_NDK|EXPO_REACT_NATIVE)
-  printf '%s\n' 'int appforge_offline_answer(void) { return 42; }' > "$WORK/probe.c"
-  "$ROOT/android-sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" --target=aarch64-linux-android26 -shared -fPIC "$WORK/probe.c" -o "$WORK/libprobe.so"
-  [ -s "$WORK/libprobe.so" ]
+  # Reuse the exact pinned API26 linker discovery + real ELF validation
+  # already required by the Rust installer. No bare host clang invocation.
+  /usr/bin/python3.12 -I -S /workspace/runtime/rust-android.py --probe-linker --sdk "$ROOT/android-sdk"
+  echo 'APPFORGE_R63_NATIVE_API26_FUNCTIONAL_LINK=PASS'
   # This is a real Android native compilation, not an Expo project/phone execution claim.
   ;;
  WINDOWS_NATIVE)

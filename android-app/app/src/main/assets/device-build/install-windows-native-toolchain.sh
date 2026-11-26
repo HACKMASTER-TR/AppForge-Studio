@@ -363,8 +363,21 @@ restore_signed_posix_driver() {
   echo "APPFORGE_WINDOWS_${kind}_SIGNED_DRIVER_RESTORED=PASS"
 }
 repair_mingw_links() {
-  restore_signed_posix_driver gcc
-  restore_signed_posix_driver gxx
+  for repair_kind in gcc gxx;do
+    if restore_signed_posix_driver "$repair_kind";then
+      :
+    else
+      repair_status=$?
+      # Only the currently authenticated APT transaction may defer direct
+      # execution. Signed-byte + explicit-loader proof is NOT readiness.
+      if [ "$repair_status" = 75 ] &&
+         [ "${APPFORGE_R63_WINDOWS_APT_REPAIR_ONLY:-0}" = 1 ];then
+        echo "APPFORGE_R63_WINDOWS_${repair_kind}_EXEC_DEFERRED_UNTIL_LOCK"
+      else
+        return "$repair_status"
+      fi
+    fi
+  done
 }
 
 repair_interrupted_dpkg() {
@@ -387,7 +400,7 @@ repair_interrupted_dpkg() {
 
   echo "APPFORGE_WINDOWS_NATIVE_DPKG_REPAIR=START"
 
-  repair_mingw_links
+  repair_mingw_links || return $?
   # Satisfy the C compiler dependency before g++'s postinst alternatives.
   # Already-configured packages must not be needlessly reconfigured.
   gcc_state=$(dpkg-query -W -f='${db:Status-Abbrev}' gcc-mingw-w64-x86-64-posix 2>/dev/null || true)
@@ -408,7 +421,7 @@ repair_interrupted_dpkg() {
       };;
     *) echo 'APPFORGE_WINDOWS_GXX_POSIX_STATE_UNVERIFIED' >&2;return 44;;
   esac
-  dpkg --configure -a
+  dpkg --configure -a || return $?
 
   echo "APPFORGE_WINDOWS_NATIVE_DPKG_REPAIR=PASS"
 }
@@ -448,6 +461,18 @@ CPP
   rm -rf "$smoke"
 }
 
+# Called only by the signed APT lock owner after a failed dpkg transaction.
+# This mode can repair package configuration, but cannot publish READY.
+if [ "${APPFORGE_R63_WINDOWS_APT_REPAIR_ONLY:-0}" = 1 ];then
+  [ "$APPFORGE_MODULE_ID" = WINDOWS_NATIVE ] &&
+  [ "${APPFORGE_APT_MANAGED_INSTALL:-0}" = 1 ] &&
+  [ "${APPFORGE_R2_RELEASE_AUTHORIZED:-0}" = 1 ] || exit 60
+  repair_interrupted_dpkg || exit $?
+  [ -z "$(dpkg --audit)" ] || exit 60
+  echo 'APPFORGE_R63_WINDOWS_APT_REPAIR_COMPLETE_PENDING_LOCK'
+  exit 0
+fi
+
 repair_interrupted_dpkg
 
 WINDOWS_LOCK="/opt/appforge-device/apt-locks-v5/WINDOWS_NATIVE/snapshot-v1"
@@ -456,7 +481,27 @@ have_windows_lock() {
   find "$WINDOWS_LOCK" -mindepth 2 -maxdepth 2 -name installed.tsv -type f -print -quit | grep -q .
 }
 
-if [ "${APPFORGE_MODULE_REFRESH:-0}" != 1 ] && have_tools && have_windows_lock; then
+# After lock publication, a stale PRoot namespace may still reject a
+# verified driver. A fresh session is bounded by the Android caller.
+require_direct_windows_drivers() {
+  for probe_driver in /usr/bin/x86_64-w64-mingw32-gcc-posix /usr/bin/x86_64-w64-mingw32-g++-posix;do
+    if "$probe_driver" --version >/dev/null 2>&1;then
+      continue
+    fi
+    if [ -x /lib/ld-linux-aarch64.so.1 ] &&
+       /lib/ld-linux-aarch64.so.1 --library-path /lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu "$probe_driver" --version >/dev/null 2>&1;then
+      echo 'APPFORGE_WINDOWS_NATIVE_PROROOT_REENTRY_REQUIRED' >&2
+      return 75
+    fi
+    echo "APPFORGE_R63_WINDOWS_DIRECT_DRIVER_FAILED=${probe_driver##*/}" >&2
+    return 44
+  done
+}
+
+if { [ "${APPFORGE_MODULE_REFRESH:-0}" != 1 ] ||
+     [ "${APPFORGE_R63_WINDOWS_REENTRY:-0}" = 1 ]; } && have_windows_lock; then
+  require_direct_windows_drivers || exit $?
+  have_tools || exit 60
   verify_smoke
 
   printf '%s\n' \
@@ -534,10 +579,11 @@ if ! install_packages; then
   exit 60
 fi
 
-repair_mingw_links
-
-have_tools
-
+# Never publish readiness before the original APT transaction is verified.
+have_windows_lock || exit 60
+require_direct_windows_drivers || exit $?
+repair_mingw_links || exit $?
+have_tools || exit 60
 verify_smoke
 
 printf '%s\n' \

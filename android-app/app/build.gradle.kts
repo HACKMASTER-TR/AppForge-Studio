@@ -518,8 +518,10 @@ require(!appforgeV9R2Isolated3UpgradeV551R30 ||
 // pinned Google Cloud Android OAuth SHA-1. CI enforces the certificate.
 // R58-R62: one explicit original-identity device candidate profile. Historical
 // debug/Play/release modes remain unchanged; no automatic signing or publishing.
+val appforgeR63PhysicalRepairCandidate =
+    providers.gradleProperty("appforgeR63PhysicalRepairCandidate").orNull == "true"
 val appforgeR58IntegratedDeviceCandidate =
-    providers.gradleProperty("appforgeR58IntegratedDeviceCandidate").orNull == "true"
+    providers.gradleProperty("appforgeR58IntegratedDeviceCandidate").orNull == "true" || appforgeR63PhysicalRepairCandidate
 val appforgeR31OriginalIdentity =
     providers.gradleProperty("appforgeR31OriginalIdentity").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 // R32 only: in-place original-identity upgrade from versionCode 554.
@@ -1241,7 +1243,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR58IntegratedDeviceCandidate) {
+                if (appforgeR63PhysicalRepairCandidate) {
+                    output.versionCode.set(580)
+                    output.versionName.set("5.0.78-r63-physical-repair")
+                } else if (appforgeR58IntegratedDeviceCandidate) {
                     output.versionCode.set(579)
                     output.versionName.set("5.0.77-r58-r62-integrated")
                 } else if (appforgeR57WOriginalIdentityUpgrade) {

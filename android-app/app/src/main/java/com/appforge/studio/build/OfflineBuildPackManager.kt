@@ -533,7 +533,7 @@ internal object OfflineBuildPackManager {
         file.inputStream().use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;update(b,0,n)}}
         digest().joinToString(""){"%02x".format(it)}
     }
-    private fun recipeDigest(context:Context,id:OfflineModuleId,historicalNode:Boolean=false):String {
+    private fun recipeDigest(context:Context,id:OfflineModuleId,historicalNode:Boolean=false,historicalR63:Boolean=false):String {
         val names=when(id) {
             OfflineModuleId.RUST_ANDROID_NDK->listOf("install-toolchain.sh","install-ndk-host-isolated-v7.sh","rust-android.py","rust-layout.py","rust-project.py")
             OfflineModuleId.RUST->listOf("install-rust-module.py","install-rust-prerequisites.sh","rust-toolchain-v1.json")
@@ -543,15 +543,19 @@ internal object OfflineBuildPackManager {
         }+listOf("apt-acquire-observer.sh","apt-acquire-observer.awk","apt-acquire-emit.sh","apt-download-telemetry.sh","apt-snapshot-lock.sh","apt-snapshot-profile.tsv","apt-module-packages-v1.tsv","module-download-telemetry.sh","native-download-broker.sh","jvm-telemetry/network-byte-agent.jar","verified-toolchain-sources-v4.json")
         val hash=java.security.MessageDigest.getInstance("SHA-256")
         hash.update("ownership-probe-v8-apt-snapshot".toByteArray())
-        for(name in names.sorted()){hash.update(name.toByteArray());context.assets.open("device-build/"+(if(historicalNode && name in setOf("apt-snapshot-lock.sh","native-download-broker.sh"))"recipe-history/a9c1739/$name" else name)).use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;hash.update(b,0,n)}}}
-        if(!historicalNode)context.assets.open("device-build/module-functional-test.sh").use { input ->
+        for(name in names.sorted()){hash.update(name.toByteArray());context.assets.open("device-build/"+(if(historicalNode && name in setOf("apt-snapshot-lock.sh","native-download-broker.sh"))"recipe-history/a9c1739/$name" else if(historicalR63 && name in setOf("apt-snapshot-lock.sh","install-toolchain.sh"))"recipe-history/370a2f2/$name" else name)).use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;hash.update(b,0,n)}}}
+        if(!historicalNode)context.assets.open(if(historicalR63)"device-build/recipe-history/370a2f2/module-functional-test.sh" else "device-build/module-functional-test.sh").use { input ->
             hash.update("module-functional-test.sh".toByteArray());hash.update(input.readBytes())
         }
         return hash.digest().joinToString(""){"%02x".format(it)}
     }
     private fun recipeAccepted(context:Context,id:OfflineModuleId,recorded:String):Boolean =
         ModuleRecipeCompatibility.accepts(id,recorded,recipeDigest(context,id)) ||
-            (id==OfflineModuleId.NODE_WEB && recorded==recipeDigest(context,id,historicalNode=true))
+            (id==OfflineModuleId.NODE_WEB && recorded==recipeDigest(context,id,historicalNode=true)) ||
+            // These module execution paths are unchanged by the scoped R63 fixes.
+            // Existing version, ownership, witness and signed-lock checks still apply.
+            (id in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.NODE_WEB,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.RUST) &&
+                recorded==recipeDigest(context,id,historicalR63=true))
     fun installedVersion(context:Context,id:OfflineModuleId):String?=runCatching {
         val root=runtimeRootfs(context)?:return@runCatching null
         val f=receipt(root,id);require(f.isFile && f.length()<=16384 && !java.nio.file.Files.isSymbolicLink(f.toPath()))
@@ -901,7 +905,7 @@ internal object OfflineBuildPackManager {
                 ModulePhase.PREPARING,
                 detail="Doğrulanmış MinGW sürücüsü için PRoot oturumu yenileniyor (${windowsProrootReentry + 1}/2)."))
             execute(shell,rootfs,workspace,"$suffix-reentry-${windowsProrootReentry + 1}",
-                command,module,operation,progress,control,r2Authorized,windowsProrootReentry+1,diagnosticBase)
+                "APPFORGE_R63_WINDOWS_REENTRY=1 $command",module,operation,progress,control,r2Authorized,windowsProrootReentry+1,diagnosticBase)
             return@coroutineScope
         }
         // R53: persist Rust linker errors on every failed install, even when

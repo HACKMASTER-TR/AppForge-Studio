@@ -1,4 +1,4 @@
-name: AppForge R58_R62 Original Identity v579 UNSIGNED Build Verification (NOT INSTALLABLE)
+name: AppForge R58_R62 Original Identity v580 UNSIGNED Build Verification (NOT INSTALLABLE)
 on:
   push:
     branches:
@@ -54,6 +54,7 @@ jobs:
           python3 tests/test_r54_shell_capture_tail.py
           python3 tests/test_r57w_original_inplace_v578.py
           python3 tests/test_r58_r62_integrated_candidate.py
+          python3 tests/test_r63_physical_repair.py
           python3 scripts/generate-second-brain-snapshot.py --check
           echo APPFORGE_R58_R62_UNSIGNED_SOURCE_PREFLIGHT=PASS
       - uses: actions/setup-java@v4
@@ -114,7 +115,7 @@ jobs:
           test -z "${APPFORGE_R31_KEYSTORE_PATH:-}"
           test -z "${APPFORGE_R31_STORE_PASSWORD:-}"
           gradle -p android-app :app:testDebugUnitTest :app:assembleDebug \
-            -PappforgeR58IntegratedDeviceCandidate=true \
+            -PappforgeR63PhysicalRepairCandidate=true \
             -PappforgeR31UnsignedCI=true \
             -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/r31-kotlin-maven" \
             -PappforgeCIKotlinBomRepo="$RUNNER_TEMP/r31-kotlin-bom" \
@@ -131,7 +132,7 @@ jobs:
           test -s "$APK"
           unzip -tqq "$APK"
           BADGING="$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK")"
-          printf '%s\n' "$BADGING" | grep -F "package: name='com.appforge.studio' versionCode='579' versionName='5.0.77-r58-r62-integrated'" >/dev/null
+          printf '%s\n' "$BADGING" | grep -F "package: name='com.appforge.studio' versionCode='580' versionName='5.0.78-r63-physical-repair'" >/dev/null
           if "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$APK" >/dev/null 2>&1; then
             echo APPFORGE_R31_UNEXPECTED_SIGNED_APK=BLOCKED
             exit 81
@@ -147,9 +148,9 @@ jobs:
           print('APPFORGE_R31_UNIT_TESTS=PASS')
           PY
           mkdir -p r58-r62-unsigned
-          cp "$APK" "r58-r62-unsigned/AppForgeStudio-R58_R62-V579-UNSIGNED-${GITHUB_SHA:0:12}.apk"
+          cp "$APK" "r58-r62-unsigned/AppForgeStudio-R58_R62-V580-UNSIGNED-${GITHUB_SHA:0:12}.apk"
           (cd r58-r62-unsigned && sha256sum *.apk > SHA256SUMS.txt)
-          printf 'SOURCE_SHA=%s\nPACKAGE=com.appforge.studio\nVERSION_CODE=579\nVERSION_NAME=5.0.77-r58-r62-integrated\nAPK_SIGNED=NO\nDO_NOT_INSTALL_UNTIL_LOCAL_SIGNING=YES\n' "$GITHUB_SHA" > r58-r62-unsigned/UNSIGNED-READ-ME.txt
+          printf 'SOURCE_SHA=%s\nPACKAGE=com.appforge.studio\nVERSION_CODE=580\nVERSION_NAME=5.0.78-r63-physical-repair\nAPK_SIGNED=NO\nDO_NOT_INSTALL_UNTIL_LOCAL_SIGNING=YES\n' "$GITHUB_SHA" > r58-r62-unsigned/UNSIGNED-READ-ME.txt
           echo APPFORGE_R58_R62_UNSIGNED_ARTIFACT=VERIFIED_NOT_INSTALLABLE
       - uses: actions/upload-artifact@v4
         with:
