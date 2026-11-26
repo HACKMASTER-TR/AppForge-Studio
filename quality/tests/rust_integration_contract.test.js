@@ -18,7 +18,11 @@ test('Compact module screen hides removed tabs while preserving guarded lifecycl
  assert.doesNotMatch(ui,/DropdownMenu/);
  assert.match(ui,/R66ModuleRow\(module=module/);
  assert.doesNotMatch(ui,/pendingLifecycle=selected to "rollback"/);
- assert.match(ui,/require\(permission\.allowed\)/);
+ assert.match(ui,/enabled=!busy && permission\?\.allowed==true/);
+ const manager=read('android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt');
+ const remove=manager.slice(manager.indexOf('suspend fun removeOwnedModule('));
+ assert.match(remove,/require\(permission\.allowed\)/);
+ assert.match(remove,/lifecycleStatus\(context,id/);
  assert.match(ui,/val section="modules"/);
  for(const removed of [
    /ModuleManagerNavigation\(/,
