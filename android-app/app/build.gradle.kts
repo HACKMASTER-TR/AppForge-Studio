@@ -516,25 +516,29 @@ require(!appforgeV9R2Isolated3UpgradeV551R30 ||
 // R31 original identity is opt-in and may NEVER use an isolated package suffix.
 // Do not publish unless the actual signing certificate matches the
 // pinned Google Cloud Android OAuth SHA-1. CI enforces the certificate.
+// R58-R62: one explicit original-identity device candidate profile. Historical
+// debug/Play/release modes remain unchanged; no automatic signing or publishing.
+val appforgeR58IntegratedDeviceCandidate =
+    providers.gradleProperty("appforgeR58IntegratedDeviceCandidate").orNull == "true"
 val appforgeR31OriginalIdentity =
-    providers.gradleProperty("appforgeR31OriginalIdentity").orNull == "true"
+    providers.gradleProperty("appforgeR31OriginalIdentity").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 // R32 only: in-place original-identity upgrade from versionCode 554.
 // R31 remains 554 unless this explicitly selected flag is enabled.
 val appforgeR32OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR32OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR32OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR32OriginalIdentityUpgrade || appforgeR31OriginalIdentity) {
     "R32 original identity upgrade requires the existing R31 signing contract."
 }
 // R33 only: retain R31 signing identity, upgrade R32 code 555 -> 556.
 val appforgeR33OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR33OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR33OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR33OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade)) {
     "R33 requires original identity and the explicit R32 upgrade contract."
 }
 // R34 only: 556 -> 557 with unchanged R31/R32/R33 signature identity.
 val appforgeR34OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR34OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR34OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR34OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade)) {
@@ -542,7 +546,7 @@ require(!appforgeR34OriginalIdentityUpgrade ||
 }
 // R35: diagnostic-only in-place original-identity upgrade 557 -> 558.
 val appforgeR35OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR35OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR35OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR35OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade)) {
@@ -550,7 +554,7 @@ require(!appforgeR35OriginalIdentityUpgrade ||
 }
 // R36: original-identity upgrade 558 -> 559; only diagnostic-persistence fix.
 val appforgeR36OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR36OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR36OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR36OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -559,7 +563,7 @@ require(!appforgeR36OriginalIdentityUpgrade ||
 }
 // R37: isolated CMake early-patch candidate; preserve original package/signing identity.
 val appforgeR37OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR37OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR37OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR37OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -568,7 +572,7 @@ require(!appforgeR37OriginalIdentityUpgrade ||
 }
 // R38: guest-only signed librhash CMake candidate; original identity chain intact.
 val appforgeR38OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR38OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR38OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR38OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -578,7 +582,7 @@ require(!appforgeR38OriginalIdentityUpgrade ||
 }
 // R39 diagnostic only: preserve R38 functionality and original certificate chain.
 val appforgeR39OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR39OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR39OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR39OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -588,7 +592,7 @@ require(!appforgeR39OriginalIdentityUpgrade ||
 }
 // R40: signed CMake shared-library closure; keep complete original identity chain.
 val appforgeR40OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR40OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR40OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR40OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -599,7 +603,7 @@ require(!appforgeR40OriginalIdentityUpgrade ||
 }
 // R41: signed guest clang source-read probe, preserving R40's CMake closure.
 val appforgeR41OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR41OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR41OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR41OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -610,7 +614,7 @@ require(!appforgeR41OriginalIdentityUpgrade ||
 }
 // R42: verified bounded Clang SONAME symlink closure; same original identity.
 val appforgeR42OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR42OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR42OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR42OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -622,7 +626,7 @@ require(!appforgeR42OriginalIdentityUpgrade ||
 }
 // R43: guest-native Clang must locate the verified private LLD at link time.
 val appforgeR43OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR43OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR43OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR43OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -634,7 +638,7 @@ require(!appforgeR43OriginalIdentityUpgrade ||
 }
 // R44: signed Ubuntu guest LLD runtime; no installed data migration.
 val appforgeR44OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR44OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR44OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR44OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -647,7 +651,7 @@ require(!appforgeR44OriginalIdentityUpgrade ||
 }
 // R45: use R44's verified guest LLD from the actual Android NDK linker.
 val appforgeR45OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR45OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR45OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR45OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -660,7 +664,7 @@ require(!appforgeR45OriginalIdentityUpgrade ||
 }
 // R46: select byte-verified guest Ubuntu LLD via Clang --ld-path.
 val appforgeR46OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR46OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR46OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR46OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -674,7 +678,7 @@ require(!appforgeR46OriginalIdentityUpgrade ||
 }
 // R47: enable byte-authenticated guest Clang C++ driver for real source paths.
 val appforgeR47OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR47OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR47OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR47OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -688,7 +692,7 @@ require(!appforgeR47OriginalIdentityUpgrade ||
 }
 // R48: byte-verified native guest llvm-ar in the translated PRoot namespace.
 val appforgeR48OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR48OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR48OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR48OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -703,7 +707,7 @@ require(!appforgeR48OriginalIdentityUpgrade ||
 }
 // R49: discover only authenticated AppForge NDK ARM64 API26 linker.
 val appforgeR49OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR49OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR49OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR49OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -718,7 +722,7 @@ require(!appforgeR49OriginalIdentityUpgrade ||
 }
 // R50: private Android API26 sysroot linker for real Rust JNI validation.
 val appforgeR50OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR50OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR50OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR50OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -734,7 +738,7 @@ require(!appforgeR50OriginalIdentityUpgrade ||
 }
 // R51: verify API26 startup objects and Bionic link libraries for Rust.
 val appforgeR51OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR51OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR51OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR51OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -750,7 +754,7 @@ require(!appforgeR51OriginalIdentityUpgrade ||
 }
 // R52: original-identity upgrade gated on the complete R51 chain.
 val appforgeR52OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR52OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR52OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR52OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -767,7 +771,7 @@ require(!appforgeR52OriginalIdentityUpgrade ||
 }
 // R53: diagnostics-only original identity upgrade, retaining the R52 toolchain.
 val appforgeR53OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR53OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR53OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR53OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -785,7 +789,7 @@ require(!appforgeR53OriginalIdentityUpgrade ||
 // R54: retain the R53 original-identity chain while making bounded shell
 // diagnostics include the end of long native toolchain output.
 val appforgeR54OriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR54OriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR54OriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR54OriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR32OriginalIdentityUpgrade &&
      appforgeR33OriginalIdentityUpgrade && appforgeR34OriginalIdentityUpgrade &&
@@ -804,7 +808,7 @@ require(!appforgeR54OriginalIdentityUpgrade ||
 // R57W: incremental original-identity update, only after the complete R54 chain.
 // The package identity and original R31 signing certificate stay unchanged.
 val appforgeR57WOriginalIdentityUpgrade =
-    providers.gradleProperty("appforgeR57WOriginalIdentityUpgrade").orNull == "true"
+    providers.gradleProperty("appforgeR57WOriginalIdentityUpgrade").orNull == "true" || appforgeR58IntegratedDeviceCandidate
 require(!appforgeR57WOriginalIdentityUpgrade ||
     (appforgeR31OriginalIdentity && appforgeR54OriginalIdentityUpgrade)) {
     "R57W requires the existing R54 original-identity upgrade and signer chain."
@@ -1237,7 +1241,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR57WOriginalIdentityUpgrade) {
+                if (appforgeR58IntegratedDeviceCandidate) {
+                    output.versionCode.set(579)
+                    output.versionName.set("5.0.77-r58-r62-integrated")
+                } else if (appforgeR57WOriginalIdentityUpgrade) {
                     output.versionCode.set(578)
                     output.versionName.set("5.0.76-r57w-original-upgrade")
                 } else if (appforgeR54OriginalIdentityUpgrade) {
