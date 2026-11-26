@@ -28,8 +28,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -66,13 +66,13 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private val HomeBackground =
-    Color(0xFF070B0D)
+    Color(0xFF000000)
 
 private val HomeCard =
-    Color(0xFF10181A)
+    Color(0xFF000000)
 
 private val HomeCardStrong =
-    Color(0xFF162126)
+    Color(0xFF000000)
 
 private val HomeBlue =
     Color(0xFF6EE7B7)
@@ -692,11 +692,9 @@ internal fun StudioTrashScreen(
                 deletedProjects.isEmpty()
             ) {
                 item {
-                    Card(
+                    OutlinedCard(
                         colors =
-                            CardDefaults.cardColors(
-                                containerColor = HomeCard
-                            ),
+                            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                         shape =
                             RoundedCornerShape(22.dp)
                     ) {
@@ -745,11 +743,9 @@ internal fun StudioTrashScreen(
                             dayMs
                     )
 
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor = HomeCard
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(22.dp)
                 ) {
@@ -1076,17 +1072,12 @@ private fun ProjectHomeCard(
     onClone: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
+    OutlinedCard(
         onClick = onClick,
         modifier =
             Modifier.fillMaxWidth(),
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    HomeCard.copy(
-                        alpha = 0.94f
-                    )
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(
                 24.dp
@@ -1272,14 +1263,9 @@ private fun ProjectAvatar(
 
 @Composable
 private fun EmptyProjectsCard() {
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    HomeCard.copy(
-                        alpha = 0.90f
-                    )
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(
                 24.dp
@@ -1438,12 +1424,12 @@ private fun CreateProjectDialog(
     val compact = LocalConfiguration.current.screenWidthDp < 380
 
     Dialog(onDismissRequest = onDismiss) {
-        Card(
+        OutlinedCard(
             modifier = Modifier
                 .widthIn(max = 620.dp)
                 .fillMaxWidth(),
             shape = RoundedCornerShape(if (compact) 24.dp else 28.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF101617))
+            colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
         ) {
             Column(
                 modifier = Modifier
@@ -1474,11 +1460,11 @@ private fun ModeCard(
 ) {
     val compact = LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(if (compact) 18.dp else 22.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeCardStrong)
+        colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Row(
             modifier = Modifier

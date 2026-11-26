@@ -7,6 +7,11 @@ import org.junit.Test
 
 class FastHtmlAabRoutingTest {
     private fun local() = ProjectDraft().apply {
+        fileUpload = false
+        clipboardBridge = false
+        vibrationBridge = false
+        networkState = false
+        splashEnabled = false
         appName = "Static Test"
         sourceMode = SourceMode.LOCAL
         sourceBuildEngine = "webview-static"
@@ -92,6 +97,24 @@ class FastHtmlAabRoutingTest {
         assertThrows(IllegalArgumentException::class.java) { FastHtmlApkPolicy.requireSupported(draft) }
         draft.buildOutput = "apk"
         draft.webUrl = "http://example.com"
-        assertThrows(IllegalArgumentException::class.java) { FastHtmlApkPolicy.requireSupported(draft) }
+        FastHtmlApkPolicy.requireSupported(draft)
+        assertEquals("http://example.com",draft.webUrl)
     }
+    @Test fun httpsUrlBundlesNeedNoLocalSource() {
+        for (output in listOf("aab", "both", "apk+aab")) {
+            val draft = local().copy(sourceMode = SourceMode.URL, webUrl = "https://example.com/app",
+                buildOutput = output, importedFolder = null, startPage = null)
+            assertTrue(FastHtmlApkPolicy.isCandidate(draft))
+            FastHtmlAabUnsignedPackager.requireSource(draft)
+            FastHtmlAabUnsignedPackager.requireSource(draft.copy(sourceTechnology = "unknown"))
+            for (url in listOf("http://example.com", "ftp://example.com", "https://user:pass@example.com",
+                "https://example.com:99999", "https://", " https://example.com")) {
+                assertFalse(url, FastHtmlApkPolicy.isCandidate(draft.copy(webUrl = url)))
+                assertThrows(IllegalArgumentException::class.java) {
+                    FastHtmlAabUnsignedPackager.requireSource(draft.copy(webUrl = url))
+                }
+            }
+        }
+    }
+
 }

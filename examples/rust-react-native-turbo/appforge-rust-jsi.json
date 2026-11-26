@@ -1,0 +1,9 @@
+{
+  "schema": 2,
+  "library": "appforge_jsi",
+  "bridgeLibrary": "appmodules",
+  "reactNative": "0.81",
+  "expoSdk": 0,
+  "minApi": 26,
+  "architecture": "turbomodule"
+}

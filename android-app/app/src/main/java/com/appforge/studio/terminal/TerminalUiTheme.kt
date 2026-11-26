@@ -3,13 +3,13 @@ package com.appforge.studio.terminal
 import androidx.compose.ui.graphics.Color
 
 internal val TerminalBackground =
-    Color(0xFF050B18)
+    Color(0xFF000000)
 
 internal val TerminalSurface =
-    Color(0xFF0C1628)
+    Color(0xFF000000)
 
 internal val TerminalSurfaceRaised =
-    Color(0xFF111E34)
+    Color(0xFF000000)
 
 internal val TerminalPrimary =
     Color(0xFF43D7FF)

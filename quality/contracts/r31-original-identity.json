@@ -1,0 +1,16 @@
+{
+  "identity_policy": "permanent-original-android-oauth",
+  "package": "com.appforge.studio",
+  "certificate_sha1": "99:0E:F3:3B:99:0F:D5:78:E9:DC:E7:24:34:81:96:F9:9B:88:07:BF",
+  "oauth_client_name": "AppForge Studio Android",
+  "android_version_code": 554,
+  "android_version_name": "5.0.52-r31-original-id-test",
+  "release_note": "No APK may be installed or published unless its actual signing certificate matches the pinned SHA-1.",
+  "signer_alias": "appforge-debug",
+  "signer_store_type": "PKCS12",
+  "ci_signer_secret_names": [
+    "APPFORGE_R31_KEYSTORE_B64",
+    "APPFORGE_R31_STORE_PASSWORD"
+  ],
+  "signer_policy": "R31-only PKCS12 signer; never reuse or overwrite APPFORGE_RELEASE secrets"
+}

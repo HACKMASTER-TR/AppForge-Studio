@@ -18,6 +18,8 @@ source_files: []
 
 ## Start Here
 
+- [[HTML_PDF_Integration]] — HTTPS bundle, native PDF source, document export and verification boundaries.
+
 - [[Current_State_Handoff]] — generated recovery view; `01_Project/current_state.json` is the canonical claim registry, subordinate to Git/evidence.
 
 - [[Hot_Context]]
@@ -42,7 +44,11 @@ source_files: []
 | Architecture change | [[System_Architecture]] | [[Decision_Index]], affected maps | related source, config, migrations, and tests |
 | Wiki maintenance | [[Wiki_Maintenance_Prompt]] | [[Log]], [[Agent_Rules]] | wiki files and audit scripts |
 
+- [[Rust_Integration_20261021]] — local Rust module, WASM and explicit native adapters; physical acceptance remains separate.
+
 ## Core Pages
+
+- [[Modular_Offline_V3]]
 
 - [[Windows_Publisher_Authorization]]
 - [[Pro_Code_Lifecycle_Staging]]
@@ -62,3 +68,5 @@ source_files: []
 - [[Device_Build_Runtime_V3]]
 - [[Windows_Output_Artifact_Flow_V2]]
 - [[Release_Integration_V1]]
+
+- [[APT_Snapshot_Offline_Toolchain]] — pinned Ubuntu APT, exact replay locks and safety limits.

@@ -22,6 +22,10 @@ data class ProjectDraft(
     var sourceTechnologyLabel: String = "HTML / CSS / JavaScript",
     var sourceBuildEngine: String = "webview-static",
     var sourceBuildReady: Boolean = true,
+    var normalHtmlEngine: Boolean = false,
+    // Session-only permission: never trust a saved/imported project to authorize network downloads.
+    var allowDependencyDownloads: Boolean = false,
+    var requiredCapabilities: Set<String> = emptySet(),
     var webUrl: String = "",
     var versionName: String = "1.0.0",
     var versionCode: Int = 1,
@@ -71,6 +75,7 @@ data class ProjectDraft(
     var webOverviewModeEnabled: Boolean = true,
     var webMediaAutoplayEnabled: Boolean = true,
     var webMixedContentAllowed: Boolean = false,
+    var localNetworkAccess: Boolean = false,
 
     var deepLinkEnabled: Boolean = false,
     var deepLinkScheme: String = "https",

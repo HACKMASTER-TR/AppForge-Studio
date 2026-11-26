@@ -16,9 +16,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -566,12 +566,9 @@ internal fun WorkspaceFilesPanel(
         }
 
         if (message.isNotBlank()) {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            TerminalSurfaceRaised
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 Text(
                     message,
@@ -716,14 +713,11 @@ internal fun WorkspaceFilesPanel(
                 }
 
             entries.isEmpty() ->
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier.fillMaxWidth(),
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                TerminalSurface
-                        )
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                 ) {
                     Column(
                         modifier =
@@ -987,15 +981,12 @@ private fun WorkspaceEntryCard(
                 )
         }
 
-    Card(
+    OutlinedCard(
         onClick = onOpen,
         modifier =
             Modifier.fillMaxWidth(),
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    TerminalSurface
-            )
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Row(
             modifier =

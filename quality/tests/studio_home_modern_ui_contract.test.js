@@ -164,7 +164,7 @@ test(
 
     assert.match(
       tokens,
-      /0xFF050B18/
+      /0xFF000000/
     );
 
     assert.match(

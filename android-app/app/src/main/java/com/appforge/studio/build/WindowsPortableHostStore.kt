@@ -38,6 +38,8 @@ internal object WindowsPortableHostStore {
         "windows-host.ready"
 
 
+    fun journalTarget(context:Context)=File(hostDirectory(context),HOST_NAME)
+
     fun isInstalled(
         context: Context
     ): Boolean {
@@ -117,11 +119,18 @@ internal object WindowsPortableHostStore {
 
     suspend fun install(
         context: Context,
+        onBytes: (ModuleProgress) -> Unit = {},
         onProgress: (String) -> Unit = {}
     ): File =
         withContext(
             Dispatchers.IO
         ) {
+            val operationJob = kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
+            val emitBytes: (ModuleProgress) -> Unit = { event ->
+                if(operationJob?.isActive == false)throw kotlinx.coroutines.CancellationException("İndirme iptal edildi")
+                DownloadNetwork.check()
+                onBytes(event)
+            }
             val appContext =
                 context.applicationContext
 
@@ -153,7 +162,7 @@ internal object WindowsPortableHostStore {
             if (
                 isInstalled(
                     appContext
-                )
+                ) && sha256(host)==HOST_SHA256
             ) {
                 onProgress(
                     "4/4 • Windows Portable Host zaten doğrulanmış."
@@ -189,13 +198,11 @@ internal object WindowsPortableHostStore {
                     return@withContext host
                 }
 
-                host.delete()
-                marker.delete()
+                error("Mevcut host sahipliği/hash'i doğrulanamadı; dosya korunur, otomatik üzerine yazma engellendi.")
             } else if (
                 host.exists()
             ) {
-                host.delete()
-                marker.delete()
+                error("Mevcut host sahipliği/hash'i doğrulanamadı; dosya korunur, otomatik üzerine yazma engellendi.")
             }
 
             if (
@@ -239,6 +246,7 @@ internal object WindowsPortableHostStore {
 
             download(
                 part = part,
+                onBytes = emitBytes,
                 onProgress = onProgress
             )
 
@@ -295,8 +303,12 @@ internal object WindowsPortableHostStore {
 
     private fun download(
         part: File,
+        onBytes: (ModuleProgress) -> Unit,
         onProgress: (String) -> Unit
     ) {
+        val started=android.os.SystemClock.elapsedRealtime()
+        var meter=DownloadMeasurement(OfflineModuleId.WINDOWS_PORTABLE,java.util.UUID.randomUUID().toString(),started,part.takeIf{it.isFile}?.length()?:0L)
+        onBytes(meter.sample(part.takeIf{it.isFile}?.length()?:0L,HOST_BYTES,started))
         val source =
             URL(
                 HOST_URL
@@ -340,9 +352,7 @@ internal object WindowsPortableHostStore {
 
         val connection =
             (
-                source
-                    .openConnection() as
-                    HttpURLConnection
+                DownloadNetwork.open(source)
                 ).apply {
 
                     instanceFollowRedirects =
@@ -432,6 +442,7 @@ internal object WindowsPortableHostStore {
 
                         var total =
                             resumeBytes
+                        meter=DownloadMeasurement(OfflineModuleId.WINDOWS_PORTABLE,java.util.UUID.randomUUID().toString(),android.os.SystemClock.elapsedRealtime(),total)
 
                         var lastReported =
                             total
@@ -481,6 +492,7 @@ internal object WindowsPortableHostStore {
                                     1024L *
                                     1024L
                             ) {
+                                onBytes(meter.sample(total,HOST_BYTES,android.os.SystemClock.elapsedRealtime()))
                                 onProgress(
                                     progressText(
                                         total
@@ -496,6 +508,7 @@ internal object WindowsPortableHostStore {
                     }
                 }
 
+            onBytes(meter.sample(part.length(),HOST_BYTES,android.os.SystemClock.elapsedRealtime()))
             onProgress(
                 progressText(
                     part.length()
@@ -503,7 +516,7 @@ internal object WindowsPortableHostStore {
             )
 
         } finally {
-            connection.disconnect()
+            connection.disconnect();DownloadNetwork.release(connection)
         }
     }
 
@@ -513,26 +526,8 @@ internal object WindowsPortableHostStore {
         host: File,
         marker: File
     ) {
-        marker.delete()
-
-        if (
-            host.exists()
-        ) {
-            require(
-                host.delete()
-            ) {
-                "Eski Windows Host silinemedi."
-            }
-        }
-
-        require(
-            part.renameTo(
-                host
-            )
-        ) {
-            "Doğrulanmış Windows Host final konuma taşınamadı."
-        }
-
+        require(!host.exists() && !java.nio.file.Files.isSymbolicLink(host.toPath())){"Mevcut host korunur; etkinleştirme çakışması."}
+        java.nio.file.Files.move(part.toPath(),host.toPath(),java.nio.file.StandardCopyOption.ATOMIC_MOVE)
         require(
             host.isFile &&
                 host.length() ==

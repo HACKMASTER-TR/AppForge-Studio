@@ -1,0 +1,4 @@
+<!doctype html><meta charset="utf-8"><title>Rust workspace</title>
+<p id="answer">Loading local WASM…</p><script>
+fetch('appforge-rust/appforge_workspace_web.wasm').then(r=>r.arrayBuffer()).then(WebAssembly.instantiate).then(({instance})=>document.querySelector('#answer').textContent=instance.exports.answer());
+</script>

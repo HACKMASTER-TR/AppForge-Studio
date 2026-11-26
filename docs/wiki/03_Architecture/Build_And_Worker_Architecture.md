@@ -70,3 +70,12 @@ target but must remain gated until a local Windows packager passes actual
 Windows acceptance.
 
 No unvalidated engine or artifact may trigger a hidden cloud fallback.
+
+## Fast HTML V2 isolated implementation
+
+[[Fast_HTML_V2]] records the precompiled-shell route and its current boundaries.
+Supported local static HTML combinations package APK/AAB/BOTH directly on device
+without the normal rootfs toolchain. Window settings, SAF selection, gated native
+actions and the fixed permission inventory are covered by executable host checks;
+compiled-template, signing and physical evidence remain separate stages. See the
+2026-10-17 task report for results and remaining integrations.

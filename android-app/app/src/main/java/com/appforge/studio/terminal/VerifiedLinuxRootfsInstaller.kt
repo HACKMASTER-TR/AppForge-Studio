@@ -29,7 +29,8 @@ internal data class LinuxInstallProgress(
     val stage: LinuxInstallStage,
     val completedBytes: Long = 0L,
     val totalBytes: Long? = null,
-    val detail: String
+    val detail: String,
+    val transfer:com.appforge.studio.build.ModuleProgress?=null
 ) {
     val percent: Int?
         get() =
@@ -71,8 +72,14 @@ internal class VerifiedLinuxRootfsInstaller(
             )
 
             layout.runtimeDirectory.mkdirs()
+            com.appforge.studio.build.RuntimeMutationLock.acquire(layout.runtimeDirectory).use { mutation ->
+            RootfsActivationTransaction(layout.rootfsDirectory,layout.restoreDirectory,layout.metadataFile,heldLease=mutation).recover()
             layout.stagingDirectory.mkdirs()
             layout.restoreDirectory.mkdirs()
+            require(layout.stagingDirectory.listFiles()?.isEmpty()==true){"Önceki rootfs staging içeriği korunuyor; yeni kurulum öncesi inceleme gerekli."}
+            require(layout.restoreDirectory.listFiles()?.none{it.isDirectory}==true){"Geri alma rootfs kopyası korunuyor; yeni değiştirme engellendi."}
+            val required=com.appforge.studio.build.RuntimeStorageBudget.RESERVE + manifest.maxArchiveBytes*2 + 6L*1024*1024*1024
+            require(layout.runtimeDirectory.usableSpace>required){"Rootfs genişleme rezervi için yeterli alan yok; mevcut ortam ve cache korunur."}
 
             val transaction =
                 File(
@@ -98,6 +105,8 @@ internal class VerifiedLinuxRootfsInstaller(
                 downloadVerifiedSource(
                     manifest = manifest,
                     target = archive,
+                    cache = File(appContext.noBackupFilesDir,"verified-rootfs-downloads/"+manifest.archiveSha256+"-"+
+                        java.security.MessageDigest.getInstance("SHA-256").digest(layout.runtimeDirectory.absolutePath.toByteArray()).take(8).joinToString(""){"%02x".format(it)}+".tar.gz"),
                     onProgress = onProgress
                 )
 
@@ -154,7 +163,8 @@ internal class VerifiedLinuxRootfsInstaller(
                 activateRootfs(
                     layout = layout,
                     stagedRootfs = extractedRootfs,
-                    manifest = manifest
+                    manifest = manifest,
+                    mutation = mutation
                 )
 
                 onProgress(
@@ -168,114 +178,28 @@ internal class VerifiedLinuxRootfsInstaller(
             } finally {
                 transaction.deleteRecursively()
             }
+            }
         }
 
     private suspend fun downloadVerifiedSource(
-        manifest: LinuxRootfsManifest,
-        target: File,
-        onProgress: (LinuxInstallProgress) -> Unit
+        manifest:LinuxRootfsManifest,target:File,cache:File,onProgress:(LinuxInstallProgress)->Unit
     ) {
-        val source =
-            validateSourceUri(
-                manifest.sourceUri
-            )
-
-        val connection =
-            source
-                .toURL()
-                .openConnection() as HttpsURLConnection
-
-        try {
-            connection.instanceFollowRedirects = false
-            connection.connectTimeout = CONNECT_TIMEOUT_MS
-            connection.readTimeout = READ_TIMEOUT_MS
-            connection.requestMethod = "GET"
-            connection.setRequestProperty(
-                "User-Agent",
-                "AppForge-Terminal-Ultimate/2B"
-            )
-            connection.setRequestProperty(
-                "Accept-Encoding",
-                "identity"
-            )
-            connection.connect()
-
-            check(
-                connection.responseCode ==
-                    HttpsURLConnection.HTTP_OK
-            ) {
-                "Rootfs indirilemedi: HTTP ${connection.responseCode}."
-            }
-
-            val declaredLength =
-                connection.contentLengthLong
-                    .takeIf { it >= 0L }
-
-            if (
-                declaredLength != null &&
-                declaredLength > manifest.maxArchiveBytes
-            ) {
-                error(
-                    "Rootfs arşivi izin verilen boyut sınırını aşıyor."
-                )
-            }
-
-            target.parentFile?.mkdirs()
-
-            connection.inputStream.buffered().use { input ->
-                target.outputStream().buffered().use { output ->
-                    val buffer =
-                        ByteArray(DOWNLOAD_BUFFER_BYTES)
-
-                    var total = 0L
-
-                    while (true) {
-                        coroutineContext.ensureActive()
-
-                        val count =
-                            input.read(buffer)
-
-                        if (count < 0) {
-                            break
-                        }
-
-                        if (count == 0) {
-                            continue
-                        }
-
-                        total += count.toLong()
-
-                        check(
-                            total <=
-                                manifest.maxArchiveBytes
-                        ) {
-                            "Rootfs arşivi izin verilen boyut sınırını aşıyor."
-                        }
-
-                        output.write(
-                            buffer,
-                            0,
-                            count
-                        )
-
-                        onProgress(
-                            LinuxInstallProgress(
-                                stage = LinuxInstallStage.DOWNLOADING,
-                                completedBytes = total,
-                                totalBytes = declaredLength,
-                                detail = "Doğrulanmış Ubuntu Base arşivi indiriliyor."
-                            )
-                        )
-                    }
-                }
-            }
-
-            check(target.isFile && target.length() > 0L) {
-                "Rootfs indirmesi boş dosya üretti."
-            }
-        } finally {
-            connection.disconnect()
-        }
+        val source=validateSourceUri(manifest.sourceUri)
+        val operationJob=coroutineContext[kotlinx.coroutines.Job]
+        com.appforge.studio.build.VerifiedModuleDownload.download(
+            source.toString(),manifest.archiveSha256,cache,
+            com.appforge.studio.build.OfflineModuleId.LINUX_RUNTIME,"rootfs-${java.util.UUID.randomUUID()}",
+            canceled={operationJob?.isActive==false},
+            open={com.appforge.studio.build.DownloadNetwork.open(it).let{c->(c as HttpsURLConnection).apply{instanceFollowRedirects = false}}},
+            progress={e->onProgress(LinuxInstallProgress(
+                when(e.phase){com.appforge.studio.build.ModulePhase.VERIFYING->LinuxInstallStage.VERIFYING;com.appforge.studio.build.ModulePhase.DOWNLOADING->LinuxInstallStage.DOWNLOADING;else->LinuxInstallStage.PREPARING},
+                e.bytesDownloaded,e.bytesTotal,"SHA-256 sabit rootfs arşivi; güvenli devam ve son bütünlük doğrulaması",e))},
+            maxBytes=manifest.maxArchiveBytes
+        )
+        coroutineContext.ensureActive()
+        check(cache.length()<=manifest.maxArchiveBytes && LinuxRuntimeIntegrity.matches(cache,manifest.archiveSha256))
+        target.parentFile?.mkdirs()
+        cache.inputStream().use{input->target.outputStream().use{input.copyTo(it)}}
     }
 
     private fun validateSourceUri(uri: URI): URI {
@@ -354,81 +278,13 @@ internal class VerifiedLinuxRootfsInstaller(
     private fun activateRootfs(
         layout: LinuxRuntimeLayout,
         stagedRootfs: File,
-        manifest: LinuxRootfsManifest
+        manifest: LinuxRootfsManifest,
+        mutation:com.appforge.studio.build.RuntimeMutationLock.Lease
     ) {
-        val current =
-            layout.rootfsDirectory
-
-        val backup =
-            File(
-                layout.restoreDirectory,
-                "rootfs-before-${System.currentTimeMillis()}"
-            )
-
-        var backupCreated = false
-
-        try {
-            if (current.exists()) {
-                check(
-                    current.renameTo(backup)
-                ) {
-                    "Mevcut rootfs güvenli geri yükleme alanına taşınamadı."
-                }
-
-                backupCreated = true
-            }
-
-            check(
-                stagedRootfs.renameTo(current)
-            ) {
-                "Yeni rootfs etkinleştirilemedi."
-            }
-
-            LinuxRootfsMetadataCodec.write(
-                layout.metadataFile,
-                LinuxRootfsMetadata(
-                    distribution = manifest.distribution,
-                    architecture = manifest.architecture,
-                    release = manifest.release,
-                    archiveSha256 = manifest.archiveSha256
-                )
-            )
-
-            pruneRestorePoints(
-                layout.restoreDirectory
-            )
-        } catch (error: Throwable) {
-            if (
-                !current.exists() &&
-                backupCreated &&
-                backup.exists()
-            ) {
-                backup.renameTo(current)
-            }
-
-            throw error
-        }
-    }
-
-    private fun pruneRestorePoints(
-        restoreDirectory: File
-    ) {
-        restoreDirectory
-            .listFiles()
-            .orEmpty()
-            .filter {
-                it.isDirectory &&
-                    it.name.startsWith(
-                        "rootfs-before-"
-                    )
-            }
-            .sortedByDescending {
-                it.lastModified()
-            }
-            .drop(MAX_RESTORE_POINTS)
-            .forEach {
-                it.deleteRecursively()
-            }
+        RootfsActivationTransaction(layout.rootfsDirectory,layout.restoreDirectory,layout.metadataFile,heldLease=mutation).activate(stagedRootfs,writeMetadata={
+            LinuxRootfsMetadataCodec.write(layout.metadataFile,LinuxRootfsMetadata(
+                distribution=manifest.distribution,architecture=manifest.architecture,release=manifest.release,archiveSha256=manifest.archiveSha256))
+        })
     }
 
     companion object {

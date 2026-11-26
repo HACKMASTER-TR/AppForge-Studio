@@ -1,0 +1,14 @@
+{
+  "package": "com.appforge.studio.v9r2isolated3",
+  "version_code": 539,
+  "version_name": "5.0.39-isolated3-upgrade",
+  "min_sdk": 26,
+  "target_sdk": 37,
+  "certificate_sha256": "dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082",
+  "apk_sha256": "25215ca5e6ddd908337d8b7f96bf1d0b8767537cc6f8e563fdca91d679d2e2d2",
+  "source_sha": "a1ed9628bec355236e90cc9361957b790f0f72d6",
+  "artifact_id": 14316346048,
+  "run_id": 44054962868,
+  "artifact_zip_sha256": "977f199e1eaf0ebb2ac472d8274f3933fc889d9c8128bffc89661acb83d48b6e",
+  "upgrade_version_code": 540
+}

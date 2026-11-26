@@ -9,7 +9,8 @@ const win = read("android-app/app/src/main/java/com/appforge/studio/build/Window
 
 test("web source accepts HTTP and HTTPS", () => {
   assert.match(main, /isSupportedWebSourceUrl/);
-  assert.match(main, /"https:\/\/"[\s\S]{0,300}?"http:\/\/"/);
+  assert.match(main, /WebviewProjectSettings\.webSourceUri\(value\)/);
+  assert.match(read("android-app/app/src/main/java/com/appforge/studio/build/WebviewProjectSettings.kt"), /uri\.scheme\.equals\("http",true\).*uri\.scheme\.equals\("https",true\)/);
   assert.match(main, /URL http:\/\/ veya https:\/\/ ile başlamalı/);
 });
 

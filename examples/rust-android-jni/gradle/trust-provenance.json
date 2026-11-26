@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "method": "All generated checksum entries independently re-downloaded from declared official Google/Maven Central HTTPS repositories; TLS verification on, exact SHA-256 match",
+  "artifactsVerified": 300,
+  "metadataSha256": "235e2e826317ed753e793cc4526a9bbdff048a34c5c26c28ec4a145f91ffb9fa",
+  "lockSha256": "4cbadc4609ab68b81e41fcfe97dd6130c72e631258de10a96cfa5a3fb024c845",
+  "gradle": "9.3.1",
+  "agp": "9.1.1",
+  "physicalAndroid": "NOT_RUN"
+}

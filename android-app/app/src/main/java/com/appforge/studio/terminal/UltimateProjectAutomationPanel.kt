@@ -9,9 +9,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
@@ -209,12 +209,9 @@ internal fun UltimateProjectAutomationPanel(
                             request.detail
                         )
 
-                        Card(
+                        OutlinedCard(
                             colors =
-                                CardDefaults.cardColors(
-                                    containerColor =
-                                        TerminalBackground
-                                )
+                                CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                         ) {
                             Text(
                                 TerminalSecretMasker
@@ -294,14 +291,11 @@ internal fun UltimateProjectAutomationPanel(
             )
         }
 
-    Card(
+    OutlinedCard(
         modifier =
             Modifier.fillMaxWidth(),
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    TerminalSurfaceRaised
-            )
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Column(
             modifier =
@@ -403,14 +397,11 @@ internal fun UltimateProjectAutomationPanel(
                         spec.id in
                             selectedToolchains
 
-                    Card(
+                    OutlinedCard(
                         modifier =
                             Modifier.fillMaxWidth(),
                         colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    TerminalSurface
-                            )
+                            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                     ) {
                         Row(
                             modifier =
@@ -569,14 +560,11 @@ internal fun UltimateProjectAutomationPanel(
             } else {
                 plan.steps
                     .forEach { step ->
-                        Card(
+                        OutlinedCard(
                             modifier =
                                 Modifier.fillMaxWidth(),
                             colors =
-                                CardDefaults.cardColors(
-                                    containerColor =
-                                        TerminalSurface
-                                )
+                                CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                         ) {
                             Column(
                                 modifier =
@@ -713,14 +701,11 @@ internal fun UltimateProjectAutomationPanel(
                     )
                 }
 
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier.fillMaxWidth(),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            TerminalBackground
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 SelectionContainer {
                     Text(

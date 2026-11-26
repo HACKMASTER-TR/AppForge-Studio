@@ -32,6 +32,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
@@ -44,6 +45,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -53,6 +57,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.appforge.studio.build.WebviewProjectSettings
 import com.appforge.studio.build.BuildApiClient
 import com.appforge.studio.build.BuildApiException
 import com.appforge.studio.build.BuildCompareResult
@@ -2789,7 +2794,7 @@ private fun AppForgeApp() {
                                 analysis
                                     .detectedLabels()
 
-                            val nextDraft =
+                            val analyzedDraft =
                                 baseDraft.copy(
                                     sourceUri =
                                         uri.toString(),
@@ -2807,6 +2812,8 @@ private fun AppForgeApp() {
                                         result
                                             .startPage
                                             .absolutePath,
+
+                                    sourceMode = if (analysis.technologyId == "pdf") SourceMode.LOCAL else baseDraft.sourceMode,
 
                                     sourceTechnology =
                                         analysis
@@ -2830,34 +2837,35 @@ private fun AppForgeApp() {
                                                 "universal-cross-platform"
                                         ) {
                                             "all"
+                                        } else if(analysis.buildEngine=="windows-native") {
+                                            "native-exe"
                                         } else {
                                             baseDraft.buildOutput
                                         },
 
                                     camera =
-                                        analysis.camera,
+                                        baseDraft.camera || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"camera",analysis.camera,analysis.requiredCapabilities)),
 
                                     microphone =
-                                        analysis.microphone,
+                                        baseDraft.microphone || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"microphone",analysis.microphone,analysis.requiredCapabilities)),
 
                                     location =
-                                        analysis.location,
+                                        baseDraft.location || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"location",analysis.location,analysis.requiredCapabilities)),
 
                                     notifications =
-                                        analysis.notifications,
+                                        baseDraft.notifications || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"notifications",analysis.notifications,analysis.requiredCapabilities)),
 
                                     networkState =
-                                        analysis.networkState,
+                                        baseDraft.networkState || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"networkState",analysis.networkState,analysis.requiredCapabilities)),
 
                                     wakeLock =
-                                        analysis.wakeLock,
+                                        baseDraft.wakeLock || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"wakeLock",analysis.wakeLock,analysis.requiredCapabilities)),
 
                                     nfc =
-                                        analysis.nfc,
+                                        baseDraft.nfc || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"nfc",analysis.nfc,analysis.requiredCapabilities)),
 
                                     additionalPermissions =
-                                        analysis
-                                            .additionalPermissions,
+                                        baseDraft.additionalPermissions,
 
                                     fileUpload =
                                         analysis.fileUpload ||
@@ -2879,16 +2887,18 @@ private fun AppForgeApp() {
                                             analysis.qrScanner,
 
                                     mediaPlayerBridge =
-                                        analysis.mediaPlayer,
+                                        baseDraft.mediaPlayerBridge || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"mediaPlayerBridge",analysis.mediaPlayer,analysis.requiredCapabilities)),
 
                                     qrScanner =
-                                        analysis.qrScanner,
+                                        baseDraft.qrScanner || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"qrScanner",analysis.qrScanner,analysis.requiredCapabilities)),
 
                                     javascriptBridge =
                                         baseDraft.javascriptBridge ||
                                             analysis.mediaPlayer ||
                                             analysis.qrScanner
                                 )
+
+                            val nextDraft = analyzedDraft.copy(requiredCapabilities = analysis.requiredCapabilities,allowDependencyDownloads=false)
 
                             val successMessage =
                                 if (
@@ -4382,9 +4392,24 @@ private fun AppForgeApp() {
                 buildDraft
                     .sourceTechnology
 
+        val wizardReadiness = com.appforge.studio.build.WizardReadinessEvaluator.evaluate(verifiedBuildDraft)
+        if (!wizardReadiness.ready) {
+            draft = verifiedBuildDraft
+            preflight = listOf("BUILD_BLOCKED=YES") + wizardReadiness.diagnostics.map { it.turkish() }
+            status = "Derleme başlamadı. Seçimlerinizi koruduk:\n" +
+                wizardReadiness.diagnostics.filter { it.blocking }.joinToString("\n") { it.turkish() }
+            screen = AppScreen.BUILDER
+            step = wizardReadiness.affectedSteps.minOrNull() ?: 10
+            return@buildStart
+        }
+
         /*
          * OFFLINE_BUILD_PREFLIGHT_GATE_V1
          */
+        val normalRouteReasons = com.appforge.studio.build.FastHtmlApkPolicy.normalRouteReasons(verifiedBuildDraft)
+        if (normalRouteReasons.isNotEmpty()) {
+            preflight = listOf("NORMAL_ENGINE_REQUIRED: " + normalRouteReasons.joinToString("; "))
+        }
         val offlinePackCheck =
             com.appforge.studio.build
                 .OfflineBuildPackManager
@@ -4396,40 +4421,46 @@ private fun AppForgeApp() {
         if (
             !offlinePackCheck.ready
         ) {
-            val fastHtmlSettingsBlocked =
-                offlinePackCheck.engine == "fast-html-apk"
-            status =
-                if (fastHtmlSettingsBlocked) {
-                    offlinePackCheck.missing.firstOrNull()
-                        ?: "Hızlı HTML APK/AAB ayarları uygun değil."
-                } else {
-                    "Çevrimdışı derleme paketi eksik."
+            // Settings failures must never be presented as missing toolchains.
+            // Unknown failures remain blocked without guessing a recovery route.
+            val preflightFailure =
+                when {
+                    offlinePackCheck.engine == "webview-settings" -> "settings-invalid"
+                    offlinePackCheck.engine == "fast-html-apk" -> "fast-output-invalid"
+                    offlinePackCheck.missingModules.isNotEmpty() -> "dependency-missing"
+                    else -> "unclassified"
                 }
+
+            status =
+                offlinePackCheck.missing.firstOrNull()
+                    ?: "Derleme ön kontrolü başarısız: ${offlinePackCheck.engine}"
 
             progress =
                 0
 
             logs =
                 listOf(
-                    if (fastHtmlSettingsBlocked) {
-                        "⛔ Hızlı HTML çıktısı ayarları desteklenmiyor. Yerel AAB için debug veya Kasada kayıtlı PKCS12 gerekir; özel ikon ve ek Android izinleri desteklenmez."
-                    } else {
-                        "⛔ Derleme başlatılmadı • gerekli cihaz toolchain paketi eksik."
-                    }
-                )
+                    "⛔ Derleme başlatılmadı: ${offlinePackCheck.missing.joinToString()}"
+                ) + offlinePackCheck.missing
 
             preflight =
                 listOf(
                     "BUILD_BLOCKED=YES",
-                    if (fastHtmlSettingsBlocked) {
-                        "FAST_HTML_APK_SETTINGS_REQUIRED=YES"
-                    } else {
-                        "OFFLINE_BUILD_READY=NO"
+                    "PREFLIGHT_FAILURE=$preflightFailure",
+                    when (preflightFailure) {
+                        "settings-invalid" -> "WEBVIEW_SETTINGS_INVALID=YES"
+                        "fast-output-invalid" -> "FAST_HTML_APK_SETTINGS_REQUIRED=YES"
+                        "dependency-missing" -> "OFFLINE_BUILD_READY=NO"
+                        else -> "PREFLIGHT_FAILURE_UNCLASSIFIED=YES"
                     },
                     "ENGINE=${offlinePackCheck.engine}"
-                ) +
+                ) + normalRouteReasons.map { "NORMAL_ENGINE_REQUIRED: $it" } +
                     offlinePackCheck.missing.map {
-                        "MISSING=$it"
+                        if (preflightFailure == "dependency-missing") {
+                            "MISSING=$it"
+                        } else {
+                            "ERROR=$it"
+                        }
                     }
 
             buildProjectKey =
@@ -4456,10 +4487,8 @@ private fun AppForgeApp() {
             step =
                 10
 
-            if (!fastHtmlSettingsBlocked) {
-                openWorkspaceScreen(
-                    AppScreen.OFFLINE_PACK
-                )
+            if (preflightFailure == "dependency-missing") {
+                openOfflinePack()
             }
 
             return@buildStart
@@ -4529,7 +4558,7 @@ private fun AppForgeApp() {
                     emptyList()
                 }
 
-            preflight = emptyList()
+            preflight = normalRouteReasons.map { "NORMAL_ENGINE_REQUIRED: $it" }
             buildProjectKey =
                 "${effectiveBuildDraft.packageName}|" +
                     "${effectiveBuildDraft.importedFolder.orEmpty()}|" +
@@ -5240,6 +5269,33 @@ private fun AppForgeApp() {
 
 
     AppForgeTheme {
+        // V550: request unknown-source APK permission at each fresh launch until approved.
+        // REQUEST_INSTALL_PACKAGES is already declared; this special access has no grant dialog API.
+        var unknownApkPromptDismissed by rememberSaveable { mutableStateOf(false) }
+        val canInstallApks = Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+            context.packageManager.canRequestPackageInstalls()
+        if (!canInstallApks && !unknownApkPromptDismissed) {
+            AlertDialog(
+                onDismissRequest = { unknownApkPromptDismissed = true },
+                title = { Text("APK yükleme izni gerekli") },
+                text = { Text("AppForge tarafından oluşturulan APK'ları bu telefona kurabilmek için Android ayarlarından 'Bu kaynaktan izin ver' seçeneğini açın. Android bu izni sizin onayınız olmadan vermez.") },
+                confirmButton = { TextButton(onClick = {
+                    val settingsIntent = Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:${context.packageName}")
+                    )
+                    runCatching { context.startActivity(settingsIntent) }
+                        .onFailure {
+                            runCatching { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.parse("package:${context.packageName}"))) }
+                        }
+                    unknownApkPromptDismissed = true
+                }) { Text("İZİN AYARLARINI AÇ") } },
+                dismissButton = { TextButton(onClick = { unknownApkPromptDismissed = true }) {
+                    Text("APK KURMADAN DEVAM ET")
+                } }
+            )
+        }
 
         /*
          * HOME_EXIT_CONFIRMATION_V1
@@ -5762,6 +5818,7 @@ private fun AppForgeApp() {
                         onPickSource = {
                             sourcePicker.launch(
                                 arrayOf(
+                                    "application/pdf",
                                     "text/html",
                                     "application/zip",
                                     "application/octet-stream"
@@ -6175,6 +6232,7 @@ private fun AppForgeApp() {
 
                 AppScreen.OFFLINE_PACK_FIRST_RUN ->
                     OfflineBuildPackScreen(
+                        project = null,
                         firstRun =
                             true,
 
@@ -6217,6 +6275,8 @@ private fun AppForgeApp() {
 
                 AppScreen.OFFLINE_PACK ->
                     OfflineBuildPackScreen(
+                        project = if(offlinePackReturnScreen in setOf(AppScreen.BUILDER,AppScreen.QUICK))draft else null,
+                        onRustPrepared = { prepared -> draft=prepared;screen=offlinePackReturnScreen },
                         onBack = {
                             screen =
                                 offlinePackReturnScreen
@@ -6975,7 +7035,7 @@ private fun AppForgeApp() {
                         }
                     }
 
-                    Box(
+                    Column(
                         modifier =
                             Modifier
                                 .weight(1f)
@@ -6988,25 +7048,86 @@ private fun AppForgeApp() {
                                 )
                                 .fillMaxWidth()
                     ) {
+                        val wizardReadiness = com.appforge.studio.build.WizardReadinessEvaluator.evaluate(draft)
+                        val blockingDiagnostics = wizardReadiness.diagnostics.filter { it.blocking }
+                        // Show the actual selected route before Build; perform source/template/toolchain I/O off the UI thread.
+                        val fastHtmlSelected = wizardReadiness.capability == com.appforge.studio.build.WizardCapabilityClass.QUICK_SUPPORTED
+                        Text(if (fastHtmlSelected) "Motor: Fast HTML V2 • ${draft.buildOutput.uppercase()}" else
+                            "Motor: ${draft.sourceBuildEngine.ifBlank { draft.sourceTechnology }} • ${if (wizardReadiness.ready) "normal motor" else "engelli seçim"}",
+                            color = TextSecondary, fontSize = 11.sp)
+                        var offlinePreview by remember(draft, step) { mutableStateOf<String?>(null) }
+                        LaunchedEffect(draft, step) {
+                            if (step == 10 && wizardReadiness.ready) {
+                                val snapshot = draft.copy()
+                                val checked = withContext(Dispatchers.IO) {
+                                    runCatching { com.appforge.studio.build.OfflineBuildPackManager.checkBuildRequirements(context, snapshot) }.getOrNull()
+                                }
+                                offlinePreview = when {
+                                    checked == null -> "Çevrimdışı önkontrol tamamlanamadı; kaynak ve şablonları kontrol edin."
+                                    checked.ready -> "Çevrimdışı önkontrol: hazır. Kaynak, şablon ve imza derlemede tekrar denetlenir."
+                                    else -> "Çevrimdışı önkontrol: eksik — " + checked.missing.joinToString("; ")
+                                }
+                            }
+                        }
+                        if (step == 10 && wizardReadiness.ready) Text(offlinePreview ?: "Çevrimdışı önkontrol çalışıyor…",
+                            color = TextSecondary, fontSize = 11.sp, maxLines = 3)
+                        var showWizardHelp by remember { mutableStateOf(false) }
+                        // Optional runtime checks do not reserve a weighted content panel.
+                        TextButton(onClick = { showWizardHelp = !showWizardHelp }) {
+                            Text("Ayar denetimi • derleme kontrolleri ve motor bilgisi", fontSize = 11.sp)
+                        }
+                        if (blockingDiagnostics.isNotEmpty() || showWizardHelp) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().heightIn(max = 160.dp)
+                                    .verticalScroll(rememberScrollState()).padding(12.dp)
+                                    .semantics { liveRegion = LiveRegionMode.Polite },
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text("Motor: ${draft.sourceBuildEngine.ifBlank { draft.sourceTechnology }}", fontSize = 12.sp)
+                                if (showWizardHelp && wizardReadiness.normalRouteReasons.isNotEmpty()) {
+                                    Text("HTML/HTTPS Android için normal motor gerekli:\n" +
+                                        wizardReadiness.normalRouteReasons.joinToString("\n"),
+                                        color = TextSecondary, fontSize = 12.sp)
+                                }
+                                if (showWizardHelp) {
+                                    Text(wizardReadiness.diagnostics.filter { !it.blocking }.joinToString("\n") { it.turkish() },
+                                        color = TextSecondary, fontSize = 12.sp)
+                                }
+                                if (blockingDiagnostics.isNotEmpty()) {
+                                    Text((if (wizardReadiness.affectedSteps.isEmpty()) "Bilgilendirme" else "Kontrol gereken adımlar: " + wizardReadiness.affectedSteps.sorted().joinToString(", ")) +
+                                        "\n" + blockingDiagnostics.joinToString("\n") { it.turkish() },
+                                        color = if (wizardReadiness.ready) TextSecondary else MaterialTheme.colorScheme.error,
+                                        fontSize = 12.sp)
+                                    wizardReadiness.affectedSteps.sorted().forEach { issueStep ->
+                                        TextButton(onClick = { step = issueStep }) {
+                                            Text("Adım $issueStep — hataları düzelt")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Step components retain their own scroll and keyboard ownership.
+                        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        androidx.compose.runtime.CompositionLocalProvider(LocalFeatureDraft provides draft) {
                         when (step) {
-                            1 -> SourceStep(draft, status, { draft = it }) {
+                            1 -> SourceStep(draft, status, { draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it) }) {
                                 sourcePicker.launch(arrayOf("text/html", "application/zip", "application/octet-stream"))
                             }
 
                             2 -> PermissionsStep(
                                 draft,
                                 sourceAnalysis
-                            ) { draft = it }
+                            ) { draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it) }
 
                             3 -> FeaturesStep(
                                 draft,
                                 sourceAnalysis
-                            ) { draft = it }
+                            ) { draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it) }
 
                             4 -> AppearanceStep(
                                 d = draft,
                                 update = {
-                                    draft = it
+                                    draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it)
                                 },
                                 onPickIcon = {
                                     val currentIcon =
@@ -7060,16 +7181,14 @@ private fun AppForgeApp() {
                                         AppScreen.PRO
                                 },
                                 update = {
-                                    draft =
-                                        it
+                                    draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it)
                                 }
                             )
 
                             6 -> MonetizationStep(
                                 draft = draft,
                                 update = {
-                                    draft =
-                                        it
+                                    draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it)
                                 },
                                 isPro =
                                     proStatus?.active == true,
@@ -7091,8 +7210,7 @@ private fun AppForgeApp() {
                             7 -> DeepLinkStep(
                                 d = draft,
                                 update = {
-                                    draft =
-                                        it
+                                    draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it)
                                 },
                                 isPro =
                                     proStatus?.active == true,
@@ -7104,7 +7222,7 @@ private fun AppForgeApp() {
 
                             8 -> SigningStep(
                                 d = draft,
-                                update = { draft = it },
+                                update = { draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it) },
                                 isPro =
                                     proStatus?.active == true,
                                 onOpenPro = {
@@ -7134,7 +7252,7 @@ private fun AppForgeApp() {
 
                             9 -> BuildSettingsStep(
                                 draft = draft,
-                                update = { draft = it },
+                                update = { draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it) },
                                 serverUrl = serverUrl,
                                 apiKey = apiKey,
                                 statusMessage = status,
@@ -7192,6 +7310,8 @@ private fun AppForgeApp() {
                                 apiKey =
                                     apiKey
                             )
+                        }
+                        }
                         }
                     }
 
@@ -7785,7 +7905,7 @@ private fun CreateModeSelectionScreen(
             Alignment.CenterHorizontally
     ) {
         item {
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -7795,9 +7915,7 @@ private fun CreateModeSelectionScreen(
                         if (compact) 24.dp else 30.dp
                     ),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor = Color(0xFF0E1519)
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 Column(
                     modifier =
@@ -8062,7 +8180,7 @@ private fun CreateModeCard(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape =
@@ -8070,9 +8188,7 @@ private fun CreateModeCard(
                 if (compact) 18.dp else 24.dp
             ),
         colors =
-            CardDefaults.cardColors(
-                containerColor = Color(0xFF171E22)
-            )
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Row(
             modifier =
@@ -8225,6 +8341,26 @@ private fun QuickCreateScreen(
     isPro: Boolean,
     onOpenPro: () -> Unit
 ) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalFeatureDraft provides draft) {
+        QuickCreateScreenContent(draft,status,{onDraftChange(com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it))},onBack,onPickSource,onPickIcon,onPickFirebase,onAdvanced,onPreview,onBuild,isPro,onOpenPro)
+    }
+}
+
+@Composable
+private fun QuickCreateScreenContent(
+    draft: ProjectDraft,
+    status: String,
+    onDraftChange: (ProjectDraft) -> Unit,
+    onBack: () -> Unit,
+    onPickSource: () -> Unit,
+    onPickIcon: () -> Unit,
+    onPickFirebase: () -> Unit,
+    onAdvanced: () -> Unit,
+    onPreview: () -> Unit,
+    onBuild: () -> Unit,
+    isPro: Boolean,
+    onOpenPro: () -> Unit
+) {
     var extraFeaturesExpanded by remember { mutableStateOf(false) }
     // Manual package IDs must not be silently replaced by app-name edits.
     var quickPackageManualOverride by rememberSaveable { mutableStateOf(false) }
@@ -8340,7 +8476,7 @@ private fun QuickCreateScreen(
                 )
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -8429,7 +8565,7 @@ private fun QuickCreateScreen(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -8481,7 +8617,7 @@ private fun QuickCreateScreen(
                                 },
                                 label = {
                                     Text(
-                                        "HTML / ZIP"
+                                        "HTML / ZIP / PDF"
                                     )
                                 }
                             )
@@ -8527,7 +8663,7 @@ private fun QuickCreateScreen(
                                         draft.startPage
                                             .isNullOrBlank()
                                     ) {
-                                        "HTML / ZIP seç"
+                                        "HTML / ZIP / PDF seç"
                                     } else {
                                         "✓ ${
                                             draft.sourceLabel
@@ -8565,7 +8701,7 @@ private fun QuickCreateScreen(
 
                             Text(
                                 text =
-                                    "Güvenli varsayılan ayarlar kullanılır.",
+                                    if (isCleartextWebSourceUrl(draft.webUrl)) "HTTP bağlantısı şifrelenmez. Yalnız güvendiğiniz ağlarda kullanın." else "Güvenli varsayılan ayarlar kullanılır.",
                                 color =
                                     TextSecondary,
                                 fontSize =
@@ -8577,7 +8713,7 @@ private fun QuickCreateScreen(
             }
 
                 item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -8641,7 +8777,7 @@ private fun QuickCreateScreen(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -8744,7 +8880,7 @@ private fun QuickCreateScreen(
                     verticalArrangement =
                         Arrangement.spacedBy(if (quickCompact) 8.dp else 12.dp)
                 ) {
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier.fillMaxWidth()
                 ) {
@@ -8802,7 +8938,7 @@ private fun QuickCreateScreen(
                     }
                 }
 
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier.fillMaxWidth()
                 ) {
@@ -8860,7 +8996,7 @@ private fun QuickCreateScreen(
                     }
                 }
 
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier.fillMaxWidth()
                 ) {
@@ -8954,7 +9090,7 @@ private fun QuickCreateScreen(
                     }
                 }
 
-                Card(
+                OutlinedCard(
                     modifier =
                         Modifier.fillMaxWidth()
                 ) {
@@ -8990,7 +9126,7 @@ private fun QuickCreateScreen(
                         Toggle(
                             "🌉 Native Bridge",
                             draft.javascriptBridge
-                        ) { enabled ->
+                        , featureKey = "javascriptBridge") { enabled ->
 
                             onDraftChange(
                                 draft.copy(
@@ -9026,7 +9162,7 @@ private fun QuickCreateScreen(
                             Toggle(
                                 "📤 Paylaşım",
                                 draft.shareBridge
-                            ) {
+                            , featureKey = "shareBridge") {
                                 onDraftChange(
                                     draft.copy(
                                         shareBridge =
@@ -9038,7 +9174,7 @@ private fun QuickCreateScreen(
                             Toggle(
                                 "📋 Panoya kopyalama",
                                 draft.clipboardBridge
-                            ) {
+                            , featureKey = "clipboardBridge") {
                                 onDraftChange(
                                     draft.copy(
                                         clipboardBridge =
@@ -9050,7 +9186,7 @@ private fun QuickCreateScreen(
                             Toggle(
                                 "📳 Titreşim / Haptic",
                                 draft.vibrationBridge
-                            ) {
+                            , featureKey = "vibrationBridge") {
                                 onDraftChange(
                                     draft.copy(
                                         vibrationBridge =
@@ -9062,7 +9198,7 @@ private fun QuickCreateScreen(
                             Toggle(
                                 "🎵 Medya Oynatıcı / Arka Plan Ses",
                                 draft.mediaPlayerBridge
-                            ) {
+                            , featureKey = "mediaPlayerBridge") {
                                 onDraftChange(
                                     draft.copy(
                                         mediaPlayerBridge =
@@ -9074,7 +9210,7 @@ private fun QuickCreateScreen(
                             Toggle(
                                 "📷 QR / Barkod Tarayıcı",
                                 draft.qrScanner
-                            ) {
+                            , featureKey = "qrScanner") {
                                 onDraftChange(
                                     draft.copy(
                                         qrScanner =
@@ -9096,7 +9232,7 @@ private fun QuickCreateScreen(
                                         "🌐 Uzak site Native Bridge • PRO"
                                     },
                                     draft.remoteBridgeAllowed
-                                ) {
+                                , featureKey = "remoteBridgeAllowed") {
                                     enabled ->
 
                                     handleProFeatureToggle(
@@ -9151,7 +9287,7 @@ private fun QuickCreateScreen(
                                 "💰 AdMob • PRO"
                             },
                             draft.admobEnabled
-                        ) {
+                        , featureKey = "admobEnabled") {
                             enabled ->
 
                             handleProFeatureToggle(
@@ -9284,7 +9420,7 @@ private fun QuickCreateScreen(
                             Toggle(
                                 "🛡️ UMP Consent",
                                 draft.umpConsentEnabled
-                            ) {
+                            , featureKey = "umpConsentEnabled") {
                                 onDraftChange(
                                     draft.copy(
                                         umpConsentEnabled =
@@ -9313,7 +9449,7 @@ private fun QuickCreateScreen(
                                 "🛒 Google Play Billing • PRO"
                             },
                             draft.billingEnabled
-                        ) {
+                        , featureKey = "billingEnabled") {
                             enabled ->
 
                             handleProFeatureToggle(
@@ -9409,6 +9545,21 @@ private fun QuickCreateScreen(
                                 modifier =
                                     Modifier.fillMaxWidth()
                             )
+                            OutlinedTextField(
+                                value = draft.consumableProductIds,
+                                onValueChange = { onDraftChange(draft.copy(consumableProductIds = it)) },
+                                label = { Text("Tüketilebilir ürün ID'leri") },
+                                supportingText = { Text("Ürün ID listesinin alt kümesi; sunucu hakları tekrar vermeyi önlemelidir.") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = draft.purchaseVerificationUrl,
+                                onValueChange = { onDraftChange(draft.copy(purchaseVerificationUrl = it.trim())) },
+                                label = { Text("HTTPS satın alma doğrulama URL'si") },
+                                supportingText = { Text("Google Play receipt doğrulayan kendi sunucunuz gerekir. İnternet yokken Billing pasif kalır; bağlantıda yeniden bağlanır.") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
 
 
@@ -9430,7 +9581,7 @@ private fun QuickCreateScreen(
                                 "📊 Firebase Analytics • PRO"
                             },
                             draft.firebaseAnalyticsEnabled
-                        ) {
+                        , featureKey = "firebaseAnalyticsEnabled") {
                             enabled ->
 
                             handleProFeatureToggle(
@@ -9465,7 +9616,7 @@ private fun QuickCreateScreen(
                                 "💥 Firebase Crashlytics • PRO"
                             },
                             draft.firebaseCrashlyticsEnabled
-                        ) {
+                        , featureKey = "firebaseCrashlyticsEnabled") {
                             enabled ->
 
                             handleProFeatureToggle(
@@ -9500,7 +9651,7 @@ private fun QuickCreateScreen(
                                 "🔔 Firebase Cloud Messaging • PRO"
                             },
                             draft.firebaseMessagingEnabled
-                        ) {
+                        , featureKey = "firebaseMessagingEnabled") {
                             enabled ->
 
                             handleProFeatureToggle(
@@ -9607,14 +9758,9 @@ private fun QuickCreateScreen(
 }
 
 
-private fun isSupportedWebSourceUrl(value: String): Boolean {
-    val normalized = value.trim()
-    if (!normalized.startsWith("https://", true) && !normalized.startsWith("http://", true)) {
-        return false
-    }
-    val parsed = runCatching { Uri.parse(normalized) }.getOrNull() ?: return false
-    return !parsed.host.isNullOrBlank()
-}
+private fun isSupportedWebSourceUrl(value: String): Boolean =
+    WebviewProjectSettings.webSourceUri(value) != null
+
 
 private fun isCleartextWebSourceUrl(value: String): Boolean =
     value.trim().startsWith("http://", true)
@@ -9735,7 +9881,7 @@ private fun productionChecks(
                 ) {
                     "Yerel HTML/ZIP hazır"
                 } else {
-                    "HTTPS URL hazır"
+                    if (isCleartextWebSourceUrl(draft.webUrl)) "HTTP URL hazır — bağlantı şifrelenmez" else "HTTPS URL hazır"
                 }
             } else {
                 "Kaynak eksik veya geçersiz."
@@ -9864,7 +10010,7 @@ private fun productionChecks(
             )
     }
 
-    if ("BACKGROUND_LOCATION" in draft.additionalPermissions && !draft.location) {
+    if (WebviewProjectSettings.isAdditionalPermissionEnabled(draft.additionalPermissions, "BACKGROUND_LOCATION") && !draft.location) {
         checks +=
             ProductionCheck(
                 "Arka plan konumu",
@@ -10160,7 +10306,7 @@ private fun AppPreviewScreen(
                 )
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -10342,7 +10488,7 @@ private fun AppPreviewScreen(
                                     .toFloat()
                             }
 
-                        Card(
+                        OutlinedCard(
                             colors =
                                 CardDefaults
                                     .cardColors(
@@ -10682,7 +10828,7 @@ private fun InspectorHeader(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         colors =
             CardDefaults
                 .cardColors(
@@ -10741,7 +10887,7 @@ private fun InspectorLine(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         colors =
             CardDefaults
                 .cardColors(
@@ -11139,7 +11285,7 @@ private fun ProductionCenterScreen(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -11230,7 +11376,7 @@ private fun ProductionCenterScreen(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -11354,7 +11500,7 @@ private fun ProductionCenterScreen(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -11478,7 +11624,7 @@ private fun ProductionCenterScreen(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -11578,7 +11724,7 @@ private fun ProductionStat(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         modifier =
             modifier,
         colors =
@@ -11665,7 +11811,7 @@ private fun ProductionCheckCard(
                 "×"
         }
 
-    Card(
+    OutlinedCard(
         colors =
             CardDefaults
                 .cardColors(
@@ -11688,7 +11834,7 @@ private fun ProductionCheckCard(
                 Alignment
                     .CenterVertically
         ) {
-            Card(
+            OutlinedCard(
                 colors =
                     CardDefaults
                         .cardColors(
@@ -12103,7 +12249,7 @@ private fun TestLabScreen(
                 }
             ) {
                 item ->
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -12362,7 +12508,7 @@ private fun TestLabScreen(
                     currentReport.security
                 ) {
                     insight ->
-                    Card(
+                    OutlinedCard(
                         colors =
                             CardDefaults
                                 .cardColors(
@@ -12479,7 +12625,7 @@ private fun ArtifactReportCard(
         LocalConfiguration.current.screenWidthDp < 380
 
 
-    Card(
+    OutlinedCard(
         colors =
             CardDefaults
                 .cardColors(
@@ -13410,7 +13556,7 @@ private fun LocalAiAssistantScreen(
             verticalArrangement = Arrangement.spacedBy(if (aiCompact) 8.dp else 12.dp)
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -13694,12 +13840,9 @@ private fun LocalAiAssistantScreen(
                                     7.dp
                                 )
                     ) {
-                        Card(
+                        OutlinedCard(
                             colors =
-                                CardDefaults.cardColors(
-                                    containerColor =
-                                        Color(0xFF102037)
-                                ),
+                                CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                             shape =
                                 RoundedCornerShape(if (aiCompact) 17.dp else 20.dp),
                             modifier =
@@ -14000,12 +14143,9 @@ private fun LocalAiAssistantScreen(
                 suggestedActions.isNotEmpty()
             ) {
                 item {
-                    Card(
+                    OutlinedCard(
                         colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    Color(0xFF102037)
-                            ),
+                            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                         shape =
                             RoundedCornerShape(
                                 if (aiCompact) 17.dp else 20.dp
@@ -14070,7 +14210,7 @@ private fun LocalAiAssistantScreen(
             }
         }
 
-        Card(
+        OutlinedCard(
             colors =
                 CardDefaults
                     .cardColors(
@@ -14224,7 +14364,7 @@ private fun LocalAiMessageBubble(
                 Arrangement.Start
             }
     ) {
-        Card(
+        OutlinedCard(
             colors =
                 CardDefaults
                     .cardColors(
@@ -14512,6 +14652,10 @@ private fun SourceStep(
             Arrangement.spacedBy(if (formCompact) 10.dp else 14.dp)
     ) {
         item {
+            Toggle("Normal Android HTML motorunu açıkça seç",d.normalHtmlEngine, featureKey = "normalHtmlEngine"){update(d.copy(normalHtmlEngine=it))}
+            Text(if(d.normalHtmlEngine)"Normal motor seçildi; gerçek Android araçları gerekir." else "Fast HTML seçildi; desteklenmeyen özellik sessiz fallback yapmaz.",color=TextSecondary,fontSize=12.sp)
+        }
+        item {
             Section(
                 "1. Proje",
                 "Uygulama, sürüm, Android SDK ve kaynak ayarlarını yapılandır."
@@ -14540,7 +14684,7 @@ private fun SourceStep(
                     },
                     label = {
                         Text(
-                            "HTML / ZIP"
+                            "HTML / ZIP / PDF"
                         )
                     }
                 )
@@ -14724,11 +14868,9 @@ private fun SourceStep(
 
         // APPFORGE_STEP1_VERSION_SDK
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor = Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -15081,7 +15223,7 @@ private fun SourceStep(
                 d.sourceLabel.isNotBlank()
             ) {
                 item {
-                    Card(
+                    OutlinedCard(
                         colors =
                             CardDefaults
                                 .cardColors(
@@ -15187,7 +15329,7 @@ private fun SourceStep(
                             webUrlValid
                         ) {
                             Text(
-                                "✓ HTTPS adresi geçerli"
+                                if (isCleartextWebSourceUrl(d.webUrl)) "✓ HTTP adresi geçerli. Bağlantı şifrelenmez; yalnız güvendiğiniz ağlarda kullanın." else "✓ HTTPS adresi geçerli"
                             )
                         } else {
                             Text(
@@ -15202,7 +15344,7 @@ private fun SourceStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
                     CardDefaults
                         .cardColors(
@@ -15317,12 +15459,12 @@ private val extraPermissionSpecs =
     listOf(
         ExtraPermissionSpec("BLUETOOTH", "Bluetooth ve yakın cihazlar", "Android 12+ tarama ve bağlantı izinlerini ekler.", "BLUETOOTH_SCAN / CONNECT"),
         ExtraPermissionSpec("BIOMETRIC", "Biyometrik doğrulama", "Parmak izi veya yüz doğrulama kullanan native projeler içindir.", "USE_BIOMETRIC"),
-        ExtraPermissionSpec("CALENDAR", "Takvim", "Takvim etkinliklerini okuma ve yazma yeteneklerini ekler.", "READ / WRITE_CALENDAR"),
-        ExtraPermissionSpec("CONTACTS", "Kişiler", "Kişi listesini okuma ve kullanıcı onayıyla kayıt ekleme yeteneklerini ekler.", "READ / WRITE_CONTACTS"),
+        ExtraPermissionSpec("CALENDAR", "Takvim", "Takvim okuma/yazma izinlerini manifestte bildirir; WebView takvim API desteği sağlamaz.", "READ / WRITE_CALENDAR"),
+        ExtraPermissionSpec("CONTACTS", "Kişiler", "Kişi okuma/yazma izinlerini manifestte bildirir; WebView kişi API desteği sağlamaz.", "READ / WRITE_CONTACTS"),
         ExtraPermissionSpec("BACKGROUND_LOCATION", "Arka plan konumu", "Yüksek hassasiyetli izindir; yalnız gerçek arka plan konum ihtiyacında aç.", "ACCESS_BACKGROUND_LOCATION"),
         ExtraPermissionSpec("EXACT_ALARM", "Kesin alarm", "Tam zamanında alarm/hatırlatıcı kuran uygulamalar içindir.", "SCHEDULE_EXACT_ALARM"),
-        ExtraPermissionSpec("MEDIA_IMAGES", "Fotoğraf erişimi", "Android 13+ cihazlarda galerideki görselleri okumayı sağlar.", "READ_MEDIA_IMAGES"),
-        ExtraPermissionSpec("MEDIA_VIDEO", "Video erişimi", "Android 13+ cihazlarda galerideki videoları okumayı sağlar.", "READ_MEDIA_VIDEO"),
+        ExtraPermissionSpec("MEDIA_IMAGES", "Fotoğraf erişimi", "READ_MEDIA_IMAGES iznini manifestte bildirir; erişim veya kullanıcı onayı sağlamaz.", "READ_MEDIA_IMAGES"),
+        ExtraPermissionSpec("MEDIA_VIDEO", "Video erişimi", "READ_MEDIA_VIDEO iznini manifestte bildirir; erişim veya kullanıcı onayı sağlamaz.", "READ_MEDIA_VIDEO"),
         ExtraPermissionSpec("ACTIVITY_RECOGNITION", "Fiziksel aktivite", "Adım ve hareket tanıma özellikleri içindir.", "ACTIVITY_RECOGNITION")
     )
 
@@ -15336,23 +15478,23 @@ private fun PermissionsStep(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    val permissionCount =
-        listOf(
-            d.camera,
-            d.microphone,
-            d.location,
-            d.notifications,
-            d.networkState,
-            d.wakeLock,
-            d.nfc
-        ).count { it }
-            + d.additionalPermissions.size
+    val permissionCount = com.appforge.studio.build.FastHtmlApkPolicy.templatePermissions(d).count{it!="android.permission.INTERNET"}
 
     LazyColumn(
         contentPadding = PaddingValues(if (formCompact) 12.dp else 20.dp),
         verticalArrangement =
             Arrangement.spacedBy(if (formCompact) 8.dp else 12.dp)
     ) {
+        if(com.appforge.studio.build.FeatureSupportMatrix.conflicts(d).isNotEmpty())item {
+            Text("Kaydedilmiş uyumsuz tercihler korunuyor. Kaynak API bulguları varsa seçenek kapatmak kaynak gereksinimini kaldırmaz.",color=TextSecondary)
+            OutlinedButton(onClick={
+                fun retain(key:String,on:Boolean)=on && com.appforge.studio.build.FeatureSupportMatrix.feature(d,key).selectable
+                update(d.copy(camera=retain("camera",d.camera),microphone=retain("microphone",d.microphone),
+                    qrScanner=retain("qrScanner",d.qrScanner),mediaPlayerBridge=retain("mediaPlayerBridge",d.mediaPlayerBridge),
+                    admobEnabled=retain("admobEnabled",d.admobEnabled),firebaseAnalyticsEnabled=retain("firebaseAnalyticsEnabled",d.firebaseAnalyticsEnabled),
+                    firebaseCrashlyticsEnabled=retain("firebaseCrashlyticsEnabled",d.firebaseCrashlyticsEnabled),firebaseMessagingEnabled=retain("firebaseMessagingEnabled",d.firebaseMessagingEnabled),umpConsentEnabled=retain("umpConsentEnabled",d.umpConsentEnabled)))
+            }) { Text("Onayımla uyumsuz seçimleri kapat") }
+        }
         item {
             Section(
                 "2. İzinler",
@@ -15361,11 +15503,9 @@ private fun PermissionsStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor = Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(18.dp),
                 modifier =
@@ -15410,12 +15550,9 @@ private fun PermissionsStep(
                 .isNotEmpty()
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -15465,6 +15602,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "camera",
                 title = "Kamera",
                 description =
                     if (
@@ -15493,6 +15631,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "microphone",
                 title = "Mikrofon",
                 description =
                     if (analysis?.microphone == true) {
@@ -15517,6 +15656,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "location",
                 title = "Konum",
                 description =
                     if (
@@ -15546,6 +15686,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "networkState",
                 title = "Ağ durumunu okuma",
                 description =
                     if (analysis?.networkState == true) {
@@ -15568,6 +15709,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "wakeLock",
                 title = "Ekranı/işlemi uyanık tutma",
                 description =
                     if (analysis?.wakeLock == true) {
@@ -15590,6 +15732,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "nfc",
                 title = "NFC",
                 description =
                     if (analysis?.nfc == true) {
@@ -15612,6 +15755,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "notifications",
                 title = "Bildirimler",
                 description =
                     if (
@@ -15655,17 +15799,15 @@ private fun PermissionsStep(
             FeatureToggleCard(
                 title = spec.title,
                 description = spec.description,
-                checked = spec.key in d.additionalPermissions,
+                checked = WebviewProjectSettings.isAdditionalPermissionEnabled(d.additionalPermissions, spec.key),
                 permission = spec.manifestLabel
             ) { enabled ->
                 update(
                     d.copy(
                         additionalPermissions =
-                            if (enabled) {
-                                d.additionalPermissions + spec.key
-                            } else {
-                                d.additionalPermissions - spec.key
-                            }
+                            WebviewProjectSettings.toggleAdditionalPermission(
+                                d.additionalPermissions, spec.key, enabled
+                            )
                     )
                 )
             }
@@ -15679,13 +15821,13 @@ private fun PermissionsStep(
 
         item {
             NoteCard(
-                "AppForge geniş depolama izni istemez. Dosya işlemleri modern Android dosya seçicileriyle yapılır."
+                "Ek izinler yalnız manifest bildirimi sağlar; native API veya çalışma zamanı onayı sağlamaz. WebView dosya yükleme, geniş galeri izni gerektirmeyen Android sistem seçicisini kullanır."
             )
         }
 
         item {
             NoteCard(
-                "Media3 etkinse gerekli medya ve arka plan servis izinleri build sırasında otomatik eklenir."
+                "Fast HTML yerel ses köprüsü seçilirse gerekli medya servisi izinleri eklenir; normal motorda seçim tek başına runtime sağlamaz."
             )
         }
     }
@@ -15736,12 +15878,9 @@ private fun FeaturesStep(
             analysis != null
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -15827,12 +15966,9 @@ private fun FeaturesStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -15922,6 +16058,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webJavaScriptEnabled",
                 title =
                     "JavaScript",
                 description =
@@ -15954,6 +16091,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webDomStorageEnabled",
                 title =
                     "DOM Storage",
                 description =
@@ -15974,6 +16112,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webZoomEnabled",
                 title =
                     "Yakınlaştırma / Pinch Zoom",
                 description =
@@ -15994,6 +16133,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webWideViewPortEnabled",
                 title =
                     "Geniş Viewport",
                 description =
@@ -16014,6 +16154,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webOverviewModeEnabled",
                 title =
                     "Overview Mode",
                 description =
@@ -16034,6 +16175,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webMediaAutoplayEnabled",
                 title =
                     "Medya Autoplay",
                 description =
@@ -16054,6 +16196,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webMixedContentAllowed",
                 title =
                     "Mixed Content Uyumluluğu",
                 description =
@@ -16068,6 +16211,14 @@ private fun FeaturesStep(
                     )
                 )
             }
+        }
+
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Yerel ağ erişimi (Android 17+): DNS takma adları, yönlendirme ve HTML alt kaynakları için açık tercih", modifier = Modifier.weight(1f))
+                Switch(checked = d.localNetworkAccess, onCheckedChange = { update(d.copy(localNetworkAccess = it)) })
+            }
+            NoteCard("Bilinen LAN/localhost URL'sinde Android 17 izni yükleme öncesi sorulur. Diğer hostların DNS sonucu önceden bilinmez; bu tercih kapalıysa LAN isteği sistemce engellenebilir. HTTP izni ve güvenli bridge kapsamı değişmez.")
         }
 
         if (
@@ -16092,6 +16243,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "fileUpload",
                 title =
                     "Dosya yükleme",
                 description =
@@ -16112,6 +16264,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "downloads",
                 title =
                     "DownloadManager",
                 description =
@@ -16132,6 +16285,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "offlineCache",
                 title =
                     "Offline Cache",
                 description =
@@ -16152,6 +16306,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "fullscreen",
                 title =
                     "Tam ekran",
                 description =
@@ -16177,20 +16332,31 @@ private fun FeaturesStep(
 }
 
 
+private val LocalFeatureDraft = androidx.compose.runtime.staticCompositionLocalOf<ProjectDraft?> { null }
+
+@Composable private fun featureDecision(label:String,explicitKey:String?=null): com.appforge.studio.build.FeatureSupport? {
+    val d=LocalFeatureDraft.current?:return null
+    val key=explicitKey?:com.appforge.studio.build.FeatureSupportMatrix.keyForLabel(label)?:return null
+    return com.appforge.studio.build.FeatureSupportMatrix.feature(d,key)
+}
+
 @Composable
 private fun FeatureToggleCard(
     title: String,
     description: String,
     checked: Boolean,
+    featureKey: String? = null,
     permission: String? = null,
     recommended: Boolean = false,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val support=featureDecision(title,featureKey)
+    val enabled=support?.selectable != false
     val formCompact =
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         colors =
             CardDefaults
                 .cardColors(
@@ -16230,6 +16396,7 @@ private fun FeatureToggleCard(
                         FontWeight.Medium
                 )
 
+                if(support!=null && support.state!=com.appforge.studio.build.FeatureSupportState.SUPPORTED)Text(support.reason+(support.alternative?.let{" Alternatif: $it"}?:""),color=TextSecondary,fontSize=12.sp)
                 Text(
                     description,
                     color =
@@ -16270,8 +16437,8 @@ private fun FeatureToggleCard(
             Switch(
                 checked =
                     checked,
-                onCheckedChange =
-                    onCheckedChange
+                enabled = enabled,
+                onCheckedChange = { if(enabled) onCheckedChange(it) }
             )
         }
     }
@@ -16346,7 +16513,7 @@ private fun AppearanceStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
                     CardDefaults
                         .cardColors(
@@ -16518,7 +16685,7 @@ private fun AppearanceStep(
 
         item {
             NoteCard(
-                "Otomatik mod Unity ve oyun işaretli projeleri android:appCategory=\"game\" olarak üretir. Telefonun Gaming Hub'a taşıma kararı üreticiye aittir; istersen türü elle değiştirebilirsin."
+                "Oyun seçimi Android uygulama kategorisini game olarak yazar. Otomatik ve Standart uygulama Android undefined kategorisini kullanır. Gaming Hub görünürlüğünü işletim sistemi ve mağaza belirler."
             )
         }
 
@@ -16766,7 +16933,7 @@ private fun AppearanceStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
                     CardDefaults
                         .cardColors(
@@ -16789,7 +16956,7 @@ private fun AppearanceStep(
                     Toggle(
                         "Android 12+ Splash",
                         d.splashEnabled
-                    ) {
+                    , featureKey = "splashEnabled") {
                         update(
                             d.copy(
                                 splashEnabled =
@@ -16834,7 +17001,7 @@ private fun AppearanceStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
                     CardDefaults
                         .cardColors(
@@ -16991,12 +17158,9 @@ private fun NativeBridgeStep(
             analysis != null
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -17024,7 +17188,7 @@ private fun NativeBridgeStep(
 
                         if (analysis.mediaPlayer) {
                             Text(
-                                "✓ Media3 / arka plan medya • ${
+                                "✓ Arka plan medya • ${
                                     analysis.mediaPlayerReason
                                         ?: "Medya kullanımı bulundu"
                                 }",
@@ -17070,7 +17234,7 @@ private fun NativeBridgeStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
                     CardDefaults
                         .cardColors(
@@ -17129,6 +17293,7 @@ private fun NativeBridgeStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "javascriptBridge",
                 title =
                     "JavaScript Bridge",
                 description =
@@ -17156,6 +17321,7 @@ private fun NativeBridgeStep(
             ) {
                 item {
                     FeatureToggleCard(
+                    featureKey = "remoteBridgeAllowed",
                         title =
                             if (
                                 isPro
@@ -17199,7 +17365,7 @@ private fun NativeBridgeStep(
                     d.remoteBridgeAllowed
                 ) {
                     item {
-                        Card(
+                        OutlinedCard(
                             colors =
                                 CardDefaults
                                     .cardColors(
@@ -17327,6 +17493,7 @@ private fun NativeBridgeStep(
 
             item {
                 FeatureToggleCard(
+                    featureKey = "shareBridge",
                     title =
                         "Paylaşım",
                     description =
@@ -17347,6 +17514,7 @@ private fun NativeBridgeStep(
 
             item {
                 FeatureToggleCard(
+                    featureKey = "clipboardBridge",
                     title =
                         "Panoya kopyalama",
                     description =
@@ -17367,6 +17535,7 @@ private fun NativeBridgeStep(
 
             item {
                 FeatureToggleCard(
+                    featureKey = "vibrationBridge",
                     title =
                         "Titreşim / Haptic",
                     description =
@@ -17387,6 +17556,7 @@ private fun NativeBridgeStep(
 
             item {
                 FeatureToggleCard(
+                    featureKey = "mediaPlayerBridge",
                     title =
                         "🎵 Medya Oynatıcı / Arka Plan Ses",
                     description =
@@ -17409,12 +17579,9 @@ private fun NativeBridgeStep(
                 d.mediaPlayerBridge
             ) {
                 item {
-                    Card(
+                    OutlinedCard(
                         colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    Card2
-                            ),
+                            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                         shape =
                             RoundedCornerShape(
                                 18.dp
@@ -17461,7 +17628,7 @@ private fun NativeBridgeStep(
                             )
 
                             Text(
-                                "Sonraki aşamada Media3 runtime bağlanacak.",
+                                "Fast HTML: paketlenmiş yerel ses AppForgeMedia API ile çalar. Bildirim izni gerekir; uzak akış ve HTML audio otomatik devri desteklenmez.",
                                 color =
                                     Accent,
                                 fontSize =
@@ -17473,7 +17640,7 @@ private fun NativeBridgeStep(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -17653,12 +17820,9 @@ private fun MonetizationStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -17735,6 +17899,7 @@ private fun MonetizationStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "admobEnabled",
                 title =
                     if (
                         isPro
@@ -17918,6 +18083,7 @@ private fun MonetizationStep(
 
             item {
                 FeatureToggleCard(
+                    featureKey = "umpConsentEnabled",
                     title =
                         "UMP / GDPR izin yönetimi",
                     description =
@@ -17955,6 +18121,7 @@ private fun MonetizationStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "billingEnabled",
                 title =
                     if (
                         isPro
@@ -17998,12 +18165,9 @@ private fun MonetizationStep(
             draft.billingEnabled
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -18226,6 +18390,7 @@ private fun MonetizationStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "firebaseAnalyticsEnabled",
                 title =
                     if (
                         isPro
@@ -18267,6 +18432,7 @@ private fun MonetizationStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "firebaseCrashlyticsEnabled",
                 title =
                     if (
                         isPro
@@ -18308,6 +18474,7 @@ private fun MonetizationStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "firebaseMessagingEnabled",
                 title =
                     if (
                         isPro
@@ -18377,12 +18544,9 @@ private fun MonetizationStep(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -18570,6 +18734,7 @@ private fun DeepLinkStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "deepLinkEnabled",
                 title =
                     if (
                         isPro
@@ -18613,12 +18778,9 @@ private fun DeepLinkStep(
             d.deepLinkEnabled
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -18827,12 +18989,9 @@ private fun DeepLinkStep(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -18969,12 +19128,9 @@ private fun SigningStep(
                         ) {
                             item ->
 
-                            Card(
+                            OutlinedCard(
                                 colors =
-                                    CardDefaults.cardColors(
-                                        containerColor =
-                                            Card2
-                                    ),
+                                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                                 modifier =
                                     Modifier.fillMaxWidth()
                             ) {
@@ -19223,12 +19379,9 @@ private fun SigningStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -19341,6 +19494,7 @@ private fun SigningStep(
                 )
 
                 FilterChip(
+                    enabled = com.appforge.studio.build.FeatureSupportMatrix.feature(d,"customSigning").selectable,
                     selected =
                         d.signingMode ==
                             SigningMode.CUSTOM,
@@ -19437,12 +19591,9 @@ private fun SigningStep(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -19994,12 +20145,9 @@ private fun WindowsPublisherSigningAdminCard(
         )
     }
 
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    Card2
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(
                 18.dp
@@ -20388,12 +20536,9 @@ private fun BuildSettingsStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -20443,7 +20588,7 @@ private fun BuildSettingsStep(
                                 draft.sourceMode ==
                                     SourceMode.LOCAL
                             ) {
-                                "HTML / ZIP"
+                                "HTML / ZIP / PDF"
                             } else {
                                 "Web URL"
                             }
@@ -20529,7 +20674,7 @@ private fun BuildSettingsStep(
                     )
 
                     Text(
-                        "Media3: ${onOff(draft.mediaPlayerBridge)}",
+                        "Medya köprüsü: ${onOff(draft.mediaPlayerBridge)}",
                         color =
                             TextSecondary,
                         fontSize =
@@ -20687,12 +20832,9 @@ private fun BuildSettingsStep(
                 "native-exe"
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -20760,12 +20902,9 @@ private fun BuildSettingsStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -21004,12 +21143,9 @@ private fun BuildSettingsStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -21661,6 +21797,9 @@ private fun BuildStep(
 
     val stageLabel =
         when {
+            !effectiveBuildBusy && buildId == null && "BUILD_BLOCKED=YES" in preflight ->
+                "Derleme engellendi"
+
             normalizedStatus ==
                 "failed" ||
             normalizedStatus
@@ -22324,12 +22463,9 @@ private fun BuildStep(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -22672,12 +22808,9 @@ private fun BuildStep(
             }
 
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -22716,12 +22849,9 @@ private fun BuildStep(
             buildSucceeded
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             18.dp
@@ -22827,12 +22957,9 @@ private fun BuildStep(
                 val diagnosis =
                     buildDiagnosis
 
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Color(0xFF28171B)
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             20.dp
@@ -23039,7 +23166,7 @@ private fun BuildStep(
                             if (
                                 showBuildTechnicalDetails
                             ) {
-                                Card(
+                                OutlinedCard(
                                     colors =
                                         CardDefaults
                                             .cardColors(
@@ -25536,7 +25663,7 @@ private fun ProjectLibraryScreen(
                 }
             ) {
                 p ->
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -25697,7 +25824,7 @@ private fun BuildHistoryScreen(onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(if (historyCompact) 7.dp else 10.dp)
             ) {
                 items(builds, key = { it.id }) { b ->
-                    Card(colors = CardDefaults.cardColors(containerColor = Card2)) {
+                    OutlinedCard(colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)) {
                         Column(Modifier.padding(if (historyCompact) 12.dp else 16.dp)) {
                             Text(b.projectName, fontWeight = FontWeight.Bold)
                             Text(b.packageName, color = TextSecondary, fontSize = 12.sp)
@@ -26173,11 +26300,9 @@ private fun TemplatesScreen(
             verticalArrangement = Arrangement.spacedBy(if (templatesCompact) 8.dp else 12.dp)
         ) {
             item {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor = Card2
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape = RoundedCornerShape(if (templatesCompact) 18.dp else 22.dp)
                 ) {
                     Column(
@@ -26318,8 +26443,8 @@ private fun TemplatesScreen(
                     }
 
                     item {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Card2),
+                        OutlinedCard(
+                            colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                             shape = RoundedCornerShape(if (templatesCompact) 15.dp else 18.dp)
                         ) {
                             Column(
@@ -26365,11 +26490,9 @@ private fun TemplateStatPill(
         LocalConfiguration.current.screenWidthDp < 380
 
 
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor = Color(0xFF102037)
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(14.dp)
     ) {
@@ -26404,12 +26527,10 @@ private fun AdvancedTemplateCategoryCard(
         LocalConfiguration.current.screenWidthDp < 380
 
 
-    Card(
+    OutlinedCard(
         onClick = onOpen,
         colors =
-            CardDefaults.cardColors(
-                containerColor = spec.container
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(if (templateCategoryCompact) 19.dp else 24.dp)
     ) {
@@ -26424,14 +26545,9 @@ private fun AdvancedTemplateCategoryCard(
             verticalAlignment =
                 Alignment.CenterVertically
         ) {
-            Card(
+            OutlinedCard(
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            spec.accent.copy(
-                                alpha = 0.18f
-                            )
-                    ),
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                 shape =
                     RoundedCornerShape(18.dp)
             ) {
@@ -26498,11 +26614,9 @@ private fun CategorySheetHeader(
         LocalConfiguration.current.screenWidthDp < 380
 
 
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor = spec.container
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(if (categorySheetCompact) 18.dp else 22.dp)
     ) {
@@ -26542,11 +26656,9 @@ private fun RemoteTemplateCard(
         LocalConfiguration.current.screenWidthDp < 380
 
 
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor = Card2
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(if (remoteTemplateCompact) 15.dp else 18.dp)
     ) {
@@ -26801,7 +26913,7 @@ private fun ProPlanCard(
     val proCardCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         colors =
             CardDefaults
                 .cardColors(
@@ -26839,7 +26951,7 @@ private fun ProPlanCard(
                     Alignment
                         .CenterVertically
             ) {
-                Card(
+                OutlinedCard(
                     colors =
                         CardDefaults
                             .cardColors(
@@ -27724,11 +27836,9 @@ private fun ManagedKeystoreCard(
     val managedKeyCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor = Card2
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(
                 if (managedKeyCompact) {
@@ -27758,14 +27868,9 @@ private fun ManagedKeystoreCard(
                 verticalAlignment =
                     Alignment.CenterVertically
             ) {
-                Card(
+                OutlinedCard(
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Color(
-                                    0xFF23344E
-                                )
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(
                             if (managedKeyCompact) {
@@ -27971,8 +28076,8 @@ private fun FingerprintBox(
     val fingerprintCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF253246)),
+    OutlinedCard(
+        colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape = RoundedCornerShape(if (fingerprintCompact) 12.dp else 14.dp)
     ) {
         Column(Modifier.fillMaxWidth().padding(if (fingerprintCompact) 10.dp else 14.dp)) {
@@ -28007,9 +28112,8 @@ private fun applyTemplate(current: ProjectDraft, template: RemoteTemplate): Proj
                     ?.let { array ->
                         buildSet {
                             for (index in 0 until array.length()) {
-                                array.optString(index)
-                                    .takeIf { it.isNotBlank() }
-                                    ?.let(::add)
+                                // Preserve invalid imported entries for fail-closed preflight.
+                                add(array.optString(index))
                             }
                         }
                     }
@@ -28113,17 +28217,18 @@ private fun Section(
 private fun Toggle(
     label: String,
     value: Boolean,
+    featureKey: String? = null,
     onChange: (Boolean) -> Unit
 ) {
+    val support=featureDecision(label,featureKey)
+    val enabled=support?.selectable != false
     val compact =
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    Card(
+    OutlinedCard(
         colors =
-            CardDefaults.cardColors(
-                containerColor = Card2
-            ),
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape =
             RoundedCornerShape(
                 if (compact) {
@@ -28148,7 +28253,7 @@ private fun Toggle(
                 Alignment.CenterVertically
         ) {
             Text(
-                text = label,
+                text = label+(support?.takeIf{it.state!=com.appforge.studio.build.FeatureSupportState.SUPPORTED}?.let{"\n"+it.reason+(it.alternative?.let{a->" Alternatif: $a"}?:"")}?:""),
                 modifier =
                     Modifier.weight(1f),
                 fontSize =
@@ -28177,7 +28282,8 @@ private fun Toggle(
 
             Switch(
                 checked = value,
-                onCheckedChange = onChange
+                enabled = enabled,
+                onCheckedChange = { if(enabled) onChange(it) }
             )
         }
     }
@@ -28199,8 +28305,8 @@ internal fun NoteCard(text: String) {
     val noteCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Card2),
+    OutlinedCard(
+        colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape = RoundedCornerShape(if (noteCompact) 14.dp else 18.dp)
     ) {
         Text(
@@ -28223,8 +28329,8 @@ private fun InfoLine(label: String, value: String) {
     val infoCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Card2),
+    OutlinedCard(
+        colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
         shape = RoundedCornerShape(if (infoCompact) 14.dp else 18.dp)
     ) {
         if (infoCompact) {

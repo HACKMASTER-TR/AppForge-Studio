@@ -19,7 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Card
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
@@ -103,21 +103,14 @@ internal fun LocalTerminalPanel(
                     session.id ==
                         activeSession.id
 
-                Card(
+                OutlinedCard(
                     onClick = {
                         onSelectSession(
                             session.id
                         )
                     },
                     colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                if (selected) {
-                                    TerminalPrimary
-                                } else {
-                                    TerminalSurfaceRaised
-                                }
-                        ),
+                        CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black),
                     shape =
                         RoundedCornerShape(12.dp)
                 ) {

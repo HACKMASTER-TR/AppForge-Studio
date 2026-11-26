@@ -84,10 +84,10 @@ test("offline pack tracks native toolchain without declaring native product READ
   const manager = read("android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt");
   const screen = read("android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt");
   assert.match(manager, /windowsNativeToolchainReady/);
-  assert.match(manager, /windows-native\.ready/);
+  assert.match(manager, /OfflineModuleId\.WINDOWS_NATIVE/);
   assert.match(manager, /install-windows-native-toolchain\.sh/);
-  assert.match(screen, /Windows Native EXE Toolchain/);
-  assert.match(screen, /EXPERIMENTAL/);
+  assert.match(screen, /OfflineModules\.all/);
+  assert.match(read("android-app/app/src/main/java/com/appforge/studio/build/OfflineModulePlan.kt"), /EXPERIMENTAL/);
 });
 
 test("native source path canonicalizes Android cache alias before workspace mapping", () => {

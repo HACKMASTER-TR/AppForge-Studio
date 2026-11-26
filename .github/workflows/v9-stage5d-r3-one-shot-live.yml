@@ -1,0 +1,402 @@
+# R3 authorized one-shot. Non-force exact-parent commit only. Only disposable Worker may deploy.
+name: V9 Stage5D R3 One-Shot Isolated Cron DO Live Acceptance
+'on':
+  push:
+    branches:
+    - feat/v9-global-package-distribution-20261027
+    paths:
+    - .github/workflows/v9-stage5d-r3-one-shot-live.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-r3-isolated-live-only
+  cancel-in-progress: false
+jobs:
+  r3-live:
+    if: 'github.run_attempt == 1 && github.repository == ''HACKMASTER-TR/AppForge-Studio'' && github.ref == ''refs/heads/feat/v9-global-package-distribution-20261027''
+      && github.event_name == ''push'' && github.event.before == ''2b47c75c1b2b128813a45b5e17f534fdd856280c'' && github.event.head_commit.message
+      == ''test(v9): authorize one-shot Stage5D R3 isolated live acceptance'''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 39
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+      PROBE_CONFIG: cloudflare/v9-witness/stage5d-r3-probe/wrangler.toml
+    steps:
+    - name: Checkout pinned V9 commit
+      uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 2
+    - name: Fail closed on one-shot parent, file scope, and pinned R3 sources
+      id: preflight
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 - <<'PY'
+        import pathlib,subprocess,tomllib
+        assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==__import__('os').environ['GITHUB_SHA']
+        assert subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()=='2b47c75c1b2b128813a45b5e17f534fdd856280c'
+        assert subprocess.check_output(['git','diff-tree','--no-commit-id','--name-only','-r','HEAD'],text=True).strip()=='.github/workflows/v9-stage5d-r3-one-shot-live.yml'
+        pins={'cloudflare/v9-witness/stage5d-r3-probe/entry.mjs': 'a13bfba95f5a848cc1a7a58aee7f20b22bbcde04', 'cloudflare/v9-witness/stage5d-r3-probe/scheduled.mjs': 'e5bff1fd72abaca6e9159d8d8b674c830fb535f1', 'cloudflare/v9-witness/stage5d-r3-probe/scheduled.test.mjs': '8a76ff8a27a85d1535825a71e712df5c600d7bb0', 'cloudflare/v9-witness/stage5d-r3-probe/wrangler.toml': 'fe743d26ea110f9f2a05a00353607cab21b17137', 'docs/engineering/appforge-v9-stage5d-r3-diagnostic.md': '0ac5b92e7cd61f5f8f053c2bee3156f70ca90cf8', 'cloudflare/v9-witness/stage5d-probe/core.mjs': '97c387597cdaf3d34bbad9c106d3fc4ed59681c6', 'cloudflare/v9-witness/device-auth/stage5d-private.mjs': '537d8167550aca3eebc5de87299efb46b2ff12c7'}
+        for path,expected in pins.items():
+            actual=subprocess.check_output(['git','rev-parse','HEAD:'+path],text=True).strip()
+            assert actual==expected,('pinned file changed',path)
+        c=tomllib.loads(pathlib.Path('cloudflare/v9-witness/stage5d-r3-probe/wrangler.toml').read_text())
+        assert set(c)=={'name','main','compatibility_date','workers_dev','preview_urls','vars','durable_objects','migrations','triggers'}
+        assert c['name']=='appforge-v9-stage5d-r3-disposable-20261029'
+        assert c['main']=='entry.mjs' and c['workers_dev'] is False and c['preview_urls'] is False
+        assert c['vars']=={'STAGE5D_TEST_MODE':'SYNTHETIC_ONLY','STAGE5D_R3_DIAGNOSTIC':'ENABLED'}
+        assert c['triggers']=={'crons':['* * * * *']}
+        assert c['durable_objects']['bindings']==[{'name':'V9_STAGE5D_R3_PROBE','class_name':'V9Stage5DR3DO'}]
+        assert c['migrations']==[{'tag':'v1','new_sqlite_classes':['V9Stage5DR3DO']}]
+        print('R3_EXACT_COMMIT_AND_SOURCE_PINS=PASS;PUBLIC_ROUTE=DISABLED')
+        PY
+    - name: Prepare Node 22
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - name: Run 552 offline tests and compile R3 without deployment
+      id: offline
+      shell: bash
+      run: |
+        set -euo pipefail
+        run_tap(){
+          local label="$1" expected="$2" file="$3" log="$RUNNER_TEMP/$1.tap"
+          if ! node --test --test-reporter=tap "$file" > "$log" 2>&1; then tail -90 "$log"; exit 1; fi
+          for row in "# tests $expected" "# pass $expected" "# fail 0" "# skipped 0" "# cancelled 0"; do
+            if ! grep -Fxq "$row" "$log"; then tail -90 "$log"; exit 1; fi
+          done
+          echo "$label=$expected PASS"
+        }
+        run_tap R3_STAGE5A 17 cloudflare/v9-witness/device-auth/protocol.test.mjs
+        run_tap R3_STAGE5B 27 cloudflare/v9-witness/device-auth/registry.test.mjs
+        run_tap R3_STAGE5C 24 cloudflare/v9-witness/device-auth/admin-oidc.test.mjs
+        run_tap R3_STAGE5D 2 cloudflare/v9-witness/stage5d-probe/core.test.mjs
+        run_tap R3_WITNESS 28 cloudflare/v9-witness/witness.test.mjs
+        run_tap R3_R2_WORKER 8 cloudflare/package-distribution/worker.test.mjs
+        run_tap R3_DIAGNOSTIC 6 cloudflare/v9-witness/stage5d-r3-probe/scheduled.test.mjs
+        log="$RUNNER_TEMP/r3-python-440.log"
+        if ! PYTHONWARNINGS=error::ResourceWarning python3 -B -m unittest discover -s quality/tests -p 'test_v9_*.py' -v > "$log" 2>&1; then tail -100 "$log"; exit 1; fi
+        if ! grep -Eq '^Ran 440 tests? in ' "$log" || ! grep -Fxq 'OK' "$log" || grep -Eq 'ResourceWarning|\.\.\. skipped ' "$log"; then
+          tail -100 "$log";echo 'R3_PYTHON_GATE_FAILED';exit 1
+        fi
+        echo 'R3_FULL_OFFLINE_552=PASS;NODE=112;PYTHON=440;FAIL=0;SKIP=0'
+        npx --yes wrangler@4.153.0 deploy --dry-run --config "$PROBE_CONFIG" --outdir "$RUNNER_TEMP/r3-dry-run"
+        echo 'R3_WRANGLER_BUNDLE_DRY_RUN=PASS;CLOUDFLARE_MUTATIONS=0'
+    - name: Cloudflare read-only preflight and canonical Witness snapshot
+      id: auth
+      shell: bash
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      run: |
+        set -euo pipefail
+        umask 077
+        cat > "$RUNNER_TEMP/r3_cloudflare_guard.py" <<'PY'
+        import hashlib,json,os,re,sys,time,urllib.error,urllib.request
+        from email import policy
+        from email.parser import BytesParser
+        from pathlib import Path
+        ACCOUNT=os.environ.get('CLOUDFLARE_ACCOUNT_ID','').strip()
+        TOKEN=os.environ.get('CLOUDFLARE_API_TOKEN','').strip()
+        WORKER='appforge-v9-witness-isolated-staging'
+        VERSION='52375f28-4c72-46bf-b8a5-fa3b7bacfb53'
+        ETAG='9b2fed53f8a2daf5dd60e995bbc7af20a47eeaee595232b8ca485ce8218eb81a'
+        TARGET='appforge-v9-stage5d-r3-smoke-'+os.environ['GITHUB_RUN_ID']+'-'+os.environ['GITHUB_RUN_ATTEMPT']
+        RUNNER=Path(os.environ['RUNNER_TEMP'])
+        ROOT='https://api.cloudflare.com/client/v4/accounts/'+ACCOUNT+'/workers/scripts/'
+        def require(ok,reason):
+            if not ok:raise RuntimeError(reason)
+        def http(url,method='GET'):
+            require(url==ROOT[:-1] or url.startswith(ROOT) or url=='https://api.cloudflare.com/client/v4/accounts/'+ACCOUNT+'/tokens/verify','unapproved API path')
+            require(method=='GET' or (method=='DELETE' and url==ROOT+TARGET),'unapproved HTTP method')
+            req=urllib.request.Request(url,method=method,headers={'Authorization':'Bearer '+TOKEN,'Accept':'application/json'})
+            try:
+                with urllib.request.urlopen(req,timeout=35) as r:
+                    return r.status,r.read(6_000_001),r.headers.get('Content-Type','')
+            except urllib.error.HTTPError as e:
+                if e.code==404:return 404,b'',''
+                raise RuntimeError('HTTP_'+str(e.code)) from None
+            except (TimeoutError,urllib.error.URLError):raise RuntimeError('CLOUDFLARE_NETWORK') from None
+        def api(url):
+            status,body,_=http(url)
+            require(status==200 and len(body)<=6_000_000,'api status/size')
+            obj=json.loads(body)
+            require(obj.get('success') is True,'api unsuccessful')
+            return obj
+
+        def canonical(mime,raw):
+            require(len(raw)<=6_000_000,'witness size')
+            if not mime.lower().startswith('multipart/'):
+                return hashlib.sha256(raw).hexdigest()
+            require('\r' not in mime and '\n' not in mime,'header injection')
+            msg=BytesParser(policy=policy.default).parsebytes(b'MIME-Version: 1.0\r\nContent-Type: '+mime.encode('ascii')+b'\r\n\r\n'+raw)
+            require(msg.is_multipart(),'multipart invalid')
+            parts=[]
+            for part in msg.walk():
+                if part.is_multipart():continue
+                name=part.get_param('name',header='content-disposition') or ''
+                filename=part.get_filename() or ''
+                content=part.get_payload(decode=True)
+                require(isinstance(content,bytes),'invalid part')
+                parts.append((name,filename,hashlib.sha256(content).hexdigest()))
+            require(1<=len(parts)<=200,'invalid part count')
+            return hashlib.sha256(json.dumps(sorted(parts),separators=(',',':')).encode()).hexdigest()
+        def witness():
+            deployed=api(ROOT+WORKER+'/deployments')
+            results=deployed['result']; arr=results.get('deployments') if isinstance(results,dict) else results
+            require(isinstance(arr,list) and len(arr)==1,'witness deployment history drift')
+            versions=arr[0].get('versions') or []
+            require(len(versions)==1 and versions[0].get('version_id')==VERSION and versions[0].get('percentage')==100,'witness deployed version drift')
+            require((deployed.get('result_info') or {}).get('total_pages',1)==1,'deploy history pagination')
+            v=api(ROOT+WORKER+'/versions/'+VERSION)['result']
+            require(((v.get('resources') or {}).get('script') or {}).get('etag')==ETAG,'witness ETag drift')
+            fingerprints=[]
+            for _ in range(2):
+                status,body,mime=http(ROOT+WORKER)
+                require(status==200,'witness disappeared')
+                fingerprints.append(canonical(mime,body))
+            require(fingerprints[0]==fingerprints[1],'witness unstable representation')
+            return fingerprints[0]
+        def check_workers():
+            obj=api(ROOT[:-1]); data=obj.get('result')
+            require(isinstance(data,list),'worker listing invalid')
+            info=obj.get('result_info') or {}
+            require(info.get('total_pages',1)<=1 and info.get('total_count',len(data))<=len(data),'worker listing pagination')
+            names={w.get('id') for w in data if isinstance(w,dict)}
+            require(WORKER in names,'original witness missing')
+            require(TARGET not in names,'r3 target already exists')
+            require(not any(isinstance(n,str) and (n.startswith('appforge-v9-stage5d-r3-smoke-') or n.startswith('appforge-v9-stage5d-live-smoke-')) for n in names),'stale Stage5D disposable worker')
+        def preflight():
+            require(re.fullmatch(r'[0-9a-fA-F]{32}',ACCOUNT) is not None and len(TOKEN)>20,'missing token/account')
+            auth=api('https://api.cloudflare.com/client/v4/accounts/'+ACCOUNT+'/tokens/verify')['result']
+            require(auth.get('status')=='active','account token inactive')
+            check_workers()
+            fingerprint=witness()
+            path=RUNNER/'r3-witness-baseline.json'
+            path.write_text(json.dumps({'fingerprint':fingerprint,'version':VERSION,'etag':ETAG})+'\n')
+            path.chmod(0o600)
+            print('R3_ACCOUNT_API_TOKEN=PASS;WITNESS_BASELINE_PINNED=PASS;TARGET_UNUSED=PASS')
+        def cleanup():
+            require(re.fullmatch(r'appforge-v9-stage5d-r3-smoke-[0-9]+-[0-9]+',TARGET) is not None,'target pattern')
+            armed=(RUNNER/'r3-deploy-armed').exists()
+            status,_,_=http(ROOT+TARGET)
+            if not armed:
+                require(status==404,'unarmed Worker exists; require manual review')
+                print('R3_DISPOSABLE_NOT_ARMED=PASS')
+            elif status==200:
+                code,body,_=http(ROOT+TARGET,'DELETE')
+                require(200<=code<300,'delete not successful')
+                if body:require(json.loads(body).get('success') is True,'cloudflare delete refused')
+                for _ in range(10):
+                    s,_,_=http(ROOT+TARGET)
+                    if s==404:break
+                    time.sleep(3)
+                else:raise RuntimeError('deleted Worker still visible')
+                print('R3_DISPOSABLE_DELETED=PASS')
+            elif status==404:
+                print('R3_DISPOSABLE_ABSENT=PASS')
+            else:raise RuntimeError('unexpected disposable state')
+            baseline=RUNNER/'r3-witness-baseline.json'
+            current=witness()
+            if baseline.exists():
+                previous=json.loads(baseline.read_text())
+                require(previous['fingerprint']==current,'witness canonical content changed')
+                print('R3_WITNESS_BASELINE_VS_CLEANUP=PASS')
+            else:
+                print('R3_WITNESS_BASELINE_NOT_AVAILABLE;HISTORICAL_CONTENT_UNPROVEN')
+            print('R3_WITNESS_DEPLOYED_VERSION_ETAG=PASS')
+            print('R3_CLEANUP_AND_WITNESS_INTEGRITY=PASS')
+        if __name__=='__main__':
+            try:
+                {'preflight':preflight,'cleanup':cleanup}[sys.argv[1]]()
+            except Exception as e:
+                # No response bodies or secret-bearing strings. Print only exception CLASS.
+                print('R3_CLOUDFLARE_GUARD=BLOCKED;PHASE='+sys.argv[1]+';ERROR_TYPE='+type(e).__name__)
+                sys.exit(1)
+        PY
+        python3 "$RUNNER_TEMP/r3_cloudflare_guard.py" preflight
+    - name: Deploy only disposable R3 Worker and observe TWO real Cron events
+      id: live
+      continue-on-error: true
+      shell: bash
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      run: |
+        set -Eeuo pipefail
+        set +x
+        umask 077
+        export PROBE_NAME="appforge-v9-stage5d-r3-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+        [[ "$PROBE_NAME" =~ ^appforge-v9-stage5d-r3-smoke-[0-9]+-[0-9]+$ ]]
+        echo 'R3_DEPLOY_SCOPE=EXACT_DISPOSABLE_ONLY;PUBLIC_ROUTE=DISABLED'
+        # Arm cleanup BEFORE invoking Wrangler; secondary job handles unexpected job loss.
+        touch "$RUNNER_TEMP/r3-deploy-armed"
+        npx --yes wrangler@4.153.0 deploy --name "$PROBE_NAME" --config "$PROBE_CONFIG"
+        echo 'R3_DISPOSABLE_DEPLOYED=PASS'
+        python3 - <<'PY'
+        import json,os,time,urllib.error,urllib.request
+        A=os.environ['CLOUDFLARE_ACCOUNT_ID'];T=os.environ['CLOUDFLARE_API_TOKEN'];N=os.environ['PROBE_NAME']
+        url=f'https://api.cloudflare.com/client/v4/accounts/{A}/workers/scripts/{N}/schedules'
+        for i in range(12):
+            try:
+                with urllib.request.urlopen(urllib.request.Request(url,headers={'Authorization':'Bearer '+T,'Accept':'application/json'}),timeout=30) as r:
+                    obj=json.load(r)
+                assert obj.get('success') is True
+                a=(obj.get('result') or {}).get('schedules')
+                assert isinstance(a,list)
+                if [s.get('cron') for s in a]==['* * * * *']:
+                    print('R3_CRON_SCHEDULE_API=PASS;EXACT_ONE_MINUTE=YES');break
+            except (urllib.error.HTTPError,urllib.error.URLError,ValueError,TimeoutError):pass
+            time.sleep(5)
+        else:
+            print('R3_CRON_SCHEDULE_API=NOT_VERIFIED');raise SystemExit(1)
+        PY
+        # Tail only deployed R3 Worker; never print raw logs or secret-bearing exception bodies.
+        : > "$RUNNER_TEMP/r3-tail.jsonl"
+        npx --yes wrangler@4.153.0 tail "$PROBE_NAME" --format json > "$RUNNER_TEMP/r3-tail.jsonl" 2> "$RUNNER_TEMP/r3-tail-stderr.log" &
+        TAIL_PID=$!
+        trap 'kill "$TAIL_PID" 2>/dev/null || true' EXIT
+        sleep 10
+        kill -0 "$TAIL_PID" 2>/dev/null || { echo 'R3_TAIL_STARTUP=BLOCKED';exit 1; }
+        cat > "$RUNNER_TEMP/r3_tail_check.py" <<'PY'
+        import json,os,sys
+        from pathlib import Path
+        raw=Path(os.environ['RUNNER_TEMP'],'r3-tail.jsonl')
+        if not raw.exists():sys.exit(10)
+        logs=[]
+        for line in raw.read_text(errors='replace')[-3_000_000:].splitlines():
+            try:obj=json.loads(line)
+            except (ValueError,TypeError):continue
+            if not isinstance(obj,dict):continue
+            event=obj.get('event') or {}
+            if not isinstance(event,dict) or event.get('cron')!='* * * * *':continue
+            evtime=event.get('scheduledTime') or obj.get('eventTimestamp')
+            if not isinstance(evtime,(int,float)) or evtime<=0:continue
+            messages=[]
+            for log in obj.get('logs') or []:
+                if not isinstance(log,dict):continue
+                msg=log.get('message')
+                if isinstance(msg,list):messages.extend(x for x in msg if isinstance(x,str))
+                elif isinstance(msg,str):messages.append(msg)
+            logs.append({'time':evtime,'texts':messages,'outcome':obj.get('outcome'),'exceptions':obj.get('exceptions') or []})
+        initial=[r for r in logs if any(x.startswith('V9_STAGE5D_R3_INITIAL=PASS') for x in r['texts'])]
+        final=[r for r in logs if any(x=='V9_STAGE5D_R3_LIVE=PASS;OIDC=PASS;ENROLL=PASS;APPROVE=PASS;REVOKE=PASS;RESTART=PASS;PERSIST=PASS;DENY=PASS' for x in r['texts']) and 'R3_RESTART_PERSISTENCE=PASS' in r['texts'] and r['outcome']=='ok' and not r['exceptions']]
+        failed=[r for r in logs if any('R3_SCHEDULED_FAILURE=YES' in x for x in r['texts'])]
+        if failed:
+            print('R3_SCHEDULED_FAILURE_OBSERVED=YES;LIVE=BLOCKED')
+            sys.exit(11)
+        if initial and final and any(f['time']>i['time'] for i in initial for f in final):
+            print('R3_REAL_CRON_DISTINCT_INVOCATIONS=PASS;COUNT_AT_LEAST=2')
+            print('R3_LIVE=PASS;RESTART_PERSISTENCE=PASS;LOG_OUTCOME=OK')
+            sys.exit(0)
+        sys.exit(10)
+        PY
+        R3_FOUND=0
+        for attempt in $(seq 1 120);do
+          if python3 "$RUNNER_TEMP/r3_tail_check.py";then R3_FOUND=1;break
+          else
+            status=$?
+            if [ "$status" -ne 10 ]; then echo 'R3_REAL_CRON_EVIDENCE=BLOCKED';exit 1;fi
+          fi
+          if ! kill -0 "$TAIL_PID" 2>/dev/null;then echo 'R3_TAIL_STOPPED=BLOCKED';exit 1;fi
+          if (( attempt % 4 == 0 ));then echo "R3_CRON_OBSERVATION=PENDING;CHECKS=$attempt";fi
+          sleep 15
+        done
+        if [ "$R3_FOUND" != 1 ];then echo 'R3_LIVE_ACCEPTANCE=NOT_VERIFIED;REASON=MISSING_REAL_CRON_EVIDENCE';exit 1;fi
+        echo 'R3_LIVE_SCHEDULED_ACCEPTANCE=PASS;SYNTHETIC_GOOGLE_ONLY=YES'
+        echo 'R3_REAL_GOOGLE_LOGIN=NOT_VERIFIED;PRODUCTION_SIGNER=NOT_CONFIGURED'
+        echo 'R3_ANDROID_APK=UNCHANGED;PRODUCTION_READINESS=BLOCKED'
+    - name: Always remove disposable R3 Worker and compare original Witness
+      id: cleanup
+      if: ${{ always() }}
+      shell: bash
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      run: |
+        set -euo pipefail
+        set +x
+        if [ -f "$RUNNER_TEMP/r3_cloudflare_guard.py" ];then
+          python3 "$RUNNER_TEMP/r3_cloudflare_guard.py" cleanup
+        else
+          echo 'R3_PRIMARY_CLEANUP=NOT_AVAILABLE;SECONDARY_CLEANUP_REQUIRED'
+        fi
+    - name: Fail closed unless live evidence AND primary cleanup both pass
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "R3_PRECHECK_OUTCOME=${{ steps.preflight.outcome }}"
+        echo "R3_OFFLINE_OUTCOME=${{ steps.offline.outcome }}"
+        echo "R3_AUTH_OUTCOME=${{ steps.auth.outcome }}"
+        echo "R3_LIVE_OUTCOME=${{ steps.live.outcome }}"
+        echo "R3_CLEANUP_OUTCOME=${{ steps.cleanup.outcome }}"
+        if [ '${{ steps.preflight.outcome }}' = success ] && [ '${{ steps.offline.outcome }}' = success ] && [ '${{ steps.auth.outcome }}' = success ] && [ '${{ steps.live.outcome }}' = success ] && [ '${{ steps.cleanup.outcome }}' = success ];then
+         echo 'R3_PRIMARY_LIVE_AND_CLEANUP=PASS'
+        else
+         echo 'R3_PRIMARY_LIVE_AND_CLEANUP=NOT_VERIFIED'
+         exit 1
+        fi
+  r3-secondary-cleanup:
+    needs:
+    - r3-live
+    if: '${{ always() && github.run_attempt == 1 && github.repository == ''HACKMASTER-TR/AppForge-Studio'' && github.ref ==
+      ''refs/heads/feat/v9-global-package-distribution-20261027'' && github.event_name == ''push'' && github.event.before
+      == ''2b47c75c1b2b128813a45b5e17f534fdd856280c'' && github.event.head_commit.message == ''test(v9): authorize one-shot
+      Stage5D R3 isolated live acceptance'' }}'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+    - name: Secondary safety cleanup of exact run-scoped disposable Worker
+      shell: bash
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      run: |
+        set -euo pipefail
+        set +x
+        umask 077
+        python3 - <<'PY'
+        import json,os,re,time,urllib.error,urllib.request
+        A=os.environ['CLOUDFLARE_ACCOUNT_ID'];T=os.environ['CLOUDFLARE_API_TOKEN']
+        NAME='appforge-v9-stage5d-r3-smoke-'+os.environ['GITHUB_RUN_ID']+'-'+os.environ['GITHUB_RUN_ATTEMPT']
+        W='appforge-v9-witness-isolated-staging'
+        V='52375f28-4c72-46bf-b8a5-fa3b7bacfb53';ET='9b2fed53f8a2daf5dd60e995bbc7af20a47eeaee595232b8ca485ce8218eb81a'
+        assert re.fullmatch(r'appforge-v9-stage5d-r3-smoke-[0-9]+-[0-9]+',NAME)
+        assert re.fullmatch(r'[a-fA-F0-9]{32}',A) and len(T)>20
+        root=f'https://api.cloudflare.com/client/v4/accounts/{A}/workers/scripts/'
+        def req(url,method='GET'):
+            assert url.startswith(root) and method in ('GET','DELETE')
+            try:
+                with urllib.request.urlopen(urllib.request.Request(url,method=method,headers={'Authorization':'Bearer '+T,'Accept':'application/json'}),timeout=30) as r:return r.status,r.read(6_000_001)
+            except urllib.error.HTTPError as e:
+                if e.code==404:return 404,b''
+                raise RuntimeError('cloudflare http status '+str(e.code)) from None
+        try:
+            status,body=req(root+NAME)
+            if status==200:
+                code,deleted=req(root+NAME,'DELETE')
+                assert 200<=code<300
+                if deleted:assert json.loads(deleted).get('success') is True
+                for _ in range(10):
+                    status,_=req(root+NAME)
+                    if status==404:break
+                    time.sleep(3)
+                else:raise RuntimeError('Worker still exists')
+                print('R3_SECONDARY_DISPOSABLE_CLEANUP=DELETED')
+            elif status==404:print('R3_SECONDARY_DISPOSABLE_CLEANUP=ALREADY_ABSENT')
+            else:raise RuntimeError('Worker GET unexpected status')
+            code,body=req(root+W+'/deployments');assert code==200
+            obj=json.loads(body);assert obj.get('success') is True
+            a=obj['result']; a=a.get('deployments') if isinstance(a,dict) else a
+            assert len(a)==1 and len(a[0].get('versions') or [])==1
+            assert a[0]['versions'][0].get('version_id')==V and a[0]['versions'][0].get('percentage')==100
+            code,body=req(root+W+'/versions/'+V);assert code==200
+            obj=json.loads(body);assert obj.get('success') is True
+            assert (((obj['result'].get('resources') or {}).get('script') or {}).get('etag'))==ET
+            print('R3_SECONDARY_WITNESS_PINNED_VERSION_ETAG=PASS')
+        except Exception as e:
+            print('R3_SECONDARY_CLEANUP=BLOCKED;ERROR_TYPE='+type(e).__name__)
+            raise SystemExit(1)
+        PY

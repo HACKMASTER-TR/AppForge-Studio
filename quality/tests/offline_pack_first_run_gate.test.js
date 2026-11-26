@@ -68,17 +68,30 @@ test("first-run gate cannot be bypassed with Android back", () => {
 });
 
 test("first-run screen explains consequences and requires explicit skip", () => {
-  assert.match(pack, /Çevrimdışı paketleri atla\?/);
-  assert.match(pack, /YİNE DE DEVAM ET/);
-  assert.match(pack, /GERİ DÖN VE İNDİR/);
-  assert.match(pack, /ŞİMDİLİK ATLA/);
-  assert.match(pack, /Device \/ Offline Build/);
+  assert.match(pack, /İlk açılışta araç indirme zorunluluğu yok/);
+  assert.match(pack, /Araç indirmeden devam et/);
+  assert.match(pack, /onFirstRunComplete\?\.invoke\(true\)/);
+  assert.match(pack, /if\(firstRun\)item/);
+  assert.match(pack, /Fast HTML gömülüdür/);
 });
 
-test("ready first-run pack exposes continue action", () => {
-  assert.match(pack, /status\.completeTargetReady/);
-  assert.match(pack, /status\.windowsNativeToolchainReady/);
-  assert.match(pack, /"DEVAM ET"/);
+test("first-run pack defers installation and cleanup verification to their actions", () => {
+  assert.doesNotMatch(pack, /OfflineModules\.all\.associate/);
+  const confirmationPlan = pack.split("LaunchedEffect(chosen)")[1].split("LaunchedEffect(confirmPrune)")[0];
+  assert.doesNotMatch(confirmationPlan, /moduleReady|verifyNamespace|sha256/);
+  assert.match(pack, /active.phase==ModulePhase.READY -> "Kurulum devam ediyor"/);
+  assert.match(pack, /!busy && completedInstall==selected/);
+  assert.match(pack, /diagnosticOperation\.value=null[\s\S]*?busy\.value=true/);
+  // Operations remain persisted even though the old diagnostics tab is hidden.
+  assert.match(pack, /diagnosticOperation\.value=event\.operationId/);
+  const graph = read("android-app/app/src/main/java/com/appforge/studio/build/PersistentOperationGraph.kt");
+  assert.match(graph, /fun artifactNodeId/);
+  assert.match(graph, /node\.parentOperationId in recoveredRoots/);
+  assert.match(pack, /LaunchedEffect\(chosen\)[\s\S]*?blocked to OfflineModules\.resolve\(setOf\(id\)\)/);
+  assert.match(pack, /executeDuplicateCleanup\(context,requireNotNull\(reviewedStoragePlan\)\)/);
+  assert.match(pack, /LaunchedEffect\(confirmPrune\) \{\s*if\(!confirmPrune\)return@LaunchedEffect\s*val result=.*snapshotCleanupPlan/);
+  assert.match(pack, /LaunchedEffect\(section,selected,moduleDetails,recovered,busy,usageRevision,refreshRevision\)[\s\S]*?if\(moduleDetails\) \{[\s\S]*?lifecycleStatus/);
+  assert.match(pack, /"Araç indirmeden devam et"/);
 });
 
 test("normal Settings offline-pack route remains available", () => {

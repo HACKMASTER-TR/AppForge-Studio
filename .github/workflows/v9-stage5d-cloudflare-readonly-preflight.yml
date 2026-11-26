@@ -1,0 +1,174 @@
+# V9 Stage 5D remote preflight: READ ONLY. Adds a new workflow, never deploys.
+# Deliberately one-shot for V9 parent cb83bae0... and this exact workflow path.
+name: V9 Stage 5D Cloudflare Read-Only Preflight (No Deploy)
+'on':
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - .github/workflows/v9-stage5d-cloudflare-readonly-preflight.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-stage5d-cf-readonly-preflight
+  cancel-in-progress: false
+jobs:
+  cf-readonly:
+    if: >-
+      github.run_attempt == 1 &&
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027' &&
+      github.event_name == 'push' &&
+      github.event.before == 'cb83bae0b184383a0c156398dc6cc59a565cce44' &&
+      github.event.head_commit.message == 'test(v9): stage5d cloudflare account read-only preflight'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      WRANGLER_SEND_METRICS: 'false'
+      CLOUDFLARE_SEND_METRICS: 'false'
+    steps:
+      - name: Checkout pinned V9 branch with no write credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Source pins, exact file scope, and disabled public exposure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, subprocess, tomllib, os
+          get=lambda *args: subprocess.check_output(['git',*args],text=True).strip()
+          parent='cb83bae0b184383a0c156398dc6cc59a565cce44'
+          only='.github/workflows/v9-stage5d-cloudflare-readonly-preflight.yml'
+          assert get('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'V9_CURRENT_HEAD_DRIFT'
+          assert get('rev-parse','HEAD^')==parent,'V9_PARENT_DRIFT'
+          assert get('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines()==[only],'V9_EXACT_ONE_WORKFLOW_REQUIRED'
+          pins={
+            'cloudflare/v9-witness/stage5d-probe/core.mjs':'1605bbafa58780615f1ec66edc483f9fc25828e3',
+            'cloudflare/v9-witness/stage5d-r3-probe/entry.mjs':'a13bfba95f5a848cc1a7a58aee7f20b22bbcde04',
+            'cloudflare/v9-witness/stage5d-r3-probe/scheduled.mjs':'e5bff1fd72abaca6e9159d8d8b674c830fb535f1',
+            'cloudflare/v9-witness/stage5d-r3-probe/wrangler.toml':'fe743d26ea110f9f2a05a00353607cab21b17137',
+            'cloudflare/v9-witness/device-auth/stage5d-private.mjs':'537d8167550aca3eebc5de87299efb46b2ff12c7',
+            '.github/workflows/v9-stage5d-r9-local-root-cause.yml':'7f7c6a60733fd76c8670afb35c2b7232ba784bd7'}
+          for path,blob in pins.items():
+            assert get('rev-parse','HEAD:'+path)==blob,'V9_PIN_DRIFT:'+path
+            assert get('rev-parse','HEAD^:'+path)==blob,'V9_PARENT_SOURCE_DRIFT:'+path
+          f=pathlib.Path('cloudflare/v9-witness/stage5d-probe/core.mjs').read_text()
+          assert f.count("const jwk={kty:pub.kty,n:pub.n,e:pub.e,alg:'RS256',use:'sig',kid:'stage5d-issuer-test'};")==1
+          assert 'const jwk={...pub' not in f
+          c=tomllib.loads(pathlib.Path('cloudflare/v9-witness/stage5d-r3-probe/wrangler.toml').read_text())
+          assert c['workers_dev'] is False and c['preview_urls'] is False
+          assert c['main']=='entry.mjs' and c['triggers']=={'crons':['* * * * *']}
+          assert c['vars']=={'STAGE5D_TEST_MODE':'SYNTHETIC_ONLY','STAGE5D_R3_DIAGNOSTIC':'ENABLED'}
+          assert c['durable_objects']['bindings']==[{'name':'V9_STAGE5D_R3_PROBE','class_name':'V9Stage5DR3DO'}]
+          assert 'route' not in c and 'routes' not in c
+          assert 'r2_buckets' not in c and 'd1_databases' not in c
+          print('S5D_SOURCE_PINS=PASS;EXACT_ONE_WORKFLOW=YES;REAL_JWKS_SOURCE=YES')
+          print('S5D_DISPOSABLE_CONFIG=PASS;WORKERS_DEV=OFF;PREVIEW_URLS=OFF;PUBLIC_ROUTES=NONE')
+          PY
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Node regression and isolated Wrangler dry-run
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          node --test cloudflare/v9-witness/stage5d-r3-probe/scheduled.test.mjs cloudflare/v9-witness/stage5d-probe/core.test.mjs > "$RUNNER_TEMP/s5d-node-private.log" 2>&1
+          echo 'S5D_ORIGINAL_NODE_TESTS=PASS'
+          npx --yes wrangler@4.153.0 deploy --dry-run --config cloudflare/v9-witness/stage5d-r3-probe/wrangler.toml --outdir "$RUNNER_TEMP/s5d-bundle" > "$RUNNER_TEMP/s5d-dry-run-private.log" 2>&1
+          test -d "$RUNNER_TEMP/s5d-bundle"
+          echo 'S5D_BUNDLE_DRY_RUN=PASS;CLOUDFLARE_MUTATIONS=0'
+      - name: Cloudflare account and original Witness READ ONLY verification
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          python3 - <<'PY'
+          import os, re, json, hashlib, urllib.request, urllib.error
+          from email import policy
+          from email.parser import BytesParser
+          ACCOUNT=(os.getenv('CLOUDFLARE_ACCOUNT_ID') or '').strip()
+          TOKEN=(os.getenv('CLOUDFLARE_API_TOKEN') or '').strip()
+          ORIGINAL='appforge-v9-witness-isolated-staging'
+          VERSION='52375f28-4c72-46bf-b8a5-fa3b7bacfb53'
+          ETAG='9b2fed53f8a2daf5dd60e995bbc7af20a47eeaee595232b8ca485ce8218eb81a'
+          ROOT=f'https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/workers/scripts'
+          MAX=6_000_000
+          def require(ok,code):
+            if not ok: raise RuntimeError(code)
+          def read(url):
+            # GET only; no Cloudflare POST, PUT, PATCH, DELETE, or Wrangler deploy.
+            require(url==ROOT or url.startswith(ROOT+'/') or url==f'https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/tokens/verify','ENDPOINT_BLOCKED')
+            q=urllib.request.Request(url,method='GET',headers={'Authorization':'Bearer '+TOKEN,'Accept':'application/json'})
+            try:
+              with urllib.request.urlopen(q,timeout=25) as r:
+                body=r.read(MAX+1)
+                require(r.status==200 and len(body)<=MAX,'RESPONSE_SIZE_OR_STATUS')
+                return body,r.headers.get('Content-Type','')
+            except urllib.error.HTTPError as e:
+              raise RuntimeError('HTTP_'+str(e.code)) from None
+            except (TimeoutError,urllib.error.URLError):
+              raise RuntimeError('NETWORK_FAILURE') from None
+          def api(url):
+            body,_=read(url)
+            obj=json.loads(body)
+            require(obj.get('success') is True,'API_ERROR')
+            return obj
+          def fingerprint(body,mime):
+            if not mime.lower().startswith('multipart/'):
+              return hashlib.sha256(body).hexdigest()
+            hdr=b'MIME-Version: 1.0\r\nContent-Type: '+mime.encode('ascii')+b'\r\n\r\n'
+            msg=BytesParser(policy=policy.default).parsebytes(hdr+body)
+            require(msg.is_multipart(),'MULTIPART_INVALID')
+            parts=[]
+            for part in msg.walk():
+              if part.is_multipart():continue
+              data=part.get_payload(decode=True)
+              require(isinstance(data,bytes),'MULTIPART_PART_INVALID')
+              parts.append((part.get_param('name',header='content-disposition') or '',part.get_filename() or '',hashlib.sha256(data).hexdigest()))
+            require(1<=len(parts)<=200,'MULTIPART_PARTS_COUNT')
+            return hashlib.sha256(json.dumps(sorted(parts),separators=(',',':')).encode()).hexdigest()
+          try:
+            require(re.fullmatch('[0-9A-Fa-f]{32}',ACCOUNT) is not None,'ACCOUNT_ID_INVALID')
+            require(20<=len(TOKEN)<=2048,'ACCOUNT_TOKEN_NOT_CONFIGURED')
+            status=api(f'https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/tokens/verify')['result']
+            require(status.get('status')=='active','ACCOUNT_TOKEN_INACTIVE')
+            print('S5D_CF_ACCOUNT_TOKEN=PASS;SECRET_CONTENT=NOT_PRINTED')
+            data=api(ROOT)
+            rows=data.get('result')
+            require(isinstance(rows,list),'WORKER_LIST_INVALID')
+            page=data.get('result_info') or {}
+            require(page.get('total_pages',1)==1 and page.get('total_count',len(rows))<=len(rows),'WORKER_LIST_INCOMPLETE')
+            names={v.get('id') for v in rows if isinstance(v,dict)}
+            require(ORIGINAL in names,'ORIGINAL_WITNESS_MISSING')
+            stale=[n for n in names if isinstance(n,str) and re.fullmatch(r'appforge-v9-stage5d-(?:r\d+-)?(?:smoke|disposable)-.*',n)]
+            require(not stale,'STALE_STAGE5D_DISPOSABLE_REVIEW_REQUIRED')
+            print('S5D_CF_WORKER_LIST=PASS;ORIGINAL_WITNESS_PRESENT=YES;STAGE5D_STALE_DISPOSABLE=NO')
+            d=api(ROOT+'/'+ORIGINAL+'/deployments')['result']
+            deployed=d.get('deployments') if isinstance(d,dict) else d
+            require(isinstance(deployed,list) and len(deployed)==1,'WITNESS_DEPLOYMENT_COUNT_DRIFT')
+            versions=deployed[0].get('versions') or []
+            require(len(versions)==1 and versions[0].get('version_id')==VERSION and versions[0].get('percentage')==100,'WITNESS_VERSION_DRIFT')
+            v=api(ROOT+'/'+ORIGINAL+'/versions/'+VERSION)['result']
+            require(((v.get('resources') or {}).get('script') or {}).get('etag')==ETAG,'WITNESS_ETAG_DRIFT')
+            x,xtype=read(ROOT+'/'+ORIGINAL)
+            y,ytype=read(ROOT+'/'+ORIGINAL)
+            require(fingerprint(x,xtype)==fingerprint(y,ytype),'WITNESS_CANONICAL_BLOB_UNSTABLE')
+            print('S5D_CF_ORIGINAL_WITNESS=PASS;PINNED_VERSION=YES;ETAG=YES;CANONICAL_FETCH_STABLE=YES')
+            print('S5D_CF_READONLY_PREFLIGHT=PASS;CLOUDFLARE_MUTATIONS=0;LIVE_ACCEPTANCE=NOT_VERIFIED')
+          except Exception as e:
+            # Print only a stable error code, never HTTP response or exception message.
+            reason=str(e)
+            valid={'ACCOUNT_ID_INVALID','ACCOUNT_TOKEN_NOT_CONFIGURED','ACCOUNT_TOKEN_INACTIVE','WORKER_LIST_INVALID','WORKER_LIST_INCOMPLETE','ORIGINAL_WITNESS_MISSING','STALE_STAGE5D_DISPOSABLE_REVIEW_REQUIRED','WITNESS_DEPLOYMENT_COUNT_DRIFT','WITNESS_VERSION_DRIFT','WITNESS_ETAG_DRIFT','WITNESS_CANONICAL_BLOB_UNSTABLE','MULTIPART_INVALID','MULTIPART_PART_INVALID','MULTIPART_PARTS_COUNT','RESPONSE_SIZE_OR_STATUS','ENDPOINT_BLOCKED','NETWORK_FAILURE','API_ERROR'}
+            safe=reason if reason in valid or re.fullmatch(r'HTTP_[0-9]{3}',reason) else type(e).__name__
+            print('S5D_CF_READONLY_PREFLIGHT=BLOCKED;REASON='+safe+';LIVE_ACCEPTANCE=NOT_VERIFIED')
+            raise SystemExit(1)
+          PY

@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "version": "1.85.1",
+  "manifestUrl": "https://static.rust-lang.org/dist/channel-rust-1.85.1.toml",
+  "artifacts": [
+    {
+      "host": "aarch64-unknown-linux-gnu",
+      "component": "rustc",
+      "target": "aarch64-unknown-linux-gnu",
+      "url": "https://static.rust-lang.org/dist/2025-03-18/rustc-1.85.1-aarch64-unknown-linux-gnu.tar.xz",
+      "sha256": "43442726ae9549bdff87984322dd0cc48207584ece41e4b042f64f919bbe96b4",
+      "file": "rustc-1.85.1-aarch64-unknown-linux-gnu.tar.xz"
+    },
+    {
+      "host": "aarch64-unknown-linux-gnu",
+      "component": "cargo",
+      "target": "aarch64-unknown-linux-gnu",
+      "url": "https://static.rust-lang.org/dist/2025-03-18/cargo-1.85.1-aarch64-unknown-linux-gnu.tar.xz",
+      "sha256": "87063b4fae710c282e778dfe80effb77ca4bc6c0b94080e7b6b635a13f111ebf",
+      "file": "cargo-1.85.1-aarch64-unknown-linux-gnu.tar.xz"
+    },
+    {
+      "host": "aarch64-unknown-linux-gnu",
+      "component": "rust-std",
+      "target": "aarch64-unknown-linux-gnu",
+      "url": "https://static.rust-lang.org/dist/2025-03-18/rust-std-1.85.1-aarch64-unknown-linux-gnu.tar.xz",
+      "sha256": "760fa132058ed45a67d0cd7d04638fde86fd26adc563dff1a3e6d97d300446ff",
+      "file": "rust-std-1.85.1-aarch64-unknown-linux-gnu.tar.xz"
+    },
+    {
+      "host": "aarch64-unknown-linux-gnu",
+      "component": "rust-std",
+      "target": "wasm32-unknown-unknown",
+      "url": "https://static.rust-lang.org/dist/2025-03-18/rust-std-1.85.1-wasm32-unknown-unknown.tar.xz",
+      "sha256": "d72e7aaf6aa14467ea5106d107f7d561a6e928bb60fa278695a5254ea9703a85",
+      "file": "rust-std-1.85.1-wasm32-unknown-unknown.tar.xz"
+    },
+    {
+      "host": "x86_64-unknown-linux-gnu",
+      "component": "rustc",
+      "target": "x86_64-unknown-linux-gnu",
+      "url": "https://static.rust-lang.org/dist/2025-03-18/rustc-1.85.1-x86_64-unknown-linux-gnu.tar.xz",
+      "sha256": "92a5c532b9e87912190128704e0d65825912e3b08a6ee9203c4068d6d1df62c4",
+      "file": "rustc-1.85.1-x86_64-unknown-linux-gnu.tar.xz"
+    },
+    {
+      "host": "x86_64-unknown-linux-gnu",
+      "component": "cargo",
+      "target": "x86_64-unknown-linux-gnu",
+      "url": "https://static.rust-lang.org/dist/2025-03-18/cargo-1.85.1-x86_64-unknown-linux-gnu.tar.xz",
+      "sha256": "7373132c13e394755d15f01bda4374af59b4daef01b12a83cb3df3f3be38e289",
+      "file": "cargo-1.85.1-x86_64-unknown-linux-gnu.tar.xz"
+    },
+    {
+      "host": "x86_64-unknown-linux-gnu",
+      "component": "rust-std",
+      "target": "x86_64-unknown-linux-gnu",
+      "url": "https://static.rust-lang.org/dist/2025-03-18/rust-std-1.85.1-x86_64-unknown-linux-gnu.tar.xz",
+      "sha256": "0aaeffba85359503f874315cd08e0ae8490275d14b41470d36d4fa57fd085916",
+      "file": "rust-std-1.85.1-x86_64-unknown-linux-gnu.tar.xz"
+    },
+    {
+      "host": "x86_64-unknown-linux-gnu",
+      "component": "rust-std",
+      "target": "wasm32-unknown-unknown",
+      "url": "https://static.rust-lang.org/dist/2025-03-18/rust-std-1.85.1-wasm32-unknown-unknown.tar.xz",
+      "sha256": "d72e7aaf6aa14467ea5106d107f7d561a6e928bb60fa278695a5254ea9703a85",
+      "file": "rust-std-1.85.1-wasm32-unknown-unknown.tar.xz"
+    }
+  ]
+}

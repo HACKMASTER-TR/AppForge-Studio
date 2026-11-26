@@ -14,9 +14,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
@@ -308,12 +308,9 @@ internal fun SshWorkspacePanel(
                             "Bu parmak izini sunucu yöneticisinden aldığın değerle karşılaştır. Eşleşiyorsa güven."
                         )
 
-                        Card(
+                        OutlinedCard(
                             colors =
-                                CardDefaults.cardColors(
-                                    containerColor =
-                                        TerminalBackground
-                                )
+                                CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
                         ) {
                             SelectionContainer {
                                 Column(
@@ -466,14 +463,11 @@ internal fun SshWorkspacePanel(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier.fillMaxWidth(),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            TerminalSurface
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 Column(
                     modifier =
@@ -968,14 +962,11 @@ internal fun SshWorkspacePanel(
         }
 
         item {
-            Card(
+            OutlinedCard(
                 modifier =
                     Modifier.fillMaxWidth(),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            TerminalBackground
-                    )
+                    CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
             ) {
                 SelectionContainer {
                     Text(

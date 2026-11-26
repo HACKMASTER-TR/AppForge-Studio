@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "version": "1.85.1",
+  "target": "x86_64-pc-windows-gnu",
+  "artifact": {
+    "url": "https://static.rust-lang.org/dist/2025-03-18/rust-std-1.85.1-x86_64-pc-windows-gnu.tar.xz",
+    "file": "rust-std-1.85.1-x86_64-pc-windows-gnu.tar.xz",
+    "sha256": "ed4b5a41a7c992bb7c8e997f7669c1d0997f25d9ca41eb113d6d9dfb11ddecae"
+  }
+}

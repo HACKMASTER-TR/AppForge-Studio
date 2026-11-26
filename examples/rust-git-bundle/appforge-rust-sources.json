@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "sources": [
+    {
+      "source": "git+https://example.invalid/locked-git-answer?rev=e0e758f611e6b7bfedfc95a0b613aa29847ce505#e0e758f611e6b7bfedfc95a0b613aa29847ce505",
+      "sha256": "b96e304901944d5f8873d2b83a1d3c792db797cdad0f0ee6de367a45ddeb7e16",
+      "path": "bundles/dependency.bundle"
+    }
+  ]
+}

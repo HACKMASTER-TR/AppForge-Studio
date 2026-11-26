@@ -1,0 +1,141 @@
+# AppForge V9 Stage 5D-R2: single-parent, read-only verification of GitHub Cloudflare secret.
+# No wrangler, no deployment, no secrets output, no production changes.
+name: V9 Stage5D R2 Cloudflare Secret Read-Only Acceptance
+on:
+  push:
+    branches: [feat/v9-global-package-distribution-20261027]
+    paths: ['.github/workflows/v9-stage5d-r2-cloudflare-readonly.yml']
+permissions:
+  contents: read
+jobs:
+  cf-master-readonly:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027' &&
+      github.event.before == '8c37e036b4b398e784fea1c12c4c8e9663c7e02e' &&
+      github.event.head_commit.message == 'test(v9): validate Cloudflare master secret read-only R2'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Validate exact source, commit parent, and single-workflow scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD^)" = '8c37e036b4b398e784fea1c12c4c8e9663c7e02e'
+          test "$(git diff-tree --no-commit-id --name-only -r HEAD)" = '.github/workflows/v9-stage5d-r2-cloudflare-readonly.yml'
+          test "$(git status --porcelain)" = ''
+          echo 'R2_SOURCE_SCOPE=PASS;CHANGED_FILES=1;DEPLOY=NO'
+      - name: Test Cloudflare account token, Worker read, pinned Witness and GraphQL
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          set +x
+          python3 - <<'PY'
+          import hashlib,json,os,re,sys,urllib.error,urllib.request
+          from email import policy
+          from email.parser import BytesParser
+          ACCOUNT=(os.environ.get('CLOUDFLARE_ACCOUNT_ID') or '').strip()
+          TOKEN=(os.environ.get('CLOUDFLARE_API_TOKEN') or '').strip()
+          W='appforge-v9-witness-isolated-staging'
+          V='52375f28-4c72-46bf-b8a5-fa3b7bacfb53'
+          ETAG='9b2fed53f8a2daf5dd60e995bbc7af20a47eeaee595232b8ca485ce8218eb81a'
+          ROOT='https://api.cloudflare.com/client/v4'
+          def need(v,reason):
+              if not v:raise ValueError(reason)
+          def request(url,body=None):
+              # Exactly three fixed read-only Cloudflare GET families and one GraphQL query POST.
+              need(url.startswith(ROOT+'/accounts/'+ACCOUNT+'/') or url==ROOT+'/graphql','invalid endpoint')
+              method='GET' if body is None else 'POST'
+              need(not(body is not None and url!=ROOT+'/graphql'),'unexpected POST')
+              headers={'Authorization':'Bearer '+TOKEN,'Accept':'application/json'}
+              if body is not None:headers['Content-Type']='application/json'
+              try:
+                  req=urllib.request.Request(url,method=method,headers=headers,data=body)
+                  with urllib.request.urlopen(req,timeout=25) as response:
+                      raw=response.read(6_000_001)
+                      need(response.status==200 and len(raw)<=6_000_000,'http/size failure')
+                      return raw,response.headers.get('Content-Type','')
+              except urllib.error.HTTPError as error:
+                  # Do not print the response body or headers, which could reveal data.
+                  raise ValueError('HTTP_'+str(error.code)) from None
+              except (urllib.error.URLError,TimeoutError):
+                  raise ValueError('NETWORK_ERROR') from None
+          def response(url):
+              data,_=request(url)
+              obj=json.loads(data)
+              need(obj.get('success') is True,'cloudflare api response failed')
+              return obj
+          def envelope(url):
+              return response(url).get('result')
+          def canonical(mime,body):
+              if not mime.lower().startswith('multipart/'):
+                  return hashlib.sha256(body).hexdigest()
+              msg=BytesParser(policy=policy.default).parsebytes(
+                  b'MIME-Version: 1.0\r\nContent-Type: '+mime.encode('ascii')+b'\r\n\r\n'+body)
+              need(msg.is_multipart(),'multipart missing')
+              parts=[]
+              for part in msg.walk():
+                  if part.is_multipart():continue
+                  name=part.get_param('name',header='content-disposition') or ''
+                  filename=part.get_filename() or ''
+                  content=part.get_payload(decode=True)
+                  need(isinstance(content,bytes),'multipart invalid part')
+                  parts.append((name,filename,hashlib.sha256(content).hexdigest()))
+              need(1<=len(parts)<=200,'multipart part count')
+              return hashlib.sha256(json.dumps(sorted(parts),separators=(',',':')).encode()).hexdigest()
+          try:
+              need(re.fullmatch('[a-fA-F0-9]{32}',ACCOUNT) is not None,'account id invalid')
+              need(20<=len(TOKEN)<=1024,'missing cloudflare token')
+              # ACCOUNT-type verification endpoint (user token endpoint may return 401).
+              auth=envelope(ROOT+'/accounts/'+ACCOUNT+'/tokens/verify')
+              need(isinstance(auth,dict) and auth.get('status')=='active','token inactive')
+              print('R2_GITHUB_ACCOUNT_TOKEN=PASS;TYPE=ACCOUNT')
+              scripts_obj=response(ROOT+'/accounts/'+ACCOUNT+'/workers/scripts')
+              scripts=scripts_obj.get('result')
+              pages=(scripts_obj.get('result_info') or {}).get('total_pages',1)
+              need(isinstance(scripts,list) and pages==1,'worker list incomplete')
+              need(any(isinstance(w,dict) and w.get('id')==W for w in scripts),'witness missing')
+              need(not any(isinstance(w,dict) and str(w.get('id','')).startswith('appforge-v9-stage5d-live-smoke-') for w in scripts),'orphan Stage5D worker present')
+              print('R2_WORKERS_METADATA_READ=PASS;WITNESS_EXISTS=YES;ORPHAN_STAGE5D=NO')
+              deployments_obj=response(ROOT+'/accounts/'+ACCOUNT+'/workers/scripts/'+W+'/deployments')
+              deployments=deployments_obj.get('result') or {}
+              items=deployments.get('deployments') if isinstance(deployments,dict) else deployments
+              need(isinstance(items,list) and len(items)==1,'unexpected witness deployment count')
+              versions=items[0].get('versions') or []
+              need(len(versions)==1 and versions[0].get('version_id')==V and versions[0].get('percentage')==100,'witness deployed version drift')
+              need((deployments_obj.get('result_info') or {}).get('total_pages',1)==1,'deployment history incomplete')
+              print('R2_WITNESS_DEPLOYED_VERSION=PASS')
+              version=envelope(ROOT+'/accounts/'+ACCOUNT+'/workers/scripts/'+W+'/versions/'+V)
+              actual=((version.get('resources') or {}).get('script') or {}).get('etag')
+              need(actual==ETAG,'witness pinned version etag mismatch')
+              print('R2_WITNESS_PINNED_ETAG=PASS')
+              hashes=[]
+              for _ in range(2):
+                  body,mime=request(ROOT+'/accounts/'+ACCOUNT+'/workers/scripts/'+W)
+                  hashes.append(canonical(mime,body))
+              need(hashes[0]==hashes[1],'witness canonical content changes')
+              print('R2_WITNESS_CANONICAL_TWO_GET=PASS')
+              gql=json.dumps({'query':'query($id:String!){viewer{accounts(filter:{accountTag:$id}){accountTag}}}',
+                  'variables':{'id':ACCOUNT}},separators=(',',':')).encode()
+              body,_=request(ROOT+'/graphql',gql)
+              result=json.loads(body)
+              accounts=(((result.get('data') or {}).get('viewer') or {}).get('accounts') or [])
+              need(not result.get('errors') and any(a.get('accountTag')==ACCOUNT for a in accounts),'graphql analytics read denied')
+              print('R2_GRAPHQL_READONLY=PASS')
+              print('R2_GITHUB_MASTER_SECRET_READONLY_ACCEPTANCE=PASS')
+              print('CLOUDFLARE_MUTATIONS=0;GITHUB_WRITES=0;WRANGLER_DEPLOY=NO')
+              print('STAGE5D_LIVE_ACCEPTANCE=NOT_VERIFIED')
+          except Exception as e:
+              print('R2_GITHUB_MASTER_SECRET_READONLY_ACCEPTANCE=BLOCKED;ERROR_TYPE='+type(e).__name__)
+              # Do not echo error strings, tokens, URLs or API response bodies.
+              sys.exit(1)
+          PY

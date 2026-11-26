@@ -15,7 +15,7 @@ class FastHtmlAabUnsignedPackagerTest {
     private fun draft(): ProjectDraft {
         val root = temporary.newFolder()
         root.resolve("index.html").writeText("<html>Static</html>")
-        return ProjectDraft(appName = "Static", importedFolder = root.path, buildOutput = "aab")
+        return ProjectDraft(fileUpload = false, clipboardBridge = false, vibrationBridge = false, networkState = false, splashEnabled = false, appName = "Static", importedFolder = root.path, buildOutput = "aab")
     }
 
     @Test fun onlyExplicitLocalStaticRequestsEnterPreflight() {

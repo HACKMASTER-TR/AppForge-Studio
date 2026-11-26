@@ -1,0 +1,238 @@
+---
+type: architecture
+status: active
+project: AppForge Studio
+created: 2026-10-21
+updated: 2026-10-26
+last_verified: 2026-10-26
+confidence: medium
+source_files:
+  - "android-app/app/src/main/assets/device-build/rust-layout.py"
+  - "android-app/app/src/main/assets/device-build/rust-git.py"
+  - "android-app/app/src/main/java/com/appforge/studio/build/ModuleRecipeCompatibility.kt"
+  - "android-app/app/src/main/assets/device-build/prepare-rn-rust.sh"
+  - "android-app/app/src/main/java/com/appforge/studio/build/RustProjectPolicy.kt"
+  - "android-app/app/src/main/assets/device-build/install-rust-module.py"
+  - "android-app/app/src/main/assets/device-build/rust-project.py"
+  - "android-app/app/src/main/assets/device-build/rust-toolchain-v1.json"
+  - "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt"
+  - "examples/rust-android-jni/gradle/verification-metadata.xml"
+---
+
+# Rust integration — partial, local-only
+
+Base V7 b56bf0a56de91e60beb862e10c8632f1e4f10ff3; isolated branch
+feat/rust-all-engines-20261021. GitHub writes are prohibited.
+
+Rust 1.85.1 + Cargo uses pinned official component archives for aarch64/x86_64
+Linux GNU hosts and wasm32 std. The existing VerifiedModuleDownload,
+RuntimeGenerationStore, ModuleOwnershipStore and user consent flow are reused.
+Module readiness requires an isolated install, real offline Cargo WASM compile,
+repeat compile, exact version and ownership attestation. Terminal package presence
+is never readiness. A new version must have a new verified manifest/recipe.
+
+rust-project.py is also used by the in-app source-execution-consent flow below for reviewed disposable sources.
+Cargo.lock is mandatory; frozen/offline builds never resolve fresh dependencies.
+Only registry checksummed crates are accepted. CLI Cargo offline flags are NOT an
+OS socket sandbox for arbitrary build.rs/proc macros. The managed in-app preparation flow below separates pinned native transfers
+from source execution; the standalone CLI itself provides no socket isolation. Do not infer Wi-Fi-only or
+OS-disconnected execution from the CLI results.
+
+Prepared WASM + source/artifact consistency receipt can be packaged in local HTML
+APK/AAB; JS bindings are authored by the project, never injected. Cargo root
+projects without matching preparation are blocked before silent HTML packaging.
+This scoped root-package detector is not a general monorepo/workspace resolver.
+Android Gradle JNI is implemented for explicit app-module ARM64/API26 projects.
+The continuation below adds real PyO3/Chaquopy, authored Expo/JSI, Windows EXE/DLL
+and explicit Universal target routing. Protected standalone NDK/React Native
+physical-acceptance capability gates remain blocked. Node uses WASM, not a native addon.
+Host execution is not Android WebView or physical-device acceptance.
+
+Android /data/data and /data/user/0 may be aliases of each other. Only these
+two exact system paths are mapped to the other; translated paths then undergo
+the existing no-symlink anchor check (cycles and secondary links are rejected).
+No arbitrary app workspace aliases are allowed. Device-specific behavior remains
+NOT_RUN until physical Android 16 testing.
+
+Module UI separates modules/network/history/diagnostics and collapses ownership,
+APT, rollback and update details. Existing action guards and dialogs remain.
+Compose rendering/screenshots, touch, TalkBack, rotation and dark/small-screen
+acceptance require Android execution (NOT_RUN); source/host tests do not replace it.
+
+Detailed frozen-source results and limitations are in the external delivery report.
+ALL_ENGINES_READY is false; main merge/release/Production/phone actions are forbidden.
+
+## Local continuation — in-app preparation and managed crates
+
+The Rust branch now extends ProjectDependencyPreparation (same controller/FGS and
+BuildModuleUsage preparation lease). Online preparation parses lockfiles with
+app-shipped Python data tools, downloads only fixed crates.io URLs through
+VerifiedModuleDownload, verifies SHA-256 and creates Cargo directory-source cache.
+It never executes Cargo/project scripts in that online stage. Dependency resolution
+is the complete locked closure, not an optimized per-target closure.
+
+Source execution is a second explicit action, requiring all Android networks to
+be absent and monitored. Frozen Cargo uses the prepared vendor source twice.
+The active runtime is never committed from a project-execution stage. Runtime
+compiler/interpreter/config changes, verifier changes, forged vendor checksums,
+source drift and partial output prevent publishing. Proot remains unsuitable for
+hostile/untrusted source: users must authorize trusted build.rs/proc macro code.
+
+Private prepared-project metadata is atomic and schema-checked. Reopen validates
+original/prepared fingerprints and binary/source hashes. The user separately
+selects the prepared copy; this resets dependency-download permission and preserves
+original source files. No record grants execution or mobile-data consent.
+
+Node-Web copies the verified WASM into the bundler output before APK/Portable
+packaging, preserves authored JS and rejects conflicting/escaping output files.
+Android controller/Compose/FGS behavior still needs real-device acceptance. Native
+Target-specific continuation is documented below; no all-engines physical readiness.
+
+### Rust prerequisites and source binding continuation
+
+A clean Ubuntu Base does not guarantee Python. Rust's internal Python 3.12 tools
+are now installed through the unchanged signed snapshot/catalog, using the
+reviewed PYTHON_ANDROID package set for a fixed Python-only request. Rust owns
+its own lock identity; no Android SDK/Chaquopy/Node module is installed. The Rust
+adapter derives the shared configure function at a checked single adaptation
+point, then retains the original signature/hash/version/architecture checks.
+Fresh Ubuntu Base amd64 was tested with Docker --network none, verified cached
+.deb files, no preinstalled Python, no Android SDK/Node/JDK, followed by real Rust
+installation and repeated Cargo WASM probes. This is HOST_OFFLINE_VERIFIED,
+not Android ARM64/Proroot/FGS acceptance. Restrictive network policy still blocks
+an APT phase that cannot technically honor it; the guard is not removed.
+
+Prepared WASM receipt schema 2 binds non-cache project inputs, including data
+files and build scripts. Cargo target, dependency/VCS caches and the reserved
+appforge-rust export are excluded. Build scripts must not depend on ignored
+cache/external inputs. Legacy schema 1 is not accepted as fresh source evidence.
+Rebuild clears exactly two hash-verified generated export files only in a new
+private copy, rejecting foreign contents; the original project is unchanged.
+Node projects with prepared WASM retain the separate npm dependency-preparation
+flow. Selecting a prepared copy never transfers download/execution consent.
+
+## Android Gradle JNI continuation
+
+The app-shipped rust-android-target-v1.json pins the official Rust 1.85.1 Android
+ARM64 standard library SHA-256. It is downloaded only for an explicitly selected
+Android Gradle Rust project, with the existing managed downloader and consent.
+The target is installed into a private compiler copy under the disposable project
+workspace, never the active Rust prefix or an ownership-tracked runtime namespace.
+Both runtime and private compiler are fingerprinted across source execution; the
+runtime stage is discarded. No global target READY state is manufactured.
+
+An appforge-rust-android.json declares app module/library/API26. The authored Java
+source owns System.loadLibrary and the JNI declaration; no bridge is injected.
+Two frozen offline Cargo builds produce an ELF64 ARM64 ET_DYN with real defined
+JNI symbols and 16KiB-compatible load segments. Missing or incompatible NDK linker
+is BLOCKED: existing verified SDK/NDK must already provide an executable host
+linker. There is no new automatic NDK installer or unverified ARM64-host promise.
+
+The prepared-copy receipt binds source inputs, native bytes and JNI symbols.
+DeviceBuildEngine stages only into the isolated app/src/main/jniLibs/arm64-v8a,
+refuses foreign conflicts, and verifies exact native payload bytes in requested
+APK/AAB before publication. Gradle must explicitly preserve the library bytes
+with keepDebugSymbols. Real artifact minSdk is independently checked: Android
+package metadata for APK; bounded read-only compiled AAPT2 protobuf for AAB.
+This SDK reader does not relax the pinned HTML template rewrite contract.
+
+Host proof uses official target std, NDK28.2 x86_64 host linker, real Java Activity,
+Cargo offline replay, real AGP APK/AAB and production Kotlin verification.
+Android16 ARM64-host installation/linker execution and device JNI execution remain
+NOT_RUN. No hosted CI, phone upgrade or production acceptance is implied.
+
+## Reviewed Gradle trust and Portable WASM continuation
+
+The JNI example now ships locked app dependencies and SHA-256 verification
+metadata. All300 artifact hashes were independently checked against fresh HTTPS
+responses from the project-declared Google/Maven Central repositories. Generation
+from cache alone was not treated as trust. Provenance hashes are recorded next
+to the metadata. A strict --offline build and a deliberately broken-checksum
+negative test validate the records; no checksum rewrite/trusted-artifact wildcard
+is used in the positive build. This closes the earlier missing-metadata example
+blocker, not device cache provisioning or Android physical acceptance.
+
+Windows Portable reuses the pinned375039759-byte host and the existing signing
+and overlay-boundary parsers. Rust site bytes, project ZIP and final EXE payload
+(including after optional signing) are independently source/hash-bound. ZIP
+verification uses the central directory (matching the extractor), verifies size/CRC, is bounded, rejects unsafe Windows paths/case collisions and never
+extracts into user files. Only root Cargo build/VCS/dependency caches are excluded; other
+project behavior is preserved. Actual production Kotlin package creation with
+network/exec denied, host-side materialization and Node WASM export42 are host
+proof; Electron/Windows physical execution remains NOT_RUN.
+
+## Target-specific all-engines continuation
+
+The second obsolete webview/node-only dispatcher guard was removed from
+ProjectDependencyPreparation. A single RustProjectPolicy target planner now drives
+UI, module requirements and the existing consent/FGS/prepared-copy controller.
+Explicit Universal Android and web roots are prepared sequentially in one private
+copy; target identities, source fingerprints and output receipts must all match
+before publication. Overlapping roots, traversal and shell interpolation are rejected.
+
+Windows uses official Rust1.85.1 x86_64-pc-windows-gnu std and an existing compatible
+MinGW linker. Real EXE and DLL compilation/repeat offline builds are evidenced
+externally. DLL exports are bounded-PE-validated and remain library outputs, not
+EXE applications; CreateDocument export revalidates source/artifact hashes.
+There is no automatic unverified ARM64-host linker provisioning.
+
+Python uses pinned PyO30.23.5 with extension-module/abi3-py312, the official
+Chaquopy Python3.12 ARM64 link library and explicit cross-ABI configuration.
+Only root compiler artifacts are selected; host proc-macro .so files are not
+misidentified as Android libraries. Production checks validate PyInit, ELF/16KiB,
+source hashes and exact bytes inside the central directory of Chaquopy app.imy
+in real APK/AAB. A real host CPython import returned42; Android import remains
+a separate device test. The official Maven ZIP hash was computed/pinned from
+HTTPS bytes, not falsely attributed to a publisher .sha256 file.
+
+Expo54/RN0.81 uses authored Java/C++/JSI registration and an opt-in config plugin.
+Rust has an explicit SONAME; final bridge DT_NEEDED must include that Rust library
+and real libjsi, without absolute paths or RPATH. Shared STL is required by RN's
+prefab exports; the example sets it explicitly. New architecture/bridgeless mode
+is rejected rather than advertised. Cross-compilation and packaging are separate
+from running the JavaScript function on physical Android.
+
+Runtime ownership, snapshot, managed-transfer/network policy, rollback and original
+source preservation remain unchanged. Target tools are installed only in private
+prepared workspaces; a project build cannot mark a shared module READY. Foreign
+export files are rejected, not silently removed. Known-gated standalone NDK and
+React Native engines remain blocked until their platform acceptance is established.
+Detailed exact-source tests, genuine failed attempts and NOT_RUN cases live in
+RUST-IMPLEMENTATION-REPORT.md and the accompanying source/evidence delivery.
+
+## Code completion continuation (2026-10-26)
+
+The bounded resolver now supports an explicit selected Cargo workspace member,
+workspace-inherited package/dependency fields and local path dependencies entirely
+inside the reviewed root. Git dependencies require exact Cargo.lock commits and
+SHA-256-pinned bundles. Bundles are either local reviewed project files or
+separately approved HTTPS transfers. Git networking and hooks are disabled;
+Cargo's directory-source normalization runs separately with offline metadata
+consent. Project build execution retains its separate consent. External paths,
+alternate registries, patch/replace sources and unpinned Git remain rejected.
+
+An independent RUST_ANDROID_NDK module reuses Android Core, Rust and the frozen
+NDK/APT installation paths without Node or Expo installation. A fixed, app-authored
+ARM64 API26 shared-library cross-link probe validates linker execution and 16KiB
+ELF alignment before its readiness marker. Old immutable catalog bytes and
+snapshot identity remain unchanged. Explicit prior recipe hashes are accepted
+only for unchanged non-Rust modules, with the existing exact version, witness
+hash, ownership and APT validation still mandatory. Shared NDK namespace users
+protect unchanged shared files during module removal.
+
+RN0.81 now has an authored standalone Android backend and opt-in schema2 pure C++
+TurboModule registration for standalone RN and Expo54. Legacy schema1 behavior
+remains supported. Expo defaults to legacy unless the explicit Rust binding and
+architecture flags pass validation. Hermes runtime stays enabled; host AOT stays
+skipped. TurboModule package validation checks the actual appmodules ELF,
+JNI_OnLoad and DT_NEEDED links to Rust/libreactnative. Cross-compilation/package
+proof does not establish JavaScript execution on an Android device. Public
+standalone NDK/RN physical acceptance gates remain closed; the authored backend
+must never silently fall back to Expo generation or another engine.
+
+The temporary host environment was restarted after the first successful
+TurboModule APK/AAB/offline build. Its raw logs persist, but ephemeral artifacts
+require regeneration and independent package guards before new acceptance.
+Final exact-source outcomes and remaining limitations belong to the new report,
+not inherited earlier PASS counts.

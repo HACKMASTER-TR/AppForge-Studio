@@ -1,0 +1,216 @@
+# Separate, user-installed debug-only physical Android acceptance. Never deploy.
+name: V9 Signed R2 Physical Android Acceptance APK (No Deploy)
+'on':
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt
+      - android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt
+      - .github/workflows/v9-signed-r2-physical-apk.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-signed-r2-physical-probe-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  signed-r2-physical-debug-apks:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - name: Checkout pinned development branch without write credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Enforce exact additive scope and production-disabled pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,subprocess,pathlib
+          git=lambda *arg:subprocess.check_output(['git',*arg],text=True).strip()
+          assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
+          assert git('rev-parse','HEAD^')=='5a991b319025a2760e748f323c7f725e32594b6f','BASE_DRIFT'
+          expected={
+            'android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt',
+            '.github/workflows/v9-signed-r2-physical-apk.yml',
+          }
+          assert set(git('diff','--name-only','HEAD^','HEAD').splitlines())==expected,'SCOPE_DRIFT'
+          pins={
+            'android-app/app/src/main/java/com/appforge/studio/build/V9SelectiveR2ModuleCache.kt':'08d17c2281cf5dc6f78f2828b23ba3aa80a19410',
+            'android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt':'11cd62ef3bb7958312d155837e64606c1d503092',
+            'android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt':'55d4ceb7528fab723542336af0b8c4ef11590adb',
+            'android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java':'5c69602b89f16c402b9f3c0dc6327009cfafd9da',
+          }
+          for path,blob in pins.items():
+            assert git('rev-parse','HEAD:'+path)==blob,('TRUST_PIN_DRIFT',path)
+          policy=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt').read_text()
+          assert 'const val PRODUCTION_DISTRIBUTION_ENABLED = false' in policy
+          gradle=pathlib.Path('android-app/app/build.gradle.kts').read_text()
+          assert 'applicationIdSuffix = ".v9r2accept"' in gradle
+          assert 'appforgeV9R2DeviceAcceptance' in gradle
+          test=pathlib.Path('android-app/app/src/androidTest/java/com/appforge/studio/build/V9SignedR2PhysicalAcceptanceTest.kt').read_text()
+          assert '569f7f55cb5fa645935250acaf2e6551d697fee4cfd723799abc92f5b58f5cf5' in test
+          assert '830033663d72419435b99a1e6ced8e51cc582b9f8fd72752f3593c538c316ca7' in test
+          assert 'DownloadNetworkPolicy.WIFI_PREFERRED' in test
+          downloader=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt').read_text()
+          module_cache=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9SelectiveR2ModuleCache.kt').read_text()
+          unit=pathlib.Path('android-app/app/src/test/java/com/appforge/studio/build/V9SelectiveR2ModuleCacheTest.kt').read_text()
+          assert 'privateRoot.canonicalFile' in downloader
+          assert 'directory.canonicalFile.parentFile == canonicalRoot' in downloader
+          assert 'Files.isSymbolicLink(directory.toPath())' in downloader
+          assert 'V9SignedR2CandidateDownload.privateCacheDirectory(' in module_cache
+          assert 'platformParentAliasResolvesInsideCanonicalPrivateRoot' in unit
+          assert 'rejectsDirectSymlinkForPrivateRoot' in unit
+          assert 'rejectsSymlinkedCanaryCacheLeaf' in unit
+          screen=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt').read_text()
+          card=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt').read_text()
+          reader=pathlib.Path('android-app/app/src/test/java/com/appforge/studio/V9R2BundleReaderTest.kt').read_text()
+          signing=pathlib.Path('quality/tools/appforge_v9_persistent_debug_signing.sh').read_text()
+          assert git('rev-parse','HEAD:android-app/app/src/main/java/com/appforge/studio/V9R2CandidatePrefetchCard.kt')=='c1d1f63a492723d2cadfb94a2c151ce3154dd6fa','R2_UI_PIN_DRIFT'
+          runtime=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt').read_text()
+          assert r"val f=line.split('\t')" in runtime
+          assert r"!raw.contains('\\')" in runtime
+          assert 'configureResolver(app,root)' in runtime
+          assert 'network.getAllByName(' in runtime
+          assert 'snapshot.ubuntu.com' in runtime
+          assert 'appforge-v9-apt-private-dns' in runtime
+          assert 'StandardCopyOption.ATOMIC_MOVE' in runtime
+          assert 'APT_GPGV=PASS;MODULES_NOT_INSTALLED;' in runtime
+          assert 'suspend fun verifyIsolatedAptMetadata(' in runtime
+          assert 'appforge_snapshot_apt_get update' in runtime
+          assert 'APPFORGE_APT_MANAGED_INSTALL=1' in runtime
+          assert 'APT_GPGV=PASS;MODULES_NOT_INSTALLED;' in runtime
+          assert 'VerifiedModuleDownload.sha(oldReceipt)==originalNode' in runtime
+          assert 'verifyIsolatedAptMetadata(context)' in screen
+          aptlock=pathlib.Path('android-app/app/src/main/assets/device-build/apt-snapshot-lock.sh').read_text()
+          assert 'gpgv --status-fd=1' in aptlock
+          assert 'as_verify_indices()' in aptlock
+          assert git('rev-parse','HEAD:android-app/app/src/main/assets/device-build/apt-snapshot-lock.sh')=='31f4569bca4f7fb6a8d96cbb8c86af3f561237e6'
+          assert 'suspend fun prefetchIsolatedUbuntuPackages(' in runtime
+          assert 'stageIsolatedR2Cache(context)' in runtime
+          assert 'catalogHash==AptModuleLocks.CATALOG' in runtime
+          assert 'uri.host=="snapshot.ubuntu.com"' in runtime
+          assert 'DownloadNetwork.select(DownloadNetworkPolicy.ALLOW_ANY)' in runtime
+          assert runtime.count('DownloadNetworkPolicy.ALLOW_ANY')>=4
+          assert 'DownloadNetworkPolicy.WIFI_PREFERRED' not in runtime
+          assert 'Doğrulanmış tüm bağlantılar' in screen
+          assert 'VerifiedModuleDownload.download(' in runtime
+          assert 'V9R2AptInstallReuse.seedExisting(' in runtime
+          assert 'APT_SIGNATURES_NOT_VERIFIED' in runtime
+          assert 'ACTIVE_RUNTIME_UNCHANGED' in runtime
+          assert 'if(ubuntuFetchConfirm) AlertDialog(' in screen
+          assert 'Eksik Ubuntu paketlerini indir' in screen
+          assert 'suspend fun stageIsolatedR2Cache(' in runtime
+          assert 'V9R2AptInstallReuse.seedExisting(' in runtime
+          assert 'V9SelectiveR2ModuleCache.inspectCache(' in runtime
+          assert 'VerifiedModuleDownload.sha(oldReceipt)==oldHash' in runtime
+          assert 'ACTIVE_RUNTIME_UNCHANGED;MODULES_NOT_INSTALLED' in runtime
+          assert 'if(stageConfirm) AlertDialog(' in screen
+          assert 'R2 önbelleğini izole Ubuntu' in screen
+          assert 'it.write(REVISION.toByteArray(Charsets.UTF_8))' in runtime
+          assert 'suspend fun prepareIsolatedRecovery(' in runtime
+          assert 'runtime-v9-recovery-candidate' in runtime
+          assert 'VerifiedLinuxRootfsInstaller(app).install(' in runtime
+          assert 'AptSnapshotMigration.blockedReason(current)!=null' in runtime
+          assert 'OfflineBuildPackManager.moduleReady(' in runtime
+          assert 'BaseRuntimeOwnership.captureFresh(clean)' in runtime
+          assert 'ISOLATED_UBUNTU_PREPARED;ACTIVE_RUNTIME_UNCHANGED' in runtime
+          assert 'if(recoveryConfirm) AlertDialog(' in screen
+          assert 'İzole temiz Ubuntu hazırla' in screen
+          assert 'val migrationChecked=migrationAudit?.first==selected' in screen
+          assert 'migrationReason==null' in screen
+          assert 'Güvenli runtime geçişi gerekli' in screen
+          assert 'if(section=="modules")item {' in screen
+          assert 'DropdownMenu(expanded=moduleMenuOpen' in screen or 'DropdownMenu(' in screen
+          assert 'OfflineModules.all.forEach { item ->' in screen
+          assert 'OfflineModules.all.forEach { module ->' not in screen
+          assert 'V9R2CandidatePrefetchCard(' in screen
+          assert 'TopAppBar(title={Text("Birleşik Modül Merkezi V9")}' in screen
+          assert 'Text(if(installed)"Doğrula"' not in screen
+          assert 'Otomatik son bütünlük kontrolü başarısız' in screen
+          assert 'onInstall(target)' in card
+          assert 'userApproved = true' in card and 'approving=false' in card
+          assert 'Text("Paketleri indir, doğrula ve kur")' in card
+          assert 'V9SelectiveR2ModuleCache.signedPlan(' in card
+          assert 'DownloadNetworkPolicy.WIFI_PREFERRED' in card
+          assert 'V9R2BundleReader.bounded(' in card and 'Oversized V9 candidate file' in card
+          assert all(name in reader for name in ('acceptsBoundedManifest','rejectsEmptyInput','rejectsOversizedInput','refusesStalledStream'))
+          assert 'test-only-debug.p12' in signing and 'MAIN_PLAY_CLOUDFLARE_MUTATIONS=0' in signing
+          assert 'APPFORGE_RELEASE' not in signing
+          reuse=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9R2AptInstallReuse.kt').read_text()
+          install=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt').read_text()
+          assert 'fun aptMigrationBlockedReason(context:Context,id:OfflineModuleId)' in install
+          assert 'return AptSnapshotMigration.blockedReason(root)' in install
+          assert 'require(AptSnapshotMigration.blockedReason(root)==null)' in install
+          regression=pathlib.Path('android-app/app/src/test/java/com/appforge/studio/build/V9R2AptInstallReuseTest.kt').read_text()
+          assert 'V9SelectiveR2ModuleCache.preview(' in reuse
+          assert 'V9SignedR2CandidateDownload.privateCacheDirectory(' in reuse
+          assert 'BuildConfig.DEBUG' in reuse and 'V9R2AptInstallReuse.seedForDebug(' in install
+          assert 'if(com.appforge.studio.BuildConfig.DEBUG' in install
+          assert 'Existing APT CAS object has different bytes' in reuse
+          assert 'Tampered R2 cache object' in reuse
+          assert 'RuntimeGenerationStore(root).prepare(' in install
+          assert all(k in regression for k in ('repeatedImportsReuseSameCASWithoutRewriting','sameSizeTamperedSourceFailsClosed','corruptExistingTargetIsNeverOverwritten','rejectsSourceAndTargetSymlinks'))
+          assert git('status','--porcelain')=='','DIRTY_WORKTREE'
+          print('V9_PHYSICAL_SOURCE_GUARD=PASS;FILES=2;NO_PRODUCTION=YES')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install pinned Android SDK and native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'ndk;28.2.13676358' 'cmake;3.22.1' > "$RUNNER_TEMP/v9-sdk.log" 2>&1 || { tail -90 "$RUNNER_TEMP/v9-sdk.log"; exit 1; }
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"; fi
+      - name: Build separate debug app and instrumented test APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest \
+            -PappforgeV9R2DeviceAcceptance=true --no-daemon --no-parallel \
+            --no-configuration-cache --console=plain \
+            > "$RUNNER_TEMP/v9-physical-build.log" 2>&1 || {
+              tail -160 "$RUNNER_TEMP/v9-physical-build.log"; exit 1
+            }
+          grep -q 'BUILD SUCCESSFUL' "$RUNNER_TEMP/v9-physical-build.log"
+          echo 'V9_PHYSICAL_APK_BUILD=PASS;INSTALL=NOT_RUN;DEVICE=NOT_TESTED'
+      - name: Verify isolated package identity, signatures and artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=$(find android-app/app/build/outputs/apk/debug -name '*.apk' -type f | head -1)
+          TEST=$(find android-app/app/build/outputs/apk/androidTest/debug -name '*.apk' -type f | head -1)
+          test -s "$APP" && test -s "$TEST"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
+          SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          "$AAPT" dump badging "$APP" | grep -Fq "package: name='com.appforge.studio.v9r2accept'"
+          "$AAPT" dump badging "$TEST" | grep -Fq "package: name='com.appforge.studio.v9r2accept.test'"
+          "$SIGNER" verify "$APP"
+          "$SIGNER" verify "$TEST"
+          test -z "$(git status --porcelain)"
+          mkdir -p "$RUNNER_TEMP/v9-physical"
+          cp "$APP" "$RUNNER_TEMP/v9-physical/AppForge-V9-R2-Physical-debug.apk"
+          cp "$TEST" "$RUNNER_TEMP/v9-physical/AppForge-V9-R2-Physical-test.apk"
+          (cd "$RUNNER_TEMP/v9-physical" && sha256sum *.apk > SHA256SUMS && sha256sum -c SHA256SUMS)
+          echo 'V9_PHYSICAL_APK_IDENTITY=PASS;PACKAGE=ISOLATED;SIGNATURE=DEBUG;PRODUCTION=DISABLED'
+      - name: Upload only debug acceptance APKs (never signed manifest or private key)
+        uses: actions/upload-artifact@v4
+        with:
+          name: v9-r2-physical-acceptance-${{ github.sha }}
+          path: ${{ runner.temp }}/v9-physical/
+          retention-days: 3
+          if-no-files-found: error

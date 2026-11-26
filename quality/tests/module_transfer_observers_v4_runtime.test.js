@@ -1,0 +1,77 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import {spawn,spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+const assets=new URL('../../android-app/app/src/main/assets/device-build/',import.meta.url);
+const temporary=()=>fs.mkdtempSync(path.join(os.tmpdir(),'appforge-v4-observer-'));
+test('Node preload preserves response bytes and reports known/unknown size without leaking URL query',async()=>{
+ const dir=temporary(),body=Buffer.alloc(65536,65);
+ const server=http.createServer((req,res)=>{if(req.url.startsWith('/known'))res.setHeader('Content-Length',body.length);res.write(body.subarray(0,1000));setTimeout(()=>res.end(body.subarray(1000)),300);});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ try{
+  for(const known of [true,false]){
+   const file=path.join(dir,'event.json');
+   const code=`const http=require('http'),fs=require('fs');http.get(process.argv[1],r=>{let bytes=0;r.on('data',c=>bytes+=c.length);r.on('end',()=>console.log(JSON.stringify({bytes,event:JSON.parse(fs.readFileSync(process.env.APPFORGE_DOWNLOAD_TELEMETRY))})));});`;
+   const child=spawn(process.execPath,['--require',new URL('npm-download-telemetry.cjs',assets).pathname,'-e',code,`http://127.0.0.1:${server.address().port}/${known?'known':'unknown'}?private-query=test`],{env:{...process.env,APPFORGE_DOWNLOAD_TELEMETRY:file}});
+   let output='',error='';child.stdout.on('data',b=>output+=b);child.stderr.on('data',b=>error+=b);
+   assert.equal(await new Promise(r=>child.on('exit',r)),0,error);
+   const result=JSON.parse(output);assert.deepEqual(JSON.parse(fs.readFileSync(path.join(file+'.events',JSON.parse(fs.readFileSync(file)).transfer+'.json'))),JSON.parse(fs.readFileSync(file)));assert.equal(result.bytes,body.length);assert.equal(result.event.bytes,body.length);assert.equal(result.event.finished,true);assert.equal(result.event.total,known?body.length:null);assert(!JSON.stringify(result).includes('private-query'));assert(!('ready'in result.event));
+  }
+ }finally{await new Promise(r=>server.close(r));fs.rmSync(dir,{recursive:true,force:true});}
+});
+test('APT observer measures real fixture archive files, verifies SHA256 and preserves backend errors',()=>{
+ const dir=temporary();
+ try{
+  const archives=path.join(dir,'archives');fs.mkdirSync(path.join(archives,'partial'),{recursive:true});const payload='verified-debian-fixture',sha=createHash('sha256').update(payload).digest('hex');
+  const backend=path.join(dir,'apt-fixture');fs.writeFileSync(backend,`#!/bin/sh\ncase " $* " in *' --print-uris '*) printf "'https://example.invalid/a.deb' a.deb ${payload.length} SHA256:${sha}\\n";exit 0;; esac\nprintf '${payload}' > '${archives}/partial/a.deb'\nsleep 1\nmv '${archives}/partial/a.deb' '${archives}/a.deb'\nexit 17\n`,{mode:0o700});
+  // Redirect only the immutable OS boundary in this test copy; never invoke or mutate host APT.
+  const helper=path.join(dir,'observer.sh');fs.writeFileSync(helper,fs.readFileSync(new URL('apt-download-telemetry.sh',assets),'utf8').replaceAll('/usr/bin/apt-get',backend).replaceAll('/var/cache/apt/archives',archives));
+  const event=path.join(dir,'event.json'),run=spawnSync('sh',['-c','. "$1"; appforge_apt_get install a','fixture',helper],{env:{...process.env,APPFORGE_DOWNLOAD_TELEMETRY:event},encoding:'utf8'});
+  assert.equal(run.status,17,run.stderr);const result=JSON.parse(fs.readFileSync(event));assert.equal(result.bytes,payload.length);assert.equal(result.total,payload.length);assert.equal(result.finished,true);assert(!('ready'in result));
+  fs.writeFileSync(path.join(archives,'a.deb'),'tampered');const noDownload=fs.readFileSync(backend,'utf8').replace(`printf '${payload}' > '${archives}/partial/a.deb'\nsleep 1\nmv '${archives}/partial/a.deb' '${archives}/a.deb'\n`,'');fs.writeFileSync(backend,noDownload);fs.rmSync(event);spawnSync('sh',['-c','. "$1"; appforge_apt_get install a','fixture',helper],{env:{...process.env,APPFORGE_DOWNLOAD_TELEMETRY:event}});assert(!fs.existsSync(event),'wrong SHA must not publish completed archive');
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+test('reviewed Google archives have fixed SHA256 and every legacy call is allowlisted',()=>{
+ const pins=JSON.parse(fs.readFileSync(new URL('verified-toolchain-sources-v4.json',assets)));const script=fs.readFileSync(new URL('install-toolchain.sh',assets),'utf8');assert.equal(pins.length,7);
+ const legacy=pins.filter(p=>script.includes(`${p.url}) compat_sha256=`));assert.equal(legacy.length,4);
+ for(const p of legacy){assert.match(p.url,/^https:\/\/dl\.google\.com\/android\/repository\//);assert.match(p.sha256,/^[a-f0-9]{64}$/);assert(p.bytes>0);assert(script.includes(`${p.url}) compat_sha256="${p.sha256}"`));}
+ for(const p of pins){assert.match(p.sha256,/^[a-f0-9]{64}$/);assert.match(p.url,/^https:\/\//);assert(p.bytes===null||p.bytes>0);assert(script.includes(p.sha256),`Missing pinned installer digest for ${p.file}`);assert(p.provenance.length>20);}
+ assert(script.includes('download_sha256 "$1" "$compat_sha256" "$compat_out"'));
+});
+
+test('reviewed API 37.0 metadata describes the pinned payload without granting a license or permitting SDK fallback',()=>{
+ const metadata=fs.readFileSync(new URL('platform-37.0-package.xml',assets),'utf8');
+ const script=fs.readFileSync(new URL('install-toolchain.sh',assets),'utf8');
+ const prewarm=fs.readFileSync(new URL('prepare-offline-pack.sh',assets),'utf8');
+ const engine=fs.readFileSync(new URL('../../android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt',import.meta.url),'utf8');
+ assert.equal(createHash('sha256').update(metadata).digest('hex'),'7f8001358f1b6432ea6186dd0fe6ba00bb67ea8daf24c708d05a02f5570091d7');
+ const parsed=spawnSync('python3',['-c',`import sys,json,xml.etree.ElementTree as E
+r=E.fromstring(sys.stdin.read());p=next(e for e in r if e.tag.endswith('localPackage'))
+assert p.attrib['path']=='platforms;android-37.0'
+assert next(e for e in p.iter() if e.tag.endswith('api-level')).text=='37.0'
+assert next(e for e in p.iter() if e.tag.endswith('revision'))[0].text=='2'
+assert any(e.tag.endswith('license') and e.attrib.get('id')=='android-sdk-license' and 'Software Development Kit' in (e.text or '') for e in r)
+`],{input:metadata,encoding:'utf8'});assert.equal(parsed.status,0,parsed.stderr);
+ assert(script.includes('test -s "$SDK/licenses/android-sdk-license"'));
+ assert(script.includes('cp /workspace/runtime/platform-37.0-package.xml "$SDK/platforms/android-37.0/package.xml"'));
+ assert(!script.includes('AndroidVersion.ApiLevel=37\nEOF'));
+ assert(prewarm.includes('android.builder.sdkDownload=false'));assert(engine.includes('android.builder.sdkDownload=false'));
+});
+
+test('fetch observer measures real undici body bytes for known and chunked transfers',async()=>{
+ const dir=temporary(),body=Buffer.alloc(32000,66);
+ const server=http.createServer((req,res)=>{if(req.url==='/known')res.setHeader('Content-Length',body.length);res.write(body.subarray(0,1000));setTimeout(()=>res.end(body.subarray(1000)),350);});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ try{for(const known of [true,false]){
+  const file=path.join(dir,'event.json');
+  const code=`const fs=require('fs');(async()=>{const b=await(await fetch(process.argv[1])).arrayBuffer();setImmediate(()=>console.log(JSON.stringify({bytes:b.byteLength,event:JSON.parse(fs.readFileSync(process.env.APPFORGE_DOWNLOAD_TELEMETRY))})));})().catch(e=>{console.error(e);process.exitCode=1});`;
+  const child=spawn(process.execPath,['--require',new URL('npm-download-telemetry.cjs',assets).pathname,'-e',code,`http://127.0.0.1:${server.address().port}/${known?'known':'chunked'}`],{env:{...process.env,APPFORGE_DOWNLOAD_TELEMETRY:file}});
+  let output='',error='';child.stdout.on('data',b=>output+=b);child.stderr.on('data',b=>error+=b);
+  assert.equal(await new Promise(r=>child.on('exit',r)),0,error);
+  const result=JSON.parse(output);assert.deepEqual(JSON.parse(fs.readFileSync(path.join(file+'.events',JSON.parse(fs.readFileSync(file)).transfer+'.json'))),JSON.parse(fs.readFileSync(file)));assert.equal(result.bytes,body.length);assert.equal(result.event.bytes,body.length);assert.equal(result.event.total,known?body.length:null);assert.equal(result.event.finished,true);
+ }}finally{await new Promise(r=>server.close(r));fs.rmSync(dir,{recursive:true,force:true});}
+});

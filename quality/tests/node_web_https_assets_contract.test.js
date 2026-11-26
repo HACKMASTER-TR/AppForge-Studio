@@ -20,10 +20,10 @@ const loader = read(
   "android-app/app/src/main/assets/device-build/AppForgeLocalAssets.java"
 );
 
-test("node-web only HTTPS asset loading", () => {
+test("node-web and microphone wrappers use HTTPS asset loading", () => {
   assert.match(engine, /nodeWebAssets = true/);
   assert.match(engine, /nodeWebAssets: Boolean = false/);
-  assert.match(engine, /assetHttpsEnabled.*nodeWebAssets && draft.sourceMode == SourceMode.LOCAL/);
+  assert.match(engine, /assetHttpsEnabled.*\(nodeWebAssets \|\| draft.microphone\) && draft.sourceMode == SourceMode.LOCAL/);
   assert.match(engine, /AppForgeLocalAssets\.java.*copyTo/);
   assert.match(fast, /file:\/\/\/android_asset\/site\/index\.html/);
 });

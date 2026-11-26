@@ -47,17 +47,24 @@ object ProjectImporter {
                     sourceUri
                 ).lowercase()
 
+            val isPdfSource = name.endsWith(".pdf") || context.contentResolver.getType(sourceUri) == "application/pdf"
+
             val input =
                 context.contentResolver
                     .openInputStream(sourceUri)
                     ?: error("Dosya açılamadı.")
 
             input.use { stream ->
-                if (name.endsWith(".zip")) {
+                if (name.endsWith(".zip") && !isPdfSource) {
                     extractZip(
                         stream,
                         tempDir
                     )
+                } else if (isPdfSource) {
+                    File(tempDir, PdfProjectSource.DOCUMENT).outputStream().use { out ->
+                        copyLimited(stream, out, PdfProjectSource.MAX_BYTES)
+                    }
+                    PdfProjectSource.prepare(tempDir)
                 } else {
                     val target =
                         File(

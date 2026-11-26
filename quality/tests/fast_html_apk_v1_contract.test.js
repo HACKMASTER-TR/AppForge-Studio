@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertFastHtmlEngineIsolation } from './helpers/fast_html_policy_regression.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = 'android-app/app/src/main/java/com/appforge/studio/build/';
@@ -22,20 +23,22 @@ test('fast HTML/URL APK bypasses rootfs and offline package without touching oth
   const engine = read(source + 'DeviceBuildEngine.kt');
   const offline = read(source + 'OfflineBuildPackManager.kt');
   assert.match(engine, /FastHtmlApkPolicy\.isCandidate\(draft\)/);
-  assert.match(engine, /FastHtmlApkPackager\.build\(context, draft, workspace\)/);
+  assert.match(engine, /FastHtmlApkPackager\.build\(context, draft, workspace, stages = stages\)/);
   assert.ok(engine.indexOf('FastHtmlApkPackager.build') < engine.indexOf('DeviceBuildRuntimeV3\n'));
   assert.match(offline, /if \(FastHtmlApkPolicy\.isCandidate\(draft\)\)/);
   assert.match(offline, /FastHtmlApkPolicy\.requireSupported\(draft\)/);
-  assert.match(offline, /"node-web"/);
-  assert.match(offline, /"expo"/);
+  assert.match(offline, /OfflineModules\.forProject\(draft\)/);
+  assert.match(read(source + "OfflineModulePlan.kt"), /"expo"/);
 });
 
-test('only HTML/HTTPS URL, APK output, debug/local signing supported', () => {
+test('only HTML/HTTP(S) URL, APK output, debug/local signing supported', () => {
   const eligibility = read(source + 'FastHtmlApkPolicy.kt');
-  assert.match(eligibility, /engine != "webview-static"/);
+  assertFastHtmlEngineIsolation(root);
   assert.match(eligibility, /setOf\("html", "web-static", "webview"\)/);
   assert.match(eligibility, /setOf\(DeviceArtifactKind\.APK\)/);
-  assert.match(eligibility, /scheme\.equals\("https", true\)/);
+  assert.match(eligibility, /WebviewProjectSettings\.webSourceUri\(draft\.webUrl\)/);
+  const settings=read(source + "WebviewProjectSettings.kt");
+  assert.match(settings, /uri\.scheme\.equals\("http",true\).*uri\.scheme\.equals\("https",true\)/);
   assert.match(eligibility, /SigningMode\.DEBUG/);
   assert.doesNotMatch(eligibility, /"node-web"\s*->/);
 });
@@ -56,7 +59,15 @@ test('baked HTML shell does not add JS native bridge or mixed HTTP navigation', 
   const manifest = read('android-app/html-apk-template/src/main/AndroidManifest.xml');
   assert.match(shell, /setJavaScriptEnabled\(true\)/);
   assert.match(shell, /setAllowUniversalAccessFromFileURLs\(false\)/);
-  assert.doesNotMatch(shell, /addJavascriptInterface\(/);
+  // HTML document export adds one capability-scoped, document-only bridge.
+  // Never allow an unrestricted or additional JavaScript native interface.
+  assert.equal((shell.match(/addJavascriptInterface\s*\(/g) || []).length, 1);
+  assert.match(shell, /addJavascriptInterface\s*\(\s*new\s+LocalDocuments\s*\(\s*\)\s*,\s*"AppForgeLocalDocuments"\s*\)/);
+  const documents = read('android-app/html-apk-template/src/main/java/com/appforge/htmlstub/AppForgeDocuments.java');
+  assert.match(documents, /static boolean legacyLocalPage\(/);
+  assert.match(documents, /void receiveLocal\(/);
+  // Verify transfer and origin security by running executable focused regressions.
+
   assert.match(manifest, /usesCleartextTraffic="false"/);
   assert.match(manifest, /allowBackup="false"/);
 });
@@ -72,7 +83,14 @@ test('V15.3 Windows and combined output routing uses a shared Android-only fast 
   assert.match(policy, /kind == DeviceArtifactKind\.APK \|\| kind == DeviceArtifactKind\.AAB/);
   assert.match(policy, /if \(!requestsAndroidOnlyOutputs\(draft\)\) return false/);
   assert.equal(manager.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 2);
-  assert.equal(engine.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 2);
+  // Routing and the early capability validator share the same output-aware candidate policy.
+  assert.equal(engine.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 3);
+  // Runtime generation recovery is additionally bypassed for Fast HTML, before any build lease.
+  assert.match(engine, /if\(preparationRoot==null && !FastHtmlApkPolicy\.isCandidate\(draft\)\)OfflineBuildPackManager\.recoverPending\(context\)/);
+  assert.match(engine, /val fastHtml = FastHtmlApkPolicy\.isCandidate\(draft\)/);
+  assert.match(engine, /draft\.qrScanner && !fastHtml/);
+  assert.match(engine, /AndroidArtifactPublication\.collect\(/);
+  assert.match(engine, /state.status != "success" \|\| state.cancelled.get\(\)/);
   assert.match(engine, /val sourceEngine\s*=\s*effectiveSourceEngine\s*\(\s*draft\s*\)/);
   assert.match(engine, /DeviceArtifactKind\.WINDOWS_EXE in\s+requestedOutputs/);
   assert.match(engine, /buildWindowsIfRequested\(/);

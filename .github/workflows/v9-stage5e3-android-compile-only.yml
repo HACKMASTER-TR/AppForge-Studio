@@ -1,0 +1,155 @@
+# V9 Stage 5E.3: one-shot, fail-closed, Android SDK compile check only.
+# No APK, signing, upload, deploy, release, R2 or production access.
+name: V9 Stage 5E3 Android SDK Compile Only (No APK)
+'on':
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - android-app/app/src/main/java/com/appforge/studio/security/V9AdminSessionBridge.kt
+      - android-app/app/src/main/java/com/appforge/studio/security/V9AdminCredentialProvider.kt
+      - android-app/app/src/test/java/com/appforge/studio/security/V9AdminSessionBridgeOfflineTest.kt
+      - docs/engineering/appforge-v9-stage5e2-admin-bridge.md
+      - .github/workflows/v9-stage5e3-android-compile-only.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-stage5e3-android-compile-only
+  cancel-in-progress: false
+jobs:
+  android-compile-only:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027' &&
+      github.event_name == 'push' &&
+      github.run_attempt == 1 &&
+      github.event.before == 'b754048de60740a905563abda19283a2be0326e3' &&
+      github.event.head_commit.message == 'test(v9): stage5e3 android sdk compile only'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      GRADLE_OPTS: '-Dorg.gradle.daemon=false'
+    steps:
+      - name: Checkout exact V9 commit (no write credentials)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Enforce exact five-file scope, baseline and public-route prohibition
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,os,pathlib,subprocess
+          sh=lambda *a:subprocess.check_output(['git',*a],text=True).strip()
+          base='b754048de60740a905563abda19283a2be0326e3'
+          assert sh('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
+          assert sh('rev-parse','HEAD^')==base,'BASE_DRIFT'
+          root='android-app/app/src/main/java/com/appforge/studio/security/'
+          files={
+            root+'V9AdminSessionBridge.kt':'16feb5d4961755df0a21e34859ff61696f2124d6b3c45ae9a0c907ff8cb24211',
+            root+'V9AdminCredentialProvider.kt':'b1ef89af691b354aeefff5effcc34b188baca1834dfcee5c4891ffa0fcb0d26e',
+            'android-app/app/src/test/java/com/appforge/studio/security/V9AdminSessionBridgeOfflineTest.kt':'82adac6b6a3e1d0cfcf34f37ce035991ffe9b13ef242eee6ecc27878cd9f1c2f',
+            'docs/engineering/appforge-v9-stage5e2-admin-bridge.md':'6d21da8a2f558cf191d2ad8210f7b44e868891b3c567fd9327a2f0590d3e2641',
+            '.github/workflows/v9-stage5e3-android-compile-only.yml':None,
+          }
+          changed=sh('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines()
+          assert sorted(changed)==sorted(files),'FILE_SCOPE_DRIFT'
+          for path,want in files.items():
+            assert pathlib.Path(path).is_file(),('MISSING_FILE',path)
+            if want:
+              got=hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()
+              assert got==want,('SHA256_DRIFT',path)
+          def source(path):return pathlib.Path(path).read_text()
+          bridge=source(root+'V9AdminSessionBridge.kt')
+          adapter=source(root+'V9AdminCredentialProvider.kt')
+          old=source(root+'GoogleAdminIdentityClient.kt')
+          assert 'V9AdminNonceWire.validate(sessions.begin(), now())' in bridge
+          assert 'google.requestIdToken(challenge.nonce)' in bridge
+          assert 'now() < challenge.expiresAt' in bridge
+          assert 'OwnerAccessPolicy' not in bridge and 'rememberVerifiedGoogleAdmin' not in bridge
+          assert '.setNonce(serverNonce)' in adapter and 'SecureRandom' not in adapter
+          assert 'SecureRandom()' in old and '.setNonce(nonce)' in old
+          assert 'V9AdminSessionBridge' not in old
+          assert 'https://' not in adapter and 'HttpURLConnection' not in adapter
+          print('S5E3_SOURCE_GATE=PASS;FILES=5;SOURCE_SHA256=PASS;OLD_LOGIN=UNMODIFIED')
+          PY
+      - name: Configure Node.js 22 for pinned security tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run existing V9 device and OIDC regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --test-reporter=tap \
+            cloudflare/v9-witness/device-auth/protocol.test.mjs \
+            cloudflare/v9-witness/device-auth/registry.test.mjs \
+            cloudflare/v9-witness/device-auth/admin-oidc.test.mjs \
+            cloudflare/v9-witness/stage5d-probe/core.test.mjs > "$RUNNER_TEMP/s5e3-node.tap"
+          python3 - <<'PY'
+          import os,re,pathlib
+          s=(pathlib.Path(os.environ['RUNNER_TEMP'])/'s5e3-node.tap').read_text()
+          for label,expected in [('tests',70),('pass',70),('fail',0),('skipped',0),('cancelled',0)]:
+            m=re.search(r'^# '+label+r' (\d+)\s*$',s,re.M)
+            assert m and int(m.group(1))==expected,'NODE_COUNT_'+label
+          print('S5E3_NODE_REGRESSION=PASS;TESTS=70;FAIL=0;SKIP=0')
+          PY
+      - name: Configure JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Configure pinned Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install Android SDK 37 and pinned NDK/CMake (compile only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_HOME:-}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 \
+            'platforms;android-37.0' \
+            'ndk;28.2.13676358' \
+            'cmake;3.22.1' > "$RUNNER_TEMP/s5e3-sdk-install.log" 2>&1 || {
+              tail -45 "$RUNNER_TEMP/s5e3-sdk-install.log"
+              exit 1
+            }
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          test -d "$ANDROID_HOME/ndk/28.2.13676358"
+          test -d "$ANDROID_HOME/cmake/3.22.1"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+          test -s "$ANDROID_HOME/platforms/android-37/android.jar"
+          echo 'S5E3_ANDROID_SDK=PASS;PLATFORM=37.0;NDK=28.2.13676358;CMAKE=3.22.1'
+      - name: Compile Android main and unit-test Kotlin only (no assemble)
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -version 2>&1 | head -1
+          gradle -p android-app \
+            :app:compileDebugKotlin \
+            :app:compileDebugUnitTestKotlin \
+            --no-daemon --no-parallel --no-configuration-cache --console=plain \
+            > "$RUNNER_TEMP/s5e3-gradle.log" 2>&1 || {
+              tail -100 "$RUNNER_TEMP/s5e3-gradle.log"
+              echo 'S5E3_GRADLE_COMPILE=FAIL;APK_BUILD=NOT_RUN'
+              exit 1
+            }
+          grep -Eq '^BUILD SUCCESSFUL' "$RUNNER_TEMP/s5e3-gradle.log"
+          echo 'S5E3_GRADLE_COMPILE=PASS;ANDROID_MAIN=PASS;ANDROID_TEST_SOURCES=PASS'
+      - name: Verify no APK, bundle, deploy or publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find android-app -type f \( -name '*.apk' -o -name '*.aab' \) -print -quit | grep -q .; then
+            echo 'S5E3_NO_APK=FAIL;UNEXPECTED_ARTIFACT'; exit 1
+          fi
+          test "$(git diff --name-only | wc -l)" -eq 0
+          echo 'S5E3_NO_APK=PASS;ASSEMBLE=NO;SIGNING=NO;RELEASE=NO;DEPLOY=NO'
+          echo 'S5E3_ANDROID_COMPILE_ACCEPTANCE=PASS;REAL_GOOGLE_LOGIN=NOT_VERIFIED'

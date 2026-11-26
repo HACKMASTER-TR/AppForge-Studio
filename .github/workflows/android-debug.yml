@@ -44,6 +44,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v6
@@ -55,6 +57,39 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "9.3.1"
+
+      - name: Set up Node.js 22 for wrapper tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify workflow command dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in git find sort tail ln python3 java javac keytool gradle node base64 chmod cp head ls grep gh; do
+            if ! command -v "$tool" > /dev/null; then
+              echo "Missing workflow command: $tool"
+              exit 1
+            fi
+          done
+          node --version
+          python3 --version
+
+      - name: Verify V9 offline distribution security
+        shell: bash
+        run: |
+          set -euo pipefail
+          for pattern in test_v9_package_mirror.py test_v9_r2_plan.py test_v9_signed_closure.py test_v9_signed_index_seed.py test_v9_resumable_deb.py test_v9_phase3d_audit.py test_v9_phase3e_verify.py test_v9_phase3f_policy.py test_v9_phase3g_e2e.py test_v9_phase3h_recovery_model.py test_v9_phase3h_signed_bridge.py test_v9_phase3h_witness_receipt.py test_v9_phase3h_filedisk.py test_v9_phase3h_stage4_sqlite_model.py test_v9_phase3h_stage4b_authorization.py test_v9_phase3h_stage4c_signed_bridge.py test_v9_phase3h_stage4d_boundary.py; do
+            log=$(mktemp)
+            python3 -m unittest discover -s quality/tests -p "$pattern" -v 2>&1 | tee "$log"
+            if grep -Eq 'skipped=[1-9]|\.\.\. skipped ' "$log"; then
+              echo "Skipped distribution security tests are not permitted"
+              exit 1
+            fi
+            rm -f "$log"
+          done
+          node --test cloudflare/package-distribution/worker.test.mjs
 
       - name: Install deterministic Android native toolchain
         shell: bash
@@ -79,6 +114,40 @@ jobs:
           test -d "$ANDROID_HOME/cmake/3.22.1"
 
           echo "Android native toolchain verified: NDK 28.2.13676358 / CMake 3.22.1"
+
+      - name: Compile generated Android wrappers
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          # Android 17 platform package uses the 37.0 identifier.
+          "$SDKMANAGER" --channel=3 "platforms;android-37.0"
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+
+          # Keep AGP compileSdk 37 compatible with the SDK folder.
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+          test -s "$ANDROID_HOME/platforms/android-37/android.jar"
+          gradle -p android-app :html-apk-template:compileReleaseJavaWithJavac --no-daemon
+          mapfile -t ZXING_JARS < <(find "$HOME/.gradle/caches/modules-2/files-2.1/com.google.zxing/core/3.5.3" -type f -name 'core-3.5.3.jar')
+          test "${#ZXING_JARS[@]}" -eq 1
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from zipfile import ZipFile
+          jars=list((Path.home()/'.gradle/caches/modules-2/files-2.1/com.android.billingclient/billing/9.1.0').glob('*/*.aar'))
+          assert len(jars)==1
+          with ZipFile(jars[0]) as archive:
+              (Path(os.environ['RUNNER_TEMP'])/'appforge-billing.jar').write_bytes(archive.read('classes.jar'))
+          PY
+          mkdir -p "$RUNNER_TEMP/generated-wrapper-classes"
+          javac --release 8 -Xlint:-options \
+            -cp "$ANDROID_HOME/platforms/android-37.0/android.jar:${ZXING_JARS[0]}:$RUNNER_TEMP/appforge-billing.jar" \
+            -d "$RUNNER_TEMP/generated-wrapper-classes" \
+            android-app/app/src/main/assets/device-build/*.java \
+            android-app/html-apk-template/src/main/java/com/appforge/htmlstub/*.java
+          node --test quality/tests/html_document_bridge_runtime.test.js quality/tests/fast_html_v2_runtime.test.js quality/tests/fast_html_media_runtime.test.js quality/tests/fast_html_location_runtime.test.js quality/tests/fast_html_billing_runtime.test.js quality/tests/web_wrapper_config_contract.test.js
 
       - name: Restore CI debug signing key
         shell: bash

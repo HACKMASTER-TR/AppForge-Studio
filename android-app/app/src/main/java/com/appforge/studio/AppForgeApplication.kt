@@ -23,6 +23,7 @@ internal object UpdateGateSession {
 class AppForgeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        com.appforge.studio.build.DownloadNetwork.configure(this)
 
         System.setProperty(
             "http.agent",

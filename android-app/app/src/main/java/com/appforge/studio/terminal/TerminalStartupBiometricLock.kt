@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -113,15 +113,13 @@ internal fun TerminalStartupBiometricGate(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Card(
+        OutlinedCard(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .padding(20.dp),
             colors =
-                CardDefaults.cardColors(
-                    containerColor = TerminalSurface
-                )
+                CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
         ) {
             Column(
                 modifier = Modifier.padding(18.dp),
@@ -202,12 +200,10 @@ internal fun TerminalStartupLockSettingsPanel() {
         }
     }
 
-    Card(
+    OutlinedCard(
         modifier = Modifier.fillMaxWidth(),
         colors =
-            CardDefaults.cardColors(
-                containerColor = TerminalBackground
-            )
+            CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Black)
     ) {
         Column(
             modifier = Modifier.padding(10.dp),

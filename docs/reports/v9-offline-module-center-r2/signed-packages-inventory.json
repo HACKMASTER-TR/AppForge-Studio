@@ -1,0 +1,332 @@
+{
+  "schema": 1,
+  "observed_at": "2026-11-04T16:00:35.368793+00:00",
+  "signed_inrelease": "PASS",
+  "required_references": 32,
+  "unique_objects": 30,
+  "indexes": [
+    {
+      "suite": "noble",
+      "architecture": "arm64",
+      "index": "main/binary-arm64/Packages",
+      "sha256": "423c9185185cfc15df7bb3e748afc94b79ed09e0c437a0589aace46b61090d29",
+      "bytes": 7028761,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/42/423c9185185cfc15df7bb3e748afc94b79ed09e0c437a0589aace46b61090d29",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble/main/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble",
+      "architecture": "arm64",
+      "index": "restricted/binary-arm64/Packages",
+      "sha256": "6672845e00c74d21cbe84478a57c5eba1826bf96d9f14a0f759d3b7f5fd7b287",
+      "bytes": 615976,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/66/6672845e00c74d21cbe84478a57c5eba1826bf96d9f14a0f759d3b7f5fd7b287",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble/restricted/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble",
+      "architecture": "arm64",
+      "index": "universe/binary-arm64/Packages",
+      "sha256": "adb1c01115c3b11d2a5cde43b17ce3c53fa7cc48f834b930f63910d2c7dc74f5",
+      "bytes": 72105605,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/ad/adb1c01115c3b11d2a5cde43b17ce3c53fa7cc48f834b930f63910d2c7dc74f5",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble/universe/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble",
+      "architecture": "arm64",
+      "index": "multiverse/binary-arm64/Packages",
+      "sha256": "8366aff857c36873ea82b5569ed3ec0278c8c73fb78c81cead476666ddf0760c",
+      "bytes": 1006409,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/83/8366aff857c36873ea82b5569ed3ec0278c8c73fb78c81cead476666ddf0760c",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble/multiverse/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble",
+      "architecture": "amd64",
+      "index": "main/binary-amd64/Packages",
+      "sha256": "8f6f71ae839c8cba390a7643fcbbdacddb0bc7d12c1583a2dd80a1f8443a30e5",
+      "bytes": 7165069,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/8f/8f6f71ae839c8cba390a7643fcbbdacddb0bc7d12c1583a2dd80a1f8443a30e5",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble/main/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble",
+      "architecture": "amd64",
+      "index": "restricted/binary-amd64/Packages",
+      "sha256": "f5620712a54076429190adbc8b3974250606ffb624c9b877bc240d8f2476118e",
+      "bytes": 669193,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/f5/f5620712a54076429190adbc8b3974250606ffb624c9b877bc240d8f2476118e",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble/restricted/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble",
+      "architecture": "amd64",
+      "index": "universe/binary-amd64/Packages",
+      "sha256": "687ffc969e7700137677b9cfe2f614ee2d638052a91a7c9bf31f3f6a3040a99a",
+      "bytes": 73379142,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/68/687ffc969e7700137677b9cfe2f614ee2d638052a91a7c9bf31f3f6a3040a99a",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble/universe/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble",
+      "architecture": "amd64",
+      "index": "multiverse/binary-amd64/Packages",
+      "sha256": "65765aa769593ed76ced26878dbdc5e4b8ae9c4046cd9d1af567bd231a72d98a",
+      "bytes": 1296005,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/65/65765aa769593ed76ced26878dbdc5e4b8ae9c4046cd9d1af567bd231a72d98a",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble/multiverse/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-updates",
+      "architecture": "arm64",
+      "index": "main/binary-arm64/Packages",
+      "sha256": "b5b6fc6cd9f01eb71bee15c530754ca0683a52adf38b18c3fbe9d1a18a65e953",
+      "bytes": 8018539,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/b5/b5b6fc6cd9f01eb71bee15c530754ca0683a52adf38b18c3fbe9d1a18a65e953",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-updates/main/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-updates",
+      "architecture": "arm64",
+      "index": "restricted/binary-arm64/Packages",
+      "sha256": "0a2216096deac1ac53cf030da9b91f33de396e44228db781c7899cc3c900ce3e",
+      "bytes": 16008546,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/0a/0a2216096deac1ac53cf030da9b91f33de396e44228db781c7899cc3c900ce3e",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-updates/restricted/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-updates",
+      "architecture": "arm64",
+      "index": "universe/binary-arm64/Packages",
+      "sha256": "98577316fbb4eb67a2a6e131dd51e1cd78a2f9d2132a4a02827ec088c0156f6c",
+      "bytes": 10829532,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/98/98577316fbb4eb67a2a6e131dd51e1cd78a2f9d2132a4a02827ec088c0156f6c",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-updates/universe/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-updates",
+      "architecture": "arm64",
+      "index": "multiverse/binary-arm64/Packages",
+      "sha256": "426605cc66f3198acc53a1630c9c893be54d022aab3147b800f2c7a4f8bfb32a",
+      "bytes": 576461,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/42/426605cc66f3198acc53a1630c9c893be54d022aab3147b800f2c7a4f8bfb32a",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-updates/multiverse/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-updates",
+      "architecture": "amd64",
+      "index": "main/binary-amd64/Packages",
+      "sha256": "1fc47b051b1d741fc9df731f64bbe2931d580fd95c9315e57bd4a43d5cce6b70",
+      "bytes": 7559862,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/1f/1fc47b051b1d741fc9df731f64bbe2931d580fd95c9315e57bd4a43d5cce6b70",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-updates/main/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-updates",
+      "architecture": "amd64",
+      "index": "restricted/binary-amd64/Packages",
+      "sha256": "a6740ea7733e838d82f9019cdfa3723fbdbd271ec48a68420bc0ed104fe12af0",
+      "bytes": 10705824,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/a6/a6740ea7733e838d82f9019cdfa3723fbdbd271ec48a68420bc0ed104fe12af0",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-updates/restricted/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-updates",
+      "architecture": "amd64",
+      "index": "universe/binary-amd64/Packages",
+      "sha256": "bab03ba9c9e9e08700050abc5d6fa4b48bd4d7d0ba01e24c342dd463220a1ca5",
+      "bytes": 10621974,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/ba/bab03ba9c9e9e08700050abc5d6fa4b48bd4d7d0ba01e24c342dd463220a1ca5",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-updates/universe/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-updates",
+      "architecture": "amd64",
+      "index": "multiverse/binary-amd64/Packages",
+      "sha256": "afc01812446b80676d82692225ba9f2595cb143c6e8e09f613516e252c6ac048",
+      "bytes": 364594,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/af/afc01812446b80676d82692225ba9f2595cb143c6e8e09f613516e252c6ac048",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-updates/multiverse/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-security",
+      "architecture": "arm64",
+      "index": "main/binary-arm64/Packages",
+      "sha256": "73b2e864ab42dfe2e2fc2bd244a5c0196999ba8afbbce0b15689d7c5dd90c285",
+      "bytes": 6723976,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/73/73b2e864ab42dfe2e2fc2bd244a5c0196999ba8afbbce0b15689d7c5dd90c285",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-security/main/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-security",
+      "architecture": "arm64",
+      "index": "restricted/binary-arm64/Packages",
+      "sha256": "1ea1410b138d0980dfda152adc183b1a95054d54943291767523d5cb1ca1478e",
+      "bytes": 15423095,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/1e/1ea1410b138d0980dfda152adc183b1a95054d54943291767523d5cb1ca1478e",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-security/restricted/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-security",
+      "architecture": "arm64",
+      "index": "universe/binary-arm64/Packages",
+      "sha256": "1c3ca4c246aa83c064b786bab9c3919c0f65e7596dc21344c499c9a747eacda1",
+      "bytes": 8115872,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/1c/1c3ca4c246aa83c064b786bab9c3919c0f65e7596dc21344c499c9a747eacda1",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-security/universe/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-security",
+      "architecture": "arm64",
+      "index": "multiverse/binary-arm64/Packages",
+      "sha256": "a48a3f9f0d31c9c9d1113af6e160bb6cfcac8531e01146a6664ec1fe83070e03",
+      "bytes": 555834,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/a4/a48a3f9f0d31c9c9d1113af6e160bb6cfcac8531e01146a6664ec1fe83070e03",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-security/multiverse/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-security",
+      "architecture": "amd64",
+      "index": "main/binary-amd64/Packages",
+      "sha256": "74ff004c27ff9dde4306b6ca5c59274f900994e002eecab717550028be7b3149",
+      "bytes": 6232891,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/74/74ff004c27ff9dde4306b6ca5c59274f900994e002eecab717550028be7b3149",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-security/main/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-security",
+      "architecture": "amd64",
+      "index": "restricted/binary-amd64/Packages",
+      "sha256": "00d92b302818111b30b1fed0ccfce7b3acb5c837d8e83e4e28905326866160db",
+      "bytes": 10191421,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/00/00d92b302818111b30b1fed0ccfce7b3acb5c837d8e83e4e28905326866160db",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-security/restricted/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-security",
+      "architecture": "amd64",
+      "index": "universe/binary-amd64/Packages",
+      "sha256": "60460a603428acf672509a333b153de99dc2b880ddbb3d33a659108de28cdcfc",
+      "bytes": 7673730,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/60/60460a603428acf672509a333b153de99dc2b880ddbb3d33a659108de28cdcfc",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-security/universe/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-security",
+      "architecture": "amd64",
+      "index": "multiverse/binary-amd64/Packages",
+      "sha256": "8617e75385f67eac40bcbb069ebd3ceaefdeb79ac91a513ec3d3f35c92f90ab7",
+      "bytes": 341833,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/86/8617e75385f67eac40bcbb069ebd3ceaefdeb79ac91a513ec3d3f35c92f90ab7",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-security/multiverse/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-backports",
+      "architecture": "arm64",
+      "index": "main/binary-arm64/Packages",
+      "sha256": "0eb718faf9a41c2b240f55b66699808511da98b2567fd10eb608005a4f8910d3",
+      "bytes": 255092,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/0e/0eb718faf9a41c2b240f55b66699808511da98b2567fd10eb608005a4f8910d3",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-backports/main/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-backports",
+      "architecture": "arm64",
+      "index": "restricted/binary-arm64/Packages",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/e3/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-backports/restricted/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-backports",
+      "architecture": "arm64",
+      "index": "universe/binary-arm64/Packages",
+      "sha256": "aa58dabb80ceb9205721f38725f318b20484d6fa8c0a7bec2ea69e582710a4cf",
+      "bytes": 144598,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/aa/aa58dabb80ceb9205721f38725f318b20484d6fa8c0a7bec2ea69e582710a4cf",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-backports/universe/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-backports",
+      "architecture": "arm64",
+      "index": "multiverse/binary-arm64/Packages",
+      "sha256": "fa8e1bf1238b3d4b0e9eb11dddfe67eae6751761c53b2b890f90bd69667fb29a",
+      "bytes": 1062,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/fa/fa8e1bf1238b3d4b0e9eb11dddfe67eae6751761c53b2b890f90bd69667fb29a",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-backports/multiverse/binary-arm64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-backports",
+      "architecture": "amd64",
+      "index": "main/binary-amd64/Packages",
+      "sha256": "f7315ae1be37da51a6323bf26282b170ddab80fa9266e99c7417a81970476e4d",
+      "bytes": 255999,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/f7/f7315ae1be37da51a6323bf26282b170ddab80fa9266e99c7417a81970476e4d",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-backports/main/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-backports",
+      "architecture": "amd64",
+      "index": "restricted/binary-amd64/Packages",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/e3/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-backports/restricted/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-backports",
+      "architecture": "amd64",
+      "index": "universe/binary-amd64/Packages",
+      "sha256": "c4acb7ae70e5163799faa267e6d040025253db7d137168a03f8a8d89890268d2",
+      "bytes": 144274,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/c4/c4acb7ae70e5163799faa267e6d040025253db7d137168a03f8a8d89890268d2",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-backports/universe/binary-amd64/Packages",
+      "status": "MISSING"
+    },
+    {
+      "suite": "noble-backports",
+      "architecture": "amd64",
+      "index": "multiverse/binary-amd64/Packages",
+      "sha256": "fa8e1bf1238b3d4b0e9eb11dddfe67eae6751761c53b2b890f90bd69667fb29a",
+      "bytes": 1062,
+      "r2_url": "https://appforge-v9-packages-readonly.28550040284a.workers.dev/v9/objects/sha256/fa/fa8e1bf1238b3d4b0e9eb11dddfe67eae6751761c53b2b890f90bd69667fb29a",
+      "provenance": "https://snapshot.ubuntu.com/ubuntu/20261018T000000Z/dists/noble-backports/multiverse/binary-amd64/Packages",
+      "status": "MISSING"
+    }
+  ],
+  "installation": "NOT_RUN",
+  "device_acceptance": "NOT_RUN",
+  "production_mutations": 0
+}

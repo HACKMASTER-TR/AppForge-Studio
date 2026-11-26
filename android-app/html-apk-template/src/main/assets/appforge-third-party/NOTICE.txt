@@ -1,0 +1,12 @@
+ZXing Core 3.5.3
+Copyright ZXing authors
+https://github.com/zxing/zxing
+Licensed under the Apache License, Version 2.0; see ZXing-LICENSE.txt.
+The library is bundled for offline barcode decoding.
+
+Google Play Billing Library 9.1.0
+https://developer.android.com/google/play/billing
+Google SDK terms apply; this library is not licensed by the ZXing notice above.
+The dependency's third-party notices are preserved in Billing-third_party_licenses.txt
+and the corresponding .json index. Live purchases require Google Play and the app's
+configured verification server; no account credentials are bundled.

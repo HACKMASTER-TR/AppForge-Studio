@@ -1,0 +1,101 @@
+# V9 canonical release candidate: offline source, unit and trust checks only.
+# Never signs, publishes R2 objects, enables routing, builds APK, or touches main.
+name: V9 Candidate Release Bundle Security (No Publish)
+'on':
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - quality/tools/appforge_v9_release_bundle.py
+      - quality/tests/test_v9_release_bundle.py
+      - .github/workflows/v9-release-bundle-offline.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-release-bundle-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release-candidate-preflight:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027' &&
+      github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout pinned development branch without write credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Guard source tree and production state
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,subprocess,pathlib
+          def git(*args): return subprocess.check_output(('git',*args),text=True).strip()
+          assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'UNPINNED_HEAD'
+          assert git('rev-parse','HEAD^')=='11b2132559e413495533392cdabac56f1fc655d1','UNPINNED_PARENT'
+          expected={
+           'quality/tools/appforge_v9_release_bundle.py',
+           'quality/tests/test_v9_release_bundle.py',
+           '.github/workflows/v9-release-bundle-offline.yml',
+          }
+          actual=set(git('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines())
+          assert actual==expected,('FILE_SCOPE',actual^expected)
+          known={
+           'android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt':'55d4ceb7528fab723542336af0b8c4ef11590adb',
+           'android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java':'5c69602b89f16c402b9f3c0dc6327009cfafd9da',
+           'android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt':'d7be392d2cc38e2e06a317630d0d46e4afff9cd6',
+          }
+          for path,expected_blob in known.items():
+           got=git('rev-parse','HEAD:'+path)
+           if path.endswith('V9SelectiveR2ModuleCache.kt'):
+            # Check this additive source against parent; tree name is pinned below.
+            assert got==git('rev-parse','HEAD^:'+path),'CACHE_CHANGED'
+           else: assert got==expected_blob,('TRUST_SOURCE_CHANGED',path,got)
+          policy=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt').read_text()
+          assert 'const val PRODUCTION_DISTRIBUTION_ENABLED = false' in policy
+          assert git('status','--porcelain')=='','DIRTY_WORKTREE'
+          print('V9_RELEASE_BUNDLE_SOURCE=PASS;FILES=3;PRODUCTION_DISABLED=YES')
+          PY
+      - name: Check actual repository catalog and immutable trust pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, importlib.util, pathlib
+          path=pathlib.Path('quality/tools/appforge_v9_release_bundle.py')
+          sp=importlib.util.spec_from_file_location('v9_release_bundle_ci',path)
+          x=importlib.util.module_from_spec(sp);sp.loader.exec_module(x)
+          asset=pathlib.Path('android-app/app/src/main/assets/device-build')
+          assert hashlib.sha256((asset/'apt-module-packages-v1.tsv').read_bytes()).hexdigest()==x.CATALOG_PIN
+          assert hashlib.sha256((asset/'apt-snapshot-profile.tsv').read_bytes()).hexdigest()==x.PROFILE_PIN
+          profile=dict(line.split('\t') for line in (asset/'apt-snapshot-profile.tsv').read_text().strip().splitlines())
+          assert profile==x.EXPECTED
+          spec=importlib.util.spec_from_file_location('base_v9_catalog',pathlib.Path('quality/tools/appforge_package_mirror_v9.py'))
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          catalog=m.manifest(pathlib.Path('.'))
+          assert catalog['catalog_sha256']==x.CATALOG_PIN
+          assert catalog['profile_sha256']==x.PROFILE_PIN
+          assert len(catalog['objects'])==218
+          assert x.sha_bytes(__import__('base64').b64decode(x.SPKI_B64))==x.SPKI_SHA
+          print('V9_RELEASE_BUNDLE_CATALOG=PASS;OBJECTS=218;ANCHOR=PINNED')
+          PY
+      - name: Test canonical signing boundary with negative cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile quality/tools/appforge_v9_release_bundle.py
+          python3 -m unittest discover -s quality/tests -p 'test_v9_release_bundle.py' -v 2>&1 | tee "$RUNNER_TEMP/v9-release-bundle-tests.log"
+          grep -q 'Ran 24 tests' "$RUNNER_TEMP/v9-release-bundle-tests.log"
+          grep -q '^OK$' "$RUNNER_TEMP/v9-release-bundle-tests.log"
+          echo 'V9_RELEASE_BUNDLE_UNIT=PASS;TESTS=24;SKIPPED=0'
+      - name: Confirm no untrusted production actions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          test ! -e quality/tools/appforge_v9_release_bundle.py.sig
+          echo 'V9_RELEASE_BUNDLE_CI=PASS;ED25519_SIGNING=NOT_PERFORMED;R2_MUTATIONS=0;APK=NO;PRODUCTION=DISABLED'

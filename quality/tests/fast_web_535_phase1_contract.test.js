@@ -25,7 +25,9 @@ test('Quick Create defaults are accepted by fast HTML policy', () => {
   assert.match(quick,/buildOutput\s*=\s*"apk"/);
   assert.match(quick,/signingMode\s*=\s*SigningMode\.DEBUG/);
   assert.match(quick,/notifications\s*=\s*false/);
-  assert.match(policy,/!draft\.notifications/);
+  // V2 adds real opt-in notifications; Quick remains OFF and unsafe bridge combinations remain normal.
+  assert.match(policy,/draft\.notifications && \(!draft\.javascriptBridge \|\| !draft\.webJavaScriptEnabled/);
+  assert.match(policy,/if \(draft\.notifications \|\| draft\.mediaPlayerBridge\) add\("android\.permission\.POST_NOTIFICATIONS"\)/);
 });
 test('generated local HTML templates choose APK', () => {
   const i=main.indexOf('AppScreen.TEMPLATES -> TemplatesScreen(');
@@ -40,10 +42,15 @@ test('fast HTML invalid options stay in Builder, never redirect to offline toolc
   const gate=main.slice(i,end);
   assert.match(gate,/offlinePackCheck\.engine == "fast-html-apk"/);
   assert.match(gate,/offlinePackCheck\.missing\.firstOrNull\(\)/);
-  assert.match(gate,/if \(!fastHtmlSettingsBlocked\)\s*\{\s*openWorkspaceScreen\(/);
+  assert.match(gate,/offlinePackCheck\.engine == "webview-settings" -> "settings-invalid"/);
+  assert.match(gate,/offlinePackCheck\.engine == "fast-html-apk" -> "fast-output-invalid"/);
+  assert.match(gate,/PREFLIGHT_FAILURE=\$preflightFailure/);
+  assert.match(gate,/WEBVIEW_SETTINGS_INVALID=YES/);
+  assert.match(gate,/if \(preflightFailure == "dependency-missing"\)\s*\{\s*openOfflinePack\(\)/);
+  assert.doesNotMatch(gate,/openWorkspaceScreen\(\s*AppScreen\.OFFLINE_PACK/);
   assert.match(gate,/FAST_HTML_APK_SETTINGS_REQUIRED=YES/);
   assert.match(offline,/engine = "fast-html-apk"/);
-  assert.match(offline,/"Android SDK \+ JDK \+ Gradle"/);
+  assert.match(offline,/OfflineModules\.forProject/);
 });
 test('CI builds AAB shell template without marking runtime packaging complete', () => {
   assert.match(gradle,/val generateFastHtmlAabTemplate = tasks.register<Copy>\("generateFastHtmlAabTemplate"\)/);

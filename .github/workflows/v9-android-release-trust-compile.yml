@@ -1,0 +1,135 @@
+# Isolated V9 Android release-trust acceptance: no signing, APK, deployment or production.
+name: V9 Android Release Trust — Compile and Unit Tests
+'on':
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java
+      - android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt
+      - android-app/app/src/test/java/com/appforge/studio/security/V9PinnedReleaseVerifierUnitTest.kt
+      - android-app/app/proguard-rules.pro
+      - .github/workflows/v9-android-release-trust-compile.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-android-release-trust-compile
+  cancel-in-progress: false
+jobs:
+  verify-android-release-trust:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027' &&
+      github.event.before == '721cfcbaf121631e8b531d8361b6ec7a079aed3f' &&
+      github.event.head_commit.message == 'test(v9): Android release trust compile and unit tests'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact V9 development commit, read-only
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Enforce baseline, exact five-file scope and trusted public-key pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, os, pathlib, subprocess
+          def git(*args):
+              return subprocess.check_output(['git', *args], text=True).strip()
+          assert git('rev-parse', 'HEAD') == os.environ['GITHUB_SHA'], 'HEAD_DRIFT'
+          assert git('rev-parse', 'HEAD^') == '721cfcbaf121631e8b531d8361b6ec7a079aed3f', 'BASE_DRIFT'
+          expected = {
+              'android-app/app/proguard-rules.pro',
+              'android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt',
+              'android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java',
+              'android-app/app/src/test/java/com/appforge/studio/security/V9PinnedReleaseVerifierUnitTest.kt',
+              '.github/workflows/v9-android-release-trust-compile.yml',
+          }
+          got = set(git('diff', '--name-only', 'HEAD^', 'HEAD').splitlines())
+          assert got == expected, ('FILE_SCOPE_DRIFT', got ^ expected)
+          pins = {
+              'android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt': '859feb8e529bec4584cb951d5550789487314a6ec8120ba0bbe206b28be70004',
+              'android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java': '9c8dc4e4702495221da46178d67d066bb9903e650965c160201fb4fe5d7d5631',
+              'android-app/app/src/test/java/com/appforge/studio/security/V9PinnedReleaseVerifierUnitTest.kt': '8a8125cf17197f6bc468637b302e6b1bbe57e82141a56a692bbdd101e09d9f6e',
+          }
+          for filename, expected_sha in pins.items():
+              actual = hashlib.sha256(pathlib.Path(filename).read_bytes()).hexdigest()
+              assert actual == expected_sha, ('PIN_DRIFT', filename)
+          verifier = pathlib.Path('android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java').read_text()
+          assert 'c612b3a0cbfc6d5478a23eba046ba1d62b32bd9b59fb5e54a7eaa66b86e3018e' in verifier
+          assert 'MCowBQYDK2VwAyEA0JMW5UgobzPUxqVshfG7INhMNGFCM8gPq6ZhsD/KDqg=' in verifier
+          policy = pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt').read_text()
+          assert 'PRODUCTION_DISTRIBUTION_ENABLED = false' in policy
+          assert 'V9ReleaseSignatureVerifier.verifyPinned(manifest,signature)' in policy
+          assert '721cfcbaf121631e8b531d8361b6ec7a079aed3f' in policy
+          proguard = pathlib.Path('android-app/app/proguard-rules.pro').read_text()
+          assert '-keep class net.i2p.crypto.eddsa.EdDSAEngine' in proguard
+          assert '-keep class net.i2p.crypto.eddsa.EdDSAPublicKey' in proguard
+          assert git('status', '--porcelain') == '', 'WORKTREE_NOT_CLEAN'
+          print('V9_ANDROID_RELEASE_TRUST_SOURCE_GATE=PASS;FILES=5;SIGNER_PIN=PASS;PRODUCTION_DISABLED=YES')
+          PY
+      - name: Configure JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Configure Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install pinned Android SDK 37, NDK and CMake
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_HOME:-}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 \
+            'platforms;android-37.0' \
+            'ndk;28.2.13676358' \
+            'cmake;3.22.1' > "$RUNNER_TEMP/sdk-install.log" 2>&1 || {
+              tail -80 "$RUNNER_TEMP/sdk-install.log"
+              exit 1
+            }
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          test -d "$ANDROID_HOME/ndk/28.2.13676358"
+          test -d "$ANDROID_HOME/cmake/3.22.1"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+          echo 'V9_ANDROID_SDK=PASS;PLATFORM=37;NDK=28.2.13676358'
+      - name: Compile Android app and trust unit-test sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:compileDebugKotlin :app:compileDebugUnitTestKotlin \
+            --no-daemon --no-parallel --no-configuration-cache --console=plain \
+            > "$RUNNER_TEMP/v9-trust-compile.log" 2>&1 || {
+              tail -120 "$RUNNER_TEMP/v9-trust-compile.log"
+              exit 1
+            }
+          grep -q 'BUILD SUCCESSFUL' "$RUNNER_TEMP/v9-trust-compile.log"
+          echo 'V9_ANDROID_GRADLE_COMPILE=PASS;MAIN=PASS;TEST_SOURCES=PASS'
+      - name: Run isolated pinned release trust JUnit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:testDebugUnitTest \
+            --tests com.appforge.studio.security.V9PinnedReleaseVerifierUnitTest \
+            --no-daemon --no-parallel --no-configuration-cache --console=plain \
+            > "$RUNNER_TEMP/v9-trust-tests.log" 2>&1 || {
+              tail -120 "$RUNNER_TEMP/v9-trust-tests.log"
+              exit 1
+            }
+          grep -q 'BUILD SUCCESSFUL' "$RUNNER_TEMP/v9-trust-tests.log"
+          echo 'V9_ANDROID_TRUST_JUNIT=PASS;PRODUCTION=DISABLED'
+      - name: Check that no release artifact or deployment was produced
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! find android-app -type f \( -name '*.apk' -o -name '*.aab' \) -print -quit | grep -q .
+          test -z "$(git status --porcelain)"
+          echo 'V9_TRUST_CI=PASS;APK=NO;SIGNING=NO;R2=UNCHANGED;MAIN=UNCHANGED;PLAY_PRODUCTION=UNCHANGED'

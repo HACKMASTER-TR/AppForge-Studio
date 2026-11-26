@@ -1,0 +1,8 @@
+<resources>
+    <color name="appforge_primary">#FF6B7CFF</color>
+    <style name="AppForgeTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/appforge_primary</item>
+        <item name="android:colorPrimaryDark">@color/appforge_primary</item>
+        <item name="android:colorAccent">@color/appforge_primary</item>
+    </style>
+</resources>

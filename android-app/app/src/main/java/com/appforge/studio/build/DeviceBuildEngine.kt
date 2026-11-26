@@ -17,7 +17,6 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class DeviceBuildStart(
     val id: String,
@@ -36,39 +35,21 @@ internal data class DeviceBuildSnapshot(
     val exe: File?
 )
 
-private val LOCAL_ADDITIONAL_PERMISSION_ALLOWLIST =
-    setOf(
-        "BLUETOOTH_SCAN",
-        "BLUETOOTH_CONNECT",
-        "USE_BIOMETRIC",
-        "READ_CALENDAR",
-        "WRITE_CALENDAR",
-        "READ_CONTACTS",
-        "WRITE_CONTACTS",
-        "ACCESS_BACKGROUND_LOCATION",
-        "SCHEDULE_EXACT_ALARM",
-        "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO",
-        "ACTIVITY_RECOGNITION"
-    )
-
 object DeviceBuildEngine {
     private data class JobState(
         val id: String,
         val buildNo: Long,
-        val logs: CopyOnWriteArrayList<String> = CopyOnWriteArrayList(),
         val preflight: CopyOnWriteArrayList<String> = CopyOnWriteArrayList(),
-        val cancelled: AtomicBoolean = AtomicBoolean(false),
-        @Volatile var status: String = "Hazırlanıyor",
-        @Volatile var progress: Int = 1,
         @Volatile var offline: Boolean = false,
+        @Volatile var executionFinished:Boolean=false,
+        @Volatile var transferFile:File?=null,
         @Volatile var apk: File? = null,
         @Volatile var aab: File? = null,
         @Volatile var exe: File? = null,
         @Volatile var windowsArtifactKind: DeviceArtifactKind? = null,
         @Volatile var shell: LinuxShellEngine? = null,
         @Volatile var shellSessionId: String? = null
-    )
+    ) : DeviceBuildTerminalState()
 
     private val jobs = ConcurrentHashMap<String, JobState>()
     private val executor = Executors.newFixedThreadPool(2) { runnable ->
@@ -77,19 +58,27 @@ object DeviceBuildEngine {
 
     /* APPFORGE_EVENT_DRIVEN_BUILD_PROGRESS_V1 */
     private fun advanceProgress(state: JobState, value: Int, status: String? = null) {
-        state.progress = maxOf(state.progress, value.coerceIn(0, 99))
-        if (status != null) state.status = status
+        state.advance(value, status)
     }
 
     internal fun start(
         context: Context,
         draft: ProjectDraft,
-        projectZip: File?
+        projectZip: File?,
+        preparationPermit:BuildModuleUsage.PreparationPermit?=null,
+        preparationRoot:File?=null
     ): DeviceBuildStart {
 
         /*
          * OFFLINE_BUILD_PREFLIGHT_GATE_V1
          */
+        if(preparationRoot!=null){
+            require(preparationPermit!=null && preparationRoot.isDirectory && preparationRoot.absoluteFile==preparationRoot.canonicalFile)
+            require(preparationRoot.name.matches(Regex("\\.v3-stage-[0-9a-f-]{36}")) && preparationRoot.parentFile.canonicalFile==OfflineBuildPackManager.runtimeRootfs(context)?.parentFile?.canonicalFile)
+        }
+        if(preparationRoot==null && !FastHtmlApkPolicy.isCandidate(draft))OfflineBuildPackManager.recoverPending(context)
+        val moduleLease=BuildModuleUsage.buildLease(preparationPermit)
+        try {
         OfflineBuildPackManager
             .requireReadyForBuild(
                 context.applicationContext,
@@ -103,30 +92,38 @@ object DeviceBuildEngine {
         jobs[id] = state
 
         executor.execute {
-            runBuild(
+            try {runBuild(
                 context = context.applicationContext,
                 draft = draft.copy(),
                 projectZip = projectZip,
-                state = state
-            )
+                state = state,
+                runtimeOverride=preparationRoot
+            )} finally {moduleLease.close();state.executionFinished=true}
         }
 
         return DeviceBuildStart(id, buildNo)
+        } catch(e:Throwable){moduleLease.close();throw e}
     }
 
+    internal fun transferFile(id:String):File?=jobs[id]?.transferFile
+
+    internal fun isExecuting(id:String):Boolean=jobs[id]?.executionFinished==false
+
     internal fun snapshot(id: String): DeviceBuildSnapshot? =
-        jobs[id]?.let {
-            DeviceBuildSnapshot(
-                id = it.id,
-                buildNo = it.buildNo,
-                status = it.status,
-                progress = it.progress,
-                logs = it.logs.toList(),
-                preflight = it.preflight.toList(),
-                apk = it.apk,
-                aab = it.aab,
-                exe = it.exe
-            )
+        jobs[id]?.let { state ->
+            synchronized(state) {
+                DeviceBuildSnapshot(
+                    id = state.id,
+                    buildNo = state.buildNo,
+                    status = state.status,
+                    progress = state.progress,
+                    logs = state.logs.toList(),
+                    preflight = state.preflight.toList(),
+                    apk = state.apk.takeIf { state.artifactsVisible() },
+                    aab = state.aab.takeIf { state.artifactsVisible() },
+                    exe = state.exe.takeIf { state.artifactsVisible() }
+                )
+            }
         }
 
     fun artifact(id: String, kind: String): File? {
@@ -138,6 +135,8 @@ object DeviceBuildEngine {
             kind
                 .trim()
                 .lowercase()
+
+        if (state.status != "success" || state.cancelled.get()) return null
 
         val file =
             when (
@@ -181,10 +180,13 @@ object DeviceBuildEngine {
 
     fun cancel(id: String): Boolean {
         val state = jobs[id] ?: return false
-        state.cancelled.set(true)
+        synchronized(state) {
+            if (!state.cancelBuild()) return false
+            state.apk = null
+            state.aab = null
+            state.exe = null
+        }
         state.shellSessionId?.let { session -> state.shell?.cancel(session) }
-        state.status = "cancelled"
-        state.logs.add("⛔ Derleme iptal edildi.")
         return true
     }
 
@@ -192,12 +194,13 @@ object DeviceBuildEngine {
         context: Context,
         draft: ProjectDraft,
         projectZip: File?,
-        state: JobState
+        state: JobState,
+        runtimeOverride:File?=null
     ) {
         val workspace = File(context.cacheDir, "device-build/${state.id}")
 
         try {
-            state.offline = runCatching {
+            state.offline = !draft.allowDependencyDownloads || runCatching {
                 val manager = context.getSystemService(
                     ConnectivityManager::class.java
                 )
@@ -217,7 +220,11 @@ object DeviceBuildEngine {
                 }
             )
 
+            RustProjectPolicy.requirePackageable(draft)
             validateCapabilities(draft)
+            FastHtmlApkPolicy.normalRouteReasons(draft).takeIf { it.isNotEmpty() }?.let { reasons ->
+                state.logs.add("Normal Android engine required: " + reasons.joinToString("; "))
+            }
 
             // FAST_HTML_APK_V1: no rootfs, SDK, JDK, Gradle, or download manager.
             // Never fall back silently to a network toolchain on an eligible HTML/URL project.
@@ -246,11 +253,12 @@ object DeviceBuildEngine {
                 })
                 workspace.deleteRecursively()
                 check(workspace.mkdirs()) { "Fast HTML private workspace could not be prepared." }
+                val stages = BuildStageTimings { state.logs.add(it) }
                 advanceProgress(state, 15, "HTML çıktıları hazırlanıyor")
                 checkCancelled(state)
                 if (!wantsAab) {
                     // Preserve the existing ~1-second fast APK path byte-for-byte.
-                    val apk = FastHtmlApkPackager.build(context, draft, workspace)
+                    val apk = FastHtmlApkPackager.build(context, draft, workspace, stages = stages)
                     checkCancelled(state)
                     state.apk = apk
                 } else {
@@ -267,24 +275,26 @@ object DeviceBuildEngine {
                         if (DeviceArtifactKind.APK in fastOutputs) {
                             candidateApk = FastHtmlApkPackager.build(
                                 context, draft.copy(buildOutput = "apk", signingMode = SigningMode.DEBUG),
-                                workspace, uploadIdentity?.apkSigner
+                                workspace, uploadIdentity?.apkSigner, stages
                             )
                             checkCancelled(state)
                         }
                         val unsigned = FastHtmlAabUnsignedPackager.buildUnsignedCandidate(
-                            context, draft, workspace
+                            context, draft, workspace, stages
                         )
                         candidateUnsignedAab = unsigned
                         checkCancelled(state)
                         if (uploadIdentity != null) {
                             state.logs.add("APPFORGE_FAST_AAB_STAGE_UNSIGNED_OK")
                         }
-                        candidateSignedAab = if (uploadIdentity == null) {
-                            FastHtmlAabJarSigner.signDevelopment(unsigned, workspace)
-                        } else {
-                            FastHtmlAabJarSigner.signWithIdentity(
-                                unsigned, workspace, uploadIdentity.key, uploadIdentity.certificate
-                            )
+                        candidateSignedAab = stages.measure(BuildStageTimings.Stage.SIGNING) {
+                            if (uploadIdentity == null) {
+                                FastHtmlAabJarSigner.signDevelopment(unsigned, workspace)
+                            } else {
+                                FastHtmlAabJarSigner.signWithIdentity(
+                                    unsigned, workspace, uploadIdentity.key, uploadIdentity.certificate
+                                )
+                            }
                         }
                         checkCancelled(state)
                         if (uploadIdentity != null) {
@@ -303,7 +313,8 @@ object DeviceBuildEngine {
                         state.apk = candidateApk
                         state.aab = candidateSignedAab
                         state.preflight.add(
-                            "✅ AAB JAR/CMS ve sertifika doğrulandı; APK+AAB varsa ortak kimlik kullanıldı."
+                            if (uploadIdentity != null) "✅ AAB JAR/CMS ve sertifika doğrulandı; APK+AAB varsa seçilmiş ortak kimlik kullanıldı."
+                            else "✅ AAB JAR/CMS ve geliştirme sertifikası doğrulandı; debug APK/AAB kalıcı geliştirme kimlikleri ayrıdır."
                         )
                     } catch (failure: Throwable) {
                         candidateApk?.delete()
@@ -316,9 +327,7 @@ object DeviceBuildEngine {
                     }
                 }
                 checkCancelled(state)
-                state.progress = 100
-                state.status = "success"
-                state.logs.add(if (wantsAab) {
+                state.complete(if (wantsAab) {
                     "✅ Yerel statik HTML AAB çıktısı hazır • dış araç ve internet kullanılmadı."
                 } else {
                     "✅ HTML/HTTPS APK hazır • sıfır ek araç indirme."
@@ -435,7 +444,11 @@ object DeviceBuildEngine {
             advanceProgress(state, 8, "Kaynak hazır")
             advanceProgress(state, 10, "Runtime hazırlanıyor")
 
-            val rootfs =
+            // Only a physically verified debug-acceptance root is eligible.
+            // The legacy runtime is never migrated or replaced implicitly.
+            val rootfs = runtimeOverride ?:
+                (if (com.appforge.studio.BuildConfig.DEBUG)
+                    IsolatedModuleInstallerV3.rootForProject(context,draft) else null) ?:
                 runBlocking {
                     DeviceBuildRuntimeV3
                         .ensureReady(
@@ -447,6 +460,7 @@ object DeviceBuildEngine {
                         }
                 }
 
+            DownloadInstrumentation.install(context,rootfs)
             advanceProgress(state, 12, "Araçlar hazırlanıyor")
             val shell =
                 LinuxShellEngine(
@@ -535,6 +549,10 @@ object DeviceBuildEngine {
                         state
                     )
                 "android-gradle" -> buildAndroidProject(context, draft, workspace, rootfs, shell, state)
+                // Keeps the existing experimental NDK capability gate; no READY promotion.
+                "android-ndk" -> buildAndroidProject(context, draft, workspace, rootfs, shell, state)
+                "react-native" -> buildReactNativeRustProject(context, draft, workspace, rootfs, shell, state)
+
                 "expo" -> buildExpoProject(context, draft, workspace, rootfs, shell, state)
                 "python-android" -> buildPythonProject(context, draft, workspace, rootfs, shell, state)
                 "windows-native" -> buildWindowsNative(context, draft, workspace, rootfs, shell, state)
@@ -648,6 +666,7 @@ object DeviceBuildEngine {
                             .verifyFinalArtifact(
                                 finalWindowsExe
                             )
+                        WindowsPortableExePackager.verifyRustFinalArtifact(draft,finalWindowsExe)
 
                         state.logs.add(
                             "✅ Windows Portable EXE • Authenticode sonrası payload doğrulandı."
@@ -670,23 +689,18 @@ object DeviceBuildEngine {
                 }
             }
 
-            state.status = "success"
-            state.progress = 100
-            state.logs.add("✅ Hazır • Derleme tamamen cihaz üzerinde tamamlandı.")
+            state.complete("✅ Hazır • Derleme tamamen cihaz üzerinde tamamlandı.")
         } catch (t: Throwable) {
-            // Shared output-aware policy keeps Windows/combined artifacts on
-            // the normal engine path and its own publication/cleanup lifecycle.
-            if (FastHtmlApkPolicy.isCandidate(draft)) {
+            state.fail("❌ ${t.message ?: t.javaClass.simpleName}")
+            // Android visibility fails closed for every route, including later Windows failure.
+            run {
                 state.apk?.delete()
                 state.aab?.delete()
                 state.apk = null
                 state.aab = null
-            }
-            if (state.cancelled.get()) {
-                state.status = "cancelled"
-            } else {
-                state.status = "failed"
-                state.logs.add("❌ ${t.message ?: t.javaClass.simpleName}")
+                File(context.filesDir, "device-build/artifacts/${state.id}").listFiles()
+                    ?.filter { it.extension in setOf("apk", "aab") }?.forEach { it.delete() }
+                File(context.filesDir, "device-build/artifacts/${state.id}-pending").deleteRecursively()
             }
         } finally {
             state.shellSessionId = null
@@ -696,6 +710,8 @@ object DeviceBuildEngine {
     }
 
     private fun validateCapabilities(draft: ProjectDraft) {
+        WizardReadinessEvaluator.evaluate(draft).requireReady()
+        WebviewProjectSettings.validate(draft)
         require(draft.packageName.matches(Regex("""^[A-Za-z_]\w*(\.[A-Za-z_]\w*)+$"""))) {
             "Geçersiz Android package name."
         }
@@ -725,12 +741,13 @@ object DeviceBuildEngine {
             }
         }
 
+        val fastHtml = FastHtmlApkPolicy.isCandidate(draft)
         val unsupported =
             buildList {
-                if (draft.qrScanner) add("QR Scanner")
-                if (draft.mediaPlayerBridge) add("Media3")
+                if (draft.qrScanner && !fastHtml) add("QR Scanner")
+                if (draft.mediaPlayerBridge && !fastHtml) add("Arka plan medya köprüsü")
                 if (draft.admobEnabled) add("AdMob")
-                if (draft.billingEnabled) add("uygulama içi Billing enjeksiyonu")
+                if (draft.billingEnabled && !fastHtml) add("uygulama içi Billing enjeksiyonu")
 
                 if (
                     draft.firebaseAnalyticsEnabled ||
@@ -1084,6 +1101,8 @@ object DeviceBuildEngine {
                 "Universal Android hedefinde settings.gradle(.kts) bulunamadı."
             }
 
+            val androidDraft=RustProjectPolicy.universalTarget(draft,"android")?:draft
+            if(RustProjectPolicy.sourceRoot(androidDraft)!=null)RustProjectPolicy.stageAndroidJni(androidDraft,androidProject)
             DeviceProjectIcon.install(
                 context,
                 draft,
@@ -1105,7 +1124,7 @@ object DeviceBuildEngine {
 
             buildGradleProject(
                 context = context,
-                draft = draft,
+                draft = androidDraft,
                 project = androidProject,
                 workspace = androidProject,
                 rootfs = rootfs,
@@ -1143,7 +1162,7 @@ object DeviceBuildEngine {
                 context =
                     context,
                 draft =
-                    draft,
+                    RustProjectPolicy.universalTarget(draft,"windows")?:draft,
                 siteRoot =
                     windowsSite,
                 state =
@@ -1254,6 +1273,12 @@ object DeviceBuildEngine {
                 canonicalWorkspace,
                 "source"
             ).canonicalFile
+
+        if(RustProjectPolicy.sourceRoot(draft)!=null) {
+            val prepared=RustProjectPolicy.stageWindowsNative(draft,canonicalWorkspace)
+            publishWindowsNative(context,draft,state,prepared)
+            return
+        }
 
         val cmakeLists =
             copiedSource
@@ -1380,6 +1405,10 @@ object DeviceBuildEngine {
             sourceExe
         )
 
+        publishWindowsNative(context,draft,state,sourceExe)
+    }
+
+    private fun publishWindowsNative(context:Context,draft:ProjectDraft,state:JobState,sourceExe:File) {
         val artifactRoot =
             File(
                 context.filesDir,
@@ -1403,6 +1432,10 @@ object DeviceBuildEngine {
             target
         )
 
+        if(RustProjectPolicy.sourceRoot(draft)!=null) {
+            RustProjectPolicy.requireWindowsPe(target)
+            require(RustProjectPolicy.digest(target)==RustProjectPolicy.digest(RustProjectPolicy.requireWindowsNative(draft))){"Rust Windows yayımında baytlar değişti"}
+        }
         state.exe =
             target
 
@@ -1613,6 +1646,7 @@ object DeviceBuildEngine {
             "Derlenmiş web index.html bulunamadı."
         }
 
+        RustProjectPolicy.stageNodeWebPayload(draft,File(workspace,"source"),site)
         state.logs.add("✅ Web kaynakları derlendi.")
         state.progress = 55
 
@@ -1670,27 +1704,44 @@ object DeviceBuildEngine {
         nodeWebAssets: Boolean = false,
         fastWebBuild: Boolean = false
     ) {
+        val stages = BuildStageTimings { state.logs.add(it) }
+        WebviewProjectSettings.validate(draft)
         val project = File(workspace, "android-wrapper")
         project.deleteRecursively()
 
         val javaDir = File(project, "app/src/main/java/com/appforge/runtime").apply { mkdirs() }
         val assetsDir = File(project, "app/src/main/assets").apply { mkdirs() }
-        File(workspace, "runtime/FastActivity.java").copyTo(File(javaDir, "FastActivity.java"), overwrite = true)
-        File(workspace, "runtime/AppForgeLocalAssets.java").copyTo(File(javaDir, "AppForgeLocalAssets.java"), overwrite = true)
+        stages.measure(BuildStageTimings.Stage.TEMPLATE) {
+            File(workspace, "runtime/FastActivity.java").copyTo(File(javaDir, "FastActivity.java"), overwrite = true)
+            File(workspace, "runtime/AppForgeLocalAssets.java").copyTo(File(javaDir, "AppForgeLocalAssets.java"), overwrite = true)
 
-        val site = File(assetsDir, "site").apply { mkdirs() }
-        if (draft.sourceMode == SourceMode.LOCAL) {
-            val source = siteRoot ?: error("index.html bulunamadı.")
-            check(source.copyRecursively(site, overwrite = true)) {
-                "Web dosyaları Android assets alanına kopyalanamadı."
-            }
-        } else {
-            File(site, "index.html").writeText("<!doctype html><html><body></body></html>")
+            File(workspace, "runtime/AppForgeShareProvider.java").copyTo(File(javaDir, "AppForgeShareProvider.java"), overwrite = true)
+            File(workspace, "runtime/AppForgeDocuments.java").copyTo(File(javaDir, "AppForgeDocuments.java"), overwrite = true)
+            File(workspace, "runtime/AppForgePdfReader.java").copyTo(File(javaDir, "AppForgePdfReader.java"), overwrite = true)
+
         }
+        val site = File(assetsDir, "site").apply { mkdirs() }
+        stages.measure(BuildStageTimings.Stage.ASSETS) {
+            if (draft.sourceMode == SourceMode.LOCAL) {
+                val source = siteRoot ?: error("index.html bulunamadı.")
+                check(source.copyRecursively(site, overwrite = true)) {
+                    "Web dosyaları Android assets alanına kopyalanamadı."
+                }
+            } else {
+                File(site, "index.html").writeText("<!doctype html><html><body></body></html>")
+            }
 
+        }
+        val pdfProject = draft.sourceMode == SourceMode.LOCAL && draft.sourceTechnology == "pdf"
+        if (pdfProject) {
+            require(siteRoot != null && com.appforge.studio.io.PdfProjectSource.isProject(siteRoot)) { "PDF proje bütünlüğü geçersiz." }
+            require(com.appforge.studio.io.PdfProjectSource.isProject(site)) { "Kopyalanmış PDF bütünlüğü geçersiz." }
+            com.appforge.studio.io.PdfProjectSource.validate(File(site, com.appforge.studio.io.PdfProjectSource.DOCUMENT))
+        }
         val config = JSONObject()
+            .put("pdfDocument", pdfProject)
             .put("sourceMode", draft.sourceMode.name)
-            .put("assetHttpsEnabled", nodeWebAssets && draft.sourceMode == SourceMode.LOCAL)
+            .put("assetHttpsEnabled", (nodeWebAssets || draft.microphone) && draft.sourceMode == SourceMode.LOCAL)
             .put("webUrl", draft.webUrl)
             .put("appName", draft.appName)
             .put("splashEnabled", draft.splashEnabled)
@@ -1701,6 +1752,11 @@ object DeviceBuildEngine {
             .put("fullscreen", draft.fullscreen)
             .put("notifications", draft.notifications)
             .put("camera", draft.camera)
+            .put("microphone", draft.microphone)
+            .put("deepLinkEnabled", draft.deepLinkEnabled)
+            .put("deepLinkScheme", draft.deepLinkScheme)
+            .put("deepLinkHost", draft.deepLinkHost)
+            .put("deepLinkPathPrefix", draft.deepLinkPathPrefix)
             .put("location", draft.location)
             .put("fileUpload", draft.fileUpload)
             .put("downloads", draft.downloads)
@@ -1711,20 +1767,40 @@ object DeviceBuildEngine {
             .put("webOverviewModeEnabled", draft.webOverviewModeEnabled)
             .put("webMediaAutoplayEnabled", draft.webMediaAutoplayEnabled)
             .put("webMixedContentAllowed", draft.webMixedContentAllowed)
+        .put("localNetworkRequired", WebviewProjectSettings.needsLocalNetwork(draft))
             .put("nativeBridge", draft.javascriptBridge)
-            .put("share", draft.shareBridge)
-            .put("clipboard", draft.clipboardBridge)
-            .put("vibration", draft.vibrationBridge)
+            .put("nativeBridgeAllowRemote", draft.remoteBridgeAllowed)
+            .put("qrScanner", draft.qrScanner)
+            .put("versionName", draft.versionName)
+            .put("hasCustomIcon", !draft.iconUri.isNullOrBlank())
+            .put("shareBridge", draft.shareBridge)
+            .put("clipboardBridge", draft.clipboardBridge)
+            .put("vibrationBridge", draft.vibrationBridge)
             .put("offlineCache", draft.offlineCache)
 
         File(assetsDir, "appforge-fast.json").writeText(config.toString())
         writeAndroidRootProject(project)
         File(project, "app/build.gradle.kts").writeText(webAppGradle(draft))
-        File(project, "app/src/main/AndroidManifest.xml").apply {
-            parentFile?.mkdirs()
-            writeText(webManifest(draft))
+        stages.measure(BuildStageTimings.Stage.MANIFEST) {
+            File(project, "app/src/main/AndroidManifest.xml").apply {
+                parentFile?.mkdirs()
+                writeText(webManifest(draft))
+            }
+            File(project,"app/src/main/res/xml/zz_appforge_network_security.xml").apply {
+                parentFile?.mkdirs();writeText(WebviewProjectSettings.networkSecurityXml(draft))
+            }
         }
-        DeviceProjectIcon.install(context, draft, project)
+        stages.measure(BuildStageTimings.Stage.RESOURCES) {
+            File(project, "app/src/main/res/values/appforge_theme.xml").apply {
+                parentFile?.mkdirs()
+                writeText("""<resources><color name="appforge_primary">${xml(draft.primaryColor)}</color>
+                    <style name="AppForgeTheme" parent="android:style/Theme.Material.NoActionBar">
+                    <item name="android:colorPrimary">@color/appforge_primary</item>
+                    <item name="android:colorPrimaryDark">@color/appforge_primary</item>
+                    <item name="android:colorAccent">@color/appforge_primary</item></style></resources>""".trimIndent())
+            }
+            DeviceProjectIcon.install(context, draft, project)
+        }
         writeSdkFiles(
             project = project,
             enableBuildCache =
@@ -1732,18 +1808,20 @@ object DeviceBuildEngine {
         )
 
         state.logs.add("🤖 Android paketi cihazda oluşturuluyor.")
-        buildGradleProject(
-            context = context,
-            draft = draft,
-            project = project,
-            workspace = workspace,
-            rootfs = rootfs,
-            shell = shell,
-            state = state,
-            gradleVersion = "9.3.1",
-            useBuildCache =
-                fastWebBuild
-        )
+        stages.measure(BuildStageTimings.Stage.PACKAGING) {
+            buildGradleProject(
+                context = context,
+                draft = draft,
+                project = project,
+                workspace = workspace,
+                rootfs = rootfs,
+                shell = shell,
+                state = state,
+                gradleVersion = "9.3.1",
+                useBuildCache =
+                    fastWebBuild
+            )
+        }
     }
 
     private fun buildAndroidProject(
@@ -1758,11 +1836,27 @@ object DeviceBuildEngine {
         require(File(project, "settings.gradle").isFile || File(project, "settings.gradle.kts").isFile) {
             "Android Gradle settings.gradle(.kts) bulunamadı."
         }
+        RustProjectPolicy.stageAndroidJni(draft,project)
         DeviceProjectIcon.install(context, draft, project)
         writeSdkFiles(project)
         val gradleVersion = detectGradleVersion(project)
         state.logs.add("🤖 Native Android proje • Gradle $gradleVersion")
         buildGradleProject(context, draft, project, workspace, rootfs, shell, state, gradleVersion)
+    }
+
+    /** Explicit authored standalone RN Android consumer. Public capability gates
+     * remain separate; this backend never silently runs Expo prebuild. */
+    private fun buildReactNativeRustProject(context:Context,draft:ProjectDraft,workspace:File,rootfs:File,shell:LinuxShellEngine,state:JobState) {
+        require(RustProjectPolicy.sourceRoot(draft)!=null){"Standalone React Native Rust kaynağı gerekli"}
+        RustProjectPolicy.requireReactNativeJsi(draft)
+        val project=File(workspace,"source/android");RecoveryPathAnchor.check(project)
+        require(File(project,"settings.gradle").isFile || File(project,"settings.gradle.kts").isFile){"Kaynak tarafından hazırlanmış Android Gradle projesi gerekli; Expo prebuild'e geçilmedi"}
+        require(File(project,"app/build.gradle").isFile || File(project,"app/build.gradle.kts").isFile)
+        runShellBlocking(shell,rootfs,workspace,state,"APPFORGE_DEVICE_OFFLINE=${if(state.offline)1 else 0} /bin/sh /workspace/runtime/prepare-rn-rust.sh","react-native-rust-bundle")
+        RustProjectPolicy.stageReactNativeJsi(draft,project)
+        writeSdkFiles(project,sdkRoot="/opt/appforge-device/expo-sdk-36")
+        state.logs.add("React Native Rust • açık Android kaynak projesi • otomatik Expo prebuild yok")
+        buildGradleProject(context,draft,project,workspace,rootfs,shell,state,detectGradleVersion(project),nodeRequired=true,variantOverride="AppforgeAcceptance")
     }
 
     private fun buildExpoProject(
@@ -1785,10 +1879,12 @@ object DeviceBuildEngine {
             state = state,
             command =
                 "APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} " +
+                    "APPFORGE_RUST_TURBO=${if(RustProjectPolicy.sourceRoot(draft)!=null && RustProjectPolicy.reactNativeBinding(requireNotNull(RustProjectPolicy.sourceRoot(draft))).turbo)1 else 0} " +
                     "/bin/sh /workspace/runtime/build-expo.sh",
             suffix = "expo-prebuild"
         )
         advanceProgress(state, 52, "Expo Android projesi hazır")
+        RustProjectPolicy.stageReactNativeJsi(draft,File(workspace,"source/android"))
 
         val project =
             File(
@@ -1880,6 +1976,7 @@ object DeviceBuildEngine {
             it.isFile && it.name.equals("requirements.txt", true)
         }?.copyTo(File(project, "app/requirements.txt"), overwrite = true)
 
+        RustProjectPolicy.stagePythonModule(draft,project)
         File(project, "app/build.gradle.kts").writeText(pythonAppGradle(draft))
         val manifest = File(project, "app/src/main/AndroidManifest.xml")
         manifest.writeText(
@@ -2027,7 +2124,7 @@ object DeviceBuildEngine {
             }
             append("export ANDROID_SDK_ROOT=${sh(androidSdkRoot)}; ")
             append("export ANDROID_HOME=${sh(androidSdkRoot)}; ")
-            append("export GRADLE_USER_HOME=/root/.gradle-appforge; ")
+            append("export GRADLE_USER_HOME=/root/.gradle-appforge; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; ")
 
             if (nodeRequired) {
                 append(
@@ -2126,6 +2223,9 @@ object DeviceBuildEngine {
 
             append(sh(gradlePath))
             append(" -p . --no-daemon --stacktrace ")
+            // Typed transfer observation is incompatible with configuration-cache
+            // replay. Keep task/build caches; explicitly retain resource events.
+            append("--no-configuration-cache ")
 
             if (useBuildCache) {
                 append("--build-cache ")
@@ -2344,112 +2444,87 @@ object DeviceBuildEngine {
          * Selection is now scoped to the exact :app Gradle outputs and
          * requested variant.
          */
-        val artifactRoot =
-            File(
-                context.filesDir,
-                "device-build/artifacts/${state.id}"
-            )
-                .apply {
-                    mkdirs()
+        val sources = linkedMapOf<String, File?>()
+        if (DeviceArtifactKind.APK in requestedArtifacts)
+            sources["apk"] = GradleArtifactSelector.selectApk(project, variant)
+        if (DeviceArtifactKind.AAB in requestedArtifacts)
+            sources["aab"] = GradleArtifactSelector.selectAab(project, variant)
+        // Use the same copied normal-route keystore, preserving SAF/JKS/BKS selection.
+        // The fast-route vault-only PKCS12 loader is deliberately not used here.
+        if ("apk" in sources) state.logs.add("📦 Deterministik APK • seçilen variant")
+        if ("aab" in sources) state.logs.add("📦 Deterministik AAB • seçilen variant")
+        val expectedCertificate = if (draft.signingMode == SigningMode.CUSTOM) {
+            val password = draft.storePassword.toCharArray()
+            try {
+                val copiedKey = File(safeWorkspace, "appforge-release.keystore")
+                listOf("PKCS12", "JKS", "BKS").firstNotNullOfOrNull { type ->
+                    runCatching {
+                        java.security.KeyStore.getInstance(type).also { store ->
+                            copiedKey.inputStream().use { store.load(it, password) }
+                        }.getCertificate(draft.keyAlias)
+                    }.getOrNull()
+                } ?: error("Normal Android signer certificate unavailable.")
+            } finally { password.fill('\u0000') }
+        } else null
+        var apkCertificates: List<java.security.cert.X509Certificate>? = null
+        var aabCertificates: List<java.security.cert.Certificate>? = null
+        val collected = AndroidArtifactPublication.collect(
+            File(context.filesDir, "device-build/artifacts"), state.id, project, sources,
+            checkCancelled = { check(!state.cancelled.get()) { "Derleme iptal edildi." } },
+            verify = { kind, file ->
+                RustProjectPolicy.verifyAndroidJniPackage(draft,kind,file)
+                RustProjectPolicy.verifyPythonPackage(draft,kind,file)
+                RustProjectPolicy.verifyJsiPackage(draft,kind,file)
+                if (kind == "apk") {
+                    val result = com.android.apksig.ApkVerifier.Builder(file).build().verify()
+                    require(result.isVerified && result.signerCertificates.isNotEmpty()) { "APK signature invalid." }
+                    apkCertificates = result.signerCertificates
+                    if (expectedCertificate != null) require(result.signerCertificates.any {
+                        it.encoded.contentEquals(expectedCertificate.encoded)
+                    }) { "APK signer identity mismatch." }
+                    val info = context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
+                    require(info?.packageName == draft.packageName) { "APK package identity mismatch." }
+                    if(RustProjectPolicy.sourceRoot(draft)!=null && draft.sourceBuildEngine in setOf("android-gradle","android-ndk","python-android","expo","react-native"))require((info?.applicationInfo?.minSdkVersion?:0)>=26){"Rust JNI APK manifest minSdk26 gerektirir"}
+                } else {
+                    if(RustProjectPolicy.sourceRoot(draft)!=null && draft.sourceBuildEngine in setOf("android-gradle","android-ndk","python-android","expo","react-native"))java.util.zip.ZipFile(file).use{zip->
+                        val entry=requireNotNull(zip.getEntry("base/manifest/AndroidManifest.xml"));require(entry.size in 1..1_048_576)
+                        val bytes=java.io.ByteArrayOutputStream().also{out->zip.getInputStream(entry).use{input->val buffer=ByteArray(8192);var total=0;while(true){val n=input.read(buffer);if(n<0)break;total+=n;require(total<=1_048_576);out.write(buffer,0,n)}}}.toByteArray()
+                        require(FastHtmlAabProtoManifest.minimumSdkVersion(bytes)>=26){"Rust JNI AAB manifest minSdk26 gerektirir"}
+                    }
+                    // JAR verification reads every payload; mere META-INF presence is insufficient.
+                    java.util.jar.JarFile(file, true).use { jar ->
+                        val entries = jar.entries().asSequence().filter { !it.isDirectory && !it.name.startsWith("META-INF/") }.toList()
+                        require(entries.isNotEmpty())
+                        var expanded = 0L
+                        entries.forEach { entry ->
+                            require(entry.size in 0..2_147_483_647L) { "Invalid AAB payload size." }
+                            jar.getInputStream(entry).use { input ->
+                                val buffer = ByteArray(65536)
+                                while (true) {
+                                    check(!state.cancelled.get())
+                                    val count = input.read(buffer)
+                                    if (count < 0) break
+                                    expanded += count
+                                    require(expanded <= 2_147_483_647L) { "AAB expanded size exceeded." }
+                                }
+                            }
+                            val certificates = requireNotNull(entry.certificates) { "AAB unsigned payload." }.toList()
+                            require(certificates.isNotEmpty()) { "AAB unsigned payload." }
+                            val expected = expectedCertificate?.let { listOf(it) } ?: apkCertificates
+                            if (expected != null) require(certificates.any { actual ->
+                                expected.any { it.encoded.contentEquals(actual.encoded) }
+                            }) { "AAB signer identity mismatch." }
+                            if (aabCertificates != null) require(certificates.map { it.encoded.toList() }.toSet() ==
+                                aabCertificates!!.map { it.encoded.toList() }.toSet()) { "AAB mixed signer identity." }
+                            aabCertificates = certificates
+                        }
+                    }
                 }
-
-        if (
-            DeviceArtifactKind.APK in
-                requestedArtifacts
-        ) {
-            GradleArtifactSelector
-                .selectApk(
-                    project =
-                        project,
-                    variant =
-                        variant
-                )
-                ?.let {
-                    source ->
-
-                    state.logs.add(
-                        "📦 Deterministik APK • " +
-                            source
-                                .relativeTo(
-                                    project
-                                )
-                                .invariantSeparatorsPath
-                    )
-
-                    val target =
-                        File(
-                            artifactRoot,
-                            "${safeName(draft.appName)}-${state.buildNo}.apk"
-                        )
-
-                    source.copyTo(
-                        target,
-                        overwrite = true
-                    )
-
-                    state.apk =
-                        target
-                }
-        }
-
-        if (
-            DeviceArtifactKind.AAB in
-                requestedArtifacts
-        ) {
-            GradleArtifactSelector
-                .selectAab(
-                    project =
-                        project,
-                    variant =
-                        variant
-                )
-                ?.let {
-                    source ->
-
-                    state.logs.add(
-                        "📦 Deterministik AAB • " +
-                            source
-                                .relativeTo(
-                                    project
-                                )
-                                .invariantSeparatorsPath
-                    )
-
-                    val target =
-                        File(
-                            artifactRoot,
-                            "${safeName(draft.appName)}-${state.buildNo}.aab"
-                        )
-
-                    source.copyTo(
-                        target,
-                        overwrite = true
-                    )
-
-                    state.aab =
-                        target
-                }
-        }
-
-        if (
-            DeviceArtifactKind.APK in requestedArtifacts
-        ) {
-            require(
-                state.apk != null
-            ) {
-                "Gradle tamamlandı ancak APK bulunamadı."
             }
-        }
-
-        if (
-            DeviceArtifactKind.AAB in requestedArtifacts
-        ) {
-            require(
-                state.aab != null
-            ) {
-                "Gradle tamamlandı ancak AAB bulunamadı."
-            }
-        }
+        )
+        check(!state.cancelled.get()) { "Derleme iptal edildi." }
+        state.apk = collected["apk"]
+        state.aab = collected["aab"]
         advanceProgress(state, 93, "Artefaktlar hazır")
     }
 
@@ -2586,6 +2661,7 @@ object DeviceBuildEngine {
         val existing = if (gradleProperties.isFile) gradleProperties.readText() else ""
         val filtered = existing.lineSequence().filterNot {
             it.startsWith("android.aapt2FromMavenOverride=") ||
+                it.trimStart().startsWith("android.builder.sdkDownload=") ||
                 it.startsWith("org.gradle.workers.max=") ||
                 it.startsWith("org.gradle.jvmargs=") ||
                 it.startsWith("org.gradle.caching=")
@@ -2593,6 +2669,7 @@ object DeviceBuildEngine {
         gradleProperties.writeText(
             filtered.trimEnd() + "\n" +
                 "android.aapt2FromMavenOverride=$sdkRoot/build-tools/36.0.0/aapt2\n" +
+                "android.builder.sdkDownload=false\n" +
                 "org.gradle.workers.max=2\n" +
                 "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\n" +
                 if (enableBuildCache) {
@@ -2647,8 +2724,10 @@ object DeviceBuildEngine {
         """.trimIndent()
 
     private fun webManifest(draft: ProjectDraft): String {
+        WebviewProjectSettings.validate(draft)
         val permissions = buildString {
             append("<uses-permission android:name=\"android.permission.INTERNET\" />\n")
+            if (WebviewProjectSettings.needsLocalNetwork(draft)) append("<uses-permission android:name=\"android.permission.ACCESS_LOCAL_NETWORK\" />\n")
             if (draft.notifications) append("<uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />\n")
             if (draft.camera) append("<uses-permission android:name=\"android.permission.CAMERA\" />\n")
             if (draft.microphone) append("<uses-permission android:name=\"android.permission.RECORD_AUDIO\" />\n")
@@ -2656,26 +2735,12 @@ object DeviceBuildEngine {
                 append("<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />\n")
                 append("<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />\n")
             }
+            if (draft.javascriptBridge && draft.vibrationBridge) append("<uses-permission android:name=\"android.permission.VIBRATE\" />\n")
             if (draft.networkState) append("<uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\" />\n")
             if (draft.wakeLock) append("<uses-permission android:name=\"android.permission.WAKE_LOCK\" />\n")
             if (draft.nfc) append("<uses-permission android:name=\"android.permission.NFC\" />\n")
 
-            draft
-                .additionalPermissions
-                .asSequence()
-                .map {
-                    it
-                        .removePrefix(
-                            "android.permission."
-                        )
-                        .trim()
-                        .uppercase()
-                }
-                .filter {
-                    it in
-                        LOCAL_ADDITIONAL_PERMISSION_ALLOWLIST
-                }
-                .distinct()
+            WebviewProjectSettings.additionalPermissions(draft)
                 .forEach { permission ->
                     append(
                         "<uses-permission android:name=\"android.permission.$permission\" />\n"
@@ -2706,8 +2771,13 @@ object DeviceBuildEngine {
                     android:allowBackup="false"
                     android:hardwareAccelerated="true"
                     android:label="${xml(draft.appName.ifBlank { "AppForge App" })}"
-                    android:theme="@android:style/Theme.Material.NoActionBar"
-                    android:usesCleartextTraffic="$usesCleartextTraffic">
+                    android:theme="@style/AppForgeTheme"
+                    ${if (draft.appCategory == "game") "android:appCategory=\"game\"" else ""}
+                    android:usesCleartextTraffic="$usesCleartextTraffic"
+                    android:networkSecurityConfig="@xml/zz_appforge_network_security">
+                    <provider android:name="com.appforge.runtime.AppForgeShareProvider"
+                        android:authorities="${xml(draft.packageName)}.appforge.documents"
+                        android:exported="false" android:grantUriPermissions="true" />
                     <activity
                         android:name="com.appforge.runtime.FastActivity"
                         android:exported="true"
@@ -2757,11 +2827,12 @@ object DeviceBuildEngine {
         checkCancelled(state)
         val sessionId = "device-${state.id}-$suffix"
         state.shellSessionId = sessionId
+        state.transferFile=File(workspace,"module-download.json").also{it.delete()}
         val result = shell.execute(
             sessionId = sessionId,
             rootfs = rootfs,
             workspace = workspace,
-            command = command,
+            command = "export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; " + command,
             confirmed = true,
             timeoutMs = timeoutMs
         )

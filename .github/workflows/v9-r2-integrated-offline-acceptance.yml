@@ -1,0 +1,232 @@
+# AppForge V9: one-shot offline acceptance. NEVER DEPLOYS / SIGNS / ENABLES PRODUCTION.
+name: V9 R2 Integrated Offline Acceptance (No Deploy)
+'on':
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - .github/workflows/v9-r2-integrated-offline-acceptance.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-r2-integrated-offline-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline-r2-witness:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout without persistent credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Enforce exact append-only workflow and disabled distribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 'b6da60fc0df2fa0fd2b7f184034367232cfff3b4'
+          test "$(git diff-tree --no-commit-id --name-only -r HEAD)" = '.github/workflows/v9-r2-integrated-offline-acceptance.yml'
+          grep -Fq 'const val PRODUCTION_DISTRIBUTION_ENABLED = false' android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt
+          grep -Fq "STAGING_READ_ENABLED !== 'YES_I_UNDERSTAND_STAGING_ONLY'" cloudflare/package-distribution/worker.mjs
+          echo '9c8dc4e4702495221da46178d67d066bb9903e650965c160201fb4fe5d7d5631  android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java' | sha256sum -c -
+          test -z "$(git status --porcelain)"
+          echo 'V9_SCOPE_AND_PRODUCTION_DENY=PASS;ONLY_NEW_WORKFLOW=YES'
+      - name: Verify pinned 218-object catalog and fail-closed release inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          root=Path('android-app/app/src/main/assets/device-build')
+          cat=(root/'apt-module-packages-v1.tsv').read_text().splitlines()
+          profile=(root/'apt-snapshot-profile.tsv').read_text().splitlines()
+          objects={}
+          for line in cat:
+              f=line.split('\t')
+              assert len(f)>=8
+              sha, size=f[5],int(f[6])
+              assert re.fullmatch('[0-9a-f]{64}',sha) and 0<size<2**32
+              if sha in objects: assert objects[sha]==size
+              objects[sha]=size
+          suites={}
+          for line in profile:
+              suite,sha=line.split('\t')
+              assert suite not in suites and re.fullmatch('[0-9a-f]{64}',sha)
+              suites[suite]=sha
+          assert len(objects)==214 and len(suites)==4
+          assert set(suites)=={'noble','noble-updates','noble-security','noble-backports'}
+          assert len(set(objects)|set(suites.values()))==218
+          print('V9_R2_CATALOG=PASS;DEB=214;INRELEASE=4;OBJECTS=218')
+          print('R2_REMOTE_CONTENT_SHA256=NOT_CHECKED_BY_THIS_WORKFLOW')
+          PY
+          python3 quality/tools/appforge_v9_final_release_gate.py \
+            --emit-template "$RUNNER_TEMP/v9-evidence-inventory.json" \
+            --expected-source "$GITHUB_SHA"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'v9-evidence-inventory.json'
+          x=json.loads(p.read_text())
+          assert x['source_commit']==os.environ['GITHUB_SHA']
+          assert len(x['items'])==11
+          assert all(v['status']=='MISSING' for v in x['items'].values())
+          print('INDEPENDENT_RELEASE_EVIDENCE=NOT_SUBMITTED;CATEGORIES=11')
+          print('V9_PRODUCTION_READINESS=BLOCKED')
+          PY
+      - name: Configure Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run all V9 Python security regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v openssl
+          command -v gpg
+          export PYTHONWARNINGS=error::ResourceWarning
+          python3 -B -m unittest discover -s quality/tests -p 'test_v9_*.py' -v > "$RUNNER_TEMP/v9-python-all.log" 2>&1 || {
+            tail -150 "$RUNNER_TEMP/v9-python-all.log"; exit 1;
+          }
+          python3 - <<'PY'
+          import os,re
+          from pathlib import Path
+          s=(Path(os.environ['RUNNER_TEMP'])/'v9-python-all.log').read_text(errors='replace')
+          m=re.findall(r'^Ran (\d+) tests? in ',s,re.M)
+          assert len(m)==1 and int(m[0])>=400,('PYTHON_TEST_COUNT',m)
+          assert re.search(r'^OK\s*$',s,re.M), 'PYTHON_NOT_OK_OR_SKIPPED'
+          assert not re.search(r'ResourceWarning|\.\.\. skipped |^FAILED ',s,re.M), 'PYTHON_SKIP_OR_WARNING'
+          print('V9_PYTHON_SECURITY=PASS;TESTS='+m[0]+';SKIPPED=0')
+          PY
+      - name: Run all relevant V9 Node security tests without skips
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --test-reporter=tap \
+            cloudflare/package-distribution/worker.test.mjs \
+            cloudflare/v9-witness/witness.test.mjs \
+            cloudflare/v9-witness/device-auth/protocol.test.mjs \
+            cloudflare/v9-witness/device-auth/registry.test.mjs \
+            cloudflare/v9-witness/device-auth/admin-oidc.test.mjs \
+            cloudflare/v9-witness/device-auth/stage5e4-admin-gateway.test.mjs \
+            cloudflare/v9-witness/device-auth/stage5e5-admin-proof.test.mjs \
+            cloudflare/v9-witness/stage5d-probe/core.test.mjs \
+            > "$RUNNER_TEMP/v9-node-all.tap" 2>&1 || {
+              tail -150 "$RUNNER_TEMP/v9-node-all.tap"; exit 1;
+            }
+          python3 - <<'PY'
+          import os,re
+          from pathlib import Path
+          s=(Path(os.environ['RUNNER_TEMP'])/'v9-node-all.tap').read_text(errors='replace')
+          def field(name):
+              v=re.findall(r'^# '+re.escape(name)+r' (\d+)\s*$',s,re.M)
+              assert len(v)==1,(name,v)
+              return int(v[0])
+          n=field('tests')
+          assert n>=100 and field('pass')==n
+          assert field('fail')==0 and field('skipped')==0 and field('cancelled')==0
+          print(f'V9_NODE_SECURITY=PASS;TESTS={n};SKIPPED=0')
+          PY
+      - name: Enforce zero deployment and zero artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! find android-app -type f \( -name '*.apk' -o -name '*.aab' \) -print -quit | grep -q .
+          test -z "$(git status --porcelain)"
+          echo 'R2_WITNESS_OFFLINE=PASS;R2_UPLOAD=NO;WORKER_DEPLOY=NO;PUBLIC_DISTRIBUTION=DISABLED'
+
+  android-release-trust:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout without persistent credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Configure Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install pinned Android SDK 37 NDK and CMake
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_HOME:-}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'ndk;28.2.13676358' 'cmake;3.22.1' > "$RUNNER_TEMP/sdk-install.log" 2>&1 || {
+            tail -100 "$RUNNER_TEMP/sdk-install.log"; exit 1;
+          }
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          test -d "$ANDROID_HOME/ndk/28.2.13676358"
+          test -d "$ANDROID_HOME/cmake/3.22.1"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Verify all 17 release trust JUnit cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:testDebugUnitTest \
+            --tests com.appforge.studio.security.V9ReleaseTrustDeepUnitTest \
+            --no-daemon --no-parallel --no-configuration-cache --console=plain \
+            > "$RUNNER_TEMP/v9-trust-tests.log" 2>&1 || {
+              tail -150 "$RUNNER_TEMP/v9-trust-tests.log"; exit 1;
+            }
+          grep -q 'BUILD SUCCESSFUL' "$RUNNER_TEMP/v9-trust-tests.log"
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          files=list(Path('android-app/app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
+          matching=[ET.parse(f).getroot() for f in files if 'V9ReleaseTrustDeepUnitTest' in f.name]
+          assert len(matching)==1,('JUNIT_XML_MISSING',files)
+          r=matching[0]
+          assert int(r.attrib['tests'])==17
+          assert int(r.attrib.get('failures',0))==0
+          assert int(r.attrib.get('errors',0))==0
+          assert int(r.attrib.get('skipped',0))==0
+          print('V9_ANDROID_TRUST=PASS;TESTS=17;FAIL=0;SKIPPED=0')
+          PY
+      - name: Check no Android artifact signing or repository mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! find android-app -type f \( -name '*.apk' -o -name '*.aab' \) -print -quit | grep -q .
+          test -z "$(git status --porcelain)"
+          echo 'ANDROID_JUNIT=PASS;APK=NO;SIGNING=NO;PRODUCTION=DISABLED'
+
+  integrated-summary:
+    needs: [offline-r2-witness, android-release-trust]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Fail closed unless both independent CI jobs passed
+        env:
+          R2_STATUS: ${{ needs.offline-r2-witness.result }}
+          ANDROID_STATUS: ${{ needs.android-release-trust.result }}
+        run: |
+          set -euo pipefail
+          echo "R2_WITNESS_RESULT=$R2_STATUS"
+          echo "ANDROID_TRUST_RESULT=$ANDROID_STATUS"
+          test "$R2_STATUS" = 'success'
+          test "$ANDROID_STATUS" = 'success'
+          echo 'V9_INTEGRATED_OFFLINE_CI=PASS'
+          echo 'V9_R2_REMOTE_OBJECT_CONTENT_SHA256=NOT_LIVE_VERIFIED'
+          echo 'V9_INDEPENDENT_ROLLBACK_WITNESS=NOT_ACCEPTED'
+          echo 'V9_PROTECTED_PRODUCTION_SIGNER=NOT_ACCEPTED'
+          echo 'V9_RELEASE_APPROVAL=NOT_GIVEN'
+          echo 'V9_PRODUCTION_READINESS=BLOCKED'
+          echo 'PUBLIC_DISTRIBUTION=DISABLED;PLAY_PRODUCTION=UNCHANGED'

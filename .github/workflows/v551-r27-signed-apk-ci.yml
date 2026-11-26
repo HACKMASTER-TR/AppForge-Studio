@@ -1,0 +1,247 @@
+name: AppForge V551 R27 Signed APK Candidate Verification - No Device
+on:
+  push:
+    branches:
+      - codex/v551-r27-signed-apk-ci-20261120-f39176da
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v551-r27-signed-apk-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  isolated3-signed-candidate:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    env:
+      APPFORGE_DEBUG_KEY_ALIAS: appforge-v9r2-isolated
+      APPFORGE_DEBUG_STORE_PASSWORD: ${{ secrets.APPFORGE_V9R2_ISOLATED2_KEYSTORE_PASSWORD }}
+      APPFORGE_DEBUG_KEY_PASSWORD: ${{ secrets.APPFORGE_V9R2_ISOLATED2_KEYSTORE_PASSWORD }}
+    steps:
+      - name: Initialize disposable verified Gradle home
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "GRADLE_USER_HOME=$RUNNER_TEMP/v551-r27-verified-gradle" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Enforce exact R26 gate, V550 signed APK provenance and R27 source scope
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = codex/v551-r27-signed-apk-ci-20261120-f39176da
+          test "$(git rev-parse HEAD^)" = f39176dac9027d86fb7ea754df26202a65f2278c
+          python3 - <<'PY_SCOPE'
+          import subprocess
+          base='f39176dac9027d86fb7ea754df26202a65f2278c'
+          found=set(subprocess.check_output(['git','diff','--name-only',base,'HEAD'],text=True).splitlines())
+          required={'.github/workflows/v551-r27-signed-apk-ci.yml','android-app/app/build.gradle.kts'}
+          allowed=required|{'android-app/app/src/main/assets/second_brain_snapshot.json'}
+          assert required<=found,('R27_MISSING_FILES',found)
+          assert found<=allowed,('R27_CHANGED_FILE_SCOPE_DRIFT',found)
+          PY_SCOPE
+          git diff --check HEAD^
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/44705569640" --jq .conclusion)" = success
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/44705569640" --jq .head_sha)" = f39176dac9027d86fb7ea754df26202a65f2278c
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/44693093874" --jq .conclusion)" = success
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/44693093874" --jq .head_sha)" = fcc6dba45af9d00f99b4195d4e59c83282e67dae
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/14610400070" --jq .expired)" = false
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/14610400070" --jq .digest)" = sha256:82182113ce0e4b2a7fc986535c4677554ec537e14bbc197842f1e9895806688f
+          python3 scripts/generate-second-brain-snapshot.py --check
+          echo APPFORGE_V551_R27_TRUST_BOUNDARY=PASS
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Require signed R16 AGP candidate provenance
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo=HACKMASTER-TR/AppForge-Studio
+          test "$(gh api "repos/$repo/actions/runs/44570760969" --jq .conclusion)" = success
+          test "$(gh api "repos/$repo/actions/artifacts/14554148259" --jq .expired)" = false
+          test "$(gh api "repos/$repo/actions/artifacts/14554148259" --jq .digest)" = sha256:fa745ccdf122f86d77d5b971d2c2db0300db2b77d8d0984ec9628cec67fe85c0
+          echo R27_AGP_SEED_PROVENANCE=PASS
+      - uses: actions/download-artifact@v4
+        with:
+          repository: HACKMASTER-TR/AppForge-Studio
+          run-id: 44570760969
+          name: v547-agp911-gradle931-ci-candidate-7d0994b6582a859c516967fd162fbd4e3d1b054a
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/v551-r27-agp-candidate
+      - name: Verify 471 pinned AGP files into isolated Gradle cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GRADLE_USER_HOME"
+          python3 quality/tools/v547_agp_arm64_candidate_probe.py "$RUNNER_TEMP/v551-r27-agp-candidate" "$GRADLE_USER_HOME/caches"
+          echo R27_VERIFIED_AGP_CACHE=PASS
+      - name: Confirm offline AGP 9.1.1 plugin resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v551-r27-plugin-proof"
+          cd "$RUNNER_TEMP/v551-r27-plugin-proof"
+          printf '%s\n' 'pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }' 'rootProject.name = "R19OfflinePluginProof"' > settings.gradle.kts
+          printf '%s\n' 'plugins { id("com.android.application") version "9.1.1" apply false }' > build.gradle.kts
+          gradle --offline help --no-daemon --no-configuration-cache --console=plain
+          echo R27_OFFLINE_AGP_RESOLUTION=PASS
+      - name: Install pinned Android SDK and build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          test -x "$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          test -x "$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          test -d "$ANDROID_HOME/ndk/28.2.13676358"
+          test -d "$ANDROID_HOME/cmake/3.22.1"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+          echo APPFORGE_V551_R27_TOOLCHAIN=PASS
+      - name: Restore and validate original isolated3 debug signer in temporary CI storage
+        shell: bash
+        env:
+          TEST_KEYSTORE_B64: ${{ secrets.APPFORGE_V9R2_ISOLATED2_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$TEST_KEYSTORE_B64" && test -n "$APPFORGE_DEBUG_STORE_PASSWORD"
+          umask 077
+          KEYFILE="$RUNNER_TEMP/v551-r27-isolated3-signer.p12"
+          printf '%s' "$TEST_KEYSTORE_B64" | base64 --decode > "$KEYFILE"
+          CERT="$(openssl pkcs12 -in "$KEYFILE" -nokeys -clcerts -passin env:APPFORGE_DEBUG_STORE_PASSWORD | openssl x509 -outform DER | sha256sum | cut -d' ' -f1)"
+          test "$CERT" = dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082
+          keytool -list -storetype PKCS12 -keystore "$KEYFILE" -storepass:env APPFORGE_DEBUG_STORE_PASSWORD -alias "$APPFORGE_DEBUG_KEY_ALIAS" >/dev/null
+          echo "APPFORGE_DEBUG_KEYSTORE_PATH=$KEYFILE" >> "$GITHUB_ENV"
+          echo APPFORGE_V551_R27_SIGNER_PIN=PASS
+      - uses: actions/download-artifact@v4
+        with:
+          repository: HACKMASTER-TR/AppForge-Studio
+          run-id: 44693093874
+          name: AppForge-v550-r25-signed-acceptance-fcc6dba45af9d00f99b4195d4e59c83282e67dae
+          github-token: ${{ github.token }}
+          path: reference-v550
+      - name: Verify immutable V550 APK, manifest SHA-256, signer and source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find reference-v550 -maxdepth 1 -type f -name '*.apk' | wc -l)" -eq 1
+          (cd reference-v550 && sha256sum -c SHA256SUMS.txt)
+          OLD="$(find reference-v550 -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -s "$OLD"
+          unzip -tqq "$OLD"
+          python3 - <<'PY'
+          import json,pathlib
+          e=json.loads(pathlib.Path('reference-v550/upgrade-evidence.json').read_text())
+          assert e['source_sha']=='fcc6dba45af9d00f99b4195d4e59c83282e67dae'
+          assert e['package']=='com.appforge.studio.v9r2isolated3'
+          assert e['version_code']==550
+          assert e['version_name']=='5.0.50-isolated3-upgrade'
+          assert e['certificate_sha256']=='dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082'
+          assert e['update_compatible'] is True
+          print('APPFORGE_V551_R27_V550_REFERENCE=PASS')
+          PY
+      - name: Prepare pinned Kotlin compiler repository
+        shell: bash
+        run: python3 quality/tools/v9_pinned_kotlin_compiler.py "$RUNNER_TEMP/v551-r27-kotlin-maven"
+      - name: Verify pinned Kotlin 2.4.10 Gradle plugins BOM (CI-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest quality.tests.test_v549_r23_kotlin_bom -v
+          python3 quality/tools/v549_r23_kotlin_bom.py "$RUNNER_TEMP/v551-r27-kotlin-bom"
+          echo APPFORGE_V551_R27_KOTLIN_BOM=PASS
+      - name: Build and test V550 debug candidate with original isolated3 package identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:testDebugUnitTest :app:assembleDebug \
+            -PappforgeV9R2Isolated3Acceptance=true \
+            -PappforgeV9R2Isolated3UpgradeV551=true \
+            -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/v551-r27-kotlin-maven" \
+            -PappforgeCIKotlinBomRepo="$RUNNER_TEMP/v551-r27-kotlin-bom" \
+            -PappforgeCIMavenGcs=true \
+            --no-daemon --max-workers=2 --no-configuration-cache --console=plain --stacktrace
+          echo APPFORGE_V551_R27_ANDROID_APK_BUILD=PASS
+      - name: Verify signed V550 in-place update against exact V550 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=android-app/app/build/outputs/apk/debug/app-debug.apk
+          OLD="$(find reference-v550 -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -s "$APK" && test -s "$OLD"
+          mkdir -p r27-artifacts
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          old=next(pathlib.Path('reference-v550').glob('*.apk'))
+          prev=json.loads(pathlib.Path('reference-v550/upgrade-evidence.json').read_text())
+          record=json.loads(pathlib.Path('quality/fixtures/appforge-v9r2isolated3-v545-reference.json').read_text())
+          with old.open('rb') as f: old_sha=hashlib.file_digest(f,'sha256').hexdigest()
+          assert old_sha==prev['apk_sha256']
+          assert record['package']==prev['package']
+          assert record['certificate_sha256']==prev['certificate_sha256']
+          record['version_code']=550
+          record['version_name']='5.0.50-isolated3-upgrade'
+          record['apk_sha256']=old_sha
+          record['source_sha']=prev['source_sha']
+          record['source_run_id']=44693093874
+          record['source_artifact_id']=14610400070
+          record['upgrade_version_code']=551
+          pathlib.Path('r27-artifacts/expected-reference-v551.json').write_text(json.dumps(record,indent=2)+'\n')
+          PY
+          python3 quality/tools/verify_apk_upgrade.py \
+            --reference r27-artifacts/expected-reference-v551.json \
+            --old-apk "$OLD" --new-apk "$APK" \
+            --aapt2 "$ANDROID_HOME/build-tools/36.0.0/aapt2" \
+            --apksigner "$ANDROID_HOME/build-tools/36.0.0/apksigner" \
+            --source-sha "$GITHUB_SHA" \
+            --output r27-artifacts/upgrade-evidence.json
+          python3 - <<'PY'
+          import json,pathlib,xml.etree.ElementTree as ET
+          e=json.loads(pathlib.Path('r27-artifacts/upgrade-evidence.json').read_text())
+          assert e['package']=='com.appforge.studio.v9r2isolated3'
+          assert e['version_code']==551
+          assert e['version_name']=='5.0.51-isolated3-upgrade'
+          assert e['certificate_sha256']=='dd1dbb994df46f9815c08fe14758f60b39d5787be41a1123bbc2579589f73082'
+          assert e['update_compatible'] is True
+          assert e['physical_device']=='NOT_RUN'
+          files=list(pathlib.Path('android-app/app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
+          assert files,'UNIT_TEST_REPORT_MISSING'
+          roots=[ET.parse(f).getroot() for f in files]
+          counts={k:sum(int(r.get(k,0)) for r in roots) for k in ('tests','failures','errors','skipped')}
+          assert counts['tests']>0 and counts['failures']==counts['errors']==counts['skipped']==0,counts
+          pathlib.Path('r27-artifacts/unit-tests.json').write_text(json.dumps(counts,indent=2)+'\n')
+          pathlib.Path('r27-artifacts/physical-acceptance.json').write_text(json.dumps({
+            'adb':'NOT_USED','android_install':'NOT_STARTED','device_data':'UNCHANGED',
+            'physical_device':'NOT_RUN','r2':'UNTOUCHED','cloudflare':'UNCHANGED',
+            'release':'NOT_PUBLISHED','v550_device_installed_state':'NOT_VERIFIED_BY_CI'
+          },indent=2)+'\n')
+          print('APPFORGE_V551_R27_METADATA_AND_UNIT_TESTS=PASS')
+          PY
+          cp "$APK" "r27-artifacts/AppForgeStudio-V551-R27-${GITHUB_SHA:0:12}.apk"
+          (cd r27-artifacts && sha256sum *.apk > SHA256SUMS.txt)
+          echo APPFORGE_V551_R27_SIGNED_CANDIDATE=VERIFIED_NOT_INSTALLED
+      - name: Upload verified APK and evidence, never signing key
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppForge-v551-r27-signed-acceptance-${{ github.sha }}
+          path: r27-artifacts/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Delete transient signing material
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/v551-r27-isolated3-signer.p12"

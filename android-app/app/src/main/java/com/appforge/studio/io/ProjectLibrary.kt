@@ -682,6 +682,8 @@ object ProjectLibrary {
                     "sourceBuildEngine",
                     "webview-static"
                 ),
+            normalHtmlEngine = obj.optBoolean("normalHtmlEngine", false),
+            requiredCapabilities = obj.optJSONArray("requiredCapabilities")?.let { a -> (0 until a.length()).map { a.optString(it) }.toSet() } ?: emptySet(),
             sourceBuildReady =
                 obj.optBoolean(
                     "sourceBuildReady",
@@ -794,6 +796,7 @@ object ProjectLibrary {
                     "webMediaAutoplayEnabled",
                     true
                 ),
+            localNetworkAccess = obj.optBoolean("localNetworkAccess", false),
             webMixedContentAllowed =
                 obj.optBoolean(
                     "webMixedContentAllowed",
@@ -1357,6 +1360,8 @@ object ProjectLibrary {
             put("sourceTechnology", d.sourceTechnology)
             put("sourceTechnologyLabel", d.sourceTechnologyLabel)
             put("sourceBuildEngine", d.sourceBuildEngine)
+            put("normalHtmlEngine", d.normalHtmlEngine)
+            put("requiredCapabilities", org.json.JSONArray(d.requiredCapabilities.toList()))
             put("sourceBuildReady", d.sourceBuildReady)
 
             // LOCAL kaynak uygulamanın özel depolamasına kopyalandığı için
@@ -1430,6 +1435,7 @@ object ProjectLibrary {
                 "webMediaAutoplayEnabled",
                 d.webMediaAutoplayEnabled
             )
+            put("localNetworkAccess", d.localNetworkAccess)
             put(
                 "webMixedContentAllowed",
                 d.webMixedContentAllowed

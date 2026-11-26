@@ -2,9 +2,10 @@ package com.appforge.studio.io
 
 import com.appforge.studio.net.RemoteTemplate
 
-/** Recover the 18 existing on-device HTML templates in TemplateProjectFactory. */
+/** On-device HTML templates; each catalog entry is materialized locally. */
 internal object LocalTemplateCatalog {
     val templates: List<RemoteTemplate> = listOf(
+        entry("document-export", "Belge Kaydet / Paylaş", "PDF, CSV, PNG, JPEG ve TXT; izin ve cihaz test yönergeleri", "device"),
         entry("interaction-toolkit", "Etkileşim Araçları", "Toast, titreşim ve bildirim örnekleri", "interaction"),
         entry("html-game", "HTML5 Mini Oyun", "Canvas üzerinde oynanabilir oyun başlangıcı", "starters"),
         entry("bootstrap-starter", "Bootstrap Başlangıç", "Mobil uyumlu sayfa başlangıcı", "libraries"),

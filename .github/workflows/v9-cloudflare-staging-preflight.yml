@@ -1,0 +1,46 @@
+# Isolated V9 dry-run compilation, never a Cloudflare deployment.
+name: V9 Cloudflare Staging Preflight (Dry Run Only)
+on:
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - 'cloudflare/v9-witness/**'
+      - 'quality/tools/appforge_v9_cloudflare_staging_preflight.py'
+      - 'quality/tests/test_v9_cloudflare_staging_preflight.py'
+      - '.github/workflows/v9-cloudflare-staging-preflight.yml'
+permissions:
+  contents: read
+concurrency:
+  group: v9-staging-preflight-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static fail-closed staging audit
+        run: |
+          set -euo pipefail
+          python3 quality/tools/appforge_v9_cloudflare_staging_preflight.py --repo .
+          python3 -m unittest discover -s quality/tests -p test_v9_cloudflare_staging_preflight.py -v
+      - name: Re-run witness Node security tests
+        run: |
+          set -euo pipefail
+          node --test cloudflare/v9-witness/witness.test.mjs
+      - name: Bundle only - DO NOT deploy
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.153.0 deploy --dry-run --config cloudflare/v9-witness/wrangler.staging.toml --outdir "$RUNNER_TEMP/v9-witness-staging-bundle"
+          test -d "$RUNNER_TEMP/v9-witness-staging-bundle"
+          echo 'V9_CF_STAGING_BUNDLE=PASS'
+          echo 'CLOUDFLARE_DEPLOYED=NO'
+          echo 'PUBLIC_HTTP=DISABLED'
+          echo 'ANDROID_CLIENT_ENABLED=NO'
+          echo 'V9_PRODUCTION_READINESS=BLOCKED'

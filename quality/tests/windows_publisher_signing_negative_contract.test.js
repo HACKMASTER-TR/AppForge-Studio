@@ -378,7 +378,8 @@ test("any requested signing failure deletes final EXE and clears artifact state"
 
   assert.match(
     engine,
-    /catch\s*\(\s*t:\s*Throwable\s*\)\s*\{[\s\S]{0,900}?state\.status\s*=\s*"failed"/
+    /catch\s*\(\s*t:\s*Throwable\s*\)\s*\{\s*state\.fail\(\s*"❌ \$\{t\.message\s*\?:\s*t\.javaClass\.simpleName\}"\s*\)/,
+    "outer build catch must immediately use the terminal fail transition with the propagated error"
   );
 });
 

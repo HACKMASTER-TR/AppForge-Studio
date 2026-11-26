@@ -1,0 +1,14 @@
+{
+  "format": "appforge-universal",
+  "formatVersion": 1,
+  "targets": {
+    "android": {
+      "root": "android",
+      "engine": "android-gradle"
+    },
+    "windows": {
+      "root": "web",
+      "engine": "webview-static"
+    }
+  }
+}

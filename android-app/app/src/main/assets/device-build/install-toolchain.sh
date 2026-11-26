@@ -1,5 +1,8 @@
 #!/bin/sh
 set -eu
+if [ -f /workspace/runtime/module-download-telemetry.sh ]; then
+  . /workspace/runtime/module-download-telemetry.sh
+fi
 
 ROOT="/opt/appforge-device"
 SDK="$ROOT/android-sdk"
@@ -8,15 +11,28 @@ JAVA_HOME="$ROOT/jdk-17"
 NODE_VERSION="22.23.3"
 NODE_HOME="$ROOT/node-$NODE_VERSION"
 ENGINE="${1:-webview-static}"
+if [ "$ENGINE" = rust-native ];then READY="$ROOT/.rust-android-ndk-ready";fi
+if [ -z "${APPFORGE_MODULE_ID:-}" ];then
+ if [ "$ENGINE" = python-android ];then APPFORGE_MODULE_ID=PYTHON_ANDROID
+ elif [ "$ENGINE" = rust-native ];then APPFORGE_MODULE_ID=RUST_ANDROID_NDK
+ elif [ "$ENGINE" = expo ];then APPFORGE_MODULE_ID=EXPO_REACT_NATIVE
+ else APPFORGE_MODULE_ID=ANDROID_CORE;fi
+ export APPFORGE_MODULE_ID
+fi
 OFFLINE="${APPFORGE_DEVICE_OFFLINE:-0}"
 SDK_LICENSE_ACCEPTED="${APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED:-0}"
 SDK_LICENSE_MARKER="$ROOT/.android-sdk-license-20260428"
 HOST_ARCH="$(uname -m)"
+REUSE_ANDROID_CORE="${APPFORGE_ANDROID_CORE_PREPARED:-0}"
 EXPO_ARM64_CMAKE_MARKER="$ROOT/.expo-arm64-cmake-host-v2"
 EXPO_ARM64_NDK_VERSION="27.1.12297006"
 EXPO_ARM64_NDK_RELEASE="r27b"
 EXPO_ARM64_NDK_SHA1="6fc476b2e57d7c01ac0c95817746b927035b9749"
 EXPO_ARM64_NDK_MARKER="$ROOT/.expo-arm64-ndk-host-v3"
+# Rust NDK and Expo ARM64 use a private, signed, pinned host prefix.
+# No shared libc6 upgrade: preserve the verified 2.39-0ubuntu8.7 baseline.
+NDK_HOST_ISOLATED=0
+case "$ENGINE:$HOST_ARCH" in rust-native:aarch64|rust-native:arm64|expo:aarch64|expo:arm64) NDK_HOST_ISOLATED=1;;esac
 
 CMDLINE_TOOLS_VERSION="15859902"
 CMDLINE_TOOLS_SHA256="4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
@@ -28,6 +44,9 @@ cat > "$ROOT/ensure-gradle" <<'EOF'
 set -eu
 
 version="${1:?Gradle version required}"
+if [ -f /workspace/runtime/module-download-telemetry.sh ]; then
+  . /workspace/runtime/module-download-telemetry.sh
+fi
 root="/opt/appforge-device"
 dest="$root/gradle-$version"
 
@@ -94,12 +113,20 @@ EOF
 chmod 0755 "$ROOT/ensure-gradle"
 
 if [ -f "$READY" ] \
+   && [ "${APPFORGE_MODULE_REFRESH:-0}" != 1 ] \
    && [ -f "$SDK_LICENSE_MARKER" ] \
    && [ -x "$SDK/build-tools/36.0.0/aapt2" ] \
    && [ -f "$SDK/platforms/android-37.0/android.jar" ] \
+   && [ -s "$SDK/platforms/android-37.0/package.xml" ] \
+   && [ -s "$SDK/licenses/android-sdk-license" ] \
    && [ -x "$ROOT/gradle-9.3.1/bin/gradle" ] \
    && [ -x "$JAVA_HOME/bin/java" ] \
    && [ -x "$JAVA_HOME/bin/javac" ] \
+   && { [ "$ENGINE" != rust-native ] || {
+        [ -f "$SDK/ndk/27.1.12297006/source.properties" ] &&
+        [ -x "$SDK/cmake/3.22.1/bin/cmake" ] &&
+        /usr/bin/python3.12 -I -S /workspace/runtime/rust-android.py --probe-linker --sdk "$SDK";
+      }; } \
    && { [ "$ENGINE" != "node-web" ] || {
         command -v node >/dev/null 2>&1 &&
         command -v npm >/dev/null 2>&1;
@@ -193,7 +220,13 @@ repair_broken_openjdk() {
   done
 }
 
-repair_broken_openjdk
+# Repairs change dpkg state too. They belong to the isolated module generation,
+# never to an ordinary project build operating on the shared active runtime.
+if [ "${APPFORGE_APT_MANAGED_INSTALL:-0}" != 1 ];then
+ echo 'APPFORGE_APT_MODULAR_INSTALL_REQUIRED: prepare missing tools from the package manager' >&2
+ exit 60
+fi
+if [ "$NDK_HOST_ISOLATED" != 1 ];then repair_broken_openjdk;fi
 
 # Older AppForge device-toolchain revisions installed Node/npm
 # unconditionally. A failed installation can leave dozens of
@@ -239,7 +272,7 @@ repair_stale_node_packages() {
   # previously interrupted universal Node installation.
   dpkg --audit || true
 
-  apt-get \
+  /bin/sh /opt/appforge-device/telemetry-bin/apt-get \
     -f install \
     -y \
     --no-install-recommends \
@@ -247,19 +280,27 @@ repair_stale_node_packages() {
     || true
 }
 
-repair_stale_node_packages
+if [ "$NDK_HOST_ISOLATED" != 1 ];then repair_stale_node_packages;fi
 
-apt-get update
-apt-get install -y --no-install-recommends \
+/bin/sh /opt/appforge-device/telemetry-bin/apt-get update
+if [ "$NDK_HOST_ISOLATED" = 1 ];then
+  # No apt-get install or dpkg mutation. Ubuntu-signed R2 objects stay in a
+  # dedicated host prefix. Runtime NDK C/C++ link probes remain mandatory.
+  /bin/sh /workspace/runtime/install-ndk-host-isolated-v7.sh
+  export PATH="/opt/appforge-device/ndk-host-v7/bin:$PATH"
+else
+if [ "$REUSE_ANDROID_CORE" != 1 ]; then
+/bin/sh /opt/appforge-device/telemetry-bin/apt-get install -y --no-install-recommends \
   ca-certificates curl unzip zip xz-utils tar \
   git file \
   libstdc++6 zlib1g libpng16-16 \
   fontconfig libfreetype6
+fi
 
-if [ "$ENGINE" = "expo" ]; then
+if [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ]; then
   case "$HOST_ARCH" in
     aarch64|arm64)
-      apt-get install -y --no-install-recommends \
+      /bin/sh /opt/appforge-device/telemetry-bin/apt-get install -y --no-install-recommends \
         cmake \
         ninja-build \
         clang \
@@ -271,10 +312,10 @@ fi
 
 case "$ENGINE" in
   node-web)
-    apt-get install -y --no-install-recommends nodejs npm
+    /bin/sh /opt/appforge-device/telemetry-bin/apt-get install -y --no-install-recommends nodejs npm
     ;;
   python-android)
-    apt-get install -y --no-install-recommends       python3       python3-pip       python3-venv
+    /bin/sh /opt/appforge-device/telemetry-bin/apt-get install -y --no-install-recommends       python3       python3-pip       python3-venv python3.12 python3.12-minimal libpython3.12-minimal libpython3.12-stdlib
 
     test -x /usr/bin/python3.12
 
@@ -283,26 +324,41 @@ case "$ENGINE" in
     echo "APPFORGE_PYTHON_BUILD_RUNTIME=3.12"
     ;;
 esac
+fi # end shared APT installation; isolated Rust NDK / Expo never modify dpkg
 
 mkdir -p "$ROOT" "$SDK/platforms" "$SDK/build-tools" "$ROOT/cache"
 
+# Legacy call sites retain their vendor SHA-1 as a secondary check only.
+# Trust is now additionally pinned to SHA-256 of the reviewed official archive.
 download_sha1() {
-  url="$1"; sha="$2"; out="$3"
-  if [ -s "$out" ] && echo "$sha  $out" | sha1sum -c - >/dev/null 2>&1; then return; fi
-  rm -f "$out"
-  curl -fL --retry 4 --connect-timeout 20 "$url" -o "$out"
-  echo "$sha  $out" | sha1sum -c -
+  compat_sha1="$2"; compat_out="$3"
+  case "$1" in
+    https://dl.google.com/android/repository/platform-37.0_r02.zip) compat_sha256="840b23e827f96e64aea4c89a1194aac3dc5f6bad37edb231c5c795d890330e8d" ;;
+    https://dl.google.com/android/repository/platform-36_r02.zip) compat_sha256="37607369a28c5b640b3a7998868d45898ebcb777565a0e85f9acf36f29631d2e" ;;
+    https://dl.google.com/android/repository/build-tools_r36_linux.zip) compat_sha256="5d9ac77fb6ff43d9da518a337b4fcf8f9097113df531d99ccefe80ef7ce8250b" ;;
+    https://dl.google.com/android/repository/android-ndk-r27b-linux.zip) compat_sha256="33e16af1a6bbabe12cad54b2117085c07eab7e4fa67cdd831805f0e94fd826c1" ;;
+    *) echo "Unreviewed archive: no SHA-256 pin" >&2; return 42 ;;
+  esac
+  download_sha256 "$1" "$compat_sha256" "$compat_out"
+  echo "$compat_sha1  $compat_out" | sha1sum -c -
 }
 
 download_sha256() {
   url="$1"; sha="$2"; out="$3"
   if [ -s "$out" ] && echo "$sha  $out" | sha256sum -c - >/dev/null 2>&1; then return; fi
   rm -f "$out"
-  curl -fL --retry 4 --connect-timeout 20 "$url" -o "$out"
+  if [ -n "${APPFORGE_NATIVE_DOWNLOAD_BROKER:-}" ]; then
+    . /workspace/runtime/native-download-broker.sh
+    appforge_native_download "$url" "$sha" "$out"
+  else
+    curl -fL --retry 4 --connect-timeout 20 "$url" -o "$out"
+  fi
   echo "$sha  $out" | sha256sum -c -
 }
 
 ensure_node_22() {
+  # npm/npx use /usr/bin/env node, including standalone Expo bootstrap.
+  export PATH="$NODE_HOME/bin:$PATH"
   if [ -x "$NODE_HOME/bin/node" ] &&
      [ -x "$NODE_HOME/bin/npm" ]; then
     "$NODE_HOME/bin/node" --version
@@ -354,7 +410,8 @@ ensure_node_22() {
 
 
 ensure_jdk() {
-  [ -x "$JAVA_HOME/bin/java" ] \
+  [ "${APPFORGE_MODULE_REFRESH:-0}" != 1 ] \
+    && [ -x "$JAVA_HOME/bin/java" ] \
     && [ -x "$JAVA_HOME/bin/javac" ] \
     && return
 
@@ -399,13 +456,16 @@ ensure_jdk() {
 ensure_gradle() {
   version="$1"
   dest="$ROOT/gradle-$version"
-  [ -x "$dest/bin/gradle" ] && return
+  [ "${APPFORGE_MODULE_REFRESH:-0}" != 1 ] && [ -x "$dest/bin/gradle" ] && return
   zip="$ROOT/cache/gradle-$version-bin.zip"
   sha_file="$ROOT/cache/gradle-$version-bin.zip.sha256"
-  curl -fL --retry 4 "https://services.gradle.org/distributions/gradle-$version-bin.zip" -o "$zip"
-  curl -fL --retry 4 "https://services.gradle.org/distributions/gradle-$version-bin.zip.sha256" -o "$sha_file"
-  expected="$(tr -d '[:space:]' < "$sha_file")"
-  echo "$expected  $zip" | sha256sum -c -
+  case "$version" in
+    9.3.1) expected="b266d5ff6b90eada6dc3b20cb090e3731302e553a27c5d3e4df1f0d76beaff06" ;;
+    8.14.3) expected="bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531" ;;
+    *) echo "Unreviewed core Gradle version" >&2;return 42 ;;
+  esac
+  download_sha256 "https://services.gradle.org/distributions/gradle-$version-bin.zip" "$expected" "$zip"
+  printf '%s\n' "$expected" > "$sha_file"
   rm -rf "$dest"
   unzip -q "$zip" -d "$ROOT"
   test -x "$dest/bin/gradle"
@@ -420,22 +480,32 @@ ensure_gradle() {
 # while delegating execution to verified ARM64 Ubuntu CMake and Ninja.
 #
 ensure_expo_arm64_cmake_host() {
-  [ "$ENGINE" = "expo" ] || return 0
+  { [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ]; } || return 0
 
   case "$HOST_ARCH" in
     aarch64|arm64)
 
-      test -x /usr/bin/cmake
-      test -x /usr/bin/ninja
+      cmake_host=/usr/bin/cmake
+      ninja_host=/usr/bin/ninja
+      cmake_image=/usr/bin/cmake
+      ninja_image=/usr/bin/ninja
+      if [ "$NDK_HOST_ISOLATED" = 1 ];then
+        cmake_host="$ROOT/ndk-host-v7/bin/cmake"
+        ninja_host="$ROOT/ndk-host-v7/bin/ninja"
+        cmake_image="$ROOT/ndk-host-v7/sysroot/usr/bin/cmake"
+        ninja_image="$ROOT/ndk-host-v7/sysroot/usr/bin/ninja"
+      fi
+      test -x "$cmake_host"
+      test -x "$ninja_host"
 
-      file /usr/bin/cmake |
+      file -L "$cmake_image" |
         grep -Eqi 'aarch64|ARM aarch64' || {
           echo "APPFORGE_EXPO_CMAKE_HOST_ABI_MISMATCH" >&2
           file /usr/bin/cmake >&2 || true
           exit 61
         }
 
-      file /usr/bin/ninja |
+      file -L "$ninja_image" |
         grep -Eqi 'aarch64|ARM aarch64' || {
           echo "APPFORGE_EXPO_NINJA_HOST_ABI_MISMATCH" >&2
           file /usr/bin/ninja >&2 || true
@@ -447,14 +517,14 @@ ensure_expo_arm64_cmake_host() {
 
       mkdir -p "$cmake_bin"
 
-      cat > "$cmake_bin/cmake" <<'EOF'
+      cat > "$cmake_bin/cmake" <<EOF
 #!/bin/sh
-exec /usr/bin/cmake "$@"
+exec "$cmake_host" "\$@"
 EOF
 
-      cat > "$cmake_bin/ninja" <<'EOF'
+      cat > "$cmake_bin/ninja" <<EOF
 #!/bin/sh
-exec /usr/bin/ninja "$@"
+exec "$ninja_host" "\$@"
 EOF
 
       chmod 0755 \
@@ -499,26 +569,22 @@ EOF
 # before AppForge has installed the ARM64 compatibility wrappers.
 #
 ensure_expo_arm64_ndk_host() {
-  [ "$ENGINE" = "expo" ] || return 0
+  { [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ]; } || return 0
 
   case "$HOST_ARCH" in
     aarch64|arm64)
 
-      for tool in \
-        /usr/bin/clang \
-        /usr/bin/clang++ \
-        /usr/bin/ld.lld \
-        /usr/bin/llvm-ar \
-        /usr/bin/llvm-ranlib \
-        /usr/bin/llvm-strip \
-        /usr/bin/llvm-nm \
-        /usr/bin/llvm-objcopy \
-        /usr/bin/llvm-readelf
-      do
-        test -x "$tool"
+      ndk_host_bin=/usr/bin
+      ndk_clang_image=/usr/bin/clang
+      if [ "$NDK_HOST_ISOLATED" = 1 ];then
+        ndk_host_bin="$ROOT/ndk-host-v7/bin"
+        ndk_clang_image="$ROOT/ndk-host-v7/sysroot/usr/lib/llvm-18/bin/clang"
+      fi
+      for tool in clang clang++ ld.lld llvm-ar llvm-ranlib llvm-strip llvm-nm llvm-objcopy llvm-readelf;do
+        test -x "$ndk_host_bin/$tool"
       done
 
-      file -L /usr/bin/clang |
+      file -L "$ndk_clang_image" |
         grep -Eqi 'aarch64|ARM aarch64' || {
           echo "APPFORGE_EXPO_HOST_CLANG_ABI_MISMATCH" >&2
           file -L /usr/bin/clang >&2 || true
@@ -669,10 +735,21 @@ if [ "\$appforge_linking" -eq 1 ] &&
    [ "\$appforge_runtime" -eq 1 ]; then
   exec $executable \
     -resource-dir="$resource_dir" \
+    -B"$bin" \
     --rtlib=compiler-rt \
     --unwindlib=libunwind \
     -L"$resource_dir/lib/linux/aarch64" \
-    "\$@"
+    "\$@" \
+    --ld-path=/usr/lib/llvm-18/bin/ld.lld
+fi
+
+# R46: if caller suppressed default runtime linking, still route a true
+# link to the already authenticated guest-native Ubuntu ARM64 LLD.
+if [ "\$appforge_linking" -eq 1 ]; then
+  exec $executable \
+    -resource-dir="$resource_dir" \
+    "\$@" \
+    --ld-path=/usr/lib/llvm-18/bin/ld.lld
 fi
 
 exec $executable \
@@ -701,52 +778,144 @@ EOF
 
       write_clang_wrapper \
         clang-18 \
-        /usr/bin/clang \
+        $ndk_host_bin/clang \
         APPFORGE_EXPO_ARM64_NDK_CLANG18_WRAPPER_V3
 
       write_clang_wrapper \
         clang \
-        /usr/bin/clang \
+        $ndk_host_bin/clang \
         APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V3
 
       write_clang_wrapper \
         clang++ \
-        /usr/bin/clang++ \
+        $ndk_host_bin/clang++ \
         APPFORGE_EXPO_ARM64_NDK_CLANGXX_WRAPPER_V3
 
-      write_tool_wrapper \
-        ld.lld \
-        /usr/bin/ld.lld \
-        APPFORGE_EXPO_ARM64_NDK_LLD_WRAPPER_V2
+      # R45: R44 verified a byte-identical guest-native LLD executable and
+      # link, but the NDK wrapper still chained through the older host-tool.
+      # Use the already authenticated guest ELF directly from this NDK entry;
+      # never change the shared loader, guest /usr, other tools or user files.
+      r45_signed_lld="$ROOT/ndk-host-v7/sysroot/usr/lib/llvm-18/bin/lld"
+      r45_guest_lld=/usr/lib/llvm-18/bin/lld
+      r45_guest_link=/usr/lib/llvm-18/bin/ld.lld
+      r45_mode="$ROOT/ndk-host-v7/lld-launch-mode-r44"
+      [ -f "$r45_mode" ] && [ ! -L "$r45_mode" ] &&
+      [ "$(cat "$r45_mode")" = guest-lld-direct ] &&
+      [ -f "$r45_signed_lld" ] && [ ! -L "$r45_signed_lld" ] &&
+      [ -f "$r45_guest_lld" ] && [ ! -L "$r45_guest_lld" ] &&
+      [ -x "$r45_guest_lld" ] &&
+      [ -L "$r45_guest_link" ] &&
+      [ "$(readlink "$r45_guest_link")" = lld ] &&
+      cmp -s "$r45_signed_lld" "$r45_guest_lld" || {
+        echo 'APPFORGE_R45_NDK_LLD_GUEST_IDENTITY=FAILED' >&2; exit 69;
+      }
+      echo 'APPFORGE_R45_NDK_LLD_GUEST_IDENTITY=PASS'
+
+      preserve_ndk_entry ld.lld
+      cat > "$bin/ld.lld" <<'R45_LLD_ENTRY'
+#!/bin/sh
+# APPFORGE_EXPO_ARM64_NDK_LLD_WRAPPER_V2
+# APPFORGE_EXPO_ARM64_NDK_LLD_GUEST_DIRECT_R45
+set -eu
+prefix=/opt/appforge-device/ndk-host-v7
+[ -f "$prefix/lld-launch-mode-r44" ] &&
+[ ! -L "$prefix/lld-launch-mode-r44" ] &&
+[ "$(cat "$prefix/lld-launch-mode-r44")" = guest-lld-direct ] &&
+[ -f /usr/lib/llvm-18/bin/lld ] &&
+[ ! -L /usr/lib/llvm-18/bin/lld ] &&
+[ -L /usr/lib/llvm-18/bin/ld.lld ] &&
+[ "$(readlink /usr/lib/llvm-18/bin/ld.lld)" = lld ] || exit 69
+unset PROROOT_GUEST_EXE CMAKE_ROOT
+LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu:$prefix/sysroot/usr/lib/llvm-18/lib:$prefix/sysroot/usr/lib/aarch64-linux-gnu:$prefix/sysroot/lib/aarch64-linux-gnu"
+export LD_LIBRARY_PATH
+exec /usr/lib/llvm-18/bin/ld.lld "$@"
+R45_LLD_ENTRY
+      chmod 0755 "$bin/ld.lld"
+
+      # R43: -fuse-ld=lld must resolve the signed ARM64 LLD wrapper. The
+      # private NDK bin directory is passed with -B to the genuine Clang
+      # linker-driver; no linker replacement and no false READY.
+      [ -f "$bin/ld.lld" ] && [ ! -L "$bin/ld.lld" ] &&
+      [ -x "$bin/ld.lld" ] || {
+        echo 'APPFORGE_R43_NDK_LLD_WRAPPER_MISSING' >&2; exit 69;
+      }
+      # R46: the original NDK-bin shell entry is rejected by this PRoot
+      # launcher (R45 confirmed errno 22). Record it, but do not mistake
+      # this rejection for a failure of the already SHA-verified guest ELF.
+      # The following C and C++ probes must genuinely link before READY.
+      r45_lld_log="$ROOT/r45-ndk-lld-version.log"
+      r46_sdk_wrapper_ok=0
+      if "$bin/ld.lld" --version >"$r45_lld_log" 2>&1;then
+        [ -s "$r45_lld_log" ] || {
+          echo 'APPFORGE_R45_NDK_LLD_EMPTY_VERSION=FAILED' >&2; exit 69;
+        }
+        echo 'APPFORGE_R45_NDK_LLD_DIRECT_EXECUTION=PASS'
+        echo 'APPFORGE_R43_NDK_LLD_EXECUTION=PASS'
+        r46_sdk_wrapper_ok=1
+      else
+        echo 'APPFORGE_R45_NDK_LLD_DIRECT_EXECUTION=FAILED' >&2
+        if [ -s "$r45_lld_log" ];then
+          sed -n '1,12p' "$r45_lld_log" | cut -c 1-240 | \
+            while IFS= read -r r45_error;do
+              echo "APPFORGE_R45_LLD_STDERR=$r45_error" >&2
+            done
+        else
+          echo 'APPFORGE_R45_LLD_STDERR=EMPTY' >&2
+        fi
+        echo 'APPFORGE_R43_NDK_LLD_EXECUTION=FAILED' >&2
+        echo 'APPFORGE_R46_NDK_BIN_LLD=REJECTED_BY_PROOT' >&2
+      fi
+      # Historical R43 search mode was:
+      # APPFORGE_R43_NDK_LLD_SEARCH_PATH=EXPLICIT_PRIVATE_BIN
+      # The R46 compiler path bypasses that rejected SDK-bin shell entry.
+      r46_guest_version="$ROOT/r46-guest-lld-version.log"
+      if ! LD_LIBRARY_PATH="/usr/lib/aarch64-linux-gnu:/usr/lib/llvm-18/lib:/lib/aarch64-linux-gnu" \
+        /usr/lib/llvm-18/bin/ld.lld --version >"$r46_guest_version" 2>&1;then
+        echo 'APPFORGE_R46_VERIFIED_GUEST_LLD=FAILED' >&2
+        sed -n '1,12p' "$r46_guest_version" | cut -c 1-220 | \
+          while IFS= read -r r46_error;do
+            echo "APPFORGE_R46_LLD_STDERR=$r46_error" >&2
+          done
+        exit 69
+      fi
+      grep -F 'LLD' "$r46_guest_version" >/dev/null || {
+        echo 'APPFORGE_R46_GUEST_LLD_VERSION_INVALID' >&2; exit 69;
+      }
+      grep -F -- '--ld-path=/usr/lib/llvm-18/bin/ld.lld' "$bin/clang" >/dev/null &&
+      grep -F -- '--ld-path=/usr/lib/llvm-18/bin/ld.lld' "$bin/clang++" >/dev/null || {
+        echo 'APPFORGE_R46_CLANG_LINKER_ROUTE_MISSING' >&2; exit 69;
+      }
+      echo 'APPFORGE_R46_VERIFIED_GUEST_LLD=PASS'
+      echo 'APPFORGE_R46_CLANG_LINKER_ROUTE=SIGNED_GUEST_ABSOLUTE_PATH'
 
       write_tool_wrapper \
         llvm-ar \
-        /usr/bin/llvm-ar \
+        $ndk_host_bin/llvm-ar \
         APPFORGE_EXPO_ARM64_NDK_AR_WRAPPER_V2
 
       write_tool_wrapper \
         llvm-ranlib \
-        /usr/bin/llvm-ranlib \
+        $ndk_host_bin/llvm-ranlib \
         APPFORGE_EXPO_ARM64_NDK_RANLIB_WRAPPER_V2
 
       write_tool_wrapper \
         llvm-strip \
-        /usr/bin/llvm-strip \
+        $ndk_host_bin/llvm-strip \
         APPFORGE_EXPO_ARM64_NDK_STRIP_WRAPPER_V2
 
       write_tool_wrapper \
         llvm-nm \
-        /usr/bin/llvm-nm \
+        $ndk_host_bin/llvm-nm \
         APPFORGE_EXPO_ARM64_NDK_NM_WRAPPER_V2
 
       write_tool_wrapper \
         llvm-objcopy \
-        /usr/bin/llvm-objcopy \
+        $ndk_host_bin/llvm-objcopy \
         APPFORGE_EXPO_ARM64_NDK_OBJCOPY_WRAPPER_V2
 
       write_tool_wrapper \
         llvm-readelf \
-        /usr/bin/llvm-readelf \
+        $ndk_host_bin/llvm-readelf \
         APPFORGE_EXPO_ARM64_NDK_READELF_WRAPPER_V2
 
       grep -q \
@@ -755,6 +924,37 @@ EOF
 
       "$bin/clang" --version
       "$bin/clang++" --version
+
+      # R55: run -### only after a fixed AppForge-owned probe has failed.
+      # This emits diagnostics, never reruns a link or a user project.
+      r55_link_failure() {
+        r55_phase="$1"
+        r55_driver="$2"
+        shift 2
+        echo "APPFORGE_R55_FAILED_STAGE=$r55_phase" >&2
+        r55_file_state() {
+          r55_label="$1"
+          r55_path="$2"
+          if [ -L "$r55_path" ]; then r55_state=SYMLINK_REJECTED
+          elif [ -f "$r55_path" ]; then r55_state=PRESENT
+          else r55_state=ABSENT
+          fi
+          printf 'APPFORGE_R55_%s=%s\n' "$r55_label" "$r55_state" >&2
+        }
+        r55_lib="$host/sysroot/usr/lib/aarch64-linux-android/26"
+        r55_file_state API26_HEADER "$host/sysroot/usr/include/unistd.h"
+        r55_file_state API26_CRTBEGIN "$r55_lib/crtbegin_so.o"
+        r55_file_state API26_CRTEND "$r55_lib/crtend_so.o"
+        r55_file_state API26_LIBC "$r55_lib/libc.so"
+        r55_file_state API26_LIBDL "$r55_lib/libdl.so"
+        # -### is Clang's print-only driver mode. Bound fixed-probe output.
+        "$r55_driver" -### "$@" 2>&1 |
+          grep -E 'ld[.]lld|--sysroot|crtbegin|crtend|-L' |
+          tail -n 5 | cut -c 1-500 |
+          while IFS= read -r r55_line; do
+            printf 'APPFORGE_R55_CLANG_DRIVER=%s\n' "$r55_line" >&2
+          done
+      }
 
       probe="$ROOT/expo-ndk-arm64-probe-v2"
 
@@ -767,12 +967,22 @@ int main(void) {
 }
 EOF
 
-      "$bin/clang" \
+      [ -s "$probe/probe.c" ] || {
+        echo "APPFORGE_NDK_C_PROBE_SOURCE_MISSING" >&2;exit 67;
+      }
+      if ! "$bin/clang" \
         --target=aarch64-linux-android24 \
         --sysroot="$host/sysroot" \
         -fuse-ld=lld \
         "$probe/probe.c" \
-        -o "$probe/probe"
+        -o "$probe/probe";then
+        r55_link_failure C_API24 "$bin/clang" \
+          --target=aarch64-linux-android24 --sysroot="$host/sysroot" \
+          -fuse-ld=lld "$probe/probe.c" -o "$probe/probe"
+        echo 'APPFORGE_R43_NDK_C_LLD_LINK=FAILED' >&2; exit 69
+      fi
+      echo 'APPFORGE_R43_NDK_C_LLD_LINK=PASS'
+      echo 'APPFORGE_R46_REAL_C_GUEST_LLD_LINK=PASS'
 
       file "$probe/probe" |
         grep -Eqi 'aarch64|ARM aarch64' || {
@@ -793,14 +1003,30 @@ int main() {
 }
 EOF
 
-      "$bin/clang++" \
+      [ -s "$probe/probe.cpp" ] && [ ! -L "$probe/probe.cpp" ] || {
+        echo 'APPFORGE_R47_CPP_SOURCE_MISSING=FAILED' >&2; exit 69;
+      }
+      echo 'APPFORGE_R47_CPP_SOURCE_PRESENT=PASS'
+      r47_cpp_log="$ROOT/r47-guest-clangxx-compile.log"
+      if ! "$bin/clang++" \
         --target=aarch64-linux-android24 \
         --sysroot="$host/sysroot" \
         -stdlib=libc++ \
         -fPIC \
         -c \
         "$probe/probe.cpp" \
-        -o "$probe/probe.o"
+        -o "$probe/probe.o" >"$r47_cpp_log" 2>&1;then
+        echo 'APPFORGE_R47_GUEST_CPP_COMPILE=FAILED' >&2
+        sed -n '1,16p' "$r47_cpp_log" | cut -c 1-220 | \
+          while IFS= read -r r47_error;do
+            echo "APPFORGE_R47_CPP_STDERR=$r47_error" >&2
+          done
+        exit 69
+      fi
+      test -s "$probe/probe.o" || {
+        echo 'APPFORGE_R47_CPP_OBJECT_MISSING=FAILED' >&2;exit 69;
+      }
+      echo 'APPFORGE_R47_GUEST_CPP_COMPILE=PASS'
 
       file "$probe/probe.o" |
         grep -Eqi 'aarch64|ARM aarch64' || {
@@ -809,14 +1035,32 @@ EOF
           exit 68
         }
 
-      "$bin/llvm-ar" \
+      r47_ar_log="$ROOT/r47-llvm-ar.log"
+      if ! "$bin/llvm-ar" \
         rcs \
         "$probe/libappforge-probe.a" \
-        "$probe/probe.o"
+        "$probe/probe.o" >"$r47_ar_log" 2>&1;then
+        echo 'APPFORGE_R47_LLVM_AR=FAILED' >&2
+        sed -n '1,16p' "$r47_ar_log" | cut -c 1-220 | \
+          while IFS= read -r r47_error;do
+            echo "APPFORGE_R47_AR_STDERR=$r47_error" >&2
+          done
+        exit 69
+      fi
+      test -s "$probe/libappforge-probe.a" || {
+        echo 'APPFORGE_R47_LLVM_AR_EMPTY=FAILED' >&2;exit 69;
+      }
+      echo 'APPFORGE_R47_LLVM_AR=PASS'
+      echo 'APPFORGE_R48_GUEST_AR_REAL_OBJECT_ARCHIVE=PASS'
 
-      test -s "$probe/libappforge-probe.a"
-
-      "$bin/clang++"         --target=aarch64-linux-android24         --sysroot="$host/sysroot"         -stdlib=libc++         -fuse-ld=lld         "$probe/probe.cpp"         -o "$probe/probe-cpp"
+      if ! "$bin/clang++"         --target=aarch64-linux-android24         --sysroot="$host/sysroot"         -stdlib=libc++         -fuse-ld=lld         "$probe/probe.cpp"         -o "$probe/probe-cpp";then
+        r55_link_failure CPP_API24 "$bin/clang++" \
+          --target=aarch64-linux-android24 --sysroot="$host/sysroot" \
+          -stdlib=libc++ -fuse-ld=lld "$probe/probe.cpp" -o "$probe/probe-cpp"
+        echo 'APPFORGE_R43_NDK_CPP_LLD_LINK=FAILED' >&2; exit 69
+      fi
+      echo 'APPFORGE_R43_NDK_CPP_LLD_LINK=PASS'
+      echo 'APPFORGE_R46_REAL_CPP_GUEST_LLD_LINK=PASS'
 
       file "$probe/probe-cpp" |
         grep -Eqi 'aarch64|ARM aarch64' || {
@@ -827,6 +1071,119 @@ EOF
 
       echo "APPFORGE_EXPO_ARM64_NDK_COMPILER_RT_LINK=PASS"
       echo "APPFORGE_EXPO_ARM64_NDK_CXX_LINK=PASS"
+
+      # R50: do not change the proven C/C++ toolchain or its wrappers.
+      # Rust/Cargo needs a dedicated, pinned API26 target and Android sysroot
+      # because the replaced Ubuntu host Clang does not automatically locate
+      # the NDK's bionic headers / API26 CRT and libraries.
+      r50_sysroot="$host/sysroot"
+      r50_rust_linker="$bin/appforge-rust-aarch64-linux-android26-clang"
+      if [ ! -f "$r50_sysroot/usr/include/unistd.h" ];then
+        echo 'APPFORGE_R50_SYSROOT_UNISTD=NOT_FOUND' >&2
+        exit 69
+      fi
+      if [ ! -d "$r50_sysroot/usr/lib/aarch64-linux-android/26" ];then
+        echo 'APPFORGE_R50_SYSROOT_API26_LIBS=NOT_FOUND' >&2
+        exit 69
+      fi
+      [ ! -L "$r50_sysroot" ] && [ -x "$bin/clang" ] || {
+        echo 'APPFORGE_R50_SYSROOT_OR_CLANG_UNSAFE' >&2;exit 69;
+      }
+      if [ -e "$r50_rust_linker" ] || [ -L "$r50_rust_linker" ];then
+        # This is a staged, privately installed toolchain; never overwrite
+        # an unexpected pre-existing linker file.
+        grep -Fx '# APPFORGE_R50_RUST_API26_SYSROOT_WRAPPER_V1' \
+          "$r50_rust_linker" >/dev/null 2>&1 &&
+        [ ! -L "$r50_rust_linker" ] || {
+          echo 'APPFORGE_R50_RUST_LINKER_COLLISION' >&2;exit 69;
+        }
+      fi
+      cat > "$r50_rust_linker" <<EOF
+#!/bin/sh
+# APPFORGE_R50_RUST_API26_SYSROOT_WRAPPER_V1
+set -eu
+exec "$bin/clang" --target=aarch64-linux-android26 --sysroot="$r50_sysroot" "\$@"
+EOF
+      chmod 0755 "$r50_rust_linker"
+      "$r50_rust_linker" --version >/dev/null 2>&1 || {
+        echo 'APPFORGE_R50_RUST_LINKER_VERSION=FAILED' >&2;exit 69;
+      }
+      echo 'APPFORGE_R50_SYSROOT_UNISTD=PASS'
+      echo 'APPFORGE_R50_SYSROOT_API26_LIBS=PASS'
+      echo 'APPFORGE_R50_RUST_LINKER_WRAPPER=PASS'
+      # R51: Ubuntu Clang respects --sysroot for headers but its generic
+      # Android driver does not infer the API26 CRT and Bionic library paths.
+      # Keep R50's verified launcher unchanged; chain through it from a
+      # private, byte-verified Rust-specific API26 linker only.
+      r51_api26_dir="$r50_sysroot/usr/lib/aarch64-linux-android/26"
+      r51_common_dir="$r50_sysroot/usr/lib/aarch64-linux-android"
+      for r51_obj in crtbegin_so.o crtend_so.o libc.so libdl.so;do
+        [ -f "$r51_api26_dir/$r51_obj" ] &&
+        [ ! -L "$r51_api26_dir/$r51_obj" ] || {
+          echo "APPFORGE_R51_CRT_MISSING=$r51_obj" >&2;exit 69;
+        }
+      done
+      [ -d "$r51_api26_dir" ] && [ ! -L "$r51_api26_dir" ] &&
+      [ -d "$r51_common_dir" ] && [ ! -L "$r51_common_dir" ] &&
+      [ -f "$r50_rust_linker" ] && [ ! -L "$r50_rust_linker" ] || {
+        echo 'APPFORGE_R51_API26_PATH_INVALID' >&2;exit 69;
+      }
+      r51_rust_linker="$bin/appforge-rust-api26-crt-linker-r51"
+      if [ -e "$r51_rust_linker" ] || [ -L "$r51_rust_linker" ];then
+        [ ! -L "$r51_rust_linker" ] &&
+        grep -Fx '# APPFORGE_R51_RUST_API26_CRT_WRAPPER_V1' \
+          "$r51_rust_linker" >/dev/null 2>&1 || {
+            echo 'APPFORGE_R51_LINKER_COLLISION' >&2;exit 69;
+          }
+      fi
+      cat > "$r51_rust_linker" <<EOF
+#!/bin/sh
+# APPFORGE_R51_RUST_API26_CRT_WRAPPER_V1
+set -eu
+exec "$r50_rust_linker" -B"$r51_api26_dir" -L"$r51_api26_dir" -L"$r51_common_dir" "\$@"
+EOF
+      chmod 0755 "$r51_rust_linker"
+      "$r51_rust_linker" --version >/dev/null 2>&1 || {
+        echo 'APPFORGE_R51_RUST_LINKER_VERSION=FAILED' >&2;exit 69;
+      }
+      echo 'APPFORGE_R51_CRT_LIBS=PASS'
+      echo 'APPFORGE_R51_API26_LINKER_ROUTE=VERIFIED'
+      # R52: only Rust JNI shared-library links receive absolute CRT files.
+      # Keep R50/R51, guest C++, LLD, LLVM-AR and existing verified packages intact.
+      r52_crt_begin="$r51_api26_dir/crtbegin_so.o"
+      r52_crt_end="$r51_api26_dir/crtend_so.o"
+      r52_linker="$bin/appforge-rust-api26-crt-absolute-r52"
+      for r52_path in "$r52_crt_begin" "$r52_crt_end" "$r51_api26_dir/libc.so" "$r51_api26_dir/libdl.so";do
+        [ -f "$r52_path" ] && [ ! -L "$r52_path" ] || {
+          echo "APPFORGE_R52_CRT_PATH_REJECTED=$r52_path" >&2; exit 69;
+        }
+      done
+      [ -f "$r51_rust_linker" ] && [ -x "$r51_rust_linker" ] && [ ! -L "$r51_rust_linker" ] || {
+        echo 'APPFORGE_R52_PARENT_LINKER_REJECTED' >&2;exit 69;
+      }
+      if [ -e "$r52_linker" ] || [ -L "$r52_linker" ];then
+        [ -f "$r52_linker" ] && [ ! -L "$r52_linker" ] &&
+        grep -Fx '# APPFORGE_R52_API26_CRT_ABSOLUTE_V1' "$r52_linker" >/dev/null 2>&1 || {
+          echo 'APPFORGE_R52_LINKER_COLLISION' >&2;exit 69;
+        }
+      fi
+      cat > "$r52_linker" <<EOF
+#!/bin/sh
+# APPFORGE_R52_API26_CRT_ABSOLUTE_V1
+set -eu
+case " \$* " in
+  *" -shared "*)
+    exec "$r51_rust_linker" -nostartfiles -Wl,-L,"$r51_api26_dir" -Wl,-L,"$r51_common_dir" -Xlinker "$r52_crt_begin" "\$@" -Xlinker "$r52_crt_end"
+    ;;
+  *) exec "$r51_rust_linker" "\$@" ;;
+esac
+EOF
+      chmod 0755 "$r52_linker"
+      "$r52_linker" --version >/dev/null 2>&1 || {
+        echo 'APPFORGE_R52_LINKER_VERSION=FAILED' >&2;exit 69;
+      }
+      echo 'APPFORGE_R52_CRT_ABSOLUTE_PATHS=VERIFIED'
+      echo 'APPFORGE_R52_LINKER_WRAPPER=PASS'
 
       touch "$EXPO_ARM64_NDK_MARKER"
 
@@ -892,6 +1249,25 @@ ensure_android_commandline_tools() {
   echo "APPFORGE_ANDROID_CMDLINE_TOOLS_READY"
 }
 
+# Official x86_64 host payloads. ARM64 continues to use its verified Ubuntu host adapters.
+ensure_expo_x64_host() {
+  { [ "$ENGINE" = expo ] || [ "$ENGINE" = rust-native ]; } || return 0
+  case "$HOST_ARCH" in x86_64|amd64) ;; *) return 0 ;; esac
+  ndk_zip="$ROOT/cache/android-ndk-r27b-linux.zip"
+  download_sha256 "https://dl.google.com/android/repository/android-ndk-r27b-linux.zip" "33e16af1a6bbabe12cad54b2117085c07eab7e4fa67cdd831805f0e94fd826c1" "$ndk_zip"
+  mkdir -p "$ROOT/ndk-x64-stage" "$SDK/ndk"
+  unzip -q -o "$ndk_zip" -d "$ROOT/ndk-x64-stage"
+  test -f "$ROOT/ndk-x64-stage/android-ndk-r27b/source.properties"
+  [ ! -e "$SDK/ndk/$EXPO_ARM64_NDK_VERSION" ] || mv "$SDK/ndk/$EXPO_ARM64_NDK_VERSION" "$ROOT/ndk-x64-preserved-$(date +%s)"
+  mv "$ROOT/ndk-x64-stage/android-ndk-r27b" "$SDK/ndk/$EXPO_ARM64_NDK_VERSION"
+  cmake_zip="$ROOT/cache/cmake-3.22.1-linux.zip"
+  download_sha256 "https://dl.google.com/android/repository/cmake-3.22.1-linux.zip" "9196644852a978012caf7a4067ba1898debf6cc204c3341562771e31080d6869" "$cmake_zip"
+  mkdir -p "$SDK/cmake/3.22.1"
+  unzip -q -o "$cmake_zip" -d "$SDK/cmake/3.22.1"
+  "$SDK/cmake/3.22.1/bin/cmake" --version
+  "$SDK/ndk/$EXPO_ARM64_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" --version
+}
+
 #
 # APPFORGE_EXPO_SDK36_VIEW_V1
 #
@@ -901,7 +1277,7 @@ ensure_android_commandline_tools() {
 # stable android-36 plus the already verified toolchain components.
 #
 ensure_expo_sdk36_view() {
-  [ "$ENGINE" = "expo" ] || return 0
+  { [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ]; } || return 0
 
   EXPO_SDK="$ROOT/expo-sdk-36"
   EXPO_SDK_STAGE="$ROOT/expo-sdk-36-stage-$$"
@@ -1031,11 +1407,78 @@ accept_android_sdk_license() {
 
   echo "APPFORGE_ANDROID_SDK_LICENSE_ACCEPT_START"
 
-  yes |
-    "$SDK/cmdline-tools/latest/bin/sdkmanager" \
+  SDK_JAVA_OPTIONS="${JAVA_TOOL_OPTIONS:-}"
+  if [ -n "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ] && [ -f /workspace/runtime/jvm-telemetry/network-byte-agent.jar ]; then
+    SDK_JAVA_OPTIONS="$SDK_JAVA_OPTIONS -javaagent:/workspace/runtime/jvm-telemetry/network-byte-agent.jar"
+  fi
+  # The SDK Manager may report all licenses accepted after failing
+  # to retrieve remote manifests. Require the actual license file.
+  if ! yes |
+    JAVA_TOOL_OPTIONS="$SDK_JAVA_OPTIONS" "$SDK/cmdline-tools/latest/bin/sdkmanager" \
       --sdk_root="$SDK" \
-      "platforms;android-37.0"
+      --licenses --verbose; then
+    echo "APPFORGE_ANDROID_SDK_LICENSE_PRIMARY_COMMAND_FAILED" >&2
+  fi
 
+  if [ ! -s "$SDK/licenses/android-sdk-license" ]; then
+    echo "APPFORGE_ANDROID_SDK_LICENSE_PRIMARY_FILE_MISSING" >&2
+
+    # Retry with the existing JDK certificate store, preserving TLS
+    # verification and explicit application-level license consent.
+    if [ -s "$JAVA_HOME/lib/security/cacerts" ]; then
+      FALLBACK_JAVA_OPTIONS="-Djavax.net.ssl.trustStore=$JAVA_HOME/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+
+      if [ -n "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ] &&
+         [ -f /workspace/runtime/jvm-telemetry/network-byte-agent.jar ]; then
+        FALLBACK_JAVA_OPTIONS="$FALLBACK_JAVA_OPTIONS -javaagent:/workspace/runtime/jvm-telemetry/network-byte-agent.jar"
+      fi
+
+      echo "APPFORGE_ANDROID_SDK_LICENSE_JDK_CACERTS_RETRY"
+
+      if ! yes |
+        JAVA_TOOL_OPTIONS="$FALLBACK_JAVA_OPTIONS" "$SDK/cmdline-tools/latest/bin/sdkmanager" \
+          --sdk_root="$SDK" \
+          --licenses --verbose; then
+        echo "APPFORGE_ANDROID_SDK_LICENSE_FALLBACK_COMMAND_FAILED" >&2
+      fi
+    else
+      echo "APPFORGE_ANDROID_SDK_JDK_CACERTS_MISSING" >&2
+    fi
+  fi
+
+  if [ ! -s "$SDK/licenses/android-sdk-license" ]; then
+    # sdkmanager --licenses can report success when Google's XML is unreachable.
+    # Only the user's explicit in-app terms checkbox authorizes an offline record.
+    [ "$SDK_LICENSE_ACCEPTED" = "1" ] || {
+      echo "APPFORGE_ANDROID_SDK_LICENSE_EXPLICIT_CONSENT_REQUIRED" >&2
+      exit 43
+    }
+    # The SDK command-line tools are an exact, pinned Google archive; reject a
+    # substituted SDK or writable/symlinked license directory. No network bypass.
+    cmd_archive="$ROOT/cache/commandlinetools-linux-${CMDLINE_TOOLS_VERSION}_latest.zip"
+    [ -f "$cmd_archive" ] && [ ! -L "$cmd_archive" ] &&
+      printf '%s  %s\n' "$CMDLINE_TOOLS_SHA256" "$cmd_archive" | sha256sum -c - >/dev/null || {
+      echo "APPFORGE_ANDROID_SDK_PINNED_COMMANDLINE_TOOLS_UNVERIFIED" >&2
+      exit 44
+    }
+    [ ! -L "$SDK/licenses" ] && [ ! -L "$SDK/licenses/android-sdk-license" ] || {
+      echo "APPFORGE_ANDROID_SDK_LICENSE_PATH_UNTRUSTED" >&2
+      exit 44
+    }
+    mkdir -p "$SDK/licenses"
+    # Android's android-sdk-license known SHA-1 record; this is NOT a signature
+    # or substitute for explicit acceptance of the Android SDK terms.
+    known_license='24333f8a63b6825ea9c5514f83c2829b004d1fee'
+    candidate="$SDK/licenses/.appforge-sdk-license.$$"
+    [ ! -e "$candidate" ] && [ ! -L "$candidate" ] || exit 44
+    printf '%s\n' "$known_license" > "$candidate"
+    printf '%s\n' "$known_license" | cmp -s - "$candidate" || {
+      rm -f -- "$candidate";exit 44
+    }
+    mv -T -- "$candidate" "$SDK/licenses/android-sdk-license"
+    [ "$(cat "$SDK/licenses/android-sdk-license")" = "$known_license" ] || exit 44
+    echo "APPFORGE_ANDROID_SDK_OFFLINE_LICENSE_PINNED=PASS"
+  fi
   test -s \
     "$SDK/licenses/android-sdk-license" || {
       echo "APPFORGE_ANDROID_SDK_LICENSE_FILE_MISSING" >&2
@@ -1117,6 +1560,16 @@ EOF
   echo "APPFORGE_EXPO_ANDROID_36_PLATFORM=PASS"
 fi
 
+if [ "$REUSE_ANDROID_CORE" = 1 ]; then
+  case "$ENGINE" in python-android|expo|rust-native) ;; *) echo 'Core reuse is only valid for child modules'; exit 55;;esac
+  test -x "$JAVA_HOME/bin/java" && test -x "$JAVA_HOME/bin/javac"
+  test -x "$ROOT/gradle-9.3.1/bin/gradle" && test -x "$ROOT/gradle-8.14.3/bin/gradle"
+  test -s "$SDK/platforms/android-37.0/android.jar"
+  test -x "$SDK/build-tools/36.0.0/aapt2"
+  test -s "$SDK/platforms/android-37.0/package.xml"
+  test -f "$SDK_LICENSE_MARKER"
+  echo 'APPFORGE_ANDROID_CORE_REUSED_WITHOUT_REINSTALL'
+else
 PLATFORM_ZIP="$ROOT/cache/platform-37.0_r02.zip"
 download_sha1 \
   "https://dl.google.com/android/repository/platform-37.0_r02.zip" \
@@ -1132,13 +1585,10 @@ PLATFORM_DIR="$(dirname "$PLATFORM_JAR")"
 cp -a "$PLATFORM_DIR"/. "$SDK/platforms/android-37.0/"
 test -f "$SDK/platforms/android-37.0/android.jar"
 
-if [ ! -f "$SDK/platforms/android-37.0/source.properties" ]; then
-  cat > "$SDK/platforms/android-37.0/source.properties" <<'EOF'
-Pkg.Desc=Android SDK Platform 37
-Pkg.Revision=2
-AndroidVersion.ApiLevel=37
-EOF
-fi
+# A missing or different source-properties file is corrupt input, not a reason to invent an API.
+grep -qx 'AndroidVersion.ApiLevel=37.0' "$SDK/platforms/android-37.0/source.properties"
+grep -qx 'Pkg.Revision=2' "$SDK/platforms/android-37.0/source.properties"
+
 
 OFFICIAL_BT="$ROOT/cache/build-tools_r36_linux.zip"
 download_sha1 \
@@ -1234,8 +1684,12 @@ EOF
 
 ensure_jdk
 
+fi
+
 if [ "$ENGINE" = "expo" ]; then
   ensure_node_22
+fi
+if [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ];then
   ensure_expo_arm64_cmake_host
 fi
 
@@ -1244,8 +1698,11 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 accept_android_sdk_license
 
-if [ "$ENGINE" = "expo" ]; then
+if [ "$ENGINE" = "expo" ] || [ "$ENGINE" = rust-native ];then
   ensure_expo_arm64_ndk_host
+  ensure_expo_x64_host
+fi
+if [ "$ENGINE" = "expo" ];then
   ensure_expo_sdk36_view
 fi
 
@@ -1257,10 +1714,19 @@ if [ -n "${PLATFORM_DIR:-}" ] &&
   cp -a     "$PLATFORM_DIR"/.     "$SDK/platforms/android-37.0/"
 fi
 
+# The pinned archive has no package.xml, and legacy SDK scanning cannot parse API 37.0.
+# Install reviewed declarative metadata matching that exact archive; this downloads no payload
+# and does not create a license acceptance marker.
+test -s "$SDK/licenses/android-sdk-license"
+test -s /workspace/runtime/platform-37.0-package.xml
+cp /workspace/runtime/platform-37.0-package.xml "$SDK/platforms/android-37.0/package.xml"
+
 test -f   "$SDK/platforms/android-37.0/android.jar"
 
-ensure_gradle "9.3.1"
-ensure_gradle "8.14.3"
+if [ "$REUSE_ANDROID_CORE" != 1 ]; then
+  ensure_gradle "9.3.1"
+  ensure_gradle "8.14.3"
+fi
 
 
 echo "APPFORGE_AAPT2_HOST_SMOKE_START"
@@ -1344,6 +1810,9 @@ case "$ENGINE" in
     ;;
 esac
 
+if [ "$ENGINE" = rust-native ];then
+ /usr/bin/python3.12 -I -S /workspace/runtime/rust-android.py --probe-linker --sdk "$SDK"
+fi
 touch "$READY"
 rm -rf "$ROOT/platform-unpack" "$ROOT/buildtools-official" "$ROOT/buildtools-arm64"
 echo "APPFORGE_DEVICE_TOOLCHAIN_READY"

@@ -59,3 +59,7 @@ gha-creds-*.json
 *.swp
 *.save
 *~
+
+# Local Android module outputs and Kotlin compiler state
+/android-app/*/build/
+/android-app/.kotlin/

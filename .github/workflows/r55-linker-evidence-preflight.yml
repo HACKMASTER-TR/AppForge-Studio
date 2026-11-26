@@ -1,0 +1,40 @@
+name: AppForge R55 Linker Failure Evidence Preflight (NO APK)
+on:
+  push:
+    branches:
+      - codex/r55-rust-linker-evidence-20261123
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  r55-syntax-and-regression:
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify R55 scope and original signed build identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = codex/r55-rust-linker-evidence-20261123
+          python3 quality/tools/verify-r31-original-identity.py
+          sh -n android-app/app/src/main/assets/device-build/install-toolchain.sh
+          python3 -m py_compile android-app/app/src/main/assets/device-build/rust-android.py
+          python3 scripts/generate-second-brain-snapshot.py --check
+          echo APPFORGE_R55_SOURCE_PREFLIGHT=PASS
+      - name: Run R53-R55 linker diagnostics regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tests/test_r53_rust_link_trace.py
+          python3 tests/test_r54_shell_capture_tail.py
+          python3 tests/test_r55_linker_trace.py
+          echo APPFORGE_R55_DIAGNOSTICS_TESTS=PASS
+      - name: No signing, publishing or APK installation
+        run: |
+          echo APPFORGE_R55_NO_APK_BUILD=YES
+          echo APPFORGE_R55_NO_INSTALL=YES
+          echo APPFORGE_R55_NO_DATA_CLEAR=YES

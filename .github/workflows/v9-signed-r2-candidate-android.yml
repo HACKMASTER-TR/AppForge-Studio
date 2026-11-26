@@ -1,0 +1,124 @@
+# V9 isolated signed-manifest canary compilation and regression. Never deploy/sign/build an APK.
+name: V9 Signed R2 Candidate Android Canary (No Deploy)
+'on':
+  push:
+    branches:
+      - feat/v9-global-package-distribution-20261027
+    paths:
+      - android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt
+      - android-app/app/src/test/java/com/appforge/studio/build/V9SignedR2CandidateDownloadTest.kt
+      - .github/workflows/v9-signed-r2-candidate-android.yml
+permissions:
+  contents: read
+concurrency:
+  group: v9-signed-r2-canary-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  signed-r2-canary:
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/v9-global-package-distribution-20261027' &&
+      github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout read-only branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Enforce exact commit scope and disabled production
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,pathlib,subprocess,hashlib
+          def git(*a): return subprocess.check_output(['git',*a],text=True).strip()
+          assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA'],'HEAD_DRIFT'
+          assert git('rev-parse','HEAD^')=='309a89ad1d3414f2c97abbaeecba599f8afc66bb','PARENT_DRIFT'
+          got=set(git('diff','--name-only','HEAD^','HEAD').splitlines())
+          expected={
+            '.github/workflows/v9-signed-r2-candidate-android.yml',
+            'android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt',
+            'android-app/app/src/test/java/com/appforge/studio/build/V9SignedR2CandidateDownloadTest.kt',
+          }
+          assert got==expected,('FILE_SCOPE_DRIFT',got^expected)
+          pins={
+            'android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt':'55d4ceb7528fab723542336af0b8c4ef11590adb',
+            'android-app/app/src/main/java/com/appforge/studio/security/V9ReleaseSignatureVerifier.java':'5c69602b89f16c402b9f3c0dc6327009cfafd9da',
+            'android-app/app/src/main/java/com/appforge/studio/build/VerifiedModuleDownload.kt':'c59e1dc23b415bf8a03acf08176e23df72c49b29',
+          }
+          for p,expected_blob in pins.items():assert git('rev-parse','HEAD:'+p)==expected_blob,('PIN_DRIFT',p)
+          policy=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9ReleaseCandidatePolicy.kt').read_text()
+          canary=pathlib.Path('android-app/app/src/main/java/com/appforge/studio/build/V9SignedR2CandidateDownload.kt').read_text()
+          assert 'const val PRODUCTION_DISTRIBUTION_ENABLED = false' in policy
+          assert 'V9ReleaseCandidatePolicy.verify(manifest, signature, persistedFloor)' in canary
+          assert 'userApproved' in canary and 'DownloadNetwork.open(URL(plan.url))' in canary
+          assert 'V9ReleaseSignatureVerifier.verifyObject(it, plan.bytes, plan.sha256)' in canary
+          assert git('status','--porcelain')=='','DIRTY_WORKTREE'
+          print('V9_CANARY_SOURCE_GUARD=PASS;FILES=3;PRODUCTION_DISABLED=YES')
+          PY
+      - name: Configure Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check original R2 Worker behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test cloudflare/package-distribution/worker.test.mjs
+          echo 'V9_R2_WORKER_REGRESSION=PASS'
+      - name: Configure JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Configure Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install pinned Android SDK 37 NDK and CMake
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --channel=3 'platforms;android-37.0' 'ndk;28.2.13676358' 'cmake;3.22.1' > "$RUNNER_TEMP/v9-sdk.log" 2>&1 || { tail -100 "$RUNNER_TEMP/v9-sdk.log"; exit 1; }
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+          test -d "$ANDROID_HOME/ndk/28.2.13676358"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Compile app and execute 27 isolated JUnit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:testDebugUnitTest \
+            --tests com.appforge.studio.build.V9SignedR2CandidateDownloadTest \
+            --tests com.appforge.studio.security.V9ReleaseTrustDeepUnitTest \
+            --no-daemon --no-parallel --no-configuration-cache --console=plain \
+            > "$RUNNER_TEMP/v9-canary-junit.log" 2>&1 || {
+              tail -140 "$RUNNER_TEMP/v9-canary-junit.log"; exit 1
+            }
+          grep -q 'BUILD SUCCESSFUL' "$RUNNER_TEMP/v9-canary-junit.log"
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root=Path('android-app/app/build/test-results/testDebugUnitTest')
+          expected={'com.appforge.studio.build.V9SignedR2CandidateDownloadTest':10,
+                    'com.appforge.studio.security.V9ReleaseTrustDeepUnitTest':17}
+          for classname,count in expected.items():
+              f=root/('TEST-'+classname+'.xml')
+              assert f.is_file(),('NO_TEST_REPORT',classname)
+              x=ET.parse(f).getroot()
+              assert int(x.attrib['tests'])==count,(classname,'TEST_COUNT_DRIFT',x.attrib)
+              assert all(int(x.attrib.get(k,0))==0 for k in ('errors','failures','skipped')),(classname,'TEST_FAILED',x.attrib)
+          print('V9_CANARY_ANDROID_JUNIT=PASS;TESTS=27;SKIPPED=0')
+          PY
+      - name: Assert no APK signing deployment or repo changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! find android-app -type f \( -name '*.apk' -o -name '*.aab' \) -print -quit | grep -q .
+          test -z "$(git status --porcelain)"
+          echo 'V9_SIGNED_R2_CANARY_CI=PASS;APK=NO;SIGNING=NO;DEPLOY=NO;MAIN=UNCHANGED;PRODUCTION=DISABLED'

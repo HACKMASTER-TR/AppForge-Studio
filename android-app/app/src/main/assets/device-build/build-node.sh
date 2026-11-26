@@ -1,5 +1,7 @@
 #!/bin/sh
 set -eu
+export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json
+if [ -f /workspace/runtime/module-download-telemetry.sh ]; then . /workspace/runtime/module-download-telemetry.sh; fi
 
 cd /workspace/source
 

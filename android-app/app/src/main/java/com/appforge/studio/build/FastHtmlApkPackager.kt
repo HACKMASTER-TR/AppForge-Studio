@@ -35,7 +35,8 @@ internal object FastHtmlApkPackager {
 
     fun build(
         context: Context, draft: ProjectDraft, workspace: File,
-        uploadSigner: ApkSigner.SignerConfig? = null
+        uploadSigner: ApkSigner.SignerConfig? = null,
+        stages: BuildStageTimings = BuildStageTimings()
     ): File {
         FastHtmlApkPolicy.requireSupported(draft)
         check(workspace.mkdirs() || workspace.isDirectory)
@@ -43,43 +44,60 @@ internal object FastHtmlApkPackager {
         val unsigned = File(workspace, "html-unsigned.apk")
         val signed = File(workspace, "html-output.apk")
         val htmlProject: Pair<String, Map<String, ByteArray>>? =
-            if (draft.sourceMode == SourceMode.LOCAL) readHtmlProject(draft) else null
-        try {
-            context.assets.open(ASSET).use { input ->
-                FileOutputStream(template).use { output ->
-                    copyLimited(input, output, MAX_TEMPLATE_BYTES)
-                }
+            stages.measure(BuildStageTimings.Stage.ASSETS) {
+                if (draft.sourceMode == SourceMode.LOCAL) readHtmlProject(draft) else null
             }
-            check(template.length() in 1024..MAX_TEMPLATE_BYTES) { "Gömülü HTML APK şablonu eksik veya geçersiz." }
-            val config = JSONObject()
-                .put("mode", draft.sourceMode.name)
-                .put("url", if (draft.sourceMode == SourceMode.URL) draft.webUrl else "")
-                .put("entry", htmlProject?.first ?: "")
-                .toString().toByteArray(Charsets.UTF_8)
+        try {
+            stages.measure(BuildStageTimings.Stage.TEMPLATE) {
+                context.assets.open(ASSET).use { input ->
+                    FileOutputStream(template).use { output ->
+                        copyLimited(input, output, MAX_TEMPLATE_BYTES)
+                    }
+                }
+                check(template.length() in 1024..MAX_TEMPLATE_BYTES) { "Gömülü HTML APK şablonu eksik veya geçersiz." }
+                TemplateIntegrity.requireAsset(context, ASSET, template.readBytes())
+            }
+            val icon = FastHtmlIcon.read(context, draft)
+            val config = runtimeConfig(draft, htmlProject?.first ?: "")
             val additions = mutableMapOf("assets/appforge-html-config.json" to config)
             htmlProject?.second?.let(additions::putAll)
             ZipFile(template).use { zip ->
                 val manifest = zip.getEntry("AndroidManifest.xml")
                     ?: error("Şablon manifesti bulunamadı.")
-                additions["AndroidManifest.xml"] = HtmlBinaryManifest.rewrite(
+                additions["AndroidManifest.xml"] = stages.measure(BuildStageTimings.Stage.MANIFEST) { HtmlBinaryManifest.rewrite(
                     zip.getInputStream(manifest).use { it.readBytes() },
                     draft.packageName, draft.appName, draft.versionCode, draft.versionName,
-                    draft.minSdk, draft.targetSdk
-                )
-                repackage(zip, unsigned, additions)
+                    draft.minSdk, draft.targetSdk, FastHtmlApkPolicy.templatePermissions(draft), FastHtmlApkPolicy.applicationCategory(draft),
+                    if (draft.deepLinkEnabled) listOf(draft.deepLinkScheme,draft.deepLinkHost,draft.deepLinkPathPrefix) else null, true, draft.mediaPlayerBridge, draft.billingEnabled, WebviewProjectSettings.cleartextHost(draft)!=null
+                ) }
+                val resources = zip.getInputStream(requireNotNull(zip.getEntry("resources.arsc"))).use { it.readBytes() }
+                val networkPath=FastHtmlResourceColor.binaryNetworkSecurityPath(resources)
+                val network=zip.getInputStream(requireNotNull(zip.getEntry(networkPath))).use{it.readBytes()}
+                additions[networkPath]=HtmlBinaryManifest.networkSecurity(network,WebviewProjectSettings.cleartextHost(draft))
+                additions["resources.arsc"] = stages.measure(BuildStageTimings.Stage.RESOURCES) {
+                    FastHtmlResourceColor.binary(resources, draft.primaryColor, draft.packageName)
+                }
+                val iconPath = FastHtmlResourceColor.binaryIconPath(resources)
+                require(zip.getEntry(iconPath) != null) { "Pinned icon resource missing." }
+                if (icon != null) additions[iconPath] = icon
+                stages.measure(BuildStageTimings.Stage.PACKAGING) { repackage(zip, unsigned, additions) }
             }
-            val signer = uploadSigner ?: getOrCreateSigner()
-            ApkSigner.Builder(listOf(signer))
-                .setInputApk(unsigned)
-                .setOutputApk(signed)
-                .setMinSdkVersion(draft.minSdk)
-                .setV1SigningEnabled(false)
-                .setV2SigningEnabled(true)
-                .setV3SigningEnabled(true)
-                .build().sign()
-            val verification = ApkVerifier.Builder(signed).build().verify()
-            check(verification.isVerified && verification.signerCertificates.isNotEmpty()) {
-                "APK v2/v3 imza doğrulaması başarısız."
+            stages.measure(BuildStageTimings.Stage.SIGNING) {
+                val signer = uploadSigner ?: getOrCreateSigner()
+                ApkSigner.Builder(listOf(signer))
+                    .setInputApk(unsigned)
+                    .setOutputApk(signed)
+                    .setMinSdkVersion(draft.minSdk)
+                    .setV1SigningEnabled(false)
+                    .setV2SigningEnabled(true)
+                    .setV3SigningEnabled(true)
+                    .build().sign()
+            }
+            stages.measure(BuildStageTimings.Stage.VERIFICATION) {
+                val verification = ApkVerifier.Builder(signed).build().verify()
+                check(verification.isVerified && verification.signerCertificates.isNotEmpty()) {
+                    "APK v2/v3 imza doğrulaması başarısız."
+                }
             }
             check(signed.length() in 1024..(MAX_TEMPLATE_BYTES + MAX_PROJECT_BYTES + 1_048_576))
             return signed
@@ -91,6 +109,34 @@ internal object FastHtmlApkPackager {
             template.delete()
         }
     }
+
+    internal fun runtimeConfig(draft: ProjectDraft, entry: String): ByteArray = JSONObject()
+        .put("mode", draft.sourceMode.name).put("url", if (draft.sourceMode == SourceMode.URL) draft.webUrl else "")
+        .put("deepLinkEnabled", draft.deepLinkEnabled).put("deepLinkScheme", draft.deepLinkScheme)
+        .put("deepLinkHost", draft.deepLinkHost).put("deepLinkPathPrefix", draft.deepLinkPathPrefix)
+        .put("camera", draft.camera).put("microphone", draft.microphone).put("location", draft.location)
+        .put("billingEnabled", draft.billingEnabled).put("billingProductIds", if(draft.billingEnabled) draft.billingProductIds else "")
+        .put("billingSubscriptionIds", if(draft.billingEnabled) draft.billingSubscriptionIds else "")
+        .put("consumableProductIds", if(draft.billingEnabled) draft.consumableProductIds else "")
+        .put("removeAdsProductId", if(draft.billingEnabled) draft.removeAdsProductId else "")
+        .put("purchaseVerificationUrl", if(draft.billingEnabled) draft.purchaseVerificationUrl else "")
+        .put("mediaPlayerBridge", draft.mediaPlayerBridge).put("qrScanner", draft.qrScanner).put("nfc", draft.nfc).put("wakeLock", draft.wakeLock)
+        .put("entry", entry).put("downloads", draft.downloads)
+        .put("nativeBridge", draft.javascriptBridge).put("shareBridge", draft.shareBridge)
+        .put("nativeBridgeAllowRemote", draft.remoteBridgeAllowed)
+        .put("webJavaScriptEnabled", draft.webJavaScriptEnabled).put("webDomStorageEnabled", draft.webDomStorageEnabled)
+        .put("webZoomEnabled", draft.webZoomEnabled).put("webWideViewPortEnabled", draft.webWideViewPortEnabled)
+        .put("webMixedContentAllowed", draft.webMixedContentAllowed)
+        .put("localNetworkRequired", WebviewProjectSettings.needsLocalNetwork(draft))
+        .put("webOverviewModeEnabled", draft.webOverviewModeEnabled).put("webMediaAutoplayEnabled", draft.webMediaAutoplayEnabled)
+        .put("primaryColor", draft.primaryColor).put("appCategory", draft.appCategory)
+        .put("backgroundColor", draft.backgroundColor).put("statusBarColor", draft.statusBarColor)
+        .put("navigationBarColor", draft.navigationBarColor)
+        .put("networkState", draft.networkState).put("notifications", draft.notifications).put("fileUpload", draft.fileUpload).put("fullscreen", draft.fullscreen)
+        .put("orientation", draft.orientation).put("splashEnabled", draft.splashEnabled)
+        .put("splashText", draft.splashText).put("appName", draft.appName)
+        .put("clipboardBridge", draft.clipboardBridge).put("vibrationBridge", draft.vibrationBridge)
+        .put("offlineCache", draft.offlineCache).toString().toByteArray(Charsets.UTF_8)
 
     /** Package only static web assets; never run Node, npm or JavaScript source builds. */
     internal fun readHtmlProject(draft: ProjectDraft): Pair<String, Map<String, ByteArray>> {
@@ -104,9 +150,11 @@ internal object FastHtmlApkPackager {
 
         val allowed = setOf(
             "html", "css", "js", "mjs", "json", "txt", "svg", "png", "jpg", "jpeg",
-            "webp", "gif", "ico", "woff", "woff2", "ttf", "otf"
+            "webp", "gif", "ico", "woff", "woff2", "ttf", "otf",
+            "mp3", "mp4", "webm", "ogg", "wav", "m4a", "pdf", "csv", "wasm"
         )
-        val excludedDirs = setOf("node_modules", "build", "dist", ".git", ".gradle")
+        val excludedDirs = setOf("node_modules", "build", "dist", ".git", ".gradle") +
+            if(File(root,"Cargo.toml").isFile)setOf("target") else emptySet()
         val assets = LinkedHashMap<String, ByteArray>()
         var totalBytes = 0L
         val files = root.walkTopDown().maxDepth(12).onEnter { directory ->
@@ -137,6 +185,9 @@ internal object FastHtmlApkPackager {
         }
         val entry = html.relativeTo(root).invariantSeparatorsPath
         require("assets/site/$entry" in assets) { "Seçilen HTML başlangıç dosyası eklenmedi." }
+        val observed=assets.filterKeys{it.endsWith(".html",true)||it.endsWith(".js",true)||it.endsWith(".mjs",true)}
+            .values.flatMap{com.appforge.studio.io.HtmlCapabilityFindings.scan(it.toString(Charsets.UTF_8))}.toSet()
+        FeatureSupportMatrix.requireCompatible(draft.copy(requiredCapabilities=draft.requiredCapabilities+observed))
         return entry to assets
     }
 

@@ -35,6 +35,7 @@ data class SourceCapabilityAnalysis(
     val mediaPlayerReason: String? = null,
     val qrScannerReason: String? = null,
 
+    val requiredCapabilities: Set<String> = emptySet(),
     val scannedFiles: Int = 0
 ) {
 
@@ -48,6 +49,7 @@ data class SourceCapabilityAnalysis(
                     technologyLabel
                 )
             }
+            requiredCapabilities.forEach { add("Kaynak API: $it") }
             if (camera) add("Kamera")
             if (microphone) add("Mikrofon")
             if (location) add("Konum")
@@ -372,6 +374,7 @@ object SourceCapabilityAnalyzer {
             null
 
 
+        val requiredCapabilities = linkedSetOf<String>()
         var scannedFiles =
             0
 
@@ -440,6 +443,7 @@ object SourceCapabilityAnalyzer {
                 size
 
 
+            requiredCapabilities.addAll(HtmlCapabilityFindings.scan(text))
             val lower =
                 text.lowercase()
 
@@ -488,17 +492,6 @@ object SourceCapabilityAnalyzer {
                             "getUserMedia({ video: ... })"
                     }
 
-
-                    lower.contains(
-                        "facingmode"
-                    ) -> {
-
-                        camera =
-                            true
-
-                        cameraReason =
-                            "facingMode kamera seçimi"
-                    }
 
                     lower.contains("android.permission.camera") ||
                         lower.contains("manifest.permission.camera") -> {
@@ -883,6 +876,7 @@ object SourceCapabilityAnalyzer {
             qrScannerReason =
                 qrScannerReason,
 
+            requiredCapabilities = requiredCapabilities,
             scannedFiles =
                 scannedFiles
         )
