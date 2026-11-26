@@ -1,0 +1,183 @@
+name: AppForge R57U Expo 54 RN 0.81 Android Prebuild (NO APK)
+
+on:
+  push:
+    branches:
+      - codex/r57u-expo-sdk54-prebuild-20261126
+    paths:
+      - .github/workflows/r57u-expo-sdk54-rn081-prebuild-ci.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appforge-r57u-expo-prebuild-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  expo-arm64-prebuild:
+    name: ARM64 Expo 54 + RN 0.81 lockfile and prebuild (NO APK)
+    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 50
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      npm_config_audit: 'false'
+      npm_config_fund: 'false'
+      npm_config_update_notifier: 'false'
+    steps:
+      - name: Checkout isolated source without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Guard exact R57T base and preserve devices
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = aarch64
+          test "$GITHUB_REF_NAME" = codex/r57u-expo-sdk54-prebuild-20261126
+          git merge-base --is-ancestor ae534f6f269f562f8168c1778f10415762385950 HEAD
+          test -s examples/rust-expo-jsi/package-lock.json
+          echo R57U_BASELINE=PASS_R57T_AE534F6
+          echo R57U_APK_BUILD=NOT_ATTEMPTED
+          echo R57U_APP_MODULE_INSTALL=NOT_ATTEMPTED
+          echo R57U_DEVICE_INSTALL=NOT_ATTEMPTED
+          echo R57U_SIGNING=NOT_ATTEMPTED
+
+      - name: Set up Node 22.23.3
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.3'
+
+      - name: Verify pinned lockfile and authored native sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const base = 'examples/rust-expo-jsi/';
+          const p = JSON.parse(fs.readFileSync(base+'package.json','utf8'));
+          const l = JSON.parse(fs.readFileSync(base+'package-lock.json','utf8'));
+          const c = JSON.parse(fs.readFileSync(base+'app.json','utf8'));
+          for (const [key,version] of Object.entries({expo:'54.0.22',react:'19.1.0','react-native':'0.81.5'})) {
+            assert.equal(p.dependencies[key],version);
+            assert.equal(l.packages[''].dependencies[key],version);
+            assert.equal(l.packages['node_modules/'+key].version,version);
+          }
+          assert.equal(l.lockfileVersion,3);
+          assert.equal(c.expo.android.package,'com.example.rustjsi');
+          assert.equal(c.expo.newArchEnabled,false);
+          assert.ok(c.expo.plugins.includes('./withRustJsi.cjs'));
+          for (const file of ['withRustJsi.cjs','native/RustJsi.cpp','native/CMakeLists.txt','native/RustJsiModule.java','native/RustJsiPackage.java']) {
+            assert.ok(fs.statSync(base+file).isFile(),file);
+          }
+          console.log('R57U_LOCK=PASS_EXPO54_RN081_REACT19_'+Object.keys(l.packages).length+'_PACKAGES');
+          console.log('R57U_JSI_SOURCE=PASS_INVENTORY');
+          NODE
+
+      - name: Make isolated project copy under ephemeral runner temp
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/r57u/project" "$RUNNER_TEMP/r57u/npm-cache" "$RUNNER_TEMP/r57u/report"
+          cp -a examples/rust-expo-jsi/. "$RUNNER_TEMP/r57u/project/"
+          test ! -e "$RUNNER_TEMP/r57u/project/android"
+          echo R57U_PROJECT=ISOLATED_RUNNER_TEMP
+          echo R57U_REPOSITORY_SOURCE_WRITES=NONE
+
+      - name: Install lockfile packages without lifecycle scripts
+        shell: bash
+        env:
+          npm_config_cache: ${{ runner.temp }}/r57u/npm-cache
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/r57u/project"
+          npm ci --ignore-scripts --no-audit --no-fund --no-progress
+          npm ls expo react react-native --depth=0
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          for (const [k,v] of Object.entries({expo:'54.0.22',react:'19.1.0','react-native':'0.81.5'})) {
+            assert.equal(require(k+'/package.json').version,v);
+          }
+          console.log('R57U_NPM_CI=PASS_EXACT_DEPENDENCIES');
+          NODE
+
+      - name: Execute Expo Android prebuild only
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/r57u/project"
+          ./node_modules/.bin/expo prebuild --platform android --no-install --clean
+          test -s android/app/build.gradle
+          test -s android/build.gradle
+          test -s android/settings.gradle
+          test -s android/gradle/wrapper/gradle-wrapper.properties
+          echo R57U_EXPO_PREBUILD=PASS_REAL_ANDROID_PROJECT_GENERATED
+
+      - name: Check generated native binding and Android Gradle configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/r57u/project"
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const path=require('node:path');
+          const assert=require('node:assert/strict');
+          const base='android/app/src/main';
+          for(const [src,dest] of [
+            ['native/RustJsi.cpp',base+'/cpp/RustJsi.cpp'],
+            ['native/CMakeLists.txt',base+'/cpp/CMakeLists.txt'],
+            ['native/RustJsiModule.java',base+'/java/com/appforge/rustjsi/RustJsiModule.java'],
+            ['native/RustJsiPackage.java',base+'/java/com/appforge/rustjsi/RustJsiPackage.java']
+          ])assert.deepEqual(fs.readFileSync(src),fs.readFileSync(dest));
+          const appGradle=fs.readFileSync('android/app/build.gradle','utf8');
+          assert.ok(appGradle.includes('APPFORGE_AUTHORED_RUST_JSI'));
+          assert.ok(appGradle.includes('src/main/cpp/CMakeLists.txt'));
+          function find(root,name){
+            for(const e of fs.readdirSync(root,{withFileTypes:true})){
+              const p=path.join(root,e.name);
+              if(e.isDirectory()){const x=find(p,name);if(x)return x;}
+              else if(e.name===name)return p;
+            }
+            return null;
+          }
+          const main=find(base+'/java','MainApplication.kt')||find(base+'/java','MainApplication.java');
+          assert.ok(main);
+          assert.ok(fs.readFileSync(main,'utf8').includes('add(com.appforge.rustjsi.RustJsiPackage())'));
+          const wrapper=fs.readFileSync('android/gradle/wrapper/gradle-wrapper.properties','utf8');
+          const dist=wrapper.split('\n').find(x=>x.startsWith('distributionUrl='));
+          assert.ok(dist);
+          console.log('R57U_JSI_NATIVE_COPY=PASS_4_IDENTICAL');
+          console.log('R57U_JSI_REGISTRATION=PASS');
+          console.log('R57U_GRADLE_WRAPPER='+dist.slice('distributionUrl='.length));
+          console.log('R57U_ANDROID_GRADLE_CONFIGURATION=PASS_GENERATED_ONLY');
+          NODE
+          echo R57U_RESULT=PASS_EXPO54_RN081_ANDROID_PREBUILD_NO_APK
+
+      - name: Record safety boundaries
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/r57u/report"
+          {
+            printf 'R57U_SHA=%s\n' "$GITHUB_SHA"
+            printf 'R57U_AGP_DEPENDENCY_RESOLUTION=NOT_ATTEMPTED\n'
+            printf 'R57U_APK_BUILD=NOT_ATTEMPTED\n'
+            printf 'R57U_SIGNING=NOT_ATTEMPTED\n'
+            printf 'R57U_DEVICE_INSTALL=NOT_ATTEMPTED\n'
+          } > "$RUNNER_TEMP/r57u/report/boundary.txt"
+          cat "$RUNNER_TEMP/r57u/report/boundary.txt"
+
+      - name: Upload text-only proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appforge-r57u-boundary-${{ github.sha }}
+          path: ${{ runner.temp }}/r57u/report/boundary.txt
+          retention-days: 7
+          if-no-files-found: warn
