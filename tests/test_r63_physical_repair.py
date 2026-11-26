@@ -28,4 +28,14 @@ assert 'APPFORGE_R63_NATIVE_API26_FUNCTIONAL_LINK=PASS' in f
 assert 'historicalR63=true' in k
 assert 'output.versionCode.set(580)' in g
 assert 'output.versionName.set("5.0.78-r63-physical-repair")' in g
+# Execute the real extracted shell function with mocked drivers. A repair
+# may only defer 75 in transaction-owned repair mode. All other errors stop.
+import re
+fn=re.search(r'(?ms)^repair_mingw_links\(\) \{\n.*?^\}',w)
+assert fn
+for gcc,gxx,mode,expected,calls in [(0,0,0,0,2),(75,0,0,75,1),(75,75,1,0,2),(44,0,1,44,1),(0,75,0,75,2),(0,44,1,44,2)]:
+    setup=f'APPFORGE_R63_WINDOWS_APT_REPAIR_ONLY={mode}\nrestore_signed_posix_driver() {{ echo "CALL:$1"; if [ "$1" = gcc ]; then return {gcc}; else return {gxx}; fi; }}\n'
+    res=subprocess.run(['sh','-c',setup+fn.group(0)+'\nrepair_mingw_links'],capture_output=True,text=True)
+    assert res.returncode==expected,(gcc,gxx,mode,res.returncode,res.stdout,res.stderr)
+    assert res.stdout.count('CALL:')==calls,res.stdout
 print('R63_SOURCE_REGRESSION_CONTRACTS=PASS_NOT_PHYSICAL_ACCEPTANCE')

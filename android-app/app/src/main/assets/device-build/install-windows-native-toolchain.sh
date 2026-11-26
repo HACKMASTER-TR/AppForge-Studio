@@ -363,21 +363,24 @@ restore_signed_posix_driver() {
   echo "APPFORGE_WINDOWS_${kind}_SIGNED_DRIVER_RESTORED=PASS"
 }
 repair_mingw_links() {
-  for repair_kind in gcc gxx;do
-    if restore_signed_posix_driver "$repair_kind";then
-      :
-    else
-      repair_status=$?
-      # Only the currently authenticated APT transaction may defer direct
-      # execution. Signed-byte + explicit-loader proof is NOT readiness.
-      if [ "$repair_status" = 75 ] &&
-         [ "${APPFORGE_R63_WINDOWS_APT_REPAIR_ONLY:-0}" = 1 ];then
-        echo "APPFORGE_R63_WINDOWS_${repair_kind}_EXEC_DEFERRED_UNTIL_LOCK"
-      else
-        return "$repair_status"
-      fi
-    fi
-  done
+  # Preserve exact per-driver ordering and return code. Only the currently
+  # authenticated APT transaction may defer explicit-loader verified execution.
+  if restore_signed_posix_driver gcc;then
+    :
+  else
+    repair_status=$?
+    [ "$repair_status" = 75 ] &&
+    [ "${APPFORGE_R63_WINDOWS_APT_REPAIR_ONLY:-0}" = 1 ] || return "$repair_status"
+    echo 'APPFORGE_R63_WINDOWS_gcc_EXEC_DEFERRED_UNTIL_LOCK'
+  fi
+  if restore_signed_posix_driver gxx;then
+    :
+  else
+    repair_status=$?
+    [ "$repair_status" = 75 ] &&
+    [ "${APPFORGE_R63_WINDOWS_APT_REPAIR_ONLY:-0}" = 1 ] || return "$repair_status"
+    echo 'APPFORGE_R63_WINDOWS_gxx_EXEC_DEFERRED_UNTIL_LOCK'
+  fi
 }
 
 repair_interrupted_dpkg() {

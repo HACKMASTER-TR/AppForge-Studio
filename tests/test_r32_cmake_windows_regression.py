@@ -37,7 +37,7 @@ class R32RegressionTests(unittest.TestCase):
     def test_03_windows_failure_never_retries_same_stage(self):
         match = re.search(
             r"(?ms)^if ! install_packages; then\n"
-            r".*?^fi\n(?=\nrepair_mingw_links)",
+            r".*?^fi\n(?=\n# Never publish readiness before the original APT transaction)",
             self.win,
         )
         self.assertIsNotNone(match)
@@ -71,7 +71,7 @@ class R32RegressionTests(unittest.TestCase):
     def test_04_windows_success_continues(self):
         match = re.search(
             r"(?ms)^if ! install_packages; then\n"
-            r".*?^fi\n(?=\nrepair_mingw_links)",
+            r".*?^fi\n(?=\n# Never publish readiness before the original APT transaction)",
             self.win,
         )
         self.assertIsNotNone(match)
