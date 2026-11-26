@@ -28,7 +28,7 @@ jobs:
       npm_config_audit: 'false'
       npm_config_fund: 'false'
       npm_config_update_notifier: 'false'
-      GRADLE_USER_HOME: ${{ runner.temp }}/r57v/gradle-home
+      GRADLE_USER_HOME: /tmp/appforge-r57v-gradle-home
     steps:
       - name: Checkout isolated R57V source
         uses: actions/checkout@v4
