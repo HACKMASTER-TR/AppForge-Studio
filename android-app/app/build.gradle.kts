@@ -518,8 +518,10 @@ require(!appforgeV9R2Isolated3UpgradeV551R30 ||
 // pinned Google Cloud Android OAuth SHA-1. CI enforces the certificate.
 // R58-R62: one explicit original-identity device candidate profile. Historical
 // debug/Play/release modes remain unchanged; no automatic signing or publishing.
+val appforgeR66ModuleCenterCandidate =
+    providers.gradleProperty("appforgeR66ModuleCenterCandidate").orNull == "true"
 val appforgeR64ExpoRepairCandidate =
-    providers.gradleProperty("appforgeR64ExpoRepairCandidate").orNull == "true"
+    providers.gradleProperty("appforgeR64ExpoRepairCandidate").orNull == "true" || appforgeR66ModuleCenterCandidate
 val appforgeR63PhysicalRepairCandidate =
     providers.gradleProperty("appforgeR63PhysicalRepairCandidate").orNull == "true" || appforgeR64ExpoRepairCandidate
 val appforgeR58IntegratedDeviceCandidate =
@@ -1245,7 +1247,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR64ExpoRepairCandidate) {
+                if (appforgeR66ModuleCenterCandidate) {
+                    output.versionCode.set(582)
+                    output.versionName.set("5.0.80-r66-module-center")
+                } else if (appforgeR64ExpoRepairCandidate) {
                     output.versionCode.set(581)
                     output.versionName.set("5.0.79-r64-expo-repair")
                 } else if (appforgeR63PhysicalRepairCandidate) {
