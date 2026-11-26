@@ -200,12 +200,12 @@ jobs:
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           "$APKSIGNER" verify --verbose --print-certs "$APK" > "$RUNNER_TEMP/r57w-apk-cert.txt"
           grep -F 'Verified using v2 scheme' "$RUNNER_TEMP/r57w-apk-cert.txt" >/dev/null
-          CERT_SHA1="$(sed -n 's/^Signer #1 certificate SHA-1 digest: //p' "$RUNNER_TEMP/r57w-apk-cert.txt" | tr '[:lower:]' '[:upper:]')"
+          CERT_SHA1="$(sed -n 's/^.*certificate SHA-1 digest: //p' "$RUNNER_TEMP/r57w-apk-cert.txt" | tr '[:lower:]' '[:upper:]')"
           test "$CERT_SHA1" = "990EF33B990FD578E9DCE724348196F99B8807BF" || {
             echo R57W_STOP=APK_CERT_SHA1_MISMATCH
             exit 81
           }
-          CERT_SHA256="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/r57w-apk-cert.txt" | tr '[:upper:]' '[:lower:]')"
+          CERT_SHA256="$(sed -n 's/^.*certificate SHA-256 digest: //p' "$RUNNER_TEMP/r57w-apk-cert.txt" | tr '[:upper:]' '[:lower:]')"
           test "$CERT_SHA256" = "f04693e62080489f41554ff357bab0789bf87b864aa8c5a9927279667de9d91b" || {
             echo R57W_STOP=APK_CERT_SHA256_MISMATCH
             exit 83
