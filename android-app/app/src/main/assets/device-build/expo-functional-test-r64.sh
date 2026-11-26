@@ -30,7 +30,8 @@ assert.equal(process.arch,'arm64');
 for(const d of [sdk,ndk,host,bin,sys,common,api])directory(d);
 regular(ndk+'/source.properties',8192);
 assert.match(fs.readFileSync(ndk+'/source.properties','utf8'),/^Pkg\.Revision\s*=\s*27\.1\.12297006\s*$/m);
-regular(root+'/.expo-arm64-ndk-host-v3',4096);
+// Installer creates this witness with touch; zero bytes are expected.
+const ready=fs.lstatSync(root+'/.expo-arm64-ndk-host-v3');assert(ready.isFile()&&ready.size<=4096,'NDK host witness');
 executable(clang,32768);
 const cc=fs.readFileSync(clang,'utf8');
 for(const marker of ['# APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V3','--ld-path=/usr/lib/llvm-18/bin/ld.lld','-resource-dir='])assert(cc.includes(marker),marker);
