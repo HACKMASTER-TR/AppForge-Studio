@@ -3,6 +3,11 @@ on:
   push:
     branches:
       - codex/r57w-original-inplace-v578-20261126
+    paths:
+      - .github/workflows/r57w-original-inplace-v578-ci.yml
+      - android-app/app/build.gradle.kts
+      - android-app/app/src/main/assets/second_brain_snapshot.json
+      - tests/test_r57w_original_inplace_v578.py
   workflow_dispatch:
 permissions:
   contents: read
