@@ -32,14 +32,14 @@ internal object R69StorageInventory {
     }
     private fun location(parts:List<String>):Location {
         val root=parts.firstOrNull().orEmpty()
-        val private=parts.getOrNull(1).orEmpty()
-        val isolated=root=="no_backup" && private=="isolated-modules-v1"
+        val privateArea=parts.getOrNull(1).orEmpty()
+        val isolated=root=="no_backup" && privateArea=="isolated-modules-v1"
         val id=parts.getOrNull(2)?.uppercase(java.util.Locale.ROOT).orEmpty()
         val owner=when {
             isolated -> if(id in OfflineModuleId.entries.map { it.name }) id else "İzole diğer"
-            root=="no_backup" && private=="device-build" && parts.getOrNull(2)=="runtime-v3" -> "Ortak Linux"
-            root=="no_backup" && private=="offline-build-pack" && parts.getOrNull(2)=="windows-host-v1" -> "Windows Portable Host"
-            root=="no_backup" && private in setOf("module-downloads","v9-signed-r2-canary","verified-rootfs-downloads") -> "Ortak arşiv deposu"
+            root=="no_backup" && privateArea=="device-build" && parts.getOrNull(2)=="runtime-v3" -> "Ortak Linux"
+            root=="no_backup" && privateArea=="offline-build-pack" && parts.getOrNull(2)=="windows-host-v1" -> "Windows Portable Host"
+            root=="no_backup" && privateArea in setOf("module-downloads","v9-signed-r2-canary","verified-rootfs-downloads") -> "Ortak arşiv deposu"
             root=="cache" || root=="code_cache" -> "Android önbelleği"
             else -> "Diğer özel uygulama verileri"
         }
