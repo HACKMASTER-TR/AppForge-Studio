@@ -8,7 +8,8 @@ internal object VerifiedArtifactCache {
     @Volatile private var roots:List<File> = emptyList()
     fun configure(privateRoot:File,runtimeParent:File?) {
         val safe=RecoveryPathAnchor.androidPlatformPath(privateRoot);RecoveryPathAnchor.check(safe)
-        roots=listOf(File(safe,"v9-signed-r2-canary"))+listOfNotNull(runtimeParent?.let{File(it,".module-archive-cache-v5")})
+        roots=listOf(File(safe,"v9-signed-r2-canary"),File(safe,R70SharedArchives.DIRECTORY),File(safe,R72BrokerArchives.DIRECTORY))+
+            listOfNotNull(runtimeParent?.let{File(it,".module-archive-cache-v5")})
     }
     fun reuse(target:File,sha256:String,expectedBytes:Long?,maxBytes:Long):Boolean {
         if(matches(target,sha256,expectedBytes,maxBytes))return true

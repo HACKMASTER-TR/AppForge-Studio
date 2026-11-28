@@ -14,6 +14,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.CancellationException
+import com.appforge.studio.build.R69StorageInventory
+import com.appforge.studio.build.R70SharedArchives
+import com.appforge.studio.build.BuildModuleUsage
+import com.appforge.studio.build.OfflineModules
+import com.appforge.studio.build.OfflineModuleId
+import java.io.File
 
 private data class AppForgeMeasuredStorage(
     val app:Long?,val data:Long?,val cache:Long?,val total:Long?,
@@ -66,7 +75,15 @@ internal fun AppForgeStorageDetailsScreen(onBack:()->Unit) {
         }
         error?.let {Text(it,color=MaterialTheme.colorScheme.error)}
         OutlinedButton(onClick={refresh++}) {Text("Yeniden ölç")}
-        Text("Bu ekran yalnızca görüntüler. Uygulama verileri, modüller ve önbellek silinmez.",
+        HorizontalDivider()
+        R69StorageAnalysis()
+        HorizontalDivider()
+        R70ArchiveOptimization(onComplete={refresh++})
+        HorizontalDivider()
+        R70ArchiveOptimization(onComplete={refresh++},r72=true)
+        HorizontalDivider()
+        R73GuestArchiveAnalysis()
+        Text("Analiz salt okunurdur. Arşiv birleştirme yalnızca açık onayla, doğrulanmış host kopyaları üzerinde çalışır.",
             style=MaterialTheme.typography.bodySmall)
     }
 }
@@ -75,5 +92,230 @@ internal fun AppForgeStorageDetailsScreen(onBack:()->Unit) {
 private fun AppForgeStorageRow(label:String,value:String) {
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
         Text(label);Text(value)
+    }
+}
+
+
+@Composable
+private fun R69StorageAnalysis() {
+    val context=LocalContext.current
+    var request by remember { mutableIntStateOf(0) }
+    var running by remember { mutableStateOf(false) }
+    var scanProgress by remember { mutableStateOf<R69StorageInventory.Progress?>(null) }
+    var report by remember { mutableStateOf<R69StorageInventory.Report?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(request) {
+        if(request<=0)return@LaunchedEffect
+        running=true;error=null;report=null;scanProgress=null
+        try {
+            report=withContext(Dispatchers.IO) {
+                val job=currentCoroutineContext()
+                fun checkpoint() {
+                    job.ensureActive()
+                    check(!ModuleInstallOperations.busy.value && BuildModuleUsage.mutationBlockedReason()==null) {
+                        "Etkin derleme veya kurulum var; analiz durduruldu."
+                    }
+                }
+                checkpoint()
+                R69StorageInventory.scan(File(context.applicationInfo.dataDir),
+                    canceled={checkpoint()},progress={scanProgress=it})
+            }
+        } catch(e:CancellationException){throw e}
+          catch(e:Exception){error="Analiz tamamlanamadı: "+(e.message?:"Okuma hatası")}
+        finally{running=false}
+    }
+    fun gb(n:Long)="%.2f GB".format(java.util.Locale("tr","TR"),n/1_000_000_000.0)
+    fun label(name:String)=OfflineModuleId.entries.firstOrNull { it.name==name }?.let { OfflineModules.spec(it).title } ?:name
+    Text("Gelişmiş depolama analizi",style=MaterialTheme.typography.titleMedium)
+    Text("Yalnızca uygulamanın özel alanını okur. 1 MiB ve üzeri araç dosyalarında SHA-256 ile içerik tekrarı araştırılır. Proje içeriği hash'lenmez.",
+        style=MaterialTheme.typography.bodySmall)
+    if(running) {
+        LinearProgressIndicator(Modifier.fillMaxWidth())
+        scanProgress?.let { p ->
+            Text(if(p.hashing)"Doğrulanan dosya verisi: "+gb(p.hashedBytes) else "Taranan öğe: "+p.entries,
+                style=MaterialTheme.typography.bodySmall)
+        }
+        OutlinedButton(onClick={request=0}){Text("Analizi durdur")}
+    } else Button(onClick={request=(request+1).coerceAtLeast(1)},modifier=Modifier.fillMaxWidth()){
+        Text(if(report==null)"Depolamayı analiz et" else "Yeniden analiz et")
+    }
+    error?.let { Text(it,color=MaterialTheme.colorScheme.error) }
+    report?.let { r ->
+        AppForgeStorageRow("Mantıksal dosya boyutu",gb(r.logicalBytes))
+        AppForgeStorageRow("Dosya sayısı",r.files.toString())
+        AppForgeStorageRow("Symlink (izlenmedi)",r.links.toString())
+        AppForgeStorageRow("Ayrılmış blok toplamı",r.allocatedBlockSum?.let{gb(it)}?:"Ölçülemedi / kısmi")
+        Text("Blok toplamı ortak reflink/hardlink alanını birden fazla sayabilir.",style=MaterialTheme.typography.bodySmall)
+        Text("Modül ve alan",style=MaterialTheme.typography.titleSmall)
+        r.byOwner.forEach { AppForgeStorageRow(label(it.name),gb(it.bytes)) }
+        Text("Veri türüne göre",style=MaterialTheme.typography.titleSmall)
+        r.byCategory.forEach { AppForgeStorageRow(it.name,gb(it.bytes)) }
+        Text("İçerik tekrarı analizi",style=MaterialTheme.typography.titleSmall)
+        AppForgeStorageRow("Tekrarlı içerik grupları",r.duplicateGroups.toString())
+        AppForgeStorageRow("Mantıksal fazla kopyalar",gb(r.logicalExtraBytes))
+        AppForgeStorageRow("Hash okunan veri",gb(r.hashedBytes))
+        Text("Bu rakam silinebilir alan veya fiziksel tasarruf değildir. Kopyaların sahipliği, bağımlılıkları ve fiziksel blok paylaşımı ayrıca incelenmelidir.",
+            style=MaterialTheme.typography.bodySmall)
+        if(r.incomplete)Text("Kısmi analiz: "+r.skipped+" öğe atlandı veya tarama sınırına ulaşıldı.",color=MaterialTheme.colorScheme.error)
+        if(r.identityUnknown)Text("Bazı inode kimlikleri okunamadı; bağlantılı kopyalar ayrı sayılmış olabilir.",style=MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick={
+            val summary=buildString {
+                appendLine("AppForge R69 — salt okunur depolama analizi")
+                appendLine("Mantıksal toplam: "+gb(r.logicalBytes))
+                appendLine("Blok toplamı: "+(r.allocatedBlockSum?.let{gb(it)}?:"ölçülemedi"))
+                appendLine("Dosyalar: "+r.files+" | Symlink: "+r.links)
+                appendLine("Modüller:");r.byOwner.forEach { appendLine(label(it.name)+": "+gb(it.bytes)) }
+                appendLine("Veri türleri:");r.byCategory.forEach { appendLine(it.name+": "+gb(it.bytes)) }
+                appendLine("Tekrar grubu: "+r.duplicateGroups+" | Mantıksal fazla kopya: "+gb(r.logicalExtraBytes))
+                appendLine("Hash okunan: "+gb(r.hashedBytes)+" | Kısmi: "+r.incomplete+" | Atlanan: "+r.skipped+" | Inode belirsiz: "+r.identityUnknown)
+                appendLine("En büyük tekrar grupları (en fazla 20; dosya yolları yok):")
+                r.duplicates.forEach { appendLine(it.copies.toString()+" x "+gb(it.bytesPerFile)+" | "+it.owners.joinToString{label(it)}) }
+                appendLine("Fiziksel tasarruf veya silme izni değildir.")
+            }
+            context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(
+                android.content.ClipData.newPlainText("AppForge depolama raporu",summary))
+        },modifier=Modifier.fillMaxWidth()){Text("Analiz raporunu kopyala")}
+        OutlinedButton(onClick={
+            val detail=buildString {
+                appendLine("AppForge R71 — ortak çalışma ortamı ön kontrolü")
+                appendLine("Toplam: "+gb(r.logicalBytes)+" | Fazla kopya: "+gb(r.logicalExtraBytes))
+                appendLine("Kısmi: "+r.incomplete+" | Atlanan: "+r.skipped+" | Inode belirsiz: "+r.identityUnknown)
+                appendLine("En büyük "+r.duplicates.size+" grup; her grupta en fazla 20 benzersiz inode.")
+                r.duplicates.forEachIndexed { i,d ->
+                    appendLine((i+1).toString()+". "+gb(d.bytesPerFile)+" x "+d.copies+" | Fazla: "+gb(d.logicalExtraBytes))
+                    appendLine("SHA256="+d.sha256)
+                    d.evidence.forEach { e -> appendLine(label(e.owner)+" | "+e.category+" | "+e.relativePath) }
+                    if(d.copies>d.evidence.size)appendLine("Diğer kopyalar: "+(d.copies-d.evidence.size))
+                }
+                appendLine("Salt okunur kanıt; silme, paylaşım veya fiziksel tasarruf izni değildir.")
+            }
+            context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(
+                android.content.ClipData.newPlainText("AppForge R71 ön kontrol",detail))
+        },modifier=Modifier.fillMaxWidth()){Text("R71 ayrıntılı tekrar raporunu kopyala")}
+    }
+}
+
+
+@Composable
+private fun R70ArchiveOptimization(onComplete:()->Unit,r72:Boolean=false) {
+    val context=LocalContext.current
+    var confirm by remember { mutableStateOf(false) }
+    var request by remember { mutableIntStateOf(0) }
+    var running by remember { mutableStateOf(false) }
+    var progress by remember { mutableStateOf<Pair<Int,Int>?>(null) }
+    var result by remember { mutableStateOf<R70SharedArchives.Migration?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(request) {
+        if(request==0)return@LaunchedEffect
+        running=true;error=null;result=null;progress=null
+        try {
+            result=withContext(Dispatchers.IO) {
+                val job=currentCoroutineContext()
+                check(!ModuleInstallOperations.busy.value)
+                BuildModuleUsage.mutationLease().use {
+                    check(!ModuleInstallOperations.busy.value)
+                    if(r72) com.appforge.studio.build.R72BrokerArchives.migrateInstalled(context,
+                        canceled={job.ensureActive();check(!ModuleInstallOperations.busy.value)},
+                        progress={done,total->progress=done to total})
+                    else R70SharedArchives.migrateInstalled(context,
+                        canceled={job.ensureActive();check(!ModuleInstallOperations.busy.value)},
+                        progress={done,total->progress=done to total})
+                }
+            }
+            onComplete()
+        } catch(e:CancellationException){throw e}
+          catch(e:Exception){error="Birleştirme durdu: "+(e.message?:"Doğrulama hatası")+
+            ". Tamamlanan atomik arşiv işlemleri korunur."}
+        finally{running=false}
+    }
+    fun gb(n:Long)="%.2f GB".format(java.util.Locale("tr","TR"),n/1_000_000_000.0)
+    Text(if(r72)"R72 • Ortak R2 aktarım arşivleri" else "Ortak arşiv optimizasyonu",style=MaterialTheme.typography.titleMedium)
+    Text(if(r72)"R71 raporundaki üç doğrulanmış aktarım nesnesi ortaklaştırılır. Misafir APT indeksleri ve kurulu araçlar korunur." else "Hedef: 12 GB. Bu adım yalnızca SHA-256 ile doğrulanan host arşivlerini ortak depoya taşır. Kurulu araçlar, projeler ve geri dönüş kopyaları korunur.",
+        style=MaterialTheme.typography.bodySmall)
+    if(running) {
+        LinearProgressIndicator(Modifier.fillMaxWidth())
+        progress?.let { Text("Doğrulanan arşiv: "+it.first+"/"+it.second) }
+    } else Button(onClick={confirm=true},modifier=Modifier.fillMaxWidth()){Text(if(r72)"R72 aktarım arşivlerini birleştir" else "Doğrulanmış arşivleri birleştir")}
+    if(confirm)AlertDialog(onDismissRequest={confirm=false},
+        title={Text("Ortak arşiv deposu")},
+        text={Text("Aynı SHA-256 değerine sahip, bilinen host arşivleri birleştirilecek. Kurulu çalışma ortamına dokunulmayacak. Boşalan alan işlem sonunda ölçülecek.")},
+        confirmButton={TextButton(onClick={confirm=false;request++}){Text("Birleştir")}},
+        dismissButton={TextButton(onClick={confirm=false}){Text("Vazgeç")}})
+    error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+    result?.let { r ->
+        AppForgeStorageRow("Aranan dosya",r.planned.toString())
+        AppForgeStorageRow("Bulunan dosya",r.found.toString())
+        if(r.found==0)Text("Aday bulunamadı; bu sonuç tasarruf veya fiziksel kabul değildir.",color=MaterialTheme.colorScheme.error)
+        AppForgeStorageRow("Taşınan tekil arşiv",r.moved.toString())
+        AppForgeStorageRow("Kaldırılan doğrulanmış fazla kopya",r.redundant.toString())
+        AppForgeStorageRow("Mantıksal azalma",gb(r.logicalRemoved))
+        AppForgeStorageRow("Boş alan değişimi",gb(r.freeAfter-r.freeBefore))
+        AppForgeStorageRow("Korunan / atlanan",r.skipped.toString())
+        AppForgeStorageRow("Reflink testi",when(r.reflink){true->"Destekleniyor";false->"Desteklenmiyor";null->"Ölçülemedi"})
+        Text("Boş alan değişimi cihaz genelindedir. Gerçek modül boyutu için depolama analizini tekrar çalıştırın.",style=MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick={
+            val text=(if(r72)"AppForge R72B" else "AppForge R70")+"\nAranan: "+r.planned+"\nBulunan: "+r.found+"\nTaşınan: "+r.moved+"\nFazla kopya: "+r.redundant+
+                "\nMantıksal azalma: "+gb(r.logicalRemoved)+"\nBoş alan değişimi: "+gb(r.freeAfter-r.freeBefore)+
+                "\nAtlanan: "+r.skipped+"\nReflink: "+r.reflink
+            context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(
+                android.content.ClipData.newPlainText(if(r72)"AppForge R72" else "AppForge R70",text))
+        }){Text("Optimizasyon sonucunu kopyala")}
+    }
+}
+
+@Composable
+private fun R73GuestArchiveAnalysis() {
+    val context=LocalContext.current
+    var request by remember { mutableIntStateOf(0) }
+    var running by remember { mutableStateOf(false) }
+    var progress by remember { mutableStateOf(0 to 5) }
+    var report by remember { mutableStateOf<com.appforge.studio.build.R73GuestArchiveReview.Report?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    fun gb(n:Long)="%.2f GB".format(java.util.Locale.US,n/1_000_000_000.0)
+    LaunchedEffect(request) {
+        if(request==0)return@LaunchedEffect
+        running=true;report=null;error=null;progress=0 to 5
+        try {
+            report=withContext(Dispatchers.IO) {
+                val job=currentCoroutineContext()
+                check(!ModuleInstallOperations.busy.value)
+                BuildModuleUsage.mutationLease().use {
+                    com.appforge.studio.build.R73GuestArchiveReview.review(context,
+                        canceled={job.ensureActive();check(!ModuleInstallOperations.busy.value)},
+                        progress={a,b->progress=a to b})
+                }
+            }
+        } catch(e:CancellationException){throw e}
+          catch(e:Exception){error="R73 incelemesi tamamlanamadı: "+(e.message?:"Doğrulama hatası")}
+        finally{running=false}
+    }
+    Text("R73 • Kurulu ortam arşivleri",style=MaterialTheme.typography.titleMedium)
+    Text("28 bilinen arşiv yolu, ortak arşiv SHA-256 ve aktif generation mühürü incelenir. Dosya silinmez veya mühür değiştirilmez.",
+        style=MaterialTheme.typography.bodySmall)
+    if(running) {
+        LinearProgressIndicator(Modifier.fillMaxWidth())
+        Text("İncelenen ortam: "+progress.first+"/"+progress.second)
+        OutlinedButton(onClick={request=0}){Text("İncelemeyi durdur")}
+    } else Button(onClick={request++},modifier=Modifier.fillMaxWidth()){Text("R73 arşiv ve mühür kontrolü")}
+    error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+    report?.let { r ->
+        AppForgeStorageRow("Aranan arşiv",r.planned.toString())
+        AppForgeStorageRow("Eşleşen arşiv",gb(r.verifiedBytes))
+        AppForgeStorageRow("Mührü geçerli ortamda eşleşen",gb(r.sealedBytes))
+        r.modules.forEach { row->Text(row.id.name+" | READY="+row.ready+" | Mühür="+row.seal) }
+        Text("Eşleşen alan silme izni veya gerçek tasarruf değildir.",style=MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick={
+            val text=buildString {
+                appendLine("AppForge R73 — arşiv/mühür kanıtı")
+                appendLine("Aranan: "+r.planned+" | Eşleşen: "+gb(r.verifiedBytes)+" | Mühürlü eşleşen: "+gb(r.sealedBytes))
+                r.modules.forEach { row->
+                    appendLine(row.id.name+" READY="+row.ready+" SEAL="+row.seal)
+                    row.copies.forEach { appendLine(it.name+" | "+it.state+" | "+it.bytes) }
+                }
+                appendLine("READ_ONLY=YES; DELETE=NO; RESEAL=NO")
+            }
+            context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(
+                android.content.ClipData.newPlainText("AppForge R73",text))
+        },modifier=Modifier.fillMaxWidth()){Text("R73 inceleme raporunu kopyala")}
     }
 }

@@ -444,7 +444,25 @@ OPTS
  as_verify_indices || return 60
  as_inventory > "$as_store/current.tsv.tmp";cmp "$as_store/current.tsv.tmp" "$as_transaction/baseline.tsv" || return 60
  as_phase INSTALLING "APT ağı kapalı: kesin sürümler yerel önbellekten kuruluyor." || return 60
- as_install_files || return $?
+ if as_install_files;then
+  :
+ else
+  as_install_rc=$?
+  # R63: repair ONLY the reviewed Windows MinGW dpkg failure INSIDE its
+  # original authenticated transaction. Never retry apt, resume a foreign
+  # .part lock, or generate a lock from unverified package state.
+  [ "$as_install_rc" = 100 ] && [ "$as_owner" = WINDOWS_NATIVE ] &&
+  [ "${APPFORGE_R2_RELEASE_AUTHORIZED:-0}" = 1 ] || return "$as_install_rc"
+  awk -F '\t' '
+   $1=="gcc-mingw-w64-x86-64-posix" && $2=="13.2.0-6ubuntu1+26.1" && $3=="arm64" && $4=="de7ed842e1a166be9726952538cfe520d6e55ff07e4fae009cddbee74ca5de64" {gcc++}
+   $1=="g++-mingw-w64-x86-64-posix" && $2=="13.2.0-6ubuntu1+26.1" && $3=="arm64" && $4=="8314d76080dc9979f8ebcfb2d70852804a6b765e38028990d8ff67ced712c99d" {gxx++}
+   END {exit !(gcc==1 && gxx==1)}
+  ' "$as_transaction/packages.tsv" || return 60
+  [ -n "$(dpkg --audit)" ] || return 60
+  APPFORGE_R63_WINDOWS_APT_REPAIR_ONLY=1 /bin/sh /workspace/runtime/install-windows-native-toolchain.sh || return 60
+  as_verify_indices || return 60
+  echo 'APPFORGE_R63_WINDOWS_APT_REPAIRED_PENDING_FULL_LOCK_VERIFICATION'
+ fi
  as_phase OFFLINE_TEST "Kurulu sürümler ve dosya SHA-256 envanteri doğrulanıyor." || return 60
  [ -z "$(dpkg --audit)" ] || return 60
  as_inventory > "$as_transaction/installed.tsv"

@@ -33,10 +33,20 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         require(digest.matches(Regex("[a-f0-9]{64}")))
         atomicWrite(activeSeal,JSONObject().put("schema",1).put("active",active.name).put("digest",digest).toString().toByteArray(Charsets.UTF_8),availableBytes)
     }
-    private fun verifyActiveSeal() {
+    private fun verifyActiveSeal(canceled:()->Unit={}) {
         require(activeSeal.isFile && !Files.isSymbolicLink(activeSeal.toPath()) && activeSeal.length()<8192){"Eski ortamda generation mühürü yok; geri alma güvenle kanıtlanamıyor."}
         val j=JSONObject(activeSeal.readText());require(j.getInt("schema")==1 && j.getString("active")==active.name)
-        require(treeDigest(inventory(active,{}))==j.getString("digest")){"Aktif ortam son geçişten sonra değişmiş; kullanıcı dosyaları korunarak geri alma engellendi."}
+        require(treeDigest(inventory(active,canceled))==j.getString("digest")){"Aktif ortam son geçişten sonra değişmiş; kullanıcı dosyaları korunarak geri alma engellendi."}
+    }
+    /** Read-only evidence; no recovery, resealing or cleanup is invoked. Caller excludes mutations. */
+    internal fun reviewArchiveSeal(canceled:()->Unit={}) {
+        checkAnchor()
+        for(control in listOf(journal,File(parent,".rootfs-activation.json"))) {
+            RecoveryPathAnchor.check(control)
+            require(!Files.exists(control.toPath(),LinkOption.NOFOLLOW_LINKS)){"PENDING_GENERATION"}
+        }
+        canceled()
+        verifyActiveSeal(canceled)
     }
     private fun cleanStaleTmpSidecars() {
         for(sidecar in listOf(File(journal.path+".tmp"),File(activeSeal.path+".tmp"),File(snapshotRegistry.path+".tmp"))) {

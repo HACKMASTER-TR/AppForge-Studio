@@ -1,0 +1,2 @@
+ # R72B v589 — physical zero-candidate repair
+R72 v588 local build 792/792 PASS; device migration returned moved=0 redundant=0 skipped=0 logical=0 free delta=0. Root cause in production candidate enumeration: literal dollar-sign plus sha.archive rather than actual digest. Fixed using sha+".archive"; actual ARM64 paths and 30 planned candidates tested, including present invalid file and empty fixture. Report planned/found explicitly; zero candidates is not acceptance. No guest mutation, native changes, or new savings claim. Physical verification and CI pending.

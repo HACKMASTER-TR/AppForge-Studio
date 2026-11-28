@@ -1785,11 +1785,25 @@ case "$ENGINE" in
         "$SDK/cmake/3.22.1/bin/cmake" --version
         "$SDK/cmake/3.22.1/bin/ninja" --version
 
-        file /usr/bin/cmake |
-          grep -Eqi 'aarch64|ARM aarch64'
-
-        file /usr/bin/ninja |
-          grep -Eqi 'aarch64|ARM aarch64'
+        # Verify the same actual ELF images used by the installed wrappers.
+        # /usr/bin can be absent when signed host tools live in ndk-host-v7.
+        smoke_cmake=/usr/bin/cmake
+        smoke_ninja=/usr/bin/ninja
+        if [ "$NDK_HOST_ISOLATED" = 1 ];then
+          smoke_cmake="$ROOT/ndk-host-v7/sysroot/usr/bin/cmake"
+          smoke_ninja="$ROOT/ndk-host-v7/sysroot/usr/bin/ninja"
+        fi
+        if ! file -L "$smoke_cmake" | grep -Eqi 'aarch64|ARM aarch64';then
+          echo 'APPFORGE_R63_EXPO_CMAKE_SMOKE_ABI=FAIL' >&2
+          file -L "$smoke_cmake" >&2 || true
+          exit 61
+        fi
+        if ! file -L "$smoke_ninja" | grep -Eqi 'aarch64|ARM aarch64';then
+          echo 'APPFORGE_R63_EXPO_NINJA_SMOKE_ABI=FAIL' >&2
+          file -L "$smoke_ninja" >&2 || true
+          exit 62
+        fi
+        echo 'APPFORGE_R63_EXPO_SIGNED_HOST_SMOKE=PASS'
 
         echo "APPFORGE_EXPO_ARM64_CMAKE_SMOKE=PASS"
 

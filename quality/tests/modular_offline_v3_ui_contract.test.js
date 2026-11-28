@@ -36,9 +36,12 @@ test('standalone Node module pins and verifies archive without Android toolchain
 test('module UI uses byte measurements and does not equate download completion to READY', () => {
   const screen=read(base+'java/com/appforge/studio/OfflineBuildPackScreen.kt');
   const downloader=read(base+'java/com/appforge/studio/build/VerifiedModuleDownload.kt');
-  assert.match(screen,/event\.percent/);
-  assert.match(screen,/event\.averageSpeedBytesPerSecond/);
-  assert.match(screen,/toplam bilinmiyor/);
+  const row=read(base+'java/com/appforge/studio/R66ModuleRow.kt');
+  assert.match(row,/event\?\.percent/);
+  assert.match(row,/percent\?\.let/);
+  assert.match(row,/if\(installed\)return State\(1f/);
+  assert.match(row,/ModulePhase\.DOWNLOADING -> State\(\(percent\?:0\)/);
+  assert.match(screen,/val installed=!running && ready\[id\]==true/);
   assert.match(screen,/check\(OfflineBuildPackManager\.moduleReady/);
   assert.match(screen,/!OfflineBuildPackManager\.hasPendingLifecycle/);
   assert.doesNotMatch(downloader,/ModulePhase\.READY/);
