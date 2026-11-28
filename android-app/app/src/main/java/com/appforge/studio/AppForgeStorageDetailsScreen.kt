@@ -171,6 +171,23 @@ private fun R69StorageAnalysis() {
             context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(
                 android.content.ClipData.newPlainText("AppForge depolama raporu",summary))
         },modifier=Modifier.fillMaxWidth()){Text("Analiz raporunu kopyala")}
+        OutlinedButton(onClick={
+            val detail=buildString {
+                appendLine("AppForge R71 — ortak çalışma ortamı ön kontrolü")
+                appendLine("Toplam: "+gb(r.logicalBytes)+" | Fazla kopya: "+gb(r.logicalExtraBytes))
+                appendLine("Kısmi: "+r.incomplete+" | Atlanan: "+r.skipped+" | Inode belirsiz: "+r.identityUnknown)
+                appendLine("En büyük "+r.duplicates.size+" grup; her grupta en fazla 20 benzersiz inode.")
+                r.duplicates.forEachIndexed { i,d ->
+                    appendLine((i+1).toString()+". "+gb(d.bytesPerFile)+" x "+d.copies+" | Fazla: "+gb(d.logicalExtraBytes))
+                    appendLine("SHA256="+d.sha256)
+                    d.evidence.forEach { e -> appendLine(label(e.owner)+" | "+e.category+" | "+e.relativePath) }
+                    if(d.copies>d.evidence.size)appendLine("Diğer kopyalar: "+(d.copies-d.evidence.size))
+                }
+                appendLine("Salt okunur kanıt; silme, paylaşım veya fiziksel tasarruf izni değildir.")
+            }
+            context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(
+                android.content.ClipData.newPlainText("AppForge R71 ön kontrol",detail))
+        },modifier=Modifier.fillMaxWidth()){Text("R71 ayrıntılı tekrar raporunu kopyala")}
     }
 }
 

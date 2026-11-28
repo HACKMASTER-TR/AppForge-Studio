@@ -16,7 +16,9 @@ import java.security.MessageDigest
 internal object R69StorageInventory {
     data class Bucket(val name:String,val bytes:Long,val files:Long)
     data class Progress(val entries:Long,val hashedBytes:Long,val hashing:Boolean)
-    data class Duplicate(val bytesPerFile:Long,val copies:Int,val logicalExtraBytes:Long,val owners:List<String>)
+    data class Evidence(val owner:String,val category:String,val relativePath:String)
+    data class Duplicate(val bytesPerFile:Long,val copies:Int,val logicalExtraBytes:Long,val owners:List<String>,
+        val sha256:String="",val evidence:List<Evidence> = emptyList())
     data class Report(
         val logicalBytes:Long,val allocatedBlockSum:Long?,val files:Long,val links:Long,
         val byOwner:List<Bucket>,val byCategory:List<Bucket>,
@@ -26,7 +28,7 @@ internal object R69StorageInventory {
     )
     private data class Location(val owner:String,val category:String,val managed:Boolean)
     private data class Candidate(val path:Path,val size:Long,val modified:java.nio.file.attribute.FileTime,
-        val key:String?,val owner:String)
+        val key:String?,val owner:String,val category:String)
     private data class Count(var bytes:Long=0,var files:Long=0) {
         fun add(size:Long){bytes=Math.addExact(bytes,size);files++}
     }
@@ -58,6 +60,30 @@ internal object R69StorageInventory {
             else -> "Diğer araç verileri"
         }
         return Location(owner,category,managed)
+    }
+    // Only known tool/cache paths are disclosed. Never export arbitrary project paths,
+    // app-private absolute paths, or unrecognised names from a guest.
+    internal fun evidencePath(parts:List<String>):String {
+        val safe=parts.all { it.matches(Regex("[A-Za-z0-9_.+@=-]{1,180}")) && it!="." && it!=".." }
+        if(!safe || parts.firstOrNull()!="no_backup")return "[korumali yol]"
+        val lastRoot=parts.indexOfLast { it=="rootfs" }
+        if(lastRoot>=0) {
+            val tail=parts.drop(lastRoot+1).joinToString("/")
+            val prefixes=listOf("opt/appforge-device/cache/","opt/appforge-device/android-sdk/",
+                "opt/appforge-device/jdk-17/","opt/appforge-device/gradle-",
+                "opt/appforge-device/rust-","opt/appforge-device/node-",
+                "opt/appforge-device/ndk-host-v7/","usr/lib/","usr/bin/",
+                "var/cache/apt/archives/","root/.gradle-appforge/caches/modules-2/files-2.1/")
+            if(prefixes.any { tail.startsWith(it) })return parts.joinToString("/")
+        }
+        val name=parts.lastOrNull().orEmpty()
+        if(parts.getOrNull(1)==R70SharedArchives.DIRECTORY &&
+            name.matches(Regex("[a-f0-9]{64}[.]archive")))return parts.joinToString("/")
+        if(parts.getOrNull(1)=="isolated-modules-v1" &&
+            parts.getOrNull(parts.size-2) in setOf("downloads",".module-archive-cache-v5") &&
+            (name.endsWith(".archive") || name.endsWith(".zip") || name.endsWith(".tar.gz") ||
+                name.endsWith(".tar.xz") || name.endsWith(".deb")))return parts.joinToString("/")
+        return "[korumali yol]"
     }
     fun scan(dataDir:File,canceled:()->Unit={},progress:(Progress)->Unit={},
         allocated:(String)->Long={RuntimeFileClone.allocatedBytes(it)},
@@ -93,7 +119,7 @@ internal object R69StorageInventory {
                 else {
                     val key=attrs.fileKey()?.toString()
                     if(key==null)identityUnknown=true
-                    bySize.getOrPut(size){mutableListOf()}.add(Candidate(path,size,attrs.lastModifiedTime(),key,loc.owner))
+                    bySize.getOrPut(size){mutableListOf()}.add(Candidate(path,size,attrs.lastModifiedTime(),key,loc.owner,loc.category))
                     candidateCount++
                 }
             }
@@ -150,9 +176,12 @@ internal object R69StorageInventory {
                   catch(e:IllegalArgumentException){incomplete=true;skipped++}
                   catch(e:SecurityException){incomplete=true;skipped++}
             }
-            for(group in hashes.values.filter { it.size>1 }) {
+            for((sha,group) in hashes.filterValues { it.size>1 }) {
                 result.add(Duplicate(size,group.size,Math.multiplyExact(size,(group.size-1).toLong()),
-                    group.map { it.owner }.distinct().sorted()))
+                    group.map { it.owner }.distinct().sorted(),sha,
+                    group.sortedBy { it.path.toString() }.take(20).map { c ->
+                        Evidence(c.owner,c.category,evidencePath(rootPath.relativize(c.path).map { it.toString() }))
+                    }))
             }
         }
         canceled()
