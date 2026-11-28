@@ -37,7 +37,7 @@ internal object R70SharedArchives {
         RecoveryPathAnchor.check(root)
         return File(root,"$sha.archive").also { RecoveryPathAnchor.check(it) }
     }
-    private fun pins(app:Context):List<Pin> {
+    internal fun pins(app:Context):List<Pin> {
         val android=R68PinnedAndroidArchives.plan(
             app.assets.open("device-build/verified-toolchain-sources-v4.json").bufferedReader().use { it.readText() },
             listOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.EXPO_REACT_NATIVE,OfflineModuleId.RUST_ANDROID_NDK),

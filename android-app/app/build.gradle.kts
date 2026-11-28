@@ -518,8 +518,10 @@ require(!appforgeV9R2Isolated3UpgradeV551R30 ||
 // pinned Google Cloud Android OAuth SHA-1. CI enforces the certificate.
 // R58-R62: one explicit original-identity device candidate profile. Historical
 // debug/Play/release modes remain unchanged; no automatic signing or publishing.
+val appforgeR73GuestArchiveReviewCandidate =
+    providers.gradleProperty("appforgeR73GuestArchiveReviewCandidate").orNull == "true"
 val appforgeR72BPathRepairCandidate =
-    providers.gradleProperty("appforgeR72BPathRepairCandidate").orNull == "true"
+    providers.gradleProperty("appforgeR72BPathRepairCandidate").orNull == "true" || appforgeR73GuestArchiveReviewCandidate
 val appforgeR72SharedBrokerCandidate =
     providers.gradleProperty("appforgeR72SharedBrokerCandidate").orNull == "true" || appforgeR72BPathRepairCandidate
 val appforgeR71SharedRuntimePreflightCandidate =
@@ -1261,7 +1263,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR72BPathRepairCandidate) {
+                if (appforgeR73GuestArchiveReviewCandidate) {
+                    output.versionCode.set(590)
+                    output.versionName.set("5.0.88-r73-guest-archive-review")
+                } else if (appforgeR72BPathRepairCandidate) {
                     output.versionCode.set(589)
                     output.versionName.set("5.0.87-r72b-path-repair")
                 } else if (appforgeR72SharedBrokerCandidate) {

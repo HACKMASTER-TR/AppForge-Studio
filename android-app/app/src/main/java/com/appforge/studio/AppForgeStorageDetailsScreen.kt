@@ -81,6 +81,8 @@ internal fun AppForgeStorageDetailsScreen(onBack:()->Unit) {
         R70ArchiveOptimization(onComplete={refresh++})
         HorizontalDivider()
         R70ArchiveOptimization(onComplete={refresh++},r72=true)
+        HorizontalDivider()
+        R73GuestArchiveAnalysis()
         Text("Analiz salt okunurdur. Arşiv birleştirme yalnızca açık onayla, doğrulanmış host kopyaları üzerinde çalışır.",
             style=MaterialTheme.typography.bodySmall)
     }
@@ -258,5 +260,62 @@ private fun R70ArchiveOptimization(onComplete:()->Unit,r72:Boolean=false) {
             context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(
                 android.content.ClipData.newPlainText(if(r72)"AppForge R72" else "AppForge R70",text))
         }){Text("Optimizasyon sonucunu kopyala")}
+    }
+}
+
+@Composable
+private fun R73GuestArchiveAnalysis() {
+    val context=LocalContext.current
+    var request by remember { mutableIntStateOf(0) }
+    var running by remember { mutableStateOf(false) }
+    var progress by remember { mutableStateOf(0 to 5) }
+    var report by remember { mutableStateOf<com.appforge.studio.build.R73GuestArchiveReview.Report?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    fun gb(n:Long)="%.2f GB".format(java.util.Locale.US,n/1_000_000_000.0)
+    LaunchedEffect(request) {
+        if(request==0)return@LaunchedEffect
+        running=true;report=null;error=null;progress=0 to 5
+        try {
+            report=withContext(Dispatchers.IO) {
+                val job=currentCoroutineContext()
+                check(!ModuleInstallOperations.busy.value)
+                BuildModuleUsage.mutationLease().use {
+                    com.appforge.studio.build.R73GuestArchiveReview.review(context,
+                        canceled={job.ensureActive();check(!ModuleInstallOperations.busy.value)},
+                        progress={a,b->progress=a to b})
+                }
+            }
+        } catch(e:CancellationException){throw e}
+          catch(e:Exception){error="R73 incelemesi tamamlanamadı: "+(e.message?:"Doğrulama hatası")}
+        finally{running=false}
+    }
+    Text("R73 • Kurulu ortam arşivleri",style=MaterialTheme.typography.titleMedium)
+    Text("28 bilinen arşiv yolu, ortak arşiv SHA-256 ve aktif generation mühürü incelenir. Dosya silinmez veya mühür değiştirilmez.",
+        style=MaterialTheme.typography.bodySmall)
+    if(running) {
+        LinearProgressIndicator(Modifier.fillMaxWidth())
+        Text("İncelenen ortam: "+progress.first+"/"+progress.second)
+        OutlinedButton(onClick={request=0}){Text("İncelemeyi durdur")}
+    } else Button(onClick={request++},modifier=Modifier.fillMaxWidth()){Text("R73 arşiv ve mühür kontrolü")}
+    error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+    report?.let { r ->
+        AppForgeStorageRow("Aranan arşiv",r.planned.toString())
+        AppForgeStorageRow("Eşleşen arşiv",gb(r.verifiedBytes))
+        AppForgeStorageRow("Mührü geçerli ortamda eşleşen",gb(r.sealedBytes))
+        r.modules.forEach { row->Text(row.id.name+" | READY="+row.ready+" | Mühür="+row.seal) }
+        Text("Eşleşen alan silme izni veya gerçek tasarruf değildir.",style=MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick={
+            val text=buildString {
+                appendLine("AppForge R73 — arşiv/mühür kanıtı")
+                appendLine("Aranan: "+r.planned+" | Eşleşen: "+gb(r.verifiedBytes)+" | Mühürlü eşleşen: "+gb(r.sealedBytes))
+                r.modules.forEach { row->
+                    appendLine(row.id.name+" READY="+row.ready+" SEAL="+row.seal)
+                    row.copies.forEach { appendLine(it.name+" | "+it.state+" | "+it.bytes) }
+                }
+                appendLine("READ_ONLY=YES; DELETE=NO; RESEAL=NO")
+            }
+            context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(
+                android.content.ClipData.newPlainText("AppForge R73",text))
+        },modifier=Modifier.fillMaxWidth()){Text("R73 inceleme raporunu kopyala")}
     }
 }
