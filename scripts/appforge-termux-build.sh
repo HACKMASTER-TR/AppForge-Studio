@@ -70,6 +70,7 @@ assert re.search(r'if\s*\('+re.escape(sys.argv[2])+r'\)\s*\{\s*output.versionCod
 print("NATIVE_SOURCE_AND_CONFIG=PASS")
 print("PROFILE_VERSION=PASS")
 PY
+python tests/test_termux_build_contract.py
 python tests/test_ci_quota_policy.py
 python tests/test_r58_r62_integrated_candidate.py
 python scripts/generate-second-brain-snapshot.py
