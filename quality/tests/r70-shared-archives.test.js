@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const read=p=>fs.readFileSync(new URL('../../'+p,import.meta.url),'utf8');
+const base='android-app/app/src/main/java/com/appforge/studio/';
+test('R70 central archive store does not alias guest or alter R2 admission',()=>{
+ const source=read(base+'build/R70SharedArchives.kt');
+ const installer=read(base+'build/IsolatedModuleInstallerV3.kt');
+ const broker=read(base+'build/ModuleArtifactBroker.kt');
+ assert.match(source,/shared-tool-archives-v1/);
+ assert.match(source,/VerifiedArtifactCache\.matches\(destination,pin\.sha,pin\.bytes,MAX\)/);
+ assert.match(source,/StandardCopyOption\.ATOMIC_MOVE/);
+ assert.doesNotMatch(source,/createLink|createSymbolicLink|deleteRecursively|REPLACE_EXISTING/);
+ assert.match(installer,/R70SharedArchives\.objectFile\(sharedArchiveRoot,archive\.sha256\)/);
+ assert.match(broker,/if\(!isR2 && sharedPinnedCache!=null\)/);
+ const ui=read(base+'AppForgeStorageDetailsScreen.kt');
+ assert.match(ui,/BuildModuleUsage\.mutationLease\(\)\.use/);
+ assert.match(ui,/R70SharedArchives\.migrateInstalled/);
+ assert.match(ui,/confirmButton=\{TextButton/);
+});

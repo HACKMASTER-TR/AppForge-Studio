@@ -6,7 +6,7 @@ import java.nio.file.*
 import kotlinx.coroutines.*
 
 /** Pinned archive requests contain no host paths. The native cache survives staging rollback. */
-internal class ModuleArtifactBroker(private val workspace:File,private val cache:File,private val module:OfflineModuleId,private val operation:String,private val progress:(ModuleProgress)->Unit,private val open:(URL)->HttpURLConnection={RedirectConnection(it)},private val stopRequested:()->Boolean={false}) {
+internal class ModuleArtifactBroker(private val workspace:File,private val cache:File,private val module:OfflineModuleId,private val operation:String,private val progress:(ModuleProgress)->Unit,private val open:(URL)->HttpURLConnection={RedirectConnection(it)},private val stopRequested:()->Boolean={false},private val sharedPinnedCache:File?=null) {
     @Volatile var transferring=false;private set
     @Volatile var networkBlocked=false;private set
     companion object {
@@ -64,8 +64,11 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
                     val component=url.path.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._+-]"),"_").take(150)
                     progress(ModuleProgress(module,operation,ModulePhase.VERIFYING,detail="Yerel arşiv doğrulanıyor • $component"))
                     val job=currentCoroutineContext()[Job]!!
-                    val target=File(cache,"$sha.archive")
                     val isR2=url.host=="packages.appforgecloud.com"
+                    // Signed R2 objects keep their existing cache/authorization path.
+                    val target=if(!isR2 && sharedPinnedCache!=null)
+                        R70SharedArchives.objectFile(sharedPinnedCache,sha)
+                    else File(cache,"$sha.archive")
                     if(isR2) {
                         require(url.toString()==V9SignedR2CandidateDownload.urlForSha(sha) && fields.size==3)
                         val expectedBytes=fields[2].toLong()

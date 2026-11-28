@@ -39,7 +39,7 @@ internal object R69StorageInventory {
             isolated -> if(id in OfflineModuleId.entries.map { it.name }) id else "İzole diğer"
             root=="no_backup" && privateArea=="device-build" && parts.getOrNull(2)=="runtime-v3" -> "Ortak Linux"
             root=="no_backup" && privateArea=="offline-build-pack" && parts.getOrNull(2)=="windows-host-v1" -> "Windows Portable Host"
-            root=="no_backup" && privateArea in setOf("module-downloads","v9-signed-r2-canary","verified-rootfs-downloads") -> "Ortak arşiv deposu"
+            root=="no_backup" && privateArea in setOf("module-downloads","v9-signed-r2-canary","verified-rootfs-downloads",R70SharedArchives.DIRECTORY) -> "Ortak arşiv deposu"
             root=="cache" || root=="code_cache" -> "Android önbelleği"
             else -> "Diğer özel uygulama verileri"
         }

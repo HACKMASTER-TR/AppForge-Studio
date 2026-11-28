@@ -518,8 +518,10 @@ require(!appforgeV9R2Isolated3UpgradeV551R30 ||
 // pinned Google Cloud Android OAuth SHA-1. CI enforces the certificate.
 // R58-R62: one explicit original-identity device candidate profile. Historical
 // debug/Play/release modes remain unchanged; no automatic signing or publishing.
+val appforgeR70SharedArchivesCandidate =
+    providers.gradleProperty("appforgeR70SharedArchivesCandidate").orNull == "true"
 val appforgeR69StorageInventoryCandidate =
-    providers.gradleProperty("appforgeR69StorageInventoryCandidate").orNull == "true"
+    providers.gradleProperty("appforgeR69StorageInventoryCandidate").orNull == "true" || appforgeR70SharedArchivesCandidate
 val appforgeR68PinnedAndroidCandidate =
     providers.gradleProperty("appforgeR68PinnedAndroidCandidate").orNull == "true" || appforgeR69StorageInventoryCandidate
 val appforgeR67AcquisitionCandidate =
@@ -1253,7 +1255,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR69StorageInventoryCandidate) {
+                if (appforgeR70SharedArchivesCandidate) {
+                    output.versionCode.set(586)
+                    output.versionName.set("5.0.84-r70-shared-archives")
+                } else if (appforgeR69StorageInventoryCandidate) {
                     output.versionCode.set(585)
                     output.versionName.set("5.0.83-r69-storage-inventory")
                 } else if (appforgeR68PinnedAndroidCandidate) {

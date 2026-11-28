@@ -244,6 +244,7 @@ internal object IsolatedModuleInstallerV3 {
         // Dynamic Maven/npm/SDK metadata resolution remains online-capable.
         val installOrder = request.dependencyOrder.filter { it != OfflineModuleId.LINUX_RUNTIME }
         val archives = installOrder.associateWith { id -> toolArchives(app,id) }
+        val sharedArchiveRoot=R70SharedArchives.directory(app.noBackupFilesDir)
         val androidArchives=R68PinnedAndroidArchives.plan(
             app.assets.open("device-build/verified-toolchain-sources-v4.json").bufferedReader().use { it.readText() },
             installOrder,Build.SUPPORTED_ABIS.contains("arm64-v8a"))
@@ -252,7 +253,7 @@ internal object IsolatedModuleInstallerV3 {
             control.checkpoint()
             val job=currentCoroutineContext()
             VerifiedModuleDownload.download(archive.url,archive.sha256,
-                File(layout.namespace.downloads,archive.name),target,operation,
+                R70SharedArchives.objectFile(sharedArchiveRoot,archive.sha256),target,operation,
                 canceled={ !job.isActive || control.request!=DownloadControl.Request.NONE },
                 open={ ModuleArtifactBroker.Companion.RedirectConnection(it) },
                 progress={ onProgress(it.copy(acquisitionPending=true)) },
@@ -264,7 +265,7 @@ internal object IsolatedModuleInstallerV3 {
                 control.checkpoint()
                 val job = currentCoroutineContext()
                 VerifiedModuleDownload.download(archive.url,archive.sha256,
-                    File(layout.namespace.downloads,archive.name),id,operation,
+                    R70SharedArchives.objectFile(sharedArchiveRoot,archive.sha256),id,operation,
                     canceled = { !job.isActive || control.request != DownloadControl.Request.NONE },
                     progress = { onProgress(it.copy(acquisitionPending=true)) })
             }
@@ -314,7 +315,7 @@ internal object IsolatedModuleInstallerV3 {
                     val cache=File(staged,"opt/appforge-device/cache").apply { mkdirs() }
                     for (archive in androidArchives) {
                         job.ensureActive();control.checkpoint()
-                        val source=File(layout.namespace.downloads,archive.name)
+                        val source=R70SharedArchives.objectFile(sharedArchiveRoot,archive.sha256)
                         val destination=File(cache,archive.name)
                         if(destination.exists()) {
                             require(VerifiedArtifactCache.matches(destination,archive.sha256,archive.bytes)) {
@@ -340,7 +341,7 @@ internal object IsolatedModuleInstallerV3 {
                             "ISOLATED_R2_MISSING:${id.name}:${result.missing}; signed cache preserved"
                         }
                     }
-                    seedToolArchive(layout.namespace, staged, workspace, id, archives.getValue(id))
+                    seedToolArchive(sharedArchiveRoot, staged, workspace, id, archives.getValue(id))
                     for (command in commands(id, File(staged,
                             "opt/appforge-device/rust-1.85.1/bin/rustc").isFile)) {
                         job.ensureActive(); control.checkpoint()
@@ -454,9 +455,9 @@ internal object IsolatedModuleInstallerV3 {
         }
     }
 
-    private data class ToolArchive(val name:String,val url:String,val sha256:String)
+    internal data class ToolArchive(val name:String,val url:String,val sha256:String)
 
-    private fun toolArchives(app:Context,id:OfflineModuleId):List<ToolArchive> = when(id) {
+    internal fun toolArchives(app:Context,id:OfflineModuleId):List<ToolArchive> = when(id) {
         OfflineModuleId.NODE_WEB -> {
             val architecture = if (Build.SUPPORTED_ABIS.contains("arm64-v8a")) "arm64" else "x64"
             val name = "node-v22.23.3-linux-$architecture.tar.xz"
@@ -486,11 +487,11 @@ internal object IsolatedModuleInstallerV3 {
 
     // This stage is strictly local: if a required archive is missing or changed,
     // copyToStage rejects it. It never silently starts a new network download.
-    private fun seedToolArchive(namespace: ModuleIsolationV1.Layout,
+    private fun seedToolArchive(sharedArchiveRoot: File,
         staged: File, workspace: File, id: OfflineModuleId, archives:List<ToolArchive>) {
         val destination = File(staged, "opt/appforge-device/cache").apply { mkdirs() }
         for (archive in archives)
-            copyToStage(File(namespace.downloads,archive.name),File(destination,archive.name),archive.sha256)
+            copyToStage(R70SharedArchives.objectFile(sharedArchiveRoot,archive.sha256),File(destination,archive.name),archive.sha256)
         if (id == OfflineModuleId.RUST) {
             val original = File(workspace, "runtime/apt-snapshot-lock.sh").readText()
             require(original.split("as_configure() {").size == 2)

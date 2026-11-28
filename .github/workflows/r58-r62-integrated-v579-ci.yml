@@ -1,4 +1,4 @@
-name: AppForge R58_R62 Original Signed v585 In-Place Upgrade Candidate (NO INSTALL)
+name: AppForge R58_R62 Original Signed v586 In-Place Upgrade Candidate (NO INSTALL)
 on:
   push:
     branches:
@@ -11,7 +11,7 @@ concurrency:
   group: appforge-r58-r62-signed-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  signed-original-v585-candidate:
+  signed-original-v586-candidate:
     if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
     runs-on: ubuntu-24.04
     timeout-minutes: 75
@@ -145,7 +145,7 @@ jobs:
           echo "APPFORGE_R31_KEYSTORE_PATH=$KEYFILE" >> "$GITHUB_ENV"
           echo R58_R62_SIGNER_PREFLIGHT=PASS_ORIGINAL_PINNED_R31
 
-      - name: Test and assemble signed R31-original v585 debug candidate
+      - name: Test and assemble signed R31-original v586 debug candidate
         shell: bash
         env:
           APPFORGE_R31_STORE_PASSWORD: ${{ secrets.APPFORGE_R31_STORE_PASSWORD || secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
@@ -154,13 +154,13 @@ jobs:
           test -s "$APPFORGE_R31_KEYSTORE_PATH"
           test -n "$APPFORGE_R31_STORE_PASSWORD"
           gradle -p android-app :app:testDebugUnitTest :app:assembleDebug \
-            -PappforgeR69StorageInventoryCandidate=true \
+            -PappforgeR70SharedArchivesCandidate=true \
             -PappforgePinnedKotlinCompilerRepo="$RUNNER_TEMP/r31-kotlin-maven" \
             -PappforgeCIKotlinBomRepo="$RUNNER_TEMP/r31-kotlin-bom" \
             -PappforgeCIMavenGcs=true \
             --no-daemon --max-workers=2 --no-configuration-cache --console=plain --stacktrace
           echo APPFORGE_R58_R62_SIGNED_BUILD=PASS
-      - name: Verify signed package, v585, pinned signer, unit tests, SHA
+      - name: Verify signed package, v586, pinned signer, unit tests, SHA
         shell: bash
         run: |
           set -euo pipefail
@@ -170,7 +170,7 @@ jobs:
           test -s "$APK"
           unzip -tqq "$APK"
           BADGING="$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK")"
-          printf '%s\n' "$BADGING" | grep -F "package: name='com.appforge.studio' versionCode='585' versionName='5.0.83-r69-storage-inventory'" >/dev/null
+          printf '%s\n' "$BADGING" | grep -F "package: name='com.appforge.studio' versionCode='586' versionName='5.0.84-r70-shared-archives'" >/dev/null
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           "$APKSIGNER" verify --verbose --print-certs "$APK" > "$RUNNER_TEMP/r58-r62-apk-cert.txt"
           grep -F 'Verified using v2 scheme' "$RUNNER_TEMP/r58-r62-apk-cert.txt" >/dev/null
@@ -198,7 +198,7 @@ jobs:
           mkdir -p r58-r62-signed
           cp "$APK" "r58-r62-signed/AppForgeStudio-R58_R62-V580-SIGNED-${GITHUB_SHA:0:12}.apk"
           (cd r58-r62-signed && sha256sum *.apk > SHA256SUMS.txt)
-          printf 'SOURCE_SHA=%s\nPACKAGE=com.appforge.studio\nVERSION_CODE=585\nVERSION_NAME=5.0.83-r69-storage-inventory\nCERT_SHA1=990EF33B990FD578E9DCE724348196F99B8807BF\nAPK_SIGNED=YES\nPHYSICAL_INSTALL=NOT_TESTED\nDO_NOT_UNINSTALL_EXISTING_APP=YES\n' "$GITHUB_SHA" > r58-r62-signed/UPGRADE-NOTES.txt
+          printf 'SOURCE_SHA=%s\nPACKAGE=com.appforge.studio\nVERSION_CODE=586\nVERSION_NAME=5.0.84-r70-shared-archives\nCERT_SHA1=990EF33B990FD578E9DCE724348196F99B8807BF\nAPK_SIGNED=YES\nPHYSICAL_INSTALL=NOT_TESTED\nDO_NOT_UNINSTALL_EXISTING_APP=YES\n' "$GITHUB_SHA" > r58-r62-signed/UPGRADE-NOTES.txt
           echo R58_R62_RESULT=SIGNED_ORIGINAL_INPLACE_CANDIDATE_READY_NOT_INSTALLED
       - uses: actions/upload-artifact@v4
         with:

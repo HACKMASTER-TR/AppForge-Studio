@@ -828,7 +828,9 @@ internal object OfflineBuildPackManager {
         ExternalTelemetryChannels.clear(telemetry)
         File(workspace,"apt-phase.json").let{require(!java.nio.file.Files.isSymbolicLink(it.toPath()));it.delete()}
         val channels=module?.let{ExternalTelemetryChannels(telemetry,it,operation)}
-        val broker=module?.let{ModuleArtifactBroker(workspace,File(rootfs.parentFile,".module-archive-cache-v5"),it,operation,progress,stopRequested={control.request!=DownloadControl.Request.NONE})}
+        val broker=module?.let{ModuleArtifactBroker(workspace,File(rootfs.parentFile,".module-archive-cache-v5"),it,operation,progress,
+            stopRequested={control.request!=DownloadControl.Request.NONE},
+            sharedPinnedCache=if(suffix.startsWith("isolated-"))diagnosticBase?.let{R70SharedArchives.directory(it)} else null)}
         val brokerJob=broker?.let{launch(kotlinx.coroutines.Dispatchers.IO){it.serve()}}
         val initialStageBytes=if(module!=null)RuntimeStorageBudget.measure(rootfs).logicalBytes else 0L
         var lastStorageCheck=0L
