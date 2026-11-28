@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# Superseded PR checks must not consume cloud time; newest revision still runs every gate.
+concurrency:
+  group: appforge-stability-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
 
   policy:

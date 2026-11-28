@@ -12,7 +12,11 @@ concurrency:
   cancel-in-progress: true
 jobs:
   unsigned-candidate:
-    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/codex/r58-r62-integrated-v579-20261126' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci unsigned]')))
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:

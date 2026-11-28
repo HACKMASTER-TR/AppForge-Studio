@@ -11,7 +11,11 @@ concurrency:
   cancel-in-progress: true
 jobs:
   rust-arm64-reference:
-    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/codex/r58-r62-integrated-v579-20261126' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci reference]')))
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 65
     steps:
@@ -62,7 +66,11 @@ jobs:
           if-no-files-found: warn
   expo-arm64-prebuild:
     name: ARM64 Expo 54 + RN 0.81 lockfile and prebuild (NO APK)
-    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/codex/r58-r62-integrated-v579-20261126' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci reference]')))
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 50
     env:
@@ -225,7 +233,11 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
   windows-arm64-cross-reference:
-    if: github.repository == 'HACKMASTER-TR/AppForge-Studio'
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/codex/r58-r62-integrated-v579-20261126' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci reference]')))
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 25
     steps:
