@@ -79,6 +79,8 @@ internal fun AppForgeStorageDetailsScreen(onBack:()->Unit) {
         R69StorageAnalysis()
         HorizontalDivider()
         R70ArchiveOptimization(onComplete={refresh++})
+        HorizontalDivider()
+        R70ArchiveOptimization(onComplete={refresh++},r72=true)
         Text("Analiz salt okunurdur. Arşiv birleştirme yalnızca açık onayla, doğrulanmış host kopyaları üzerinde çalışır.",
             style=MaterialTheme.typography.bodySmall)
     }
@@ -193,7 +195,7 @@ private fun R69StorageAnalysis() {
 
 
 @Composable
-private fun R70ArchiveOptimization(onComplete:()->Unit) {
+private fun R70ArchiveOptimization(onComplete:()->Unit,r72:Boolean=false) {
     val context=LocalContext.current
     var confirm by remember { mutableStateOf(false) }
     var request by remember { mutableIntStateOf(0) }
@@ -210,7 +212,10 @@ private fun R70ArchiveOptimization(onComplete:()->Unit) {
                 check(!ModuleInstallOperations.busy.value)
                 BuildModuleUsage.mutationLease().use {
                     check(!ModuleInstallOperations.busy.value)
-                    R70SharedArchives.migrateInstalled(context,
+                    if(r72) com.appforge.studio.build.R72BrokerArchives.migrateInstalled(context,
+                        canceled={job.ensureActive();check(!ModuleInstallOperations.busy.value)},
+                        progress={done,total->progress=done to total})
+                    else R70SharedArchives.migrateInstalled(context,
                         canceled={job.ensureActive();check(!ModuleInstallOperations.busy.value)},
                         progress={done,total->progress=done to total})
                 }
@@ -222,13 +227,13 @@ private fun R70ArchiveOptimization(onComplete:()->Unit) {
         finally{running=false}
     }
     fun gb(n:Long)="%.2f GB".format(java.util.Locale("tr","TR"),n/1_000_000_000.0)
-    Text("Ortak arşiv optimizasyonu",style=MaterialTheme.typography.titleMedium)
-    Text("Hedef: 12 GB. Bu adım yalnızca SHA-256 ile doğrulanan host arşivlerini ortak depoya taşır. Kurulu araçlar, projeler ve geri dönüş kopyaları korunur.",
+    Text(if(r72)"R72 • Ortak R2 aktarım arşivleri" else "Ortak arşiv optimizasyonu",style=MaterialTheme.typography.titleMedium)
+    Text(if(r72)"R71 raporundaki üç doğrulanmış aktarım nesnesi ortaklaştırılır. Misafir APT indeksleri ve kurulu araçlar korunur." else "Hedef: 12 GB. Bu adım yalnızca SHA-256 ile doğrulanan host arşivlerini ortak depoya taşır. Kurulu araçlar, projeler ve geri dönüş kopyaları korunur.",
         style=MaterialTheme.typography.bodySmall)
     if(running) {
         LinearProgressIndicator(Modifier.fillMaxWidth())
         progress?.let { Text("Doğrulanan arşiv: "+it.first+"/"+it.second) }
-    } else Button(onClick={confirm=true},modifier=Modifier.fillMaxWidth()){Text("Doğrulanmış arşivleri birleştir")}
+    } else Button(onClick={confirm=true},modifier=Modifier.fillMaxWidth()){Text(if(r72)"R72 aktarım arşivlerini birleştir" else "Doğrulanmış arşivleri birleştir")}
     if(confirm)AlertDialog(onDismissRequest={confirm=false},
         title={Text("Ortak arşiv deposu")},
         text={Text("Aynı SHA-256 değerine sahip, bilinen host arşivleri birleştirilecek. Kurulu çalışma ortamına dokunulmayacak. Boşalan alan işlem sonunda ölçülecek.")},
@@ -244,11 +249,11 @@ private fun R70ArchiveOptimization(onComplete:()->Unit) {
         AppForgeStorageRow("Reflink testi",when(r.reflink){true->"Destekleniyor";false->"Desteklenmiyor";null->"Ölçülemedi"})
         Text("Boş alan değişimi cihaz genelindedir. Gerçek modül boyutu için depolama analizini tekrar çalıştırın.",style=MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick={
-            val text="AppForge R70\nTaşınan: "+r.moved+"\nFazla kopya: "+r.redundant+
+            val text=(if(r72)"AppForge R72" else "AppForge R70")+"\nTaşınan: "+r.moved+"\nFazla kopya: "+r.redundant+
                 "\nMantıksal azalma: "+gb(r.logicalRemoved)+"\nBoş alan değişimi: "+gb(r.freeAfter-r.freeBefore)+
                 "\nAtlanan: "+r.skipped+"\nReflink: "+r.reflink
             context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(
-                android.content.ClipData.newPlainText("AppForge R70",text))
+                android.content.ClipData.newPlainText(if(r72)"AppForge R72" else "AppForge R70",text))
         }){Text("Optimizasyon sonucunu kopyala")}
     }
 }

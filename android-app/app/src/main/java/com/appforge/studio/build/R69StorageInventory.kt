@@ -41,7 +41,7 @@ internal object R69StorageInventory {
             isolated -> if(id in OfflineModuleId.entries.map { it.name }) id else "İzole diğer"
             root=="no_backup" && privateArea=="device-build" && parts.getOrNull(2)=="runtime-v3" -> "Ortak Linux"
             root=="no_backup" && privateArea=="offline-build-pack" && parts.getOrNull(2)=="windows-host-v1" -> "Windows Portable Host"
-            root=="no_backup" && privateArea in setOf("module-downloads","v9-signed-r2-canary","verified-rootfs-downloads",R70SharedArchives.DIRECTORY) -> "Ortak arşiv deposu"
+            root=="no_backup" && privateArea in setOf("module-downloads","v9-signed-r2-canary","verified-rootfs-downloads",R70SharedArchives.DIRECTORY,R72BrokerArchives.DIRECTORY) -> "Ortak arşiv deposu"
             root=="cache" || root=="code_cache" -> "Android önbelleği"
             else -> "Diğer özel uygulama verileri"
         }
@@ -77,7 +77,7 @@ internal object R69StorageInventory {
             if(prefixes.any { tail.startsWith(it) })return parts.joinToString("/")
         }
         val name=parts.lastOrNull().orEmpty()
-        if(parts.getOrNull(1)==R70SharedArchives.DIRECTORY &&
+        if(parts.getOrNull(1) in setOf(R70SharedArchives.DIRECTORY,R72BrokerArchives.DIRECTORY) &&
             name.matches(Regex("[a-f0-9]{64}[.]archive")))return parts.joinToString("/")
         if(parts.getOrNull(1)=="isolated-modules-v1" &&
             parts.getOrNull(parts.size-2) in setOf("downloads",".module-archive-cache-v5") &&

@@ -66,7 +66,7 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
                     val job=currentCoroutineContext()[Job]!!
                     val isR2=url.host=="packages.appforgecloud.com"
                     // Signed R2 objects keep their existing cache/authorization path.
-                    val target=if(!isR2 && sharedPinnedCache!=null)
+                    val target=R72BrokerArchives.target(sharedPinnedCache,sha,isR2) ?: if(!isR2 && sharedPinnedCache!=null)
                         R70SharedArchives.objectFile(sharedPinnedCache,sha)
                     else File(cache,"$sha.archive")
                     if(isR2) {

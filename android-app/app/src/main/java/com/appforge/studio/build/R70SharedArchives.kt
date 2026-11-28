@@ -22,16 +22,17 @@ internal object R70SharedArchives {
     data class Pin(val name:String,val sha:String,val bytes:Long?=null)
     data class Migration(val moved:Int,val redundant:Int,val logicalRemoved:Long,
         val skipped:Int,val freeBefore:Long,val freeAfter:Long,val reflink:Boolean?)
-    fun directory(privateData:File):File {
+    fun directory(privateData:File,storeName:String=DIRECTORY):File {
+        require(storeName in setOf(DIRECTORY,R72BrokerArchives.DIRECTORY))
         val home=RecoveryPathAnchor.androidPlatformPath(privateData)
         RecoveryPathAnchor.check(home)
-        val root=File(home,DIRECTORY)
+        val root=File(home,storeName)
         RecoveryPathAnchor.check(root)
         require(root.isDirectory || root.mkdirs())
         return root
     }
     fun objectFile(root:File,sha:String):File {
-        require(root.name==DIRECTORY && sha.matches(Regex("[a-f0-9]{64}")))
+        require(root.name in setOf(DIRECTORY,R72BrokerArchives.DIRECTORY) && sha.matches(Regex("[a-f0-9]{64}")))
         RecoveryPathAnchor.check(root)
         return File(root,"$sha.archive").also { RecoveryPathAnchor.check(it) }
     }
@@ -67,8 +68,8 @@ internal object R70SharedArchives {
     }
     /** Only paths enumerated from reviewed pins by migrateInstalled are used in production. */
     internal fun migrate(home:File,sources:Map<File,Pin>,canceled:()->Unit={},
-        progress:(Int,Int)->Unit={_,_->},probeReflink:Boolean=false):Migration {
-        val root=directory(home)
+        progress:(Int,Int)->Unit={_,_->},probeReflink:Boolean=false,storeName:String=DIRECTORY):Migration {
+        val root=directory(home,storeName)
         val base=RecoveryPathAnchor.androidPlatformPath(home)
         val before=root.usableSpace
         var moved=0;var redundant=0;var removed=0L;var skipped=0

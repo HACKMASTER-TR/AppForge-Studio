@@ -518,8 +518,10 @@ require(!appforgeV9R2Isolated3UpgradeV551R30 ||
 // pinned Google Cloud Android OAuth SHA-1. CI enforces the certificate.
 // R58-R62: one explicit original-identity device candidate profile. Historical
 // debug/Play/release modes remain unchanged; no automatic signing or publishing.
+val appforgeR72SharedBrokerCandidate =
+    providers.gradleProperty("appforgeR72SharedBrokerCandidate").orNull == "true"
 val appforgeR71SharedRuntimePreflightCandidate =
-    providers.gradleProperty("appforgeR71SharedRuntimePreflightCandidate").orNull == "true"
+    providers.gradleProperty("appforgeR71SharedRuntimePreflightCandidate").orNull == "true" || appforgeR72SharedBrokerCandidate
 val appforgeR70SharedArchivesCandidate =
     providers.gradleProperty("appforgeR70SharedArchivesCandidate").orNull == "true" || appforgeR71SharedRuntimePreflightCandidate
 val appforgeR69StorageInventoryCandidate =
@@ -1257,7 +1259,10 @@ androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         if (appforgeR31OriginalIdentity) {
             variant.outputs.forEach { output ->
-                if (appforgeR71SharedRuntimePreflightCandidate) {
+                if (appforgeR72SharedBrokerCandidate) {
+                    output.versionCode.set(588)
+                    output.versionName.set("5.0.86-r72-shared-broker")
+                } else if (appforgeR71SharedRuntimePreflightCandidate) {
                     output.versionCode.set(587)
                     output.versionName.set("5.0.85-r71-shared-runtime-preflight")
                 } else if (appforgeR70SharedArchivesCandidate) {
