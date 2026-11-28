@@ -26,9 +26,17 @@ echo "LOCAL_BUILD_MODE=$MODE"
 cd "$WORK"
 git diff --quiet HEAD -- . ":(exclude)$SNAP"
 git -c credential.helper= -c 'credential.helper=!gh auth git-credential' fetch --depth=1 "$REPO" "$COMMIT"
+# Never discard staged edits. Only the known generated snapshot may be dirty.
+git diff --cached --quiet HEAD --
 if ! git diff --quiet HEAD -- "$SNAP"; then
-  # Only accept a generated snapshot already equal to the requested commit.
-  git show "$COMMIT:$SNAP" | cmp -s "$SNAP" -
+  # Accept exact target content or a deterministic snapshot for the current source.
+  if ! git show "$COMMIT:$SNAP" | cmp -s "$SNAP" -; then
+    python scripts/generate-second-brain-snapshot.py --check
+  fi
+  cp "$SNAP" "$OUT/second_brain.before-checkout.json"
+  cmp "$SNAP" "$OUT/second_brain.before-checkout.json"
+  git restore --source=HEAD --worktree -- "$SNAP"
+  echo "GENERATED_SNAPSHOT_BACKUP=$OUT/second_brain.before-checkout.json"
 fi
 git checkout --detach "$COMMIT"
 test "$(git rev-parse HEAD)" = "$COMMIT"

@@ -11,4 +11,7 @@ for marker in ("NATIVE_SOURCE_AND_CONFIG=PASS","PROFILE_VERSION_MISMATCH","PREFL
 assert s.index("restore\ntrap - EXIT")<s.index('touch "$OUT/VERIFIED_PASS"')
 assert "mapfile" not in s and "< <(" not in s
 assert "git push" not in s and "adb " not in s and "termux-open" not in s
+assert 'git diff --cached --quiet HEAD --' in s
+assert s.index('cp "$SNAP" "$OUT/second_brain.before-checkout.json"') < s.index('git restore --source=HEAD --worktree -- "$SNAP"') < s.index('git checkout --detach "$COMMIT"')
+assert 'python scripts/generate-second-brain-snapshot.py --check' in s
 print("TERMUX_BUILD_CONTRACT=PASS")
