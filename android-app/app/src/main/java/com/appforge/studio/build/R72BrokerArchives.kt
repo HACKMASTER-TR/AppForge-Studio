@@ -28,16 +28,19 @@ internal object R72BrokerArchives {
         val home=RecoveryPathAnchor.androidPlatformPath(app.noBackupFilesDir)
         RecoveryPathAnchor.check(home)
         val arch=LinuxArchitecture.fromAndroidAbis(Build.SUPPORTED_ABIS.toList()) ?:error("Unsupported architecture")
+        return R70SharedArchives.migrate(home,candidatePaths(home,arch),canceled,progress,storeName=DIRECTORY)
+    }
+    internal fun candidatePaths(home:File,arch:LinuxArchitecture):Map<File,R70SharedArchives.Pin> {
         val sources=linkedMapOf<File,R70SharedArchives.Pin>()
         for(id in OfflineModuleId.entries) {
             val namespace=File(home,"isolated-modules-v1/"+id.name.lowercase(java.util.Locale.ROOT))
             val layout=LinuxRuntimeLayout(File(namespace,"rootfs"),LinuxDistribution.UBUNTU,arch)
             val broker=File(layout.runtimeDirectory,".module-archive-cache-v5")
             for(sha in reviewed) {
-                val name="$"+"sha.archive"
+                val name=sha+".archive"
                 sources[File(broker,name)]=R70SharedArchives.Pin(name,sha)
             }
         }
-        return R70SharedArchives.migrate(home,sources,canceled,progress,storeName=DIRECTORY)
+        return sources
     }
 }

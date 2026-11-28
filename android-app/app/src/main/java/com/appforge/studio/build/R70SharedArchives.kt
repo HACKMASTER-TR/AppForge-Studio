@@ -21,7 +21,8 @@ internal object R70SharedArchives {
     private const val MAX=2L*1024*1024*1024
     data class Pin(val name:String,val sha:String,val bytes:Long?=null)
     data class Migration(val moved:Int,val redundant:Int,val logicalRemoved:Long,
-        val skipped:Int,val freeBefore:Long,val freeAfter:Long,val reflink:Boolean?)
+        val skipped:Int,val freeBefore:Long,val freeAfter:Long,val reflink:Boolean?,
+        val planned:Int=0,val found:Int=0)
     fun directory(privateData:File,storeName:String=DIRECTORY):File {
         require(storeName in setOf(DIRECTORY,R72BrokerArchives.DIRECTORY))
         val home=RecoveryPathAnchor.androidPlatformPath(privateData)
@@ -117,6 +118,6 @@ internal object R70SharedArchives {
         }
         canceled()
         val reflink=if(probeReflink)runCatching{RuntimeFileClone.supported(root)}.getOrNull() else null
-        return Migration(moved,redundant,removed,skipped,before,root.usableSpace,reflink)
+        return Migration(moved,redundant,removed,skipped,before,root.usableSpace,reflink,sources.size,candidates.size)
     }
 }

@@ -241,6 +241,9 @@ private fun R70ArchiveOptimization(onComplete:()->Unit,r72:Boolean=false) {
         dismissButton={TextButton(onClick={confirm=false}){Text("Vazgeç")}})
     error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
     result?.let { r ->
+        AppForgeStorageRow("Aranan dosya",r.planned.toString())
+        AppForgeStorageRow("Bulunan dosya",r.found.toString())
+        if(r.found==0)Text("Aday bulunamadı; bu sonuç tasarruf veya fiziksel kabul değildir.",color=MaterialTheme.colorScheme.error)
         AppForgeStorageRow("Taşınan tekil arşiv",r.moved.toString())
         AppForgeStorageRow("Kaldırılan doğrulanmış fazla kopya",r.redundant.toString())
         AppForgeStorageRow("Mantıksal azalma",gb(r.logicalRemoved))
@@ -249,7 +252,7 @@ private fun R70ArchiveOptimization(onComplete:()->Unit,r72:Boolean=false) {
         AppForgeStorageRow("Reflink testi",when(r.reflink){true->"Destekleniyor";false->"Desteklenmiyor";null->"Ölçülemedi"})
         Text("Boş alan değişimi cihaz genelindedir. Gerçek modül boyutu için depolama analizini tekrar çalıştırın.",style=MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick={
-            val text=(if(r72)"AppForge R72" else "AppForge R70")+"\nTaşınan: "+r.moved+"\nFazla kopya: "+r.redundant+
+            val text=(if(r72)"AppForge R72B" else "AppForge R70")+"\nAranan: "+r.planned+"\nBulunan: "+r.found+"\nTaşınan: "+r.moved+"\nFazla kopya: "+r.redundant+
                 "\nMantıksal azalma: "+gb(r.logicalRemoved)+"\nBoş alan değişimi: "+gb(r.freeAfter-r.freeBefore)+
                 "\nAtlanan: "+r.skipped+"\nReflink: "+r.reflink
             context.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(
